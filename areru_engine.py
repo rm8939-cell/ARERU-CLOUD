@@ -91,7 +91,12 @@ def score_runner(row, history, target, weights):
 
 VENUE_CODES={"01":"札幌","02":"函館","03":"福島","04":"新潟","05":"東京","06":"中山","07":"中京","08":"京都","09":"阪神","10":"小倉"}
 def venue_from_race_id(race_id):
-    m=re.search(r"pw01sde\d{2}(\d{2})\d{4}",str(race_id))
+    s=str(race_id)
+    # netkeiba: YYYY + venue(2) + kai(2) + day(2) + race(2)
+    m=re.fullmatch(r"\d{4}(\d{2})\d{6}",s)
+    if m: return VENUE_CODES.get(m.group(1),"開催地不明")
+    # 旧JRA URL (accessS / accessD)
+    m=re.search(r"pw01[sd]de\d{2}(\d{2})\d{4}",s)
     return VENUE_CODES.get(m.group(1),"開催地不明") if m else "開催地不明"
 
 def simulate_race(g, runs=20000):

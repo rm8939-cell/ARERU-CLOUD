@@ -18,8 +18,14 @@ Macでは run_areru.command をダブルクリックでも起動できます。
 ・人気馬危険度 / 穴馬上昇評価 / 荒れ度 / 理由 / 推奨券種を表示
 ・optimize_v2.py で時系列ホールドアウト付き重み最適化
 
+【P0-2】
+・python3 refresh_data.py --latest-only で最新開催日を netkeiba から自動取得
+・canonical 出走データは data/runners.csv（score_test_data.csv 依存を廃止）
+・predictions_by_date を自動生成
+・Web日付プルダウンは runners.csv ∪ 生成済み predictions を表示
+
 【重要なデータ上の制約】
-現在の score_test_data.csv にある開催日は4日です。Webに出せる過去日は、そのCSVに存在する日付が基準です。
+Webに出せる開催日は data/runners.csv（なければ旧 score_test_data.csv）と predictions_by_date の日付が基準です。
 また過去日出馬データに当日の競馬場・距離・馬場・斤量・騎手が保存されていないため、v2の「条件適性」は対象日前の履歴から推定しています。
 本当の当日条件ベース（距離替わり、馬場替わり、斤量変化、騎手替わり）にするには、今後スクレイパー側で各開催日の出馬表条件を保存する必要があります。
 

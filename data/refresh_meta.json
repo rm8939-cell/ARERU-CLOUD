@@ -1,0 +1,12 @@
+{
+  "updated_at": "2026-07-16T11:07:27",
+  "available_dates": [
+    "2026-07-12",
+    "2026-07-11",
+    "2026-07-05",
+    "2026-07-04"
+  ],
+  "updated_dates": [],
+  "latest": "2026-07-12",
+  "runners": "data/runners.csv"
+}
