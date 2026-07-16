@@ -378,6 +378,11 @@ def index():
                     if not _race_date(row):
                         row['日付']=selected
                 races,has_results=attach_results(races, selected_date=selected)
+                # 結果検証のレース一覧は購入馬券データと同一ソースで紐づける
+                ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
+                for row in races:
+                    rid=_norm_race_id(row.get('race_id',''))
+                    row['purchase_ranks']=list(ranks_map.get(rid, []))
             targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
             label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
             if not races:
@@ -890,6 +895,7 @@ def verification_data(selected_date='', source='all'):
         'investment':0,'payout':0,'profit':0,'tone':'roi-bad',
         'daily':[],'by_type':[],'by_rank':[],'by_rank_type':[],'main':{},
         'recovery_series':[],'cum_profit':[],'recent_rows':[],
+        'purchase_ranks_by_race':{},
     }
     if not ANALYSIS_CSV.exists():
         return empty
@@ -991,6 +997,15 @@ def verification_data(selected_date='', source='all'):
                 continue
             row['bet_type']=_bet_type_label(row.get('bet_type'))
             recent.append(row)
+    # レース一覧用: 購入馬券が存在するランク（レースの勝負ランクではない）
+    purchase_ranks_by_race={}
+    for row in recent:
+        rid=_norm_race_id(row.get('race_id',''))
+        rk=str(row.get('rank','') or '').upper()
+        if not rid or rk not in ('S','A','B','C'):
+            continue
+        purchase_ranks_by_race.setdefault(rid,set()).add(rk)
+    purchase_ranks_by_race={k:sorted(v) for k,v in purchase_ranks_by_race.items()}
     # グラフ用スケール
     max_abs=max([abs(x['value']) for x in cum_profit]+[1])
     for x in cum_profit:
@@ -1014,6 +1029,7 @@ def verification_data(selected_date='', source='all'):
         'cum_profit':cum_profit,
         'recent_rows':recent,
         'purchase_count':len(recent),
+        'purchase_ranks_by_race':purchase_ranks_by_race,
     }
 
 @app.route('/refresh', methods=['POST','GET'])

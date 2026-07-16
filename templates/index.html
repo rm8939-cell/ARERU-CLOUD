@@ -251,7 +251,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </article>
 {% endfor %}
 </div>
-<div class="filter-empty" id="verify-empty">該当する購入がありません</div>
+<div class="filter-empty" id="verify-empty">該当条件に合う結果がありません</div>
 </section>
 
 <details class="targets" style="padding:0">
@@ -273,10 +273,12 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </details>
 
 {% if races %}
-<details class="targets" style="padding:0" id="race-review-block">
-<summary style="padding:14px 16px;font-size:13px;letter-spacing:.12em;cursor:pointer;list-style:none;color:#ddd;background:#1a1a1a">参考｜予想印 × 実着順（レース単位・集計対象外）</summary>
-<div style="padding:12px 12px 4px">
-{% for r in races %}<section class="race result-card">
+<details class="targets race-review-block" style="padding:0" id="race-review-block">
+<summary style="padding:14px 16px;font-size:13px;letter-spacing:.12em;cursor:pointer;list-style:none;color:#ddd;background:#1a1a1a">参考｜予想印 × 実着順（購入馬券があるレースのみ）</summary>
+<div style="padding:12px 12px 4px" id="race-review-list">
+{% for r in races %}<section class="race result-card"
+  data-race-id="{{r.get('race_id','')}}"
+  data-purchase-ranks="{{ (r.get('purchase_ranks') or [])|join(' ') }}">
 <div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>予想時 買い期待度 {{r['BET期待値']}}</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['BET期待値']}}<small>{{r['BET判定']}}</small></div></div></div>
 {% if r.get('的中一覧') %}
 <div class="section"><div class="section-title">馬券結果</div>
@@ -351,15 +353,12 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
     filter=filter||'all';
     syncChips(filter);
     if(liveLabel) liveLabel.textContent=labels[filter]||'表示中の集計';
+    var rk=rankFromFilter(filter);
 
     var shown=0, hits=0, inv=0, pay=0, profit=0;
     cards.forEach(function(card){
       var rank=(card.getAttribute('data-rank')||'').toUpperCase();
-      var ok=true;
-      if(filter==='rank-s') ok=rank==='S';
-      else if(filter==='rank-a') ok=rank==='A';
-      else if(filter==='rank-b') ok=rank==='B';
-      else if(filter==='rank-c') ok=rank==='C';
+      var ok=!rk || rank===rk;
       card.style.display=ok?'':'none';
       if(!ok) return;
       shown++;
@@ -368,6 +367,21 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
       pay+=parseInt(card.getAttribute('data-payout')||'0',10)||0;
       profit+=parseInt(card.getAttribute('data-profit')||'0',10)||0;
     });
+    // レース一覧も同じ購入馬券ソースで絞る（そのランク購入があるレースのみ）
+    var raceBlock=document.getElementById('race-review-block');
+    var raceShown=0;
+    if(raceBlock){
+      [].forEach.call(raceBlock.querySelectorAll('.result-card'),function(card){
+        var ranks=(card.getAttribute('data-purchase-ranks')||'').toUpperCase().split(/\s+/).filter(Boolean);
+        var ok=false;
+        if(shown>0){
+          ok=rk ? ranks.indexOf(rk)>=0 : ranks.length>0;
+        }
+        card.style.display=ok?'':'none';
+        if(ok) raceShown++;
+      });
+      raceBlock.classList.toggle('hidden', raceShown===0);
+    }
     if(empty) empty.style.display=shown?'none':'block';
     var hitRate=shown? (hits/shown*100) : 0;
     var recovery=inv? (pay/inv*100) : 0;
