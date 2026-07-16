@@ -62,59 +62,285 @@ def ensure(d):
     return f
 
 def prep(records):
+    from areru_engine import RANK_LABELS, RANK_CLASSES
     for r in records:
         try: r['印一覧']=json.loads(r.get('印データ','[]'))
         except: r['印一覧']=[]
         for k in ['ワイド買い目','馬連買い目','三連複買い目']:
             r[k+'一覧']=str(r.get(k,'見送り')).split('｜')
+        rank=str(r.get('勝負ランク','') or '').upper()
+        if rank in RANK_LABELS:
+            r['勝負ランク']=rank
+            r['BET判定']=RANK_LABELS[rank]
+            r['BETクラス']=RANK_CLASSES.get(rank, r.get('BETクラス',''))
     return records
 
 def clean_horse(x):
-    return re.sub(r'\s+','',str(x)).strip()
+    """馬名正規化（areru_engine.clean_name と同等）。"""
+    from areru_engine import clean_name
+    return clean_name(x)
 
-def attach_results(records):
-    rp=DATA/'results.csv'
-    if not rp.exists(): return records, False
+
+def _norm_race_id(x) -> str:
+    """race_id を比較可能な文字列へ。float の .0 や空白を除去。"""
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return ''
+    s=str(x).strip()
+    if not s or s.lower() in ('nan','none','なし'):
+        return ''
+    if s.endswith('.0') and s[:-2].replace('-','').isdigit():
+        s=s[:-2]
     try:
-        rdf=pd.read_csv(rp).fillna('')
-    except: return records, False
-    # 旧JRA URL行は無視
-    if 'race_id' not in rdf.columns or '馬名' not in rdf.columns:
-        return records, False
-    rdf=rdf[~rdf['race_id'].astype(str).str.startswith('http')].copy()
-    finish_col='着順' if '着順' in rdf.columns else None
-    if finish_col is None: return records, False
-    lookup={(str(x['race_id']),clean_horse(x['馬名'])):str(x[finish_col]) for _,x in rdf.iterrows() if str(x[finish_col]).strip()}
-    # 旧JRA URL予想向け: (開催地, レース, 馬名) フォールバック
-    venue_lookup={}
-    if '開催地' in rdf.columns and 'レース' in rdf.columns:
+        if re.fullmatch(r'\d+\.0+', s):
+            s=str(int(float(s)))
+    except Exception:
+        pass
+    return s
+
+
+def _format_finish(raw) -> str:
+    """着順を『1着』形式へ。未確定は空文字。"""
+    s=str(raw or '').strip()
+    if not s or s.lower() in ('nan','none','なし','結果待ち'):
+        return ''
+    if s.endswith('着'):
+        return s
+    try:
+        n=int(float(s))
+        if n>0:
+            return f'{n}着'
+    except Exception:
+        pass
+    # 除外・中止などはそのまま
+    return s
+
+
+def _race_date(record) -> str:
+    for k in ('日付','_date','date'):
+        v=str(record.get(k,'') or '').strip()
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', v):
+            return v
+    return ''
+
+
+def _load_score_finishes(date_str: str) -> dict:
+    """scores_{date}.csv の 実着順 → {(race_id, 馬名): 着順}"""
+    if not date_str:
+        return {}
+    path=ARCH/f'scores_{date_str}.csv'
+    if not path.exists():
+        return {}
+    try:
+        sdf=pd.read_csv(path).fillna('')
+    except Exception:
+        return {}
+    if '馬名' not in sdf.columns or '実着順' not in sdf.columns:
+        return {}
+    out={}
+    for _,x in sdf.iterrows():
+        fin=_format_finish(x.get('実着順',''))
+        if not fin:
+            continue
+        rid=_norm_race_id(x.get('race_id',''))
+        name=clean_horse(x.get('馬名',''))
+        if rid and name:
+            out[(rid,name)]=fin
+        # 開催地+R フォールバック用キーは attach 側で日付付き辞書に載せる
+        venue=str(x.get('開催地','') or '')
+        try: rn=int(float(x.get('レース',0)))
+        except Exception: rn=None
+        if venue and rn is not None and name:
+            out[(f'date:{date_str}',venue,rn,name)]=fin
+    return out
+
+
+def _load_analysis_by_race() -> dict:
+    """analysis_result.csv → race_id ごとの的中サマリー。"""
+    if not ANALYSIS_CSV.exists():
+        return {}
+    try:
+        adf=pd.read_csv(ANALYSIS_CSV,encoding='utf-8-sig').fillna('')
+    except Exception:
+        return {}
+    if adf.empty or 'race_id' not in adf.columns:
+        return {}
+    by_race={}
+    for _,row in adf.iterrows():
+        rid=_norm_race_id(row.get('race_id',''))
+        if not rid:
+            continue
+        hit=int(pd.to_numeric(row.get('hit'), errors='coerce') or 0)
+        by_race.setdefault(rid, []).append({
+            'bet_type':str(row.get('bet_type','')),
+            'hit':hit,
+            'result':str(row.get('result','') or ''),
+            'prediction':str(row.get('prediction','') or ''),
+        })
+    return by_race
+
+
+def dates_with_results() -> list[str]:
+    """results.csv / analysis_result.csv にある開催日（新しい順）。"""
+    found=set()
+    rp=DATA/'results.csv'
+    if rp.exists():
+        try:
+            rdf=pd.read_csv(rp,usecols=lambda c: c in ('date','日付')).fillna('')
+            col='date' if 'date' in rdf.columns else ('日付' if '日付' in rdf.columns else None)
+            if col:
+                found.update([x for x in rdf[col].astype(str) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
+        except Exception:
+            pass
+    if ANALYSIS_CSV.exists():
+        try:
+            ad=pd.read_csv(ANALYSIS_CSV,usecols=['date'],encoding='utf-8-sig').fillna('')
+            found.update([x for x in ad['date'].astype(str) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
+        except Exception:
+            pass
+    return sorted(found, reverse=True)
+
+
+def attach_results(records, selected_date=''):
+    """results.csv / scores / analysis_result を照合し、着順・的中・AI振り返りを付与。"""
+    rp=DATA/'results.csv'
+    rdf=None
+    if rp.exists():
+        try:
+            rdf=pd.read_csv(rp).fillna('')
+        except Exception:
+            rdf=None
+    if rdf is not None and not rdf.empty:
+        if 'race_id' not in rdf.columns or '馬名' not in rdf.columns:
+            rdf=None
+        else:
+            rdf=rdf[~rdf['race_id'].astype(str).str.startswith('http')].copy()
+            rdf['race_id']=rdf['race_id'].map(_norm_race_id)
+            if '着順' not in rdf.columns:
+                rdf=None
+
+    lookup={}          # (race_id, 馬名) -> 着順表示
+    date_venue_lookup={}  # (date, 開催地, R, 馬名) -> 着順表示
+    race_ids_with_result=set()
+    resolve_map={}     # (date, 開催地, R) -> race_id
+
+    if rdf is not None and not rdf.empty:
         for _,x in rdf.iterrows():
-            try: rn=int(float(x['レース']))
-            except Exception: continue
-            venue_lookup[(str(x['開催地']),rn,clean_horse(x['馬名']))]=str(x[finish_col])
+            fin=_format_finish(x.get('着順',''))
+            if not fin:
+                continue
+            rid=_norm_race_id(x.get('race_id',''))
+            name=clean_horse(x.get('馬名',''))
+            if rid and name:
+                lookup[(rid,name)]=fin
+                race_ids_with_result.add(rid)
+            d=str(x.get('date','') or '').strip()
+            venue=str(x.get('開催地','') or '').strip()
+            try: rn=int(float(x.get('レース',0)))
+            except Exception: rn=None
+            if d and venue and rn is not None and name:
+                date_venue_lookup[(d,venue,rn,name)]=fin
+                resolve_map.setdefault((d,venue,rn), rid)
+
+    analysis_by_race=_load_analysis_by_race()
+    score_cache={}
     any_result=False
+
     for r in records:
-        rid=str(r['race_id'])
+        rid=_norm_race_id(r.get('race_id',''))
+        r['race_id']=rid or str(r.get('race_id',''))
         try: race_no=int(float(r.get('レース',0)))
         except Exception: race_no=None
-        venue=str(r.get('開催地',''))
+        venue=str(r.get('開催地','') or '').strip()
+        d=_race_date(r) or str(selected_date or '').strip()
+
+        # 旧JRA URL → netkeiba race_id 解決（同一日・開催地・R）
+        if (not rid or rid.startswith('http') or not rid.isdigit()) and d and venue and race_no is not None:
+            resolved=resolve_map.get((d,venue,race_no),'')
+            if resolved:
+                rid=resolved
+                r['race_id']=rid
+
+        if d and d not in score_cache:
+            score_cache[d]=_load_score_finishes(d)
+        score_lu=score_cache.get(d,{})
+
+        def lookup_finish(horse_name: str) -> str:
+            hn=clean_horse(horse_name)
+            if not hn:
+                return ''
+            fin=lookup.get((rid,hn),'') if rid else ''
+            if not fin and d and venue and race_no is not None:
+                fin=date_venue_lookup.get((d,venue,race_no,hn),'')
+            if not fin and rid:
+                fin=score_lu.get((rid,hn),'')
+            if not fin and d and venue and race_no is not None:
+                fin=score_lu.get((f'date:{d}',venue,race_no,hn),'')
+            return fin
+
+        race_has_result=(
+            (rid and rid in race_ids_with_result)
+            or rid in analysis_by_race
+            or any(
+                lookup_finish(n)
+                for n in [r.get('本命','')] + [x.get('馬名','') for x in r.get('印一覧',[])]
+                if n
+            )
+        )
+
         entries=[('◎',r.get('本命',''))]+[(x.get('印',''),x.get('馬名','')) for x in r.get('印一覧',[])]
         seen=set(); review=[]
         for mark,name in entries:
-            key=(rid,clean_horse(name))
-            if name and name not in seen:
-                seen.add(name)
-                finish=lookup.get(key,'')
-                if not finish and race_no is not None:
-                    finish=venue_lookup.get((venue,race_no,clean_horse(name)),'')
-                if finish: any_result=True
-                review.append({'印':mark,'馬名':name,'着順':finish or '結果待ち'})
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            finish=lookup_finish(name)
+            if finish:
+                any_result=True
+                disp=finish
+            elif race_has_result:
+                # 結果確定レースで馬だけ見つからない（取消・除外など）
+                disp='取消'
+            else:
+                disp='結果待ち'
+            review.append({'印':mark,'馬名':name,'着順':disp})
         r['結果一覧']=review
-        main_finish=lookup.get((rid,clean_horse(r.get('本命',''))),'')
-        if not main_finish and race_no is not None:
-            main_finish=venue_lookup.get((venue,race_no,clean_horse(r.get('本命',''))),'')
-        if main_finish:
-            r['AI振り返り']=f"◎{r.get('本命')}は{main_finish}着。軸評価を実着順と照合済み。印上位の着順を見て、次回の重み調整候補として蓄積します。"
+        r['結果確定']=bool(race_has_result)
+
+        # 的中 / 不的中（analysis_result 優先）
+        hits=analysis_by_race.get(rid,[]) if rid else []
+        if not hits and d and venue and race_no is not None:
+            alt=resolve_map.get((d,venue,race_no),'')
+            if alt:
+                hits=analysis_by_race.get(alt,[])
+        r['的中一覧']=hits
+        if hits:
+            parts=[]
+            for h in hits:
+                label='的中' if h['hit'] else '不的中'
+                parts.append(f"{h['bet_type']}{label}")
+            r['的中表示']=' / '.join(parts)
+        elif race_has_result:
+            r['的中表示']=''
+        else:
+            r['的中表示']='結果待ち'
+
+        main_finish=lookup_finish(r.get('本命',''))
+        if race_has_result and main_finish:
+            parts=[f"◎{r.get('本命')}は{main_finish}"]
+            if hits:
+                main_hits=[h for h in hits if h['bet_type']=='本命']
+                if main_hits:
+                    parts.append('本命的中' if main_hits[0]['hit'] else '本命不的中')
+                other=[h for h in hits if h['bet_type']!='本命']
+                if other:
+                    parts.append(' / '.join(
+                        f"{h['bet_type']}{'的中' if h['hit'] else '不的中'}" for h in other[:4]
+                    ))
+            parts.append('軸評価を実着順と照合済み。印上位の着順を見て、次回の重み調整候補として蓄積します。')
+            r['AI振り返り']='。'.join(parts)
+        elif race_has_result:
+            extra=f"的中状況: {r['的中表示']}。" if r.get('的中表示') else ''
+            r['AI振り返り']=f'このレースの確定結果は保存済みです。{extra}印と実着順を照合してください。'
         else:
             r['AI振り返り']='このレースの確定結果はまだ保存されていません。結果取得後に自動照合します。'
     return records, any_result
@@ -123,11 +349,13 @@ def attach_results(records):
 def analysis_data(records):
     if not records:
         return {'total':0,'verified':0,'ranks':[],'venues':[],'bands':[]}
+    from areru_engine import RANK_LABELS
     df=pd.DataFrame([{'rank':str(r.get('勝負ランク','')),'venue':str(r.get('開催地','')),
                       'score':float(r.get('BET期待値',0) or 0),
-                      'verified':any(str(x.get('着順','')) not in ('','結果待ち') for x in r.get('結果一覧',[]))}
+                      'verified':bool(r.get('結果確定')) or any(
+                          str(x.get('着順','')) not in ('','結果待ち','取消') for x in r.get('結果一覧',[]))}
                      for r in records])
-    ranks=[{'label':x,'count':int((df['rank']==x).sum())} for x in ['S','A','B','C']]
+    ranks=[{'label':x,'name':RANK_LABELS.get(x,x),'count':int((df['rank']==x).sum())} for x in ['S','A','B','C']]
     venues=[{'label':str(k),'count':int(v)} for k,v in df['venue'].value_counts().items()]
     bands=[]
     for label,lo,hi in [('～69',0,70),('70～79',70,80),('80～89',80,90),('90～',90,101)]:
@@ -188,7 +416,7 @@ def _load_prediction_meta():
         if 'race_id' not in df.columns:
             continue
         for _,row in df.iterrows():
-            rid=str(row.get('race_id','')).strip()
+            rid=_norm_race_id(row.get('race_id',''))
             if not rid or rid in meta:
                 continue
             meta[rid]=row.to_dict()
@@ -235,8 +463,13 @@ def _buy_reasons(pred):
     return out
 
 
+def _rank_label(rank):
+    from areru_engine import RANK_LABELS
+    return RANK_LABELS.get(str(rank).upper(),'')
+
+
 def _enrich_verify_row(r, pred_meta):
-    rid=str(r.get('race_id','')).strip()
+    rid=_norm_race_id(r.get('race_id',''))
     pred=pred_meta.get(rid) or {}
     prediction=str(r.get('prediction','') or '')
     combos=parse_prediction_combos(prediction)
@@ -244,7 +477,9 @@ def _enrich_verify_row(r, pred_meta):
     if float(r.get('investment') or 0)==0 and 'roi' in r:
         try: recovery=float(r.get('roi') or 0)
         except (TypeError, ValueError): recovery=0.0
-    rank=str(pred.get('勝負ランク','') or '')
+    # analysis_result に保存済みランクがあれば優先
+    rank=str(r.get('勝負ランク') or pred.get('勝負ランク','') or '').upper()
+    bet_judge=str(pred.get('BET判定','') or _rank_label(rank) or '')
     areru=str(pred.get('荒れ度','') or '')
     expect=str(pred.get('BET期待値','') or '')
     recommend=str(pred.get('推奨券種','') or '')
@@ -266,24 +501,29 @@ def _enrich_verify_row(r, pred_meta):
         'recovery':recovery,
         'tone':_roi_tone(recovery),
         'rank':rank,
+        'rank_label':_rank_label(rank) or bet_judge,
         'areru':areru,
         'expect':expect,
         'recommend':recommend,
-        'bet_judge':str(pred.get('BET判定','') or ''),
+        'bet_judge':bet_judge,
         'ai_comment':ai_comment,
         'reasons':_buy_reasons(pred),
-        'has_ai':bool(pred),
+        'has_ai':bool(pred) or bool(rank),
     }
 
 
 def verification_data(selected_date=''):
     """analysis_result.csv から結果検証ダッシュボード用データを構築。"""
+    empty_pack={
+        'total_bets':0,'hits':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,
+        'investment':0,'payout':0,'profit':0,'tone':'roi-bad','bar':0,
+    }
     empty={
         'has_data':False,'selected_date':selected_date,
         'total_bets':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,
         'investment':0,'payout':0,'profit':0,'tone':'roi-bad',
-        'daily':[],'by_type':[],'main':{},'recovery_series':[],'cum_profit':[],
-        'recent_rows':[],
+        'daily':[],'by_type':[],'by_rank':[],'main':{},
+        'recovery_series':[],'cum_profit':[],'recent_rows':[],
     }
     if not ANALYSIS_CSV.exists():
         return empty
@@ -300,6 +540,8 @@ def verification_data(selected_date=''):
     day_df=all_df[all_df['date'].astype(str)==str(selected_date)] if selected_date else all_df
 
     def pack(frame):
+        if frame is None or len(frame)==0:
+            return dict(empty_pack)
         inv=float(frame['investment'].sum())
         pay=float(frame['payout'].sum())
         hits=int(frame['hit'].sum())
@@ -342,10 +584,26 @@ def verification_data(selected_date=''):
     by_type=sorted(by_type,key=lambda x:x['investment'],reverse=True)
     # 本命成績
     main_df=src[src['bet_type']=='本命'] if '本命' in set(src['bet_type'].astype(str)) else pd.DataFrame()
-    main=pack(main_df) if not main_df.empty else {'total_bets':0,'hits':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,'investment':0,'payout':0,'profit':0,'tone':'roi-bad','bar':0}
+    main=pack(main_df) if not main_df.empty else dict(empty_pack)
+    # AIランク結合 → ランク別KPI（件数・的中率・回収率・ROI・収支）
+    pred_meta=_load_prediction_meta()
+    ranked=src.copy()
+    if '勝負ランク' not in ranked.columns or ranked['勝負ランク'].astype(str).str.strip().eq('').all():
+        ranked['勝負ランク']=ranked['race_id'].map(
+            lambda rid: str((pred_meta.get(_norm_race_id(rid)) or {}).get('勝負ランク','') or '').upper()
+        )
+    else:
+        ranked['勝負ランク']=ranked['勝負ランク'].astype(str).str.upper().str.strip()
+    by_rank=[]
+    for key, ranks, name in [
+        ('S',['S'],'勝負'),('A',['A'],'買い'),('B',['B'],'様子見'),
+        ('C',['C'],'見送り'),('S+A',['S','A'],'勝負+買い'),
+    ]:
+        g=ranked[ranked['勝負ランク'].isin(ranks)]
+        s=pack(g)
+        by_rank.append({'key':key,'name':name,**s})
     # カード表示用明細（予想メタ結合）
     show=day_df if not day_df.empty else all_df
-    pred_meta=_load_prediction_meta()
     recent=[]
     for _,r in show.tail(120).iloc[::-1].iterrows():
         recent.append(_enrich_verify_row(r, pred_meta))
@@ -365,6 +623,7 @@ def verification_data(selected_date=''):
         **summary,
         'daily':daily,
         'by_type':by_type,
+        'by_rank':by_rank,
         'main':main,
         'recovery_series':recovery_series,
         'cum_profit':cum_profit,
@@ -375,7 +634,13 @@ def verification_data(selected_date=''):
 def index():
     source=request.args.get('source','jra')
     mode=request.args.get('mode','predict')
-    av=dates(); selected=request.args.get('date','').strip() or (av[0] if av else '')
+    av=dates()
+    selected=request.args.get('date','').strip() or (av[0] if av else '')
+    # 結果検証タブ: 選択日に結果が無い場合は最新の結果日へ寄せる（結果待ちの誤表示を防ぐ）
+    result_days=dates_with_results()
+    if mode=='result' and result_days:
+        if not selected or selected not in result_days:
+            selected=result_days[0]
     races=[]; targets=[]; message='予想データがありません'; has_results=False
     verification=verification_data(selected)
 
@@ -391,7 +656,10 @@ def index():
             if pred_path.exists() or mode!='result':
                 df=pd.read_csv(ensure(selected)).fillna('なし')
                 races=prep(df.to_dict('records'))
-                races,has_results=attach_results(races)
+                for row in races:
+                    if not _race_date(row):
+                        row['日付']=selected
+                races,has_results=attach_results(races, selected_date=selected)
             targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
             if mode=='result':
                 message=f'{selected} / 結果検証モード'

@@ -40,13 +40,30 @@ PAYOUT_COLS = [
     "combination", "payout", "ninki", "source",
 ]
 ANALYSIS_COLS = [
-    "date", "race", "race_id", "開催地", "bet_type",
+    "date", "race", "race_id", "開催地", "bet_type", "勝負ランク",
     "prediction", "result", "hit", "payout", "investment", "profit", "roi",
 ]
 
 
 def _clean(s) -> str:
     return clean_name(s) if s is not None else ""
+
+
+def _norm_race_id(x) -> str:
+    """CSV 読み書きで float 化した race_id を 12桁文字列へ揃える。"""
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return ""
+    s = str(x).strip()
+    if not s or s.lower() in ("nan", "none"):
+        return ""
+    if s.endswith(".0") and s[:-2].isdigit():
+        s = s[:-2]
+    try:
+        if re.fullmatch(r"\d+\.0+", s):
+            s = str(int(float(s)))
+    except Exception:
+        pass
+    return s
 
 
 def _load_csv(path: Path, cols: list[str]) -> pd.DataFrame:
@@ -131,9 +148,10 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
         race_no = detail.get("race_no") or ""
         venue = detail.get("venue") or ""
         d = detail.get("date") or date_str
+        rid_s = _norm_race_id(rid)
         for h in detail["horses"]:
             horse_rows.append({
-                "race_id": rid,
+                "race_id": rid_s,
                 "date": d,
                 "レース": race_no,
                 "開催地": venue,
@@ -146,7 +164,7 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
             })
         for p in detail.get("payouts") or []:
             pay_rows.append({
-                "race_id": rid,
+                "race_id": rid_s,
                 "date": d,
                 "レース": race_no,
                 "開催地": venue,
@@ -172,7 +190,8 @@ def _list_nar_race_ids(client: NetkeibaClient, ymd: str) -> list[str]:
 
 
 def _ban_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
-    g = results[results["race_id"].astype(str) == str(race_id)]
+    rid = _norm_race_id(race_id)
+    g = results[results["race_id"].map(_norm_race_id) == rid]
     out = {}
     for _, r in g.iterrows():
         ban = str(r["馬番"]).strip()
@@ -183,12 +202,14 @@ def _ban_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
 
 
 def _finish_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
-    g = results[results["race_id"].astype(str) == str(race_id)]
+    rid = _norm_race_id(race_id)
+    g = results[results["race_id"].map(_norm_race_id) == rid]
     return {_clean(r["馬名"]): str(r["着順"]).strip() for _, r in g.iterrows()}
 
 
 def _payout_index(payouts: pd.DataFrame, race_id: str) -> dict[str, list[dict]]:
-    g = payouts[payouts["race_id"].astype(str) == str(race_id)]
+    rid = _norm_race_id(race_id)
+    g = payouts[payouts["race_id"].map(_norm_race_id) == rid]
     idx: dict[str, list[dict]] = {}
     for _, r in g.iterrows():
         bt = str(r["bet_type"])
@@ -315,7 +336,7 @@ def _eval_combo(
 
 def _resolve_race_id(prow: dict, day_results: pd.DataFrame) -> str:
     """netkeiba の 12桁 ID を優先。旧JRA URL の場合は開催地+レースで解決。"""
-    rid = str(prow.get("race_id", "")).strip()
+    rid = _norm_race_id(prow.get("race_id", ""))
     if rid.isdigit() and len(rid) == 12:
         return rid
     venue = str(prow.get("開催地", "")).strip()
@@ -330,7 +351,7 @@ def _resolve_race_id(prow: dict, day_results: pd.DataFrame) -> str:
     ]
     if g.empty:
         return ""
-    return str(g.iloc[0]["race_id"])
+    return _norm_race_id(g.iloc[0]["race_id"])
 
 
 def analyze_predictions(
@@ -362,12 +383,13 @@ def analyze_predictions(
             venue = str(prow.get("開催地", ""))
             race_no = prow.get("レース", "")
             race_label = f"{venue}{int(float(race_no)):02d}R" if str(race_no).replace('.','',1).isdigit() else str(race_no)
+            ai_rank = str(prow.get("勝負ランク", "") or "").upper()
 
             # 本命（単勝）
             main = _clean(prow.get("本命", ""))
             if main:
                 ev = _eval_win(main, finishes, pays, bans)
-                rows.append(_analysis_row(d, race_label, rid, venue, "本命", ev))
+                rows.append(_analysis_row(d, race_label, rid, venue, "本命", ev, ai_rank))
 
             # ワイド / 馬連 / 三連複
             for kind, col, ordered in [
@@ -379,19 +401,19 @@ def analyze_predictions(
                 # 見送り判定でも買い目があれば仮想検証する
                 ev = _eval_combo(kind, tickets, bans, pays, ordered=ordered)
                 if ev["investment"] > 0 or tickets:
-                    rows.append(_analysis_row(d, race_label, rid, venue, kind, ev))
+                    rows.append(_analysis_row(d, race_label, rid, venue, kind, ev, ai_rank))
 
             # 三連単: ◎→○→▲ の順で1点
             marks = dict(_marks_from_prediction(prow.to_dict()))
             trio_names = [marks.get("◎", ""), marks.get("○", ""), marks.get("▲", "")]
             if all(trio_names):
                 ev = _eval_combo("三連単", [trio_names], bans, pays, ordered=True)
-                rows.append(_analysis_row(d, race_label, rid, venue, "三連単", ev))
+                rows.append(_analysis_row(d, race_label, rid, venue, "三連単", ev, ai_rank))
 
     return pd.DataFrame(rows, columns=ANALYSIS_COLS)
 
 
-def _analysis_row(date: str, race: str, race_id: str, venue: str, bet_type: str, ev: dict) -> dict:
+def _analysis_row(date: str, race: str, race_id: str, venue: str, bet_type: str, ev: dict, ai_rank: str = "") -> dict:
     inv = int(ev.get("investment") or 0)
     pay = int(ev.get("payout") or 0)
     profit = pay - inv
@@ -399,9 +421,10 @@ def _analysis_row(date: str, race: str, race_id: str, venue: str, bet_type: str,
     return {
         "date": date,
         "race": race,
-        "race_id": race_id,
+        "race_id": _norm_race_id(race_id),
         "開催地": venue,
         "bet_type": bet_type,
+        "勝負ランク": str(ai_rank or "").upper(),
         "prediction": ev.get("prediction", ""),
         "result": ev.get("result", ""),
         "hit": int(ev.get("hit") or 0),
@@ -433,6 +456,15 @@ def summarize(analysis: pd.DataFrame) -> None:
         i, p = g["investment"].sum(), g["payout"].sum()
         h = g["hit"].mean() * 100 if len(g) else 0
         print(f"  {bt}: 的中率{h:.1f}% / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円")
+    if "勝負ランク" in analysis.columns:
+        print("  --- AIランク別 ---")
+        for rk in ["S", "A", "B", "C"]:
+            g = analysis[analysis["勝負ランク"].astype(str).str.upper() == rk]
+            if g.empty:
+                continue
+            i, p = g["investment"].sum(), g["payout"].sum()
+            h = g["hit"].mean() * 100 if len(g) else 0
+            print(f"  {rk}: 件数{len(g)} / 的中率{h:.1f}% / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円")
 
 
 def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) -> None:
@@ -462,6 +494,11 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
     else:
         target_dates = dates or sorted(results["date"].astype(str).unique().tolist(), reverse=True)[:1]
 
+    if not results.empty and "race_id" in results.columns:
+        results["race_id"] = results["race_id"].map(_norm_race_id)
+    if not payouts.empty and "race_id" in payouts.columns:
+        payouts["race_id"] = payouts["race_id"].map(_norm_race_id)
+    # race_id を文字列のまま保存（Excel/pandas の float 化による照合ズレ防止）
     results.to_csv(RESULTS_CSV, index=False, encoding="utf-8-sig")
     payouts.to_csv(PAYOUTS_CSV, index=False, encoding="utf-8-sig")
     print(f"\n💾 {RESULTS_CSV} ({len(results)}行)")
@@ -473,6 +510,8 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
     if not analyze_dates:
         analyze_dates = sorted(result_dates)
     analysis = analyze_predictions(results, payouts, dates=analyze_dates)
+    if not analysis.empty and "race_id" in analysis.columns:
+        analysis["race_id"] = analysis["race_id"].map(_norm_race_id)
     analysis.to_csv(ANALYSIS_CSV, index=False, encoding="utf-8-sig")
     print(f"💾 {ANALYSIS_CSV} ({len(analysis)}行)")
     summarize(analysis)
