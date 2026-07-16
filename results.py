@@ -561,7 +561,7 @@ def main():
     ap = argparse.ArgumentParser(description="P0-4 結果検証パイプライン")
     ap.add_argument("--date", help="YYYY-MM-DD")
     ap.add_argument("--dates", nargs="*", help="複数日")
-    ap.add_argument("--source", choices=["jra", "nar", "all"], default="jra")
+    ap.add_argument("--source", choices=["jra", "nar", "all"], default="all")
     ap.add_argument("--latest", action="store_true", help="最新開催日（結果確定）を自動選択")
     ap.add_argument("--skip-fetch", action="store_true", help="取得をスキップして照合のみ")
     args = ap.parse_args()

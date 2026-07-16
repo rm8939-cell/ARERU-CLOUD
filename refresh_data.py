@@ -224,10 +224,16 @@ def merge_runners(base: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
     if new.empty:
         return base
     if base.empty:
-        return new
-    drop_ids = set(new["race_id"].astype(str))
-    keep = base[~base["race_id"].astype(str).isin(drop_ids)]
-    return _normalize_runners(pd.concat([keep, new], ignore_index=True))
+        out = new
+    else:
+        drop_ids = set(new["race_id"].astype(str))
+        keep = base[~base["race_id"].astype(str).isin(drop_ids)]
+        out = pd.concat([keep, new], ignore_index=True)
+    out = _normalize_runners(out)
+    # 同一レース・馬番の重複を除去（後勝ち）
+    if not out.empty:
+        out = out.drop_duplicates(subset=["race_id", "馬番"], keep="last").reset_index(drop=True)
+    return out
 
 
 def save_runners(df: pd.DataFrame) -> None:
@@ -263,7 +269,7 @@ def refresh(
     migrate_only: bool = False,
     odds_only: bool = False,
     include_odds: bool = True,
-    source: str = "jra",
+    source: str = "all",
 ) -> list[str]:
     runners = load_existing_runners()
     if migrate_only:
@@ -341,7 +347,7 @@ def main():
     ap.add_argument("--migrate-only", action="store_true", help="既存CSVの移行のみ")
     ap.add_argument("--odds-only", action="store_true", help="オッズ列だけ再取得して再予想")
     ap.add_argument("--no-odds", action="store_true", help="オッズ取得をスキップ")
-    ap.add_argument("--source", choices=["jra", "nar", "all"], default="jra")
+    ap.add_argument("--source", choices=["jra", "nar", "all"], default="all")
     ap.add_argument("--lookback", type=int, default=28)
     ap.add_argument("--lookahead", type=int, default=14)
     ap.add_argument("--list", action="store_true", help="検出開催日を表示して終了")

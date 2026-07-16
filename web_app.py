@@ -270,10 +270,131 @@ def dates_with_results(source='all') -> list[str]:
             ad=pd.read_csv(ANALYSIS_CSV,encoding='utf-8-sig').fillna('')
             if source in ('jra','nar') and 'source' in ad.columns:
                 ad=ad[ad['source'].astype(str).str.lower()==source]
-            found.update([x for x in ad['date'].astype(str) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
+            if 'date' in ad.columns:
+                found.update([x for x in ad['date'].astype(str) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
         except Exception:
             pass
     return sorted(found, reverse=True)
+
+
+def _source_latest_in_runners(source: str) -> str:
+    """runners.csv 上の指定ソース最新開催日。"""
+    rp=_runner_path()
+    if rp is None:
+        return ''
+    try:
+        rdf=pd.read_csv(rp,encoding='utf-8-sig')
+        if '日付' not in rdf.columns:
+            return ''
+        if source in ('jra','nar'):
+            if 'source' in rdf.columns:
+                rdf=rdf[rdf['source'].astype(str).str.lower()==source]
+            elif 'race_id' in rdf.columns:
+                from areru_engine import source_from_race_id
+                rdf=rdf[rdf['race_id'].map(source_from_race_id)==source]
+        days=parse_date(rdf['日付']).dropna().dt.strftime('%Y-%m-%d')
+        vals=sorted(days.unique().tolist(), reverse=True)
+        return vals[0] if vals else ''
+    except Exception:
+        return ''
+
+
+def bootstrap_source(source: str) -> bool:
+    """地方タブでデータが古い/無い場合に最新開催を自動取得する。
+
+    Returns: 更新を実行したら True
+    """
+    if source != 'nar':
+        return False
+    # 直近数日だけ走査（毎回28日走査しない）
+    try:
+        from netkeiba_client import NetkeibaClient
+        found=NetkeibaClient(sleep=0.12).discover_kaisai_dates(
+            lookback=4, lookahead=1, source='nar'
+        )
+        remote=found[0] if found else ''
+    except Exception:
+        remote=''
+    local=_source_latest_in_runners('nar')
+    if remote and local and local>=remote:
+        return False
+    if not remote and local:
+        return False
+    lock=DATA/'.nar_bootstrap.lock'
+    if lock.exists():
+        try:
+            age=(__import__('time').time()-lock.stat().st_mtime)
+            if age < 1800:
+                print('[bootstrap] already running, skip')
+                return False
+        except Exception:
+            pass
+    print(f'[bootstrap] source=nar local={local or "-"} remote={remote or "-"}')
+    try:
+        lock.write_text(str(__import__('os').getpid()), encoding='utf-8')
+        subprocess.run(
+            [sys.executable,'refresh_data.py','--latest-only','--source','nar','--lookback','5','--lookahead','1'],
+            check=True,timeout=1800,
+        )
+    finally:
+        try: lock.unlink(missing_ok=True)
+        except Exception: pass
+    return True
+
+
+@app.route('/')
+def index():
+    source=request.args.get('source','jra')
+    if source not in ('jra','nar','all'):
+        source='jra'
+    mode=request.args.get('mode','predict')
+    # 地方タブ初回/鮮度切れ時は実データを自動取得
+    try:
+        if source=='nar':
+            bootstrap_source(source)
+    except Exception as e:
+        print(f'[bootstrap] skip: {e}')
+    av=dates(source)
+    selected=request.args.get('date','').strip()
+    # ソース切替で他開催の日付が残っていても、そのソースの開催日へ寄せる
+    if not selected or selected not in av:
+        selected=av[0] if av else ''
+    # 結果検証タブ: 選択日に結果が無い場合は最新の結果日へ寄せる（結果待ちの誤表示を防ぐ）
+    result_days=dates_with_results(source)
+    if mode=='result' and result_days:
+        if not selected or selected not in result_days:
+            selected=result_days[0]
+    races=[]; targets=[]; message='予想データがありません'; has_results=False
+    verification=verification_data(selected, source=source)
+
+    if selected in av:
+        try:
+            pred_path=ARCH/f'predictions_{selected}.csv'
+            if pred_path.exists() or mode!='result':
+                df=pd.read_csv(ensure(selected, source=source)).fillna('なし')
+                races=prep(df.to_dict('records'))
+                races=_filter_records_by_source(races, source)
+                for row in races:
+                    if not _race_date(row):
+                        row['日付']=selected
+                races,has_results=attach_results(races, selected_date=selected)
+            targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
+            label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
+            if not races:
+                message=f'{selected} / {label} のレースがありません'
+            elif mode=='result':
+                message=f'{selected} / {label} / 結果検証モード'
+            elif mode=='analysis':
+                message=f'{selected} / {label} / AI仮想レース分析 β版'
+            else:
+                message=f'{selected} / {label} / AI仮想レース分析 β版'
+        except Exception as e: message=f'生成エラー: {e}'
+    elif selected: message=f'{selected} は保存データにありません'
+    elif source=='nar':
+        message='地方開催データがありません。/refresh?source=nar で取得できます。'
+    return render_template('index.html',races=races,targets=targets,selected_date=selected,today=date.today().isoformat(),
+        message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
+        analysis=analysis_data(races),verification=verification)
 
 
 def attach_results(records, selected_date=''):
@@ -839,49 +960,6 @@ def verification_data(selected_date='', source='all'):
         'recent_rows':recent,
         'purchase_count':len(recent),
     }
-
-@app.route('/')
-def index():
-    source=request.args.get('source','jra')
-    if source not in ('jra','nar','all'):
-        source='jra'
-    mode=request.args.get('mode','predict')
-    av=dates(source)
-    selected=request.args.get('date','').strip() or (av[0] if av else '')
-    # 結果検証タブ: 選択日に結果が無い場合は最新の結果日へ寄せる（結果待ちの誤表示を防ぐ）
-    result_days=dates_with_results(source)
-    if mode=='result' and result_days:
-        if not selected or selected not in result_days:
-            selected=result_days[0]
-    races=[]; targets=[]; message='予想データがありません'; has_results=False
-    verification=verification_data(selected, source=source)
-
-    if selected in av:
-        try:
-            pred_path=ARCH/f'predictions_{selected}.csv'
-            if pred_path.exists() or mode!='result':
-                df=pd.read_csv(ensure(selected, source=source)).fillna('なし')
-                races=prep(df.to_dict('records'))
-                races=_filter_records_by_source(races, source)
-                for row in races:
-                    if not _race_date(row):
-                        row['日付']=selected
-                races,has_results=attach_results(races, selected_date=selected)
-            targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
-            label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
-            if not races:
-                message=f'{selected} / {label} のレースがありません'
-            elif mode=='result':
-                message=f'{selected} / {label} / 結果検証モード'
-            elif mode=='analysis':
-                message=f'{selected} / {label} / AI仮想レース分析 β版'
-            else:
-                message=f'{selected} / {label} / AI仮想レース分析 β版'
-        except Exception as e: message=f'生成エラー: {e}'
-    elif selected: message=f'{selected} は保存データにありません'
-    return render_template('index.html',races=races,targets=targets,selected_date=selected,today=date.today().isoformat(),
-        message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
-        analysis=analysis_data(races),verification=verification)
 
 @app.route('/refresh', methods=['POST','GET'])
 def refresh_route():

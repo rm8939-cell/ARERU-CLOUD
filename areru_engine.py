@@ -125,14 +125,16 @@ def class_level(name):
     if 'G1' in s or 'Ｇ１' in s or 'Jpn1' in s or 'JPN1' in s: return 9
     if 'G2' in s or 'Ｇ２' in s or 'Jpn2' in s or 'JPN2' in s: return 8
     if 'G3' in s or 'Ｇ３' in s or 'Jpn3' in s or 'JPN3' in s: return 7
-    if 'オープン' in s or 'OP' in s: return 6
+    if '重賞' in s or '準重賞' in s: return 7
+    if 'オープン' in s or 'OP' in s or '特別' in s: return 6
     if '3勝' in s: return 5
     if '2勝' in s: return 4
     if '1勝' in s: return 3
-    # 地方クラス表記（A1 > B1 > C1 など）
-    if re.search(r'A[1-3]', s, re.I): return 6
-    if re.search(r'B[1-3]', s, re.I): return 4
-    if re.search(r'C[1-4]', s, re.I): return 2
+    # 地方クラス表記（A1 > B1 > C1 / 〇〇組）
+    if re.search(r'A[1-4]', s, re.I) or 'A級' in s: return 6
+    if re.search(r'B[1-4]', s, re.I) or 'B級' in s: return 4
+    if re.search(r'C[1-4]', s, re.I) or 'C級' in s: return 2
+    if re.search(r'[一二三四五六七八九十]+組', s): return 3
     if '新馬' in s: return 1
     if '未勝利' in s or '未受賞' in s: return 2
     return 2

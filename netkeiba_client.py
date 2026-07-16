@@ -307,14 +307,26 @@ class NetkeibaClient:
         if not tables:
             return {"status": "empty", "updated_at": "", "odds": {}}
         # 1つ目=単勝、2つ目=複勝
+        # 現行HTML: [枠][馬番(class無し)][印][馬名][Odds]
         parsed = {}
         rows_odds = []
         for tr in tables[0].select("tr"):
-            ban_td = tr.select_one("td.W31")
             odds_td = tr.select_one("td.Odds")
-            if not ban_td or not odds_td:
+            if not odds_td:
                 continue
-            ban = ban_td.get_text(strip=True)
+            ban = ""
+            ban_td = tr.select_one("td.W31")
+            if ban_td:
+                ban = ban_td.get_text(strip=True)
+            if not ban.isdigit():
+                for td in tr.find_all("td"):
+                    cls = " ".join(td.get("class") or [])
+                    txt = td.get_text(strip=True)
+                    if cls.startswith("Waku"):
+                        continue
+                    if (not cls or cls == "W31") and txt.isdigit():
+                        ban = txt
+                        break
             odds_val = _parse_odds_text(odds_td.get_text(strip=True))
             if not ban.isdigit() or not odds_val:
                 continue
@@ -332,22 +344,37 @@ class NetkeibaClient:
         }
 
     def _parse_nar_combo_odds(self, soup: BeautifulSoup, odds_type: int) -> dict:
+        """NAR 馬連/ワイド/三連複/三連単。現行は td.Combi + td.Txt_R 形式。"""
         table = soup.select_one("table.RaceOdds_HorseList_Table")
         if not table:
             return {"status": "empty", "updated_at": "", "odds": {}}
         parsed = {}
+        need = 3 if odds_type in (7, 8) else 2
         for tr in table.select("tr"):
-            bans = []
-            for td in tr.find_all("td"):
-                cls = " ".join(td.get("class") or [])
-                if cls:
-                    continue
-                txt = td.get_text(strip=True)
-                if txt.isdigit():
-                    bans.append(int(txt))
-            if odds_type in (4, 5) and len(bans) < 2:
+            ninki_td = tr.select_one("td.Ninki")
+            if not ninki_td:
                 continue
-            if odds_type in (7, 8) and len(bans) < 3:
+            ninki = _num_or_blank(ninki_td.get_text(strip=True))
+            if not ninki:
+                continue
+
+            # 組合せ: "2 4" / "2 4 10" / "4 2 10"
+            combi_txt = ""
+            combi_td = tr.select_one("td.Combi")
+            if combi_td and "Txt_R" not in " ".join(combi_td.get("class") or []):
+                combi_txt = combi_td.get_text(" ", strip=True)
+            if not combi_txt:
+                for td in tr.find_all("td"):
+                    cls = " ".join(td.get("class") or [])
+                    txt = td.get_text(" ", strip=True)
+                    if cls:
+                        continue
+                    nums = re.findall(r"\d+", txt)
+                    if len(nums) >= need and len(txt) <= 20:
+                        combi_txt = txt
+                        break
+            bans = [int(x) for x in re.findall(r"\d+", combi_txt)]
+            if len(bans) < need:
                 continue
             if odds_type == 8:
                 use = bans[:3]  # 三連単は順序保持
@@ -356,13 +383,20 @@ class NetkeibaClient:
             else:
                 use = sorted(bans[:2])
 
-            odds_td = tr.select_one("td.Name_Odds") or tr.select_one("td[class*=Odds]")
+            # オッズ: ワイドは "1.8 2.0"、他は単一値
+            odds_td = (
+                tr.select_one("td.Combi.Txt_R")
+                or tr.select_one("td.Txt_R")
+                or tr.select_one("td.Name_Odds")
+                or tr.select_one("td[class*=Odds]")
+            )
             if not odds_td:
                 continue
             spans = [s.get_text(strip=True) for s in odds_td.select("span.Odds")]
-            if odds_type == 5 and len(spans) >= 2:
-                lo = _parse_odds_text(spans[0])
-                hi = _parse_odds_text(spans[1])
+            raw = " ".join(spans) if spans else odds_td.get_text(" ", strip=True)
+            nums = re.findall(r"\d+(?:\.\d+)?", raw.replace(",", ""))
+            if odds_type == 5 and len(nums) >= 2:
+                lo, hi = nums[0], nums[1]
                 try:
                     odds_mid = f"{(float(lo) + float(hi)) / 2:.1f}"
                 except Exception:
@@ -371,17 +405,13 @@ class NetkeibaClient:
                     "オッズ": odds_mid,
                     "オッズ下限": lo,
                     "オッズ上限": hi,
-                    "人気": _num_or_blank(tr.select_one("td.Ninki").get_text(strip=True) if tr.select_one("td.Ninki") else ""),
+                    "人気": ninki,
                 }
             else:
-                raw = spans[0] if spans else odds_td.get_text(" ", strip=True)
-                odds_val = _parse_odds_text(raw)
+                odds_val = _parse_odds_text(nums[0] if nums else raw)
                 if not odds_val:
                     continue
-                entry = {
-                    "オッズ": odds_val,
-                    "人気": _num_or_blank(tr.select_one("td.Ninki").get_text(strip=True) if tr.select_one("td.Ninki") else ""),
-                }
+                entry = {"オッズ": odds_val, "人気": ninki}
             key = "".join(f"{b:02d}" for b in use)
             parsed[key] = entry
         return {
