@@ -18,32 +18,83 @@ def _runner_path():
     if LEGACY.exists(): return LEGACY
     return None
 
-def dates():
+def dates(source='all'):
     """開催日一覧。runners.csv を正とし、生成済み predictions も合流する。"""
     found=set()
     p=_runner_path()
     if p is not None:
         try:
-            d=parse_date(pd.read_csv(p,usecols=['日付'])['日付']).dropna().dt.strftime('%Y-%m-%d')
-            found.update(d.unique().tolist())
+            rdf=pd.read_csv(p,encoding='utf-8-sig')
+            if '日付' not in rdf.columns:
+                pass
+            else:
+                if source in ('jra','nar'):
+                    if 'source' in rdf.columns:
+                        rdf=rdf[rdf['source'].astype(str).str.lower()==source]
+                    elif 'race_id' in rdf.columns:
+                        from areru_engine import source_from_race_id
+                        rdf=rdf[rdf['race_id'].map(source_from_race_id)==source]
+                d=parse_date(rdf['日付']).dropna().dt.strftime('%Y-%m-%d')
+                found.update(d.unique().tolist())
         except Exception:
             pass
     for f in ARCH.glob('predictions_*.csv'):
         m=re.fullmatch(r'predictions_(\d{4}-\d{2}-\d{2})\.csv', f.name)
-        if m: found.add(m.group(1))
+        if not m:
+            continue
+        day=m.group(1)
+        if source in ('jra','nar'):
+            try:
+                pdf=pd.read_csv(f,encoding='utf-8-sig')
+                if 'source' in pdf.columns:
+                    if (pdf['source'].astype(str).str.lower()==source).any():
+                        found.add(day)
+                elif 'race_id' in pdf.columns:
+                    from areru_engine import source_from_race_id
+                    if pdf['race_id'].map(source_from_race_id).eq(source).any():
+                        found.add(day)
+                else:
+                    found.add(day)
+            except Exception:
+                found.add(day)
+        else:
+            found.add(day)
     if ANALYSIS_CSV.exists():
         try:
-            ad=pd.read_csv(ANALYSIS_CSV,usecols=['date']).fillna('')
+            ad=pd.read_csv(ANALYSIS_CSV,encoding='utf-8-sig').fillna('')
+            if source in ('jra','nar') and 'source' in ad.columns:
+                ad=ad[ad['source'].astype(str).str.lower()==source]
             found.update([x for x in ad['date'].astype(str).tolist() if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
         except Exception:
             pass
     return sorted(found, reverse=True)
 
-def ensure(d):
+def ensure(d, source='all'):
     f=ARCH/f'predictions_{d}.csv'; regen=True
     if f.exists():
-        try: regen='印データ' not in pd.read_csv(f,nrows=1).columns
-        except: regen=True
+        try:
+            pdf=pd.read_csv(f,encoding='utf-8-sig')
+            regen='印データ' not in pdf.columns
+            # 指定ソースのレースが predictions に無いが runners にある場合は再生成
+            if not regen and source in ('jra','nar'):
+                from areru_engine import source_from_race_id
+                if 'source' in pdf.columns:
+                    has_src=(pdf['source'].astype(str).str.lower()==source).any()
+                else:
+                    has_src=pdf['race_id'].map(source_from_race_id).eq(source).any() if 'race_id' in pdf.columns else False
+                if not has_src:
+                    rp=_runner_path()
+                    if rp is not None:
+                        rdf=pd.read_csv(rp,encoding='utf-8-sig')
+                        day=parse_date(rdf['日付']).dt.strftime('%Y-%m-%d')==d
+                        if 'source' in rdf.columns:
+                            need=(rdf[day]['source'].astype(str).str.lower()==source).any()
+                        else:
+                            need=rdf.loc[day,'race_id'].map(source_from_race_id).eq(source).any()
+                        if need:
+                            regen=True
+        except Exception:
+            regen=True
     if regen:
         # runners が無い/対象日が無い場合は refresh で取得を試みる
         need_refresh=False
@@ -52,15 +103,36 @@ def ensure(d):
             need_refresh=True
         else:
             try:
-                rd=parse_date(pd.read_csv(rp,usecols=['日付'])['日付']).dt.strftime('%Y-%m-%d')
-                need_refresh=d not in set(rd.dropna().tolist())
+                rdf=pd.read_csv(rp,encoding='utf-8-sig')
+                rd=parse_date(rdf['日付']).dt.strftime('%Y-%m-%d')
+                day_mask=rd==d
+                if source in ('jra','nar') and 'source' in rdf.columns:
+                    need_refresh=not ((day_mask) & (rdf['source'].astype(str).str.lower()==source)).any()
+                else:
+                    need_refresh=d not in set(rd.dropna().tolist())
             except Exception:
                 need_refresh=True
         if need_refresh:
-            subprocess.run([sys.executable,'refresh_data.py','--dates',d,'--skip-predict'],check=True,timeout=900)
-        subprocess.run([sys.executable,'replay_predict.py',d],check=True,timeout=240)
+            src=source if source in ('jra','nar','all') else 'all'
+            subprocess.run(
+                [sys.executable,'refresh_data.py','--dates',d,'--skip-predict','--source',src],
+                check=True,timeout=900,
+            )
+        subprocess.run([sys.executable,'replay_predict.py',d],check=True,timeout=600)
     return f
 
+def _filter_records_by_source(records, source):
+    if source not in ('jra','nar') or not records:
+        return records
+    from areru_engine import source_from_race_id
+    out=[]
+    for r in records:
+        src=str(r.get('source') or '').strip().lower()
+        if src not in ('jra','nar'):
+            src=source_from_race_id(r.get('race_id',''))
+        if src==source:
+            out.append(r)
+    return out
 def prep(records):
     from areru_engine import RANK_LABELS, RANK_CLASSES
     for r in records:
@@ -179,13 +251,15 @@ def _load_analysis_by_race() -> dict:
     return by_race
 
 
-def dates_with_results() -> list[str]:
+def dates_with_results(source='all') -> list[str]:
     """results.csv / analysis_result.csv にある開催日（新しい順）。"""
     found=set()
     rp=DATA/'results.csv'
     if rp.exists():
         try:
-            rdf=pd.read_csv(rp,usecols=lambda c: c in ('date','日付')).fillna('')
+            rdf=pd.read_csv(rp,encoding='utf-8-sig').fillna('')
+            if source in ('jra','nar') and 'source' in rdf.columns:
+                rdf=rdf[rdf['source'].astype(str).str.lower()==source]
             col='date' if 'date' in rdf.columns else ('日付' if '日付' in rdf.columns else None)
             if col:
                 found.update([x for x in rdf[col].astype(str) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
@@ -193,7 +267,9 @@ def dates_with_results() -> list[str]:
             pass
     if ANALYSIS_CSV.exists():
         try:
-            ad=pd.read_csv(ANALYSIS_CSV,usecols=['date'],encoding='utf-8-sig').fillna('')
+            ad=pd.read_csv(ANALYSIS_CSV,encoding='utf-8-sig').fillna('')
+            if source in ('jra','nar') and 'source' in ad.columns:
+                ad=ad[ad['source'].astype(str).str.lower()==source]
             found.update([x for x in ad['date'].astype(str) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
         except Exception:
             pass
@@ -627,7 +703,7 @@ def _enrich_verify_row(r, pred_meta):
     }
 
 
-def verification_data(selected_date=''):
+def verification_data(selected_date='', source='all'):
     """analysis_result.csv から結果検証ダッシュボード用データを構築。"""
     empty_pack={
         'total_bets':0,'hits':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,
@@ -648,6 +724,14 @@ def verification_data(selected_date=''):
         return empty
     if df.empty or 'bet_type' not in df.columns:
         return empty
+    if source in ('jra','nar'):
+        if 'source' in df.columns:
+            df=df[df['source'].astype(str).str.lower()==source].copy()
+        elif 'race_id' in df.columns:
+            from areru_engine import source_from_race_id
+            df=df[df['race_id'].map(source_from_race_id)==source].copy()
+        if df.empty:
+            return empty
     for c in ['hit','payout','investment','profit','roi']:
         if c in df.columns:
             df[c]=pd.to_numeric(df[c],errors='coerce').fillna(0)
@@ -759,40 +843,40 @@ def verification_data(selected_date=''):
 @app.route('/')
 def index():
     source=request.args.get('source','jra')
+    if source not in ('jra','nar','all'):
+        source='jra'
     mode=request.args.get('mode','predict')
-    av=dates()
+    av=dates(source)
     selected=request.args.get('date','').strip() or (av[0] if av else '')
     # 結果検証タブ: 選択日に結果が無い場合は最新の結果日へ寄せる（結果待ちの誤表示を防ぐ）
-    result_days=dates_with_results()
+    result_days=dates_with_results(source)
     if mode=='result' and result_days:
         if not selected or selected not in result_days:
             selected=result_days[0]
     races=[]; targets=[]; message='予想データがありません'; has_results=False
-    verification=verification_data(selected)
-
-    if source=='nar':
-        message='地方競馬エンジンは接続準備中です。JRA予想ロジックとは分離して実装します。'
-        return render_template('index.html',races=[],targets=[],selected_date=selected,today=date.today().isoformat(),
-            message=message,available_dates=av,source=source,mode=mode,has_results=False,
-            analysis=analysis_data([]),verification=verification)
+    verification=verification_data(selected, source=source)
 
     if selected in av:
         try:
             pred_path=ARCH/f'predictions_{selected}.csv'
             if pred_path.exists() or mode!='result':
-                df=pd.read_csv(ensure(selected)).fillna('なし')
+                df=pd.read_csv(ensure(selected, source=source)).fillna('なし')
                 races=prep(df.to_dict('records'))
+                races=_filter_records_by_source(races, source)
                 for row in races:
                     if not _race_date(row):
                         row['日付']=selected
                 races,has_results=attach_results(races, selected_date=selected)
             targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
-            if mode=='result':
-                message=f'{selected} / 結果検証モード'
+            label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
+            if not races:
+                message=f'{selected} / {label} のレースがありません'
+            elif mode=='result':
+                message=f'{selected} / {label} / 結果検証モード'
             elif mode=='analysis':
-                message=f'{selected} / AI仮想レース分析 β版'
+                message=f'{selected} / {label} / AI仮想レース分析 β版'
             else:
-                message=f'{selected} / AI仮想レース分析 β版'
+                message=f'{selected} / {label} / AI仮想レース分析 β版'
         except Exception as e: message=f'生成エラー: {e}'
     elif selected: message=f'{selected} は保存データにありません'
     return render_template('index.html',races=races,targets=targets,selected_date=selected,today=date.today().isoformat(),
@@ -803,16 +887,19 @@ def index():
 def refresh_route():
     """最新開催日・オッズを取得して runners / predictions を更新。"""
     mode=request.args.get('mode','full')
+    source=request.args.get('source','all')
+    if source not in ('jra','nar','all'):
+        source='all'
     try:
         if mode=='odds':
-            cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only']
+            cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only','--source',source]
         elif mode=='results':
-            cmd=[sys.executable,'results.py','--latest']
+            cmd=[sys.executable,'results.py','--latest','--source',source]
         else:
-            cmd=[sys.executable,'refresh_data.py','--latest-only']
+            cmd=[sys.executable,'refresh_data.py','--latest-only','--source',source]
         subprocess.run(cmd,check=True,timeout=1800)
-        av=dates()
-        return {'ok':True,'dates':av,'latest':av[0] if av else None,'mode':mode}
+        av=dates(source)
+        return {'ok':True,'dates':av,'latest':av[0] if av else None,'mode':mode,'source':source}
     except Exception as e:
         return {'ok':False,'error':str(e)}, 500
 

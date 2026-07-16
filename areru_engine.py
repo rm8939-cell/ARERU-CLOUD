@@ -122,15 +122,19 @@ def weighted(vals):
 
 def class_level(name):
     s=str(name)
-    if 'G1' in s or 'Ｇ１' in s: return 9
-    if 'G2' in s or 'Ｇ２' in s: return 8
-    if 'G3' in s or 'Ｇ３' in s: return 7
+    if 'G1' in s or 'Ｇ１' in s or 'Jpn1' in s or 'JPN1' in s: return 9
+    if 'G2' in s or 'Ｇ２' in s or 'Jpn2' in s or 'JPN2' in s: return 8
+    if 'G3' in s or 'Ｇ３' in s or 'Jpn3' in s or 'JPN3' in s: return 7
     if 'オープン' in s or 'OP' in s: return 6
     if '3勝' in s: return 5
     if '2勝' in s: return 4
     if '1勝' in s: return 3
+    # 地方クラス表記（A1 > B1 > C1 など）
+    if re.search(r'A[1-3]', s, re.I): return 6
+    if re.search(r'B[1-3]', s, re.I): return 4
+    if re.search(r'C[1-4]', s, re.I): return 2
     if '新馬' in s: return 1
-    if '未勝利' in s: return 2
+    if '未勝利' in s or '未受賞' in s: return 2
     return 2
 
 def context_features(history, horse, target):
@@ -194,10 +198,30 @@ def score_runner(row, history, target, weights):
     if market_reason: reasons.append(market_reason)
     return clamp(score),factors,reasons
 
-VENUE_CODES={"01":"札幌","02":"函館","03":"福島","04":"新潟","05":"東京","06":"中山","07":"中京","08":"京都","09":"阪神","10":"小倉"}
+JRA_VENUE_CODES={"01":"札幌","02":"函館","03":"福島","04":"新潟","05":"東京","06":"中山","07":"中京","08":"京都","09":"阪神","10":"小倉"}
+NAR_VENUE_CODES={
+    "30":"門別","35":"盛岡","36":"水沢",
+    "42":"浦和","43":"船橋","44":"大井","45":"川崎",
+    "46":"金沢","47":"笠松","48":"名古屋",
+    "50":"園田","51":"姫路","54":"高知","55":"佐賀","65":"帯広",
+}
+VENUE_CODES={**JRA_VENUE_CODES,**NAR_VENUE_CODES}
+
+def source_from_race_id(race_id):
+    s=str(race_id)
+    m=re.fullmatch(r"\d{4}(\d{2})\d{6}",s)
+    if not m: return "jra"
+    code=m.group(1)
+    if code in NAR_VENUE_CODES: return "nar"
+    if code in JRA_VENUE_CODES: return "jra"
+    try:
+        return "nar" if int(code)>=30 else "jra"
+    except Exception:
+        return "jra"
+
 def venue_from_race_id(race_id):
     s=str(race_id)
-    # netkeiba: YYYY + venue(2) + kai(2) + day(2) + race(2)
+    # netkeiba: YYYY + venue(2) + ... + race(2)  ※JRAは回次・日次、NARはMMDD
     m=re.fullmatch(r"\d{4}(\d{2})\d{6}",s)
     if m: return VENUE_CODES.get(m.group(1),"開催地不明")
     # 旧JRA URL (accessS / accessD)
@@ -337,8 +361,8 @@ def load_ticket_odds(race_id, fetch_if_missing=True):
     if not (rid.isdigit() and len(rid)==12):
         return {}
     try:
-        from netkeiba_client import NetkeibaClient
-        maps=NetkeibaClient(sleep=0.15).fetch_ticket_odds_maps(rid)
+        from netkeiba_client import NetkeibaClient, infer_source
+        maps=NetkeibaClient(sleep=0.15).fetch_ticket_odds_maps(rid, source=infer_source(rid))
         ODDS_TICKETS_DIR.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(maps, ensure_ascii=False), encoding='utf-8')
         return maps
@@ -445,8 +469,9 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         synth_disp=f"{synth}倍" if synth is not None else '券種別オッズ待ち'
         ev_disp=f"{ev}%" if ev is not None else 'オッズ接続後に算出'
 
+        src=str(main.get('source') or source_from_race_id(race_id))
         out.append({
-          'race_id':race_id,'開催地':venue_from_race_id(race_id),'レース':int(float(main['レース'])),'荒れ度':round(chaos,1),'判定':judge,
+          'race_id':race_id,'source':src,'開催地':venue_from_race_id(race_id),'レース':int(float(main['レース'])),'荒れ度':round(chaos,1),'判定':judge,
           '荒れクラス':'storm' if chaos>=80 else ('wave' if chaos>=60 else ('caution' if chaos>=40 else 'calm')),
           'BET期待値':round(bet,1),'BET判定':bet_label,'BETクラス':bet_class,'BET理由':' / '.join(bet_reason),
           'シミュレーション回数':20000,'本命':main_name,'本命AREru指数':main['AREru指数'],'シミュレーション勝率':round(main['SIM勝率'],1),'シミュレーション3着内率':round(main['SIM3着内率'],1),'AI適正オッズ':round(main['AI適正オッズ'],1),'本命理由':main['理由'],
@@ -461,7 +486,13 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           'データ頭数':n})
 
     result=pd.DataFrame(out).sort_values(['開催地','レース']).reset_index(drop=True)
-    # 開催日内の相対順位でS/A/B/Cを付与（閾値はconfig、将来ROI学習で自動調整）。
-    result=assign_ai_ranks(result)
+    # source 別に相対順位で S/A/B/C を付与（JRA/NAR混在日でもプールを分けて評価）
+    ranked_parts=[]
+    if 'source' in result.columns and result['source'].nunique()>1:
+        for _,g in result.groupby('source',sort=False):
+            ranked_parts.append(assign_ai_ranks(g))
+        result=pd.concat(ranked_parts,ignore_index=True).sort_values(['開催地','レース']).reset_index(drop=True)
+    else:
+        result=assign_ai_ranks(result)
     return result,sd
 

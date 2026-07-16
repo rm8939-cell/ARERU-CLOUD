@@ -2,7 +2,9 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ARERU.EXE</title>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--line:#e1e7eb;--text:#17212b;--muted:#6f7b87;--red:#e53935;--gold:#9a6b00;--green:#176b45;--yellow:#d9a600;--orange:#ef8b25;--brand:#176b45;--soft:#e9f5ef} body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
+:root{--bg:#f4f6f8;--card:#fff;--line:#e1e7eb;--text:#17212b;--muted:#6f7b87;--red:#e53935;--gold:#9a6b00;--green:#176b45;--yellow:#d9a600;--orange:#ef8b25;--brand:#176b45;--soft:#e9f5ef}
+body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
+body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 *{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow-x:hidden}
 .wrap{max-width:760px;width:100%;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32)}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:30px;font-weight:800;letter-spacing:.06em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:5px;font-size:13px}
@@ -18,9 +20,9 @@
 .danger{color:#ff8090}.beta{padding:13px 17px;color:#747b86;font-size:10px;line-height:1.6}.toplink{text-align:right;padding:0 17px 16px}.toplink a{color:#b7bcc5;font-size:12px;text-decoration:none}
 
 .source-tabs,.mode-tabs{display:flex;gap:8px}.source-tabs{padding:16px 0 8px}.mode-tabs{padding:0 0 4px}
-.source-tabs a,.mode-tabs a{flex:1;text-align:center;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:#0d0f12;border-radius:12px;padding:12px;font-weight:800;font-size:13px}
-.source-tabs a.active{color:var(--text);border-color:#ff334f;background:linear-gradient(135deg,#17191d,#2a1016);box-shadow:inset 0 -2px 0 var(--red)}
-.mode-tabs a{padding:9px;font-size:12px}.mode-tabs a.active{color:var(--gold);border-color:#4b4030}
+.source-tabs a,.mode-tabs a{flex:1;text-align:center;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 8px;font-weight:800;font-size:13px}
+.source-tabs a.active{color:#fff;border-color:var(--brand);background:var(--brand);box-shadow:none}
+.mode-tabs a{padding:9px;font-size:12px}.mode-tabs a.active{color:var(--gold);border-color:#4b4030;background:var(--soft)}
 .empty-state,.result-summary{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:20px;margin:12px 0 20px}
 .empty-state h2,.result-summary h2{font-size:17px;margin:7px 0}.empty-state p,.result-summary p{color:var(--muted);font-size:12px;line-height:1.7}
 .empty-kicker{letter-spacing:.15em;color:var(--red);font-size:10px;font-weight:800}
@@ -118,17 +120,19 @@
   .ai-grid{grid-template-columns:1fr 1fr}.vc-money{grid-template-columns:1fr 1fr 1fr}
   .verify-card{padding:12px}.vc-race{font-size:17px}.horse-chip{font-size:12px;padding:6px 8px}
   .filter-chip{padding:8px 12px;font-size:12px;min-width:44px}.mode-tabs a{font-size:11px;padding:8px 4px}
+  .source-tabs a{font-size:12px;padding:10px 4px}
   .rank-kpi-meta{grid-template-columns:repeat(2,1fr)}.rank-kpi-row{grid-template-columns:48px 1fr;padding:12px}
   .live-kpi{grid-template-columns:repeat(2,1fr)}.pc-money{grid-template-columns:1fr 1fr 1fr}
   .rank-type-meta{grid-template-columns:repeat(2,1fr)}.rank-type-block{padding:12px 10px}
   .race-head{padding:14px 12px 10px}.heat{font-size:20px}
 }
 </style></head>
-<body class="{{'nar' if source=='nar' else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{{"LOCAL RACING AI / 地方専用" if source=="nar" else "CENTRAL RACING AI / JRA中央"}}</div></div></header>
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
 <main class="wrap">
 <nav class="source-tabs">
-<a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA 中央</a>
-<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}&date={{selected_date}}">NAR 地方</a>
+<a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
+<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}&date={{selected_date}}">地方</a>
+<a class="{{'active' if source=='all' else ''}}" href="/?source=all&mode={{mode}}&date={{selected_date}}">全開催</a>
 </nav>
 <nav class="mode-tabs">
 <a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}">予想分析</a>
@@ -136,9 +140,7 @@
 </nav>
 <form class="toolbar"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button>表示</button></form>
 <div class="message">{{message}}</div>
-{% if source=='nar' %}
-<section class="empty-state"><div class="empty-kicker">NAR LOCAL RACING</div><h2>地方競馬エンジン 接続準備中</h2><p>JRA版を流用せず、競馬場別の地方専用評価へ分離します。タブの土台は実装済みです。</p></section>
-{% elif mode=='analysis' %}
+{% if mode=='analysis' %}
 <section class="result-summary"><h2>AI STATUS｜分析ダッシュボード</h2><p>架空の回収率は出さず、現在保存されている予想・照合データだけを集計します。</p></section>
 <section class="targets"><h2>解析状況</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px"><div class="metric"><b>{{analysis.total}}R</b><small>予想レース</small></div><div class="metric"><b>{{analysis.verified}}R</b><small>結果照合済み</small></div></div></section>
 <section class="targets"><h2>AIランク分布（S勝負 / A買い / B様子見 / C見送り）</h2>{% for x in analysis.ranks %}<div class="target-row"><div class="rank"><span class="rank-pill {{x.label}}">{{x.label}}</span></div><div class="target-name">{{x.name}}<small>ランク {{x.label}}</small></div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>

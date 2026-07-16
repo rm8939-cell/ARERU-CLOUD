@@ -43,6 +43,7 @@ ANALYSIS_COLS = [
     "date", "race", "race_id", "開催地", "bet_type", "勝負ランク",
     "推奨券種", "購入対象",
     "prediction", "result", "hit", "payout", "investment", "profit", "roi",
+    "source",
 ]
 
 
@@ -99,20 +100,25 @@ def prediction_dates() -> list[str]:
     return sorted(found, reverse=True)
 
 
-def resolve_target_dates(client: NetkeibaClient, dates: list[str] | None, latest: bool) -> list[str]:
+def resolve_target_dates(
+    client: NetkeibaClient,
+    dates: list[str] | None,
+    latest: bool,
+    source: str = "jra",
+) -> list[str]:
     if dates:
         return sorted({d.replace("/", "-") for d in dates})
     if latest:
         # 結果が出ている直近開催日を優先（未来日の予想だけがある場合はスキップ）
-        for d in client.discover_kaisai_dates(lookback=21, lookahead=2):
+        for d in client.discover_kaisai_dates(lookback=21, lookahead=2, source=source):
             ymd = d.replace("-", "")
             try:
-                ids = client.list_race_ids(ymd)
+                ids = client.list_race_ids(ymd, source=source)
             except Exception:
                 ids = []
             if not ids:
                 continue
-            detail = client.fetch_result_detail(ids[0])
+            detail = client.fetch_result_detail(ids[0], source=source)
             if detail.get("horses"):
                 return [d]
         # フォールバック: 予想がある過去日
@@ -125,7 +131,7 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
     ymd = date_str.replace("-", "")
     print(f"\n🏁 {source.upper()} {date_str} 結果取得")
     try:
-        race_ids = client.list_race_ids(ymd) if source == "jra" else _list_nar_race_ids(client, ymd)
+        race_ids = client.list_race_ids(ymd, source=source)
     except Exception as e:
         print(f"⚠️ レース一覧取得失敗: {e}")
         return pd.DataFrame(columns=RESULT_COLS), pd.DataFrame(columns=PAYOUT_COLS)
@@ -178,17 +184,6 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
         print(f"    ✅ {len(detail['horses'])}頭 / 払戻 {len(detail.get('payouts') or [])}件")
 
     return pd.DataFrame(horse_rows, columns=RESULT_COLS), pd.DataFrame(pay_rows, columns=PAYOUT_COLS)
-
-
-def _list_nar_race_ids(client: NetkeibaClient, ymd: str) -> list[str]:
-    """地方: nar.netkeiba の開催一覧から race_id を拾う。"""
-    url = f"https://nar.netkeiba.com/top/race_list_sub.html?kaisai_date={ymd}"
-    try:
-        soup = client._get(url)
-    except Exception:
-        return []
-    return sorted(set(re.findall(r"race_id=(\d{8,12})", str(soup))))
-
 
 def _ban_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
     rid = _norm_race_id(race_id)
@@ -386,12 +381,16 @@ def analyze_predictions(
             race_label = f"{venue}{int(float(race_no)):02d}R" if str(race_no).replace('.','',1).isdigit() else str(race_no)
             ai_rank = str(prow.get("勝負ランク", "") or "").upper()
             recommend = str(prow.get("推奨券種", "") or "").strip()
+            src = str(prow.get("source") or "").strip().lower()
+            if src not in ("jra", "nar"):
+                from areru_engine import source_from_race_id
+                src = source_from_race_id(rid)
 
             # 本命（単勝）
             main = _clean(prow.get("本命", ""))
             if main:
                 ev = _eval_win(main, finishes, pays, bans)
-                rows.append(_analysis_row(d, race_label, rid, venue, "本命", ev, ai_rank, recommend))
+                rows.append(_analysis_row(d, race_label, rid, venue, "本命", ev, ai_rank, recommend, src))
 
             # ワイド / 馬連 / 三連複
             for kind, col, ordered in [
@@ -403,14 +402,14 @@ def analyze_predictions(
                 # 見送り判定でも買い目があれば仮想検証する
                 ev = _eval_combo(kind, tickets, bans, pays, ordered=ordered)
                 if ev["investment"] > 0 or tickets:
-                    rows.append(_analysis_row(d, race_label, rid, venue, kind, ev, ai_rank, recommend))
+                    rows.append(_analysis_row(d, race_label, rid, venue, kind, ev, ai_rank, recommend, src))
 
             # 三連単: ◎→○→▲ の順で1点
             marks = dict(_marks_from_prediction(prow.to_dict()))
             trio_names = [marks.get("◎", ""), marks.get("○", ""), marks.get("▲", "")]
             if all(trio_names):
                 ev = _eval_combo("三連単", [trio_names], bans, pays, ordered=True)
-                rows.append(_analysis_row(d, race_label, rid, venue, "三連単", ev, ai_rank, recommend))
+                rows.append(_analysis_row(d, race_label, rid, venue, "三連単", ev, ai_rank, recommend, src))
 
     return pd.DataFrame(rows, columns=ANALYSIS_COLS)
 
@@ -424,6 +423,7 @@ def _analysis_row(
     ev: dict,
     ai_rank: str = "",
     recommend: str = "",
+    source: str = "jra",
 ) -> dict:
     inv = int(ev.get("investment") or 0)
     pay = int(ev.get("payout") or 0)
@@ -448,6 +448,7 @@ def _analysis_row(
         "investment": inv,
         "profit": profit,
         "roi": roi,
+        "source": source if source in ("jra", "nar") else "jra",
     }
 
 
@@ -522,15 +523,14 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
     target_dates: list[str] = []
     if not skip_fetch:
         for src in sources:
-            if src == "jra":
-                target_dates = resolve_target_dates(client, dates, latest or not dates)
-            else:
-                # NAR は指定日 or JRAと同日を試行
-                target_dates = dates or target_dates or resolve_target_dates(client, None, True)
-            for d in target_dates:
+            src_dates = resolve_target_dates(client, dates, latest or not dates, source=src)
+            print(f"🎯 {src.upper()} 対象日: {src_dates}")
+            for d in src_dates:
                 h, p = fetch_date_results(client, d, source=src)
                 results = _merge_by_race(results, h)
                 payouts = _merge_by_race(payouts, p)
+            target_dates.extend(src_dates)
+        target_dates = sorted(set(target_dates))
     else:
         target_dates = dates or sorted(results["date"].astype(str).unique().tolist(), reverse=True)[:1]
 
