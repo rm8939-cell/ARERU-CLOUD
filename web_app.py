@@ -9,19 +9,49 @@ from areru_engine import parse_date
 app=Flask(__name__)
 BASE=Path(__file__).resolve().parent
 DATA=BASE/'data'; ARCH=DATA/'predictions_by_date'; ARCH.mkdir(parents=True,exist_ok=True)
+RUNNERS=DATA/'runners.csv'
+LEGACY=DATA/'score_test_data.csv'
+
+def _runner_path():
+    if RUNNERS.exists(): return RUNNERS
+    if LEGACY.exists(): return LEGACY
+    return None
 
 def dates():
-    p=DATA/'score_test_data.csv'
-    if not p.exists(): return []
-    d=parse_date(pd.read_csv(p,usecols=['日付'])['日付']).dropna().dt.strftime('%Y-%m-%d').unique().tolist()
-    return sorted(d,reverse=True)
+    """開催日一覧。runners.csv を正とし、生成済み predictions も合流する。"""
+    found=set()
+    p=_runner_path()
+    if p is not None:
+        try:
+            d=parse_date(pd.read_csv(p,usecols=['日付'])['日付']).dropna().dt.strftime('%Y-%m-%d')
+            found.update(d.unique().tolist())
+        except Exception:
+            pass
+    for f in ARCH.glob('predictions_*.csv'):
+        m=re.fullmatch(r'predictions_(\d{4}-\d{2}-\d{2})\.csv', f.name)
+        if m: found.add(m.group(1))
+    return sorted(found, reverse=True)
 
 def ensure(d):
     f=ARCH/f'predictions_{d}.csv'; regen=True
     if f.exists():
         try: regen='印データ' not in pd.read_csv(f,nrows=1).columns
         except: regen=True
-    if regen: subprocess.run([sys.executable,'replay_predict.py',d],check=True,timeout=240)
+    if regen:
+        # runners が無い/対象日が無い場合は refresh で取得を試みる
+        need_refresh=False
+        rp=_runner_path()
+        if rp is None:
+            need_refresh=True
+        else:
+            try:
+                rd=parse_date(pd.read_csv(rp,usecols=['日付'])['日付']).dt.strftime('%Y-%m-%d')
+                need_refresh=d not in set(rd.dropna().tolist())
+            except Exception:
+                need_refresh=True
+        if need_refresh:
+            subprocess.run([sys.executable,'refresh_data.py','--dates',d,'--skip-predict'],check=True,timeout=900)
+        subprocess.run([sys.executable,'replay_predict.py',d],check=True,timeout=240)
     return f
 
 def prep(records):
@@ -100,6 +130,16 @@ def index():
     elif selected: message=f'{selected} は保存データにありません'
     return render_template('index.html',races=races,targets=targets,selected_date=selected,today=date.today().isoformat(),
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,analysis=analysis_data(races))
+
+@app.route('/refresh', methods=['POST','GET'])
+def refresh_route():
+    """最新開催日を取得して runners / predictions を更新。"""
+    try:
+        subprocess.run([sys.executable,'refresh_data.py','--latest-only'],check=True,timeout=1800)
+        av=dates()
+        return {'ok':True,'dates':av,'latest':av[0] if av else None}
+    except Exception as e:
+        return {'ok':False,'error':str(e)}, 500
 
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=int(os.environ.get('PORT','5001')),debug=False)

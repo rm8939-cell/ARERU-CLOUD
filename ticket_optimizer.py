@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-SCORE_FILE = Path("data/score_test_data.csv")
+SCORE_FILE = Path("data/runners.csv") if Path("data/runners.csv").exists() else Path("data/score_test_data.csv")
 OUT_FILE = Path("data/arerU_ticket_analysis.csv")
 
 print()
