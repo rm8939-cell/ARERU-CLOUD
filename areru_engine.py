@@ -8,6 +8,21 @@ DATA_DIR=Path('data'); CONFIG_FILE=DATA_DIR/'areru_v2_config.json'
 DEFAULT_WEIGHTS={'performance':0.28,'upset':0.24,'consistency':0.12,'trend':0.12,'value':0.14,'context':0.10}
 RECENCY=np.array([1.0,.82,.65,.48,.34])
 
+# AIランク選別（PO-5/PO-6）。ラベルと閾値は将来ROI学習で自動調整可能な構造。
+RANK_LABELS={'S':'勝負','A':'買い','B':'様子見','C':'見送り'}
+RANK_CLASSES={'S':'battle','A':'target','B':'watch','C':'skip'}
+DEFAULT_RANK_THRESHOLDS={
+    'mode':'percentile',  # percentile | absolute | hybrid
+    's_top_n':2,
+    'a_top_n':5,
+    'b_percentile':0.35,
+    'b_min_n':8,
+    # absolute / hybrid: 買い期待度基礎値の下限（学習で更新）
+    's_min_score':0.0,
+    'a_min_score':0.0,
+    'b_min_score':0.0,
+}
+
 def clean_name(x): return re.sub(r'[\s\u3000]+','',str(x)).strip()
 def parse_date(s):
     s=s.astype(str).str.strip().str.replace('年','-',regex=False).str.replace('月','-',regex=False).str.replace('日','',regex=False).str.replace('/','-',regex=False)
@@ -15,11 +30,90 @@ def parse_date(s):
 def num(x): return pd.to_numeric(x,errors='coerce')
 def clamp(x,a=0,b=100): return float(max(a,min(b,x)))
 
-def load_weights():
+def _load_config():
     if CONFIG_FILE.exists():
-        try: return {**DEFAULT_WEIGHTS,**json.loads(CONFIG_FILE.read_text(encoding='utf-8')).get('weights',{})}
+        try: return json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
         except Exception: pass
-    return DEFAULT_WEIGHTS.copy()
+    return {}
+
+def load_weights():
+    cfg=_load_config()
+    return {**DEFAULT_WEIGHTS,**cfg.get('weights',{})} if cfg else DEFAULT_WEIGHTS.copy()
+
+def load_rank_thresholds():
+    """ランク閾値をconfigから読み込む。未設定時はDEFAULTを返す。"""
+    cfg=_load_config()
+    raw=cfg.get('rank_thresholds') or {}
+    out={**DEFAULT_RANK_THRESHOLDS,**raw}
+    for k in ('s_top_n','a_top_n','b_min_n'):
+        try: out[k]=int(out[k])
+        except (TypeError,ValueError): out[k]=DEFAULT_RANK_THRESHOLDS[k]
+    for k in ('b_percentile','s_min_score','a_min_score','b_min_score'):
+        try: out[k]=float(out[k])
+        except (TypeError,ValueError): out[k]=DEFAULT_RANK_THRESHOLDS[k]
+    mode=str(out.get('mode') or 'percentile').lower()
+    out['mode']=mode if mode in ('percentile','absolute','hybrid') else 'percentile'
+    return out
+
+def rank_label(rank):
+    return RANK_LABELS.get(str(rank).upper(),'')
+
+def assign_ai_ranks(result, thresholds=None):
+    """開催日内の相対順位（または絶対スコア）で S/A/B/C を付与。
+
+    thresholds は load_rank_thresholds() 形式。将来 rank_optimizer が
+    各ランクの実ROIを見て s_top_n / a_top_n / *_min_score を自動更新する。
+    """
+    if result is None or len(result)==0:
+        return result
+    th=thresholds or load_rank_thresholds()
+    raw_bet=result['BET期待値'].astype(float).copy()
+    order=raw_bet.rank(method='first',ascending=False).astype(int)
+    total=len(result)
+    pct=(total-order)/(max(total-1,1))
+    raw_min=float(raw_bet.min()); raw_max=float(raw_bet.max())
+    raw_norm=(raw_bet-raw_min)/(raw_max-raw_min) if raw_max>raw_min else pd.Series(0.5,index=result.index)
+    display_score=(38 + pct*52 + raw_norm*8).clip(0,98.7)
+    result=result.copy()
+    result['買い期待度基礎値']=raw_bet.round(1)
+    result['BET期待値']=display_score.round(1)
+
+    s_n=max(1,min(int(th['s_top_n']),total))
+    a_n=max(s_n,min(int(th['a_top_n']),total))
+    b_cut=max(int(th['b_min_n']),int(total*float(th['b_percentile'])))
+    b_n=max(a_n,min(b_cut,total))
+    mode=th.get('mode','percentile')
+    s_min=float(th.get('s_min_score') or 0)
+    a_min=float(th.get('a_min_score') or 0)
+    b_min=float(th.get('b_min_score') or 0)
+
+    def grade(rank_i, score):
+        # absolute: 基礎値のみ / hybrid: 相対順位かつ基礎値下限 / percentile: 相対のみ
+        if mode=='absolute':
+            if score>=s_min and s_min>0: return 'S'
+            if score>=a_min and a_min>0: return 'A'
+            if score>=b_min and b_min>0: return 'B'
+            if s_min<=0 and a_min<=0 and b_min<=0:
+                # 未学習時は相対フォールバック
+                pass
+            else:
+                return 'C'
+        if rank_i<=s_n:
+            if mode=='hybrid' and s_min>0 and score<s_min: return 'A' if rank_i<=a_n else 'B'
+            return 'S'
+        if rank_i<=a_n:
+            if mode=='hybrid' and a_min>0 and score<a_min: return 'B'
+            return 'A'
+        if rank_i<=b_n:
+            if mode=='hybrid' and b_min>0 and score<b_min: return 'C'
+            return 'B'
+        return 'C'
+
+    ranks=[grade(int(order.loc[i]), float(raw_bet.loc[i])) for i in result.index]
+    result['勝負ランク']=ranks
+    result['BET判定']=result['勝負ランク'].map(RANK_LABELS)
+    result['BETクラス']=result['勝負ランク'].map(RANK_CLASSES)
+    return result
 
 def weighted(vals):
     vals=np.asarray(vals,dtype=float); ok=~np.isnan(vals)
@@ -28,15 +122,21 @@ def weighted(vals):
 
 def class_level(name):
     s=str(name)
-    if 'G1' in s or 'Ｇ１' in s: return 9
-    if 'G2' in s or 'Ｇ２' in s: return 8
-    if 'G3' in s or 'Ｇ３' in s: return 7
-    if 'オープン' in s or 'OP' in s: return 6
+    if 'G1' in s or 'Ｇ１' in s or 'Jpn1' in s or 'JPN1' in s: return 9
+    if 'G2' in s or 'Ｇ２' in s or 'Jpn2' in s or 'JPN2' in s: return 8
+    if 'G3' in s or 'Ｇ３' in s or 'Jpn3' in s or 'JPN3' in s: return 7
+    if '重賞' in s or '準重賞' in s: return 7
+    if 'オープン' in s or 'OP' in s or '特別' in s: return 6
     if '3勝' in s: return 5
     if '2勝' in s: return 4
     if '1勝' in s: return 3
+    # 地方クラス表記（A1 > B1 > C1 / 〇〇組）
+    if re.search(r'A[1-4]', s, re.I) or 'A級' in s: return 6
+    if re.search(r'B[1-4]', s, re.I) or 'B級' in s: return 4
+    if re.search(r'C[1-4]', s, re.I) or 'C級' in s: return 2
+    if re.search(r'[一二三四五六七八九十]+組', s): return 3
     if '新馬' in s: return 1
-    if '未勝利' in s: return 2
+    if '未勝利' in s or '未受賞' in s: return 2
     return 2
 
 def context_features(history, horse, target):
@@ -100,10 +200,30 @@ def score_runner(row, history, target, weights):
     if market_reason: reasons.append(market_reason)
     return clamp(score),factors,reasons
 
-VENUE_CODES={"01":"札幌","02":"函館","03":"福島","04":"新潟","05":"東京","06":"中山","07":"中京","08":"京都","09":"阪神","10":"小倉"}
+JRA_VENUE_CODES={"01":"札幌","02":"函館","03":"福島","04":"新潟","05":"東京","06":"中山","07":"中京","08":"京都","09":"阪神","10":"小倉"}
+NAR_VENUE_CODES={
+    "30":"門別","35":"盛岡","36":"水沢",
+    "42":"浦和","43":"船橋","44":"大井","45":"川崎",
+    "46":"金沢","47":"笠松","48":"名古屋",
+    "50":"園田","51":"姫路","54":"高知","55":"佐賀","65":"帯広",
+}
+VENUE_CODES={**JRA_VENUE_CODES,**NAR_VENUE_CODES}
+
+def source_from_race_id(race_id):
+    s=str(race_id)
+    m=re.fullmatch(r"\d{4}(\d{2})\d{6}",s)
+    if not m: return "jra"
+    code=m.group(1)
+    if code in NAR_VENUE_CODES: return "nar"
+    if code in JRA_VENUE_CODES: return "jra"
+    try:
+        return "nar" if int(code)>=30 else "jra"
+    except Exception:
+        return "jra"
+
 def venue_from_race_id(race_id):
     s=str(race_id)
-    # netkeiba: YYYY + venue(2) + kai(2) + day(2) + race(2)
+    # netkeiba: YYYY + venue(2) + ... + race(2)  ※JRAは回次・日次、NARはMMDD
     m=re.fullmatch(r"\d{4}(\d{2})\d{6}",s)
     if m: return VENUE_CODES.get(m.group(1),"開催地不明")
     # 旧JRA URL (accessS / accessD)
@@ -243,8 +363,8 @@ def load_ticket_odds(race_id, fetch_if_missing=True):
     if not (rid.isdigit() and len(rid)==12):
         return {}
     try:
-        from netkeiba_client import NetkeibaClient
-        maps=NetkeibaClient(sleep=0.15).fetch_ticket_odds_maps(rid)
+        from netkeiba_client import NetkeibaClient, infer_source
+        maps=NetkeibaClient(sleep=0.15).fetch_ticket_odds_maps(rid, source=infer_source(rid))
         ODDS_TICKETS_DIR.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(maps, ensure_ascii=False), encoding='utf-8')
         return maps
@@ -351,8 +471,9 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         synth_disp=f"{synth}倍" if synth is not None else '券種別オッズ待ち'
         ev_disp=f"{ev}%" if ev is not None else 'オッズ接続後に算出'
 
+        src=str(main.get('source') or source_from_race_id(race_id))
         out.append({
-          'race_id':race_id,'開催地':venue_from_race_id(race_id),'レース':int(float(main['レース'])),'荒れ度':round(chaos,1),'判定':judge,
+          'race_id':race_id,'source':src,'開催地':venue_from_race_id(race_id),'レース':int(float(main['レース'])),'荒れ度':round(chaos,1),'判定':judge,
           '荒れクラス':'storm' if chaos>=80 else ('wave' if chaos>=60 else ('caution' if chaos>=40 else 'calm')),
           'BET期待値':round(bet,1),'BET判定':bet_label,'BETクラス':bet_class,'BET理由':' / '.join(bet_reason),
           'シミュレーション回数':20000,'本命':main_name,'本命AREru指数':main['AREru指数'],'シミュレーション勝率':round(main['SIM勝率'],1),'シミュレーション3着内率':round(main['SIM3着内率'],1),'AI適正オッズ':round(main['AI適正オッズ'],1),'本命理由':main['理由'],
@@ -367,26 +488,13 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           'データ頭数':n})
 
     result=pd.DataFrame(out).sort_values(['開催地','レース']).reset_index(drop=True)
-
-    # 開催日内の相対順位でS/A/B/Cを付与。
-    # 生の基礎値は上限100に張り付きやすいため、表示用の買い期待度は
-    # 順位パーセンタイル + 基礎値の差を使って再スケールする。
-    raw_bet=result['BET期待値'].astype(float).copy()
-    order=raw_bet.rank(method='first',ascending=False).astype(int)
-    total=len(result)
-    pct=(total-order)/(max(total-1,1))
-    raw_min=float(raw_bet.min()); raw_max=float(raw_bet.max())
-    raw_norm=(raw_bet-raw_min)/(raw_max-raw_min) if raw_max>raw_min else pd.Series(0.5,index=result.index)
-    display_score=(38 + pct*52 + raw_norm*8).clip(0,98.7)
-    result['買い期待度基礎値']=raw_bet.round(1)
-    result['BET期待値']=display_score.round(1)
-    def grade(rank):
-        if rank<=min(2,total): return 'S'
-        if rank<=min(5,total): return 'A'
-        if rank<=max(8,int(total*.35)): return 'B'
-        return 'C'
-    result['勝負ランク']=order.map(grade)
-    result['BET判定']=result['勝負ランク'].map({'S':'今日の勝負','A':'買い候補','B':'オッズ次第','C':'見送り'})
-    result['BETクラス']=result['勝負ランク'].map({'S':'battle','A':'target','B':'watch','C':'skip'})
+    # source 別に相対順位で S/A/B/C を付与（JRA/NAR混在日でもプールを分けて評価）
+    ranked_parts=[]
+    if 'source' in result.columns and result['source'].nunique()>1:
+        for _,g in result.groupby('source',sort=False):
+            ranked_parts.append(assign_ai_ranks(g))
+        result=pd.concat(ranked_parts,ignore_index=True).sort_values(['開催地','レース']).reset_index(drop=True)
+    else:
+        result=assign_ai_ranks(result)
     return result,sd
 

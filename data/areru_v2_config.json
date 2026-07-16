@@ -1,6 +1,24 @@
 {
   "version": "2.0",
-  "weights": {"performance": 0.28, "upset": 0.24, "consistency": 0.12, "trend": 0.12, "value": 0.14, "context": 0.10},
+  "weights": {
+    "performance": 0.28,
+    "upset": 0.24,
+    "consistency": 0.12,
+    "trend": 0.12,
+    "value": 0.14,
+    "context": 0.10
+  },
+  "rank_thresholds": {
+    "mode": "percentile",
+    "s_top_n": 2,
+    "a_top_n": 5,
+    "b_percentile": 0.35,
+    "b_min_n": 8,
+    "s_min_score": 0.0,
+    "a_min_score": 0.0,
+    "b_min_score": 0.0,
+    "note": "AIランク選別の基準。rank_optimizer.py が各ランクROIを見て自動調整できる。"
+  },
   "status": "baseline_ready_for_optimize_v2",
   "note": "実着順は評価専用。指数入力には未使用。"
 }

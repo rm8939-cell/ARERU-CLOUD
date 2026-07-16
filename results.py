@@ -40,13 +40,32 @@ PAYOUT_COLS = [
     "combination", "payout", "ninki", "source",
 ]
 ANALYSIS_COLS = [
-    "date", "race", "race_id", "開催地", "bet_type",
+    "date", "race", "race_id", "開催地", "bet_type", "勝負ランク",
+    "推奨券種", "購入対象",
     "prediction", "result", "hit", "payout", "investment", "profit", "roi",
+    "source",
 ]
 
 
 def _clean(s) -> str:
     return clean_name(s) if s is not None else ""
+
+
+def _norm_race_id(x) -> str:
+    """CSV 読み書きで float 化した race_id を 12桁文字列へ揃える。"""
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return ""
+    s = str(x).strip()
+    if not s or s.lower() in ("nan", "none"):
+        return ""
+    if s.endswith(".0") and s[:-2].isdigit():
+        s = s[:-2]
+    try:
+        if re.fullmatch(r"\d+\.0+", s):
+            s = str(int(float(s)))
+    except Exception:
+        pass
+    return s
 
 
 def _load_csv(path: Path, cols: list[str]) -> pd.DataFrame:
@@ -81,20 +100,25 @@ def prediction_dates() -> list[str]:
     return sorted(found, reverse=True)
 
 
-def resolve_target_dates(client: NetkeibaClient, dates: list[str] | None, latest: bool) -> list[str]:
+def resolve_target_dates(
+    client: NetkeibaClient,
+    dates: list[str] | None,
+    latest: bool,
+    source: str = "jra",
+) -> list[str]:
     if dates:
         return sorted({d.replace("/", "-") for d in dates})
     if latest:
         # 結果が出ている直近開催日を優先（未来日の予想だけがある場合はスキップ）
-        for d in client.discover_kaisai_dates(lookback=21, lookahead=2):
+        for d in client.discover_kaisai_dates(lookback=21, lookahead=2, source=source):
             ymd = d.replace("-", "")
             try:
-                ids = client.list_race_ids(ymd)
+                ids = client.list_race_ids(ymd, source=source)
             except Exception:
                 ids = []
             if not ids:
                 continue
-            detail = client.fetch_result_detail(ids[0])
+            detail = client.fetch_result_detail(ids[0], source=source)
             if detail.get("horses"):
                 return [d]
         # フォールバック: 予想がある過去日
@@ -107,7 +131,7 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
     ymd = date_str.replace("-", "")
     print(f"\n🏁 {source.upper()} {date_str} 結果取得")
     try:
-        race_ids = client.list_race_ids(ymd) if source == "jra" else _list_nar_race_ids(client, ymd)
+        race_ids = client.list_race_ids(ymd, source=source)
     except Exception as e:
         print(f"⚠️ レース一覧取得失敗: {e}")
         return pd.DataFrame(columns=RESULT_COLS), pd.DataFrame(columns=PAYOUT_COLS)
@@ -131,9 +155,10 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
         race_no = detail.get("race_no") or ""
         venue = detail.get("venue") or ""
         d = detail.get("date") or date_str
+        rid_s = _norm_race_id(rid)
         for h in detail["horses"]:
             horse_rows.append({
-                "race_id": rid,
+                "race_id": rid_s,
                 "date": d,
                 "レース": race_no,
                 "開催地": venue,
@@ -146,7 +171,7 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
             })
         for p in detail.get("payouts") or []:
             pay_rows.append({
-                "race_id": rid,
+                "race_id": rid_s,
                 "date": d,
                 "レース": race_no,
                 "開催地": venue,
@@ -160,19 +185,9 @@ def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra
 
     return pd.DataFrame(horse_rows, columns=RESULT_COLS), pd.DataFrame(pay_rows, columns=PAYOUT_COLS)
 
-
-def _list_nar_race_ids(client: NetkeibaClient, ymd: str) -> list[str]:
-    """地方: nar.netkeiba の開催一覧から race_id を拾う。"""
-    url = f"https://nar.netkeiba.com/top/race_list_sub.html?kaisai_date={ymd}"
-    try:
-        soup = client._get(url)
-    except Exception:
-        return []
-    return sorted(set(re.findall(r"race_id=(\d{8,12})", str(soup))))
-
-
 def _ban_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
-    g = results[results["race_id"].astype(str) == str(race_id)]
+    rid = _norm_race_id(race_id)
+    g = results[results["race_id"].map(_norm_race_id) == rid]
     out = {}
     for _, r in g.iterrows():
         ban = str(r["馬番"]).strip()
@@ -183,12 +198,14 @@ def _ban_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
 
 
 def _finish_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
-    g = results[results["race_id"].astype(str) == str(race_id)]
+    rid = _norm_race_id(race_id)
+    g = results[results["race_id"].map(_norm_race_id) == rid]
     return {_clean(r["馬名"]): str(r["着順"]).strip() for _, r in g.iterrows()}
 
 
 def _payout_index(payouts: pd.DataFrame, race_id: str) -> dict[str, list[dict]]:
-    g = payouts[payouts["race_id"].astype(str) == str(race_id)]
+    rid = _norm_race_id(race_id)
+    g = payouts[payouts["race_id"].map(_norm_race_id) == rid]
     idx: dict[str, list[dict]] = {}
     for _, r in g.iterrows():
         bt = str(r["bet_type"])
@@ -315,7 +332,7 @@ def _eval_combo(
 
 def _resolve_race_id(prow: dict, day_results: pd.DataFrame) -> str:
     """netkeiba の 12桁 ID を優先。旧JRA URL の場合は開催地+レースで解決。"""
-    rid = str(prow.get("race_id", "")).strip()
+    rid = _norm_race_id(prow.get("race_id", ""))
     if rid.isdigit() and len(rid) == 12:
         return rid
     venue = str(prow.get("開催地", "")).strip()
@@ -330,7 +347,7 @@ def _resolve_race_id(prow: dict, day_results: pd.DataFrame) -> str:
     ]
     if g.empty:
         return ""
-    return str(g.iloc[0]["race_id"])
+    return _norm_race_id(g.iloc[0]["race_id"])
 
 
 def analyze_predictions(
@@ -362,12 +379,28 @@ def analyze_predictions(
             venue = str(prow.get("開催地", ""))
             race_no = prow.get("レース", "")
             race_label = f"{venue}{int(float(race_no)):02d}R" if str(race_no).replace('.','',1).isdigit() else str(race_no)
+            ai_rank = str(prow.get("勝負ランク", "") or "").upper()
+            recommend = str(prow.get("推奨券種", "") or "").strip()
+            src = str(prow.get("source") or "").strip().lower()
+            if src not in ("jra", "nar"):
+                from areru_engine import source_from_race_id
+                src = source_from_race_id(rid)
+
+            # 券種ごとの買い判定（買い候補＝購入対象）
+            buy_flags = {
+                "ワイド": str(prow.get("ワイド判定", "") or "").strip() == "買い候補",
+                "馬連": str(prow.get("馬連判定", "") or "").strip() == "買い候補",
+                "三連複": str(prow.get("三連複判定", "") or "").strip() == "買い候補",
+            }
 
             # 本命（単勝）
             main = _clean(prow.get("本命", ""))
             if main:
                 ev = _eval_win(main, finishes, pays, bans)
-                rows.append(_analysis_row(d, race_label, rid, venue, "本命", ev))
+                rows.append(_analysis_row(
+                    d, race_label, rid, venue, "本命", ev, ai_rank, recommend, src,
+                    is_buy=recommend in ("本命", "単勝"),
+                ))
 
             # ワイド / 馬連 / 三連複
             for kind, col, ordered in [
@@ -379,29 +412,55 @@ def analyze_predictions(
                 # 見送り判定でも買い目があれば仮想検証する
                 ev = _eval_combo(kind, tickets, bans, pays, ordered=ordered)
                 if ev["investment"] > 0 or tickets:
-                    rows.append(_analysis_row(d, race_label, rid, venue, kind, ev))
+                    rows.append(_analysis_row(
+                        d, race_label, rid, venue, kind, ev, ai_rank, recommend, src,
+                        is_buy=buy_flags.get(kind, False) or (recommend == kind),
+                    ))
 
             # 三連単: ◎→○→▲ の順で1点
             marks = dict(_marks_from_prediction(prow.to_dict()))
             trio_names = [marks.get("◎", ""), marks.get("○", ""), marks.get("▲", "")]
             if all(trio_names):
                 ev = _eval_combo("三連単", [trio_names], bans, pays, ordered=True)
-                rows.append(_analysis_row(d, race_label, rid, venue, "三連単", ev))
+                rows.append(_analysis_row(
+                    d, race_label, rid, venue, "三連単", ev, ai_rank, recommend, src,
+                    is_buy=recommend == "三連単",
+                ))
 
     return pd.DataFrame(rows, columns=ANALYSIS_COLS)
 
 
-def _analysis_row(date: str, race: str, race_id: str, venue: str, bet_type: str, ev: dict) -> dict:
+def _analysis_row(
+    date: str,
+    race: str,
+    race_id: str,
+    venue: str,
+    bet_type: str,
+    ev: dict,
+    ai_rank: str = "",
+    recommend: str = "",
+    source: str = "jra",
+    is_buy: bool | None = None,
+) -> dict:
     inv = int(ev.get("investment") or 0)
     pay = int(ev.get("payout") or 0)
     profit = pay - inv
     roi = round((pay / inv) * 100, 1) if inv > 0 else 0.0
+    rec = str(recommend or "").strip()
+    # 購入対象 = 推奨券種 または 券種判定「買い候補」の馬券（レース単位ではない）
+    if is_buy is None:
+        is_purchase = 1 if rec and bet_type == rec else 0
+    else:
+        is_purchase = 1 if is_buy else 0
     return {
         "date": date,
         "race": race,
-        "race_id": race_id,
+        "race_id": _norm_race_id(race_id),
         "開催地": venue,
         "bet_type": bet_type,
+        "勝負ランク": str(ai_rank or "").upper(),
+        "推奨券種": rec,
+        "購入対象": is_purchase,
         "prediction": ev.get("prediction", ""),
         "result": ev.get("result", ""),
         "hit": int(ev.get("hit") or 0),
@@ -409,6 +468,7 @@ def _analysis_row(date: str, race: str, race_id: str, venue: str, bet_type: str,
         "investment": inv,
         "profit": profit,
         "roi": roi,
+        "source": source if source in ("jra", "nar") else "jra",
     }
 
 
@@ -433,6 +493,47 @@ def summarize(analysis: pd.DataFrame) -> None:
         i, p = g["investment"].sum(), g["payout"].sum()
         h = g["hit"].mean() * 100 if len(g) else 0
         print(f"  {bt}: 的中率{h:.1f}% / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円")
+    if "勝負ランク" in analysis.columns:
+        print("  --- AIランク別（購入馬券単位） ---")
+        base = analysis
+        if "購入対象" in analysis.columns:
+            base = analysis[pd.to_numeric(analysis["購入対象"], errors="coerce").fillna(0).astype(int) == 1]
+        for rk in ["S", "A", "B", "C"]:
+            g = base[base["勝負ランク"].astype(str).str.upper() == rk]
+            if g.empty:
+                print(f"  {rk}: 購入0件")
+                continue
+            i, p = g["investment"].sum(), g["payout"].sum()
+            hits = int(g["hit"].sum())
+            h = g["hit"].mean() * 100 if len(g) else 0
+            print(
+                f"  {rk}: 購入{len(g)} / 的中{hits} / 的中率{h:.1f}% / "
+                f"投資{i:,} / 払戻{p:,} / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円"
+            )
+        print("  --- ランク×券種（購入分のみ） ---")
+        label = {"本命": "単勝", "単勝": "単勝"}
+        order = ["単勝", "ワイド", "馬連", "三連複", "三連単"]
+        for rk in ["S", "A", "B", "C"]:
+            g_rank = base[base["勝負ランク"].astype(str).str.upper() == rk]
+            if g_rank.empty:
+                continue
+            print(f"  [{rk}]")
+            buckets = {}
+            for bt, g in g_rank.groupby("bet_type"):
+                name = label.get(str(bt), str(bt))
+                buckets[name] = g
+            for name in order:
+                g = buckets.get(name)
+                if g is None or g.empty:
+                    print(f"    {name}: 購入0件")
+                    continue
+                i, p = g["investment"].sum(), g["payout"].sum()
+                hits = int(g["hit"].sum())
+                h = g["hit"].mean() * 100 if len(g) else 0
+                print(
+                    f"    {name}: 購入{len(g)} / 的中{hits} / 的中率{h:.1f}% / "
+                    f"回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円"
+                )
 
 
 def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) -> None:
@@ -450,18 +551,22 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
     target_dates: list[str] = []
     if not skip_fetch:
         for src in sources:
-            if src == "jra":
-                target_dates = resolve_target_dates(client, dates, latest or not dates)
-            else:
-                # NAR は指定日 or JRAと同日を試行
-                target_dates = dates or target_dates or resolve_target_dates(client, None, True)
-            for d in target_dates:
+            src_dates = resolve_target_dates(client, dates, latest or not dates, source=src)
+            print(f"🎯 {src.upper()} 対象日: {src_dates}")
+            for d in src_dates:
                 h, p = fetch_date_results(client, d, source=src)
                 results = _merge_by_race(results, h)
                 payouts = _merge_by_race(payouts, p)
+            target_dates.extend(src_dates)
+        target_dates = sorted(set(target_dates))
     else:
         target_dates = dates or sorted(results["date"].astype(str).unique().tolist(), reverse=True)[:1]
 
+    if not results.empty and "race_id" in results.columns:
+        results["race_id"] = results["race_id"].map(_norm_race_id)
+    if not payouts.empty and "race_id" in payouts.columns:
+        payouts["race_id"] = payouts["race_id"].map(_norm_race_id)
+    # race_id を文字列のまま保存（Excel/pandas の float 化による照合ズレ防止）
     results.to_csv(RESULTS_CSV, index=False, encoding="utf-8-sig")
     payouts.to_csv(PAYOUTS_CSV, index=False, encoding="utf-8-sig")
     print(f"\n💾 {RESULTS_CSV} ({len(results)}行)")
@@ -473,6 +578,8 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
     if not analyze_dates:
         analyze_dates = sorted(result_dates)
     analysis = analyze_predictions(results, payouts, dates=analyze_dates)
+    if not analysis.empty and "race_id" in analysis.columns:
+        analysis["race_id"] = analysis["race_id"].map(_norm_race_id)
     analysis.to_csv(ANALYSIS_CSV, index=False, encoding="utf-8-sig")
     print(f"💾 {ANALYSIS_CSV} ({len(analysis)}行)")
     summarize(analysis)
@@ -482,7 +589,7 @@ def main():
     ap = argparse.ArgumentParser(description="P0-4 結果検証パイプライン")
     ap.add_argument("--date", help="YYYY-MM-DD")
     ap.add_argument("--dates", nargs="*", help="複数日")
-    ap.add_argument("--source", choices=["jra", "nar", "all"], default="jra")
+    ap.add_argument("--source", choices=["jra", "nar", "all"], default="all")
     ap.add_argument("--latest", action="store_true", help="最新開催日（結果確定）を自動選択")
     ap.add_argument("--skip-fetch", action="store_true", help="取得をスキップして照合のみ")
     args = ap.parse_args()
