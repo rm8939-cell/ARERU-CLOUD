@@ -40,8 +40,8 @@
 </nav>
 <form class="toolbar"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}{% if d==today %}（本日）{% endif %}</option>{% endfor %}</select><button>表示</button></form>
 <div class="message">{{message}}{% if refresh_meta and refresh_meta.get('date') %} · 最新取込 {{refresh_meta.get('date')}} / {{refresh_meta.get('races','?')}}R{% endif %}</div>
-{% if source=='nar' %}
-<section class="empty-state"><div class="empty-kicker">NAR LOCAL RACING</div><h2>地方競馬エンジン 接続準備中</h2><p>JRA版を流用せず、競馬場別の地方専用評価へ分離します。タブの土台は実装済みです。</p></section>
+{% if source=='nar' and not races and mode=='predict' %}
+<section class="empty-state"><div class="empty-kicker">NAR LOCAL RACING</div><h2>地方競馬データ準備中</h2><p>JRAロジックとは分離した地方専用エンジンです。開催データ取込後に予想が表示されます。</p></section>
 {% elif mode=='analysis' %}
 <section class="result-summary"><h2>AI STATUS｜分析ダッシュボード</h2><p>架空の回収率は出さず、現在保存されている予想・照合・払戻データだけを集計します。</p></section>
 <section class="targets"><h2>解析状況</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px"><div class="metric"><b>{{analysis.total}}R</b><small>予想レース</small></div><div class="metric"><b>{{analysis.verified}}R</b><small>結果照合済み</small></div></div></section>
