@@ -79,6 +79,16 @@ def score_runner(row, history, target, weights):
         fv=finishes[valid]
         trend=50 if len(fv)<2 else clamp(50+(np.mean(fv[1:])-fv[0])*6)
         pv=pops[valid]; value=clamp(50+np.nanmean(pv-fv)*5) if len(pv) else 50
+    # PO-3: 当日単勝オッズ/人気があれば value 因子を市場との乖離で補正
+    market_odds=num(row.get('単勝オッズ')); market_pop=num(row.get('人気'))
+    market_reason=None
+    if pd.notna(market_odds) and market_odds>0:
+        # 高オッズほど「市場過小評価」寄り。極端な大穴は頭打ち。
+        market_boost=clamp(np.log10(max(market_odds,1.0))*28, 0, 35)
+        if pd.notna(market_pop) and market_pop>=8:
+            market_boost=min(40, market_boost+6)
+        value=clamp(0.65*value + 0.35*(50+market_boost))
+        if market_odds>=12: market_reason='市場オッズ妙味'
     ctx=context_features(history,row['馬名'],target)
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
     score=sum(factors[k]*weights[k] for k in weights)
@@ -87,6 +97,7 @@ def score_runner(row, history, target, weights):
     if trend>=65: reasons.append('近走上向き')
     if cons>=60: reasons.append('安定感')
     if value>=65: reasons.append('過小評価傾向')
+    if market_reason: reasons.append(market_reason)
     return clamp(score),factors,reasons
 
 VENUE_CODES={"01":"札幌","02":"函館","03":"福島","04":"新潟","05":"東京","06":"中山","07":"中京","08":"京都","09":"阪神","10":"小倉"}
@@ -146,11 +157,39 @@ def _ticket_candidates(g, orders):
         "三連複": sorted(trio,reverse=True),
     }
 
-def _optimize_ticket(kind, candidates, g, max_points):
-    """オッズ未接続時は組み合わせ確率の集中度で点数を圧縮する。
-    合成オッズ/期待回収率は実券種オッズ接続後のみ計算する。"""
+def _ban_key(g, idxs):
+    bans=[]
+    for i in idxs:
+        b=str(g.iloc[i].get("馬番","")).strip()
+        try:
+            bans.append(int(float(b)))
+        except Exception:
+            return None
+    return "".join(f"{b:02d}" for b in sorted(bans))
+
+
+def _lookup_combo_odds(kind, g, idxs, ticket_odds):
+    if not ticket_odds:
+        return None
+    table=ticket_odds.get(kind) or {}
+    key=_ban_key(g, idxs)
+    if not key:
+        return None
+    raw=table.get(key)
+    if raw in (None, ""):
+        return None
+    try:
+        return float(str(raw).replace(",", ""))
+    except Exception:
+        return None
+
+
+def _optimize_ticket(kind, candidates, g, max_points, ticket_odds=None):
+    """組み合わせ確率の集中度で点数を圧縮。
+    実オッズがある場合は合成オッズ・期待回収率も算出する。"""
     if not candidates:
-        return {"買い目":[],"的中期待":0.0,"候補数":0,"圧縮理由":"候補なし"}
+        return {"買い目":[],"的中期待":0.0,"候補数":0,"圧縮理由":"候補なし",
+                "合成オッズ":None,"期待回収率":None}
     best=candidates[0][0]
     floor={"ワイド":0.42,"馬連":0.34,"三連複":0.28}[kind]
     chosen=[]
@@ -163,19 +202,57 @@ def _optimize_ticket(kind, candidates, g, max_points):
     # 同一レース内で、確率の薄い点を広げ過ぎないための暫定圧縮。
     # 複数買い目全体の真の的中確率はイベント重複があるため単純加算しない。
     strength=float(np.mean([x[0] for x in chosen]))
-    rows=[]
+    rows=[]; odds_vals=[]; ev_vals=[]
     for p,idxs in chosen:
         horses=[str(g.iloc[i]["馬名"]) for i in idxs]
-        rows.append({"馬名":" － ".join(horses),"仮想的中率":round(float(p),1)})
+        o=_lookup_combo_odds(kind,g,idxs,ticket_odds)
+        item={"馬名":" － ".join(horses),"仮想的中率":round(float(p),1)}
+        if o is not None and o>0:
+            # 的中率(%)×オッズ → 期待回収率(%). 例: 20%×5.0倍=100%
+            item["実オッズ"]=round(o,1)
+            item["期待回収率"]=round(float(p)*o,1)
+            odds_vals.append(o); ev_vals.append(float(p)*o)
+        rows.append(item)
+    synth=round(float(np.mean(odds_vals)),1) if odds_vals else None
+    # 均等買い想定の期待回収率(%)
+    ev=round(float(np.mean(ev_vals)),1) if ev_vals else None
     return {
         "買い目":rows,
         "的中期待":round(strength,1),
         "候補数":len(candidates),
         "圧縮理由":f"{len(candidates)}候補から上位{len(rows)}点へ圧縮",
+        "合成オッズ":synth,
+        "期待回収率":ev,
     }
 
 
-def build_predictions(target_str, runners, history=None, weights=None):
+ODDS_TICKETS_DIR=DATA_DIR/'odds_tickets'
+
+
+def load_ticket_odds(race_id, fetch_if_missing=True):
+    """data/odds_tickets/{race_id}.json を読み込む。無ければ netkeiba から取得。"""
+    path=ODDS_TICKETS_DIR/f'{race_id}.json'
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding='utf-8'))
+        except Exception:
+            pass
+    if not fetch_if_missing:
+        return {}
+    rid=str(race_id)
+    if not (rid.isdigit() and len(rid)==12):
+        return {}
+    try:
+        from netkeiba_client import NetkeibaClient
+        maps=NetkeibaClient(sleep=0.15).fetch_ticket_odds_maps(rid)
+        ODDS_TICKETS_DIR.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(maps, ensure_ascii=False), encoding='utf-8')
+        return maps
+    except Exception:
+        return {}
+
+
+def build_predictions(target_str, runners, history=None, weights=None, fetch_ticket_odds=True):
     target=pd.Timestamp(target_str); weights=weights or load_weights(); r=runners.copy()
     r['_date']=parse_date(r['日付']); r=r[r['_date'].dt.normalize()==target.normalize()].copy()
     if r.empty: raise ValueError(f'{target_str} の出走データがありません')
@@ -217,11 +294,16 @@ def build_predictions(target_str, runners, history=None, weights=None):
         judge='大荒れ警戒' if chaos>=80 else ('波乱' if chaos>=60 else ('注意' if chaos>=40 else '平穏'))
         names={x['印']:x['馬名'] for x in mark_rows}; main_name=str(main['馬名'])
 
+        # 券種別実オッズ（キャッシュ優先）。単勝が無いレースは取得を省略。
+        main_win=num(main.get('単勝オッズ'))
+        has_win=pd.notna(main_win) and float(main_win)>0
+        ticket_odds=load_ticket_odds(race_id, fetch_if_missing=fetch_ticket_odds and has_win) if has_win else {}
+
         # 20,000回の全着順から、券種別の組み合わせ確率を直接集計。
         candidates=_ticket_candidates(g,orders)
-        wide_plan=_optimize_ticket("ワイド",candidates["ワイド"],g,3)
-        quinella_plan=_optimize_ticket("馬連",candidates["馬連"],g,2)
-        trio_plan=_optimize_ticket("三連複",candidates["三連複"],g,6)
+        wide_plan=_optimize_ticket("ワイド",candidates["ワイド"],g,3,ticket_odds)
+        quinella_plan=_optimize_ticket("馬連",candidates["馬連"],g,2,ticket_odds)
+        trio_plan=_optimize_ticket("三連複",candidates["三連複"],g,6,ticket_odds)
 
         wide_score=clamp(wide_plan["的中期待"]*2.0 + main_place*.45)
         quinella_score=clamp(quinella_plan["的中期待"]*3.0 + float(main["SIM勝率"])*.8)
@@ -238,31 +320,50 @@ def build_predictions(target_str, runners, history=None, weights=None):
         plans_sorted=sorted(plans,key=lambda x:x[1],reverse=True)
         best_kind=plans_sorted[0][0]
         best_score=plans_sorted[0][1]
+        best_plan=plans_sorted[0][2]
 
         # その日の全レース内でのS/A/B/Cは後段で相対順位化するため、ここでは基礎値を保存。
         ticket_reason=(
             f"{best_kind}型。20,000回の仮想レースで組み合わせ同時好走率を比較し、"
-            f"{plans_sorted[0][2]['圧縮理由']}。"
+            f"{best_plan['圧縮理由']}。"
         )
+        if best_plan.get('期待回収率') is not None:
+            ticket_reason += f" 実オッズ接続済・期待回収率 {best_plan['期待回収率']}%。"
 
         def plan_text(plan):
-            return '｜'.join(
-                f"{x['馬名']}（仮想的中 {x['仮想的中率']}%）"
-                for x in plan["買い目"]
-            ) if plan["買い目"] else '見送り'
+            parts=[]
+            for x in plan["買い目"]:
+                s=f"{x['馬名']}（仮想的中 {x['仮想的中率']}%"
+                if x.get('実オッズ') is not None:
+                    s+=f" / 実{x['実オッズ']}倍"
+                if x.get('期待回収率') is not None:
+                    s+=f" / EV{x['期待回収率']}%"
+                s+="）"
+                parts.append(s)
+            return '｜'.join(parts) if parts else '見送り'
+
+        main_odds=num(main.get('単勝オッズ'))
+        main_odds_disp=round(float(main_odds),1) if pd.notna(main_odds) else ''
+        main_pop=num(main.get('人気'))
+        main_pop_disp=int(float(main_pop)) if pd.notna(main_pop) else ''
+        synth=best_plan.get('合成オッズ')
+        ev=best_plan.get('期待回収率')
+        synth_disp=f"{synth}倍" if synth is not None else '券種別オッズ待ち'
+        ev_disp=f"{ev}%" if ev is not None else 'オッズ接続後に算出'
 
         out.append({
           'race_id':race_id,'開催地':venue_from_race_id(race_id),'レース':int(float(main['レース'])),'荒れ度':round(chaos,1),'判定':judge,
           '荒れクラス':'storm' if chaos>=80 else ('wave' if chaos>=60 else ('caution' if chaos>=40 else 'calm')),
           'BET期待値':round(bet,1),'BET判定':bet_label,'BETクラス':bet_class,'BET理由':' / '.join(bet_reason),
           'シミュレーション回数':20000,'本命':main_name,'本命AREru指数':main['AREru指数'],'シミュレーション勝率':round(main['SIM勝率'],1),'シミュレーション3着内率':round(main['SIM3着内率'],1),'AI適正オッズ':round(main['AI適正オッズ'],1),'本命理由':main['理由'],
+          '本命オッズ':main_odds_disp,'本命人気':main_pop_disp,
           '人気馬危険':danger['馬名'],'危険度':round(clamp(danger_score.loc[danger_idx]),1),'危険理由':'近走評価と人気履歴のズレを検出',
           '印データ':json.dumps(mark_rows,ensure_ascii=False),
           '推奨券種':best_kind,'馬券戦略理由':ticket_reason,
           'ワイド評価':round(wide_score,1),'ワイド判定':go_label(wide_score),'ワイド買い目':plan_text(wide_plan),'ワイド圧縮':wide_plan['圧縮理由'],
           '馬連評価':round(quinella_score,1),'馬連判定':go_label(quinella_score),'馬連買い目':plan_text(quinella_plan),'馬連圧縮':quinella_plan['圧縮理由'],
           '三連複評価':round(trio_score,1),'三連複判定':go_label(trio_score),'三連複買い目':plan_text(trio_plan),'三連複圧縮':trio_plan['圧縮理由'],
-          '合成オッズ':'券種別オッズ待ち','期待回収率':'オッズ接続後に算出',
+          '合成オッズ':synth_disp,'期待回収率':ev_disp,
           'データ頭数':n})
 
     result=pd.DataFrame(out).sort_values(['開催地','レース']).reset_index(drop=True)

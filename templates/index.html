@@ -14,7 +14,7 @@
 .box,.section{padding:16px 17px;border-bottom:1px solid var(--line)}.horse{font-size:20px;font-weight:800;margin:7px 0 12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.metric{background:#f8fafb;border:1px solid #20242a;border-radius:10px;padding:10px}.metric b{display:block;font-size:18px}.metric small{color:var(--muted);font-size:9px}.reason{color:#b7bcc5;font-size:12px;line-height:1.6;margin-top:10px}
 .section-title{font-weight:800;margin-bottom:12px}.gold{color:var(--gold)}.marks{display:grid;gap:8px}.mark{display:flex;gap:10px;align-items:flex-start}.mark b{width:22px}.mark span{font-weight:700}.mark small{display:block;color:var(--muted);font-weight:400;margin-top:3px}
 .strategy{background:var(--soft);border:1px solid #2b3037;border-radius:12px;padding:13px;margin-bottom:12px}.strategy strong{font-size:18px;color:var(--gold)}.strategy p{color:#b7bcc5;font-size:12px;line-height:1.65;margin:7px 0 0}
-.betplan{display:grid;gap:10px}.ticket{background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:12px}.ticket-head{display:flex;justify-content:space-between;font-weight:800}.ticket-score{color:var(--gold)}.ticket ul{padding:0;margin:10px 0 0;list-style:none}.ticket li{padding:7px 0;border-top:1px solid #1e2228;font-size:13px;line-height:1.5}.ticket .compress{color:var(--muted);font-size:11px;margin-top:8px}.odds-wait{margin-top:12px;border:1px dashed #4a4140;border-radius:10px;padding:11px;color:#c7b7a9;font-size:12px;line-height:1.6}
+.betplan{display:grid;gap:10px}.ticket{background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:12px}.ticket-head{display:flex;justify-content:space-between;font-weight:800}.ticket-score{color:var(--gold)}.ticket ul{padding:0;margin:10px 0 0;list-style:none}.ticket li{padding:7px 0;border-top:1px solid #1e2228;font-size:13px;line-height:1.5}.ticket .compress{color:var(--muted);font-size:11px;margin-top:8px}.odds-wait,.odds-ready{margin-top:12px;border:1px dashed #4a4140;border-radius:10px;padding:11px;color:#c7b7a9;font-size:12px;line-height:1.6}.odds-ready{border-style:solid;border-color:#2d6a4f;color:#1b4332;background:#e9f5ef}
 .danger{color:#ff8090}.beta{padding:13px 17px;color:#747b86;font-size:10px;line-height:1.6}.toplink{text-align:right;padding:0 17px 16px}.toplink a{color:#b7bcc5;font-size:12px;text-decoration:none}
 
 .source-tabs,.mode-tabs{display:flex;gap:8px}.source-tabs{padding:16px 0 8px}.mode-tabs{padding:0 0 4px}
@@ -63,12 +63,20 @@
 {% for r in races %}<section id="race-{{r['race_id']|urlencode}}" class="race {{r['荒れクラス']}}">
 <div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>20,000回 仮想レース</small></div><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div>
 <div class="betbar"><span>{{r['勝負ランク']}}｜{{r['BET判定']}}</span><span>買い期待度 {{r['BET期待値']}}</span></div>
-<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍 · {{r['本命理由']}}</div></div>
+<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍{% if r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %} · 市場 {{r['本命オッズ']}}倍{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}（{{r['本命人気']}}人気）{% endif %}{% endif %} · {{r['本命理由']}}</div></div>
 <div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
 <div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r['人気馬危険']}}</div><div class="reason">危険度 {{r['危険度']}} · {{r['危険理由']}}</div></div>
 <div class="section"><div class="section-title gold">AI馬券戦略</div><div class="strategy"><div class="label">このレースの主戦</div><strong>{{r['推奨券種']}}</strong><p>{{r['馬券戦略理由']}}</p></div>
 <div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r[kind+'判定']}}</span><span class="ticket-score">適性 {{r[kind+'評価']}}</span></div><ul>{% for x in r[kind+'買い目一覧'] %}<li>{{x}}</li>{% endfor %}</ul><div class="compress">{{r[kind+'圧縮']}}</div></div>{% endfor %}</div>
-<div class="odds-wait"><b>合成オッズ・期待回収率</b><br>券種別の当日オッズ接続後に算出。数字を作らず、実オッズが取れた時だけ「合成オッズ・的中期待・期待回収率・妙味」を表示します。</div></div>
+{% set odds_ready = r.get('期待回収率') and r['期待回収率'] not in ['オッズ接続後に算出','なし',''] and r.get('合成オッズ') and r['合成オッズ'] not in ['券種別オッズ待ち','なし',''] %}
+{% if odds_ready %}
+<div class="odds-ready"><b>合成オッズ・期待回収率（{{r['推奨券種']}}）</b><br>
+合成オッズ {{r['合成オッズ']}} · 期待回収率 {{r['期待回収率']}} · 均等買い想定（実オッズ×仮想的中率）
+</div>
+{% else %}
+<div class="odds-wait"><b>合成オッズ・期待回収率</b><br>券種別の当日オッズ接続後に算出。数字を作らず、実オッズが取れた時だけ「合成オッズ・的中期待・期待回収率・妙味」を表示します。</div>
+{% endif %}
+</div>
 <div class="beta">β版 · 実着順は予想入力に未使用 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div></section>{% endfor %}
 {% endif %}
 </main></body></html>
