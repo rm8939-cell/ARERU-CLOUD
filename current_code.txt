@@ -1,0 +1,1084 @@
+===== races.py =====
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+import re
+
+
+def get_races():
+
+    url = (
+        "https://www.jra.go.jp/JRADB/accessD.html"
+        "?CNAME=pw01dde0110202602060520260712%2F8D"
+    )
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    print("🏇 レース一覧取得開始...")
+
+    response = requests.get(
+        url,
+        headers=headers
+    )
+
+    response.raise_for_status()
+    response.encoding = response.apparent_encoding
+
+    soup = BeautifulSoup(
+        response.text,
+        "lxml"
+    )
+
+    races = {
+        5: url
+    }
+
+    for link in soup.find_all("a"):
+
+        href = link.get("href", "")
+
+        img = link.find("img")
+
+        if img is None:
+            continue
+
+        alt = img.get("alt", "")
+
+        match = re.fullmatch(
+            r"(\d+)レース",
+            alt
+        )
+
+        if match is None:
+            continue
+
+        if "accessD.html" not in href:
+            continue
+
+        race_number = int(
+            match.group(1)
+        )
+
+        race_url = urljoin(
+            "https://www.jra.go.jp",
+            href
+        )
+
+        races[race_number] = race_url
+
+    race_urls = []
+
+    for race_number in sorted(races):
+
+        race_url = races[race_number]
+
+        race_urls.append(race_url)
+
+        print(
+            f"{race_number}レース",
+            race_url
+        )
+
+    print()
+    print("🏁 レース数:", len(race_urls))
+
+    return race_urls
+
+
+if __name__ == "__main__":
+    get_races()===== all_races.py =====
+import requests
+from bs4 import BeautifulSoup
+
+from races import get_races
+
+
+def get_all_horses():
+    race_urls = get_races()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    all_horses = []
+
+    print()
+    print("🔥 全レース馬名取得開始")
+    print("====================")
+
+    for number, race_url in enumerate(race_urls, start=1):
+        print()
+        print(f"🏇 {number}/{len(race_urls)} レース取得中...")
+
+        response = requests.get(
+            race_url,
+            headers=headers
+        )
+
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding
+
+        soup = BeautifulSoup(
+            response.text,
+            "lxml"
+        )
+
+        horses = []
+
+        for link in soup.find_all("a"):
+            href = link.get("href", "")
+            text = link.get_text(strip=True)
+
+            if "accessU.html" in href and text:
+                if text not in horses:
+                    horses.append(text)
+
+        print("頭数:", len(horses))
+
+        for horse in horses:
+            print("・", horse)
+
+            all_horses.append({
+                "race": number,
+                "horse": horse
+            })
+
+    print()
+    print("====================")
+    print("🐴 合計馬数:", len(all_horses))
+
+    return all_horses
+
+
+if __name__ == "__main__":
+    get_all_horses()===== all_history.py =====
+import csv
+import time
+import requests
+from bs4 import BeautifulSoup
+
+
+def save_all_history():
+
+    with open(
+        "data/horse_links.csv",
+        "r",
+        encoding="utf-8-sig"
+    ) as f:
+        reader = csv.DictReader(f)
+        horses = list(reader)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    session = requests.Session()
+
+    file_path = "data/all_history.csv"
+
+    columns = [
+        "今回レース",
+        "馬名",
+        "年月日",
+        "場",
+        "レース名",
+        "距離",
+        "馬場",
+        "頭数",
+        "人気",
+        "着順",
+        "騎手",
+        "斤量",
+        "馬体重",
+        "タイム",
+        "着差"
+    ]
+
+    all_history = []
+
+    total = len(horses)
+
+    for i, horse in enumerate(horses, start=1):
+
+        print()
+        print(
+            f"🐴 {i}/{total} "
+            f"{horse['horse']} 取得中..."
+        )
+
+        try:
+
+            response = session.get(
+                horse["url"],
+                headers=headers,
+                timeout=30
+            )
+
+            response.raise_for_status()
+
+            response.encoding = (
+                response.apparent_encoding
+            )
+
+            soup = BeautifulSoup(
+                response.text,
+                "lxml"
+            )
+
+            tables = soup.find_all("table")
+
+            if not tables:
+                print("⚠️ テーブルなし")
+                continue
+
+            history_table = tables[0]
+
+            rows = history_table.find_all("tr")
+
+            count = 0
+
+            for row in rows[1:]:
+
+                cells = row.find_all(
+                    ["th", "td"]
+                )
+
+                data = [
+                    cell.get_text(
+                        " ",
+                        strip=True
+                    )
+                    for cell in cells
+                ]
+
+                if len(data) < 13:
+                    continue
+
+                history = [
+                    horse["race"],
+                    horse["horse"],
+                    data[0],
+                    data[1],
+                    data[2],
+                    data[3],
+                    data[4],
+                    data[5],
+                    data[6],
+                    data[7],
+                    data[8],
+                    data[9],
+                    data[10],
+                    data[11],
+                    data[12]
+                ]
+
+                all_history.append(history)
+
+                count += 1
+
+            print(
+                f"✅ 取得完了 "
+                f"{count}走"
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ エラー:",
+                e
+            )
+
+        time.sleep(1)
+
+    with open(
+        file_path,
+        "w",
+        newline="",
+        encoding="utf-8-sig"
+    ) as f:
+
+        writer = csv.writer(f)
+
+        writer.writerow(columns)
+
+        writer.writerows(all_history)
+
+    print()
+    print("====================")
+    print("🔥 全馬過去走CSV保存完了")
+    print("📁", file_path)
+    print(
+        "📊 データ数:",
+        len(all_history)
+    )
+
+
+if __name__ == "__main__":
+    save_all_history()===== odds.py =====
+import re
+import requests
+import pandas as pd
+
+from bs4 import BeautifulSoup
+from races import get_races
+
+
+def get_odds():
+
+    race_urls = get_races()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    results = []
+
+    print()
+    print("💰 単勝オッズ取得開始")
+    print("====================")
+
+    for race_number, race_url in enumerate(
+        race_urls,
+        start=1
+    ):
+
+        print()
+        print(
+            f"🏇 {race_number}/"
+            f"{len(race_urls)} レース"
+        )
+
+        response = requests.get(
+            race_url,
+            headers=headers
+        )
+
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding
+
+        soup = BeautifulSoup(
+            response.text,
+            "lxml"
+        )
+
+        race_count = 0
+
+        for row in soup.find_all("tr"):
+
+            horse_link = row.find(
+                "a",
+                href=lambda href:
+                href and "accessU.html" in href
+            )
+
+            if horse_link is None:
+                continue
+
+            horse = horse_link.get_text(
+                strip=True
+            )
+
+            row_text = row.get_text(
+                " ",
+                strip=True
+            )
+
+            match = re.search(
+                r"(\d+(?:\.\d+)?)\s*"
+                r"\(\s*(\d+)\s*番人気\s*\)",
+                row_text
+            )
+
+            if match is None:
+                continue
+
+            odds = float(
+                match.group(1)
+            )
+
+            popularity = int(
+                match.group(2)
+            )
+
+            results.append({
+                "レース": race_number,
+                "馬名": horse,
+                "単勝オッズ": odds,
+                "人気": popularity
+            })
+
+            race_count += 1
+
+        print(
+            "取得:",
+            race_count,
+            "頭"
+        )
+
+    result = pd.DataFrame(results)
+
+    result.to_csv(
+        "data/odds.csv",
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    print()
+    print("====================")
+    print("💰 オッズ取得完了")
+    print("頭数:", len(result))
+    print("📁 data/odds.csv")
+
+
+if __name__ == "__main__":
+    get_odds()===== results.py =====
+import requests
+import pandas as pd
+
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+from io import StringIO
+
+from races import get_races
+
+
+def get_results():
+
+    race_urls = get_races()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    results = []
+
+    print()
+    print("🏁 レース結果取得開始")
+    print("====================")
+
+    for race_number, race_url in enumerate(
+        race_urls,
+        start=1
+    ):
+
+        print()
+        print(
+            f"🏇 {race_number}/"
+            f"{len(race_urls)} 結果取得中..."
+        )
+
+        response = requests.get(
+            race_url,
+            headers=headers
+        )
+
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding
+
+        soup = BeautifulSoup(
+            response.text,
+            "lxml"
+        )
+
+        result_url = None
+
+        for link in soup.find_all("a"):
+
+            href = link.get("href", "")
+            text = link.get_text(
+                " ",
+                strip=True
+            )
+
+            if (
+                "レース結果" in text
+                and "accessS.html" in href
+            ):
+
+                result_url = urljoin(
+                    "https://www.jra.go.jp",
+                    href
+                )
+
+                break
+
+        if result_url is None:
+
+            print("⚠️ 結果リンクなし")
+            continue
+
+        result_response = requests.get(
+            result_url,
+            headers=headers
+        )
+
+        result_response.raise_for_status()
+        result_response.encoding = (
+            result_response.apparent_encoding
+        )
+
+        tables = pd.read_html(
+            StringIO(result_response.text)
+        )
+
+        race_result = None
+
+        for table in tables:
+
+            table.columns = [
+                "".join(
+                    str(x)
+                    for x in col
+                    if str(x) != "nan"
+                )
+                if isinstance(col, tuple)
+                else str(col)
+                for col in table.columns
+            ]
+
+            finish_col = next(
+                (
+                    col
+                    for col in table.columns
+                    if "着順" in col
+                ),
+                None
+            )
+
+            horse_col = next(
+                (
+                    col
+                    for col in table.columns
+                    if "馬名" in col
+                ),
+                None
+            )
+
+            if (
+                finish_col is not None
+                and horse_col is not None
+            ):
+
+                race_result = table
+                break
+
+        if race_result is None:
+
+            print("⚠️ 結果表なし")
+            continue
+
+        print(
+            "✅ 取得:",
+            len(race_result),
+            "頭"
+        )
+
+        for _, row in race_result.iterrows():
+
+            results.append({
+                "レース": race_number,
+                "馬名": row[horse_col],
+                "着順": row[finish_col]
+            })
+
+    result = pd.DataFrame(results)
+
+    result.to_csv(
+        "data/results.csv",
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    print()
+    print("====================")
+    print("✅ レース結果保存完了")
+    print("頭数:", len(result))
+    print("📁 data/results.csv")
+
+
+if __name__ == "__main__":
+    get_results()===== analyzer.py =====
+import pandas as pd
+
+
+def analyze_races():
+
+    history = pd.read_csv(
+        "data/all_history.csv",
+        encoding="utf-8-sig"
+    )
+
+    print("📊 過去走データ:", len(history))
+
+    history["人気"] = pd.to_numeric(
+        history["人気"],
+        errors="coerce"
+    )
+
+    history["着順"] = pd.to_numeric(
+        history["着順"],
+        errors="coerce"
+    )
+
+    history["斤量"] = pd.to_numeric(
+        history["斤量"],
+        errors="coerce"
+    )
+
+    results = []
+
+    grouped = history.groupby(
+        ["今回レース", "馬名"]
+    )
+
+    for (race, horse), data in grouped:
+
+        data = data.head(5)
+
+        scores = []
+
+        for _, row in data.iterrows():
+
+            score = 0
+
+            finish = row["着順"]
+            popularity = row["人気"]
+
+            # 着順評価
+            if pd.notna(finish):
+
+                if finish == 1:
+                    score += 30
+
+                elif finish == 2:
+                    score += 24
+
+                elif finish == 3:
+                    score += 20
+
+                elif finish <= 5:
+                    score += 14
+
+                elif finish <= 10:
+                    score += 7
+
+            # 人気以上に走った馬
+            if (
+                pd.notna(finish)
+                and pd.notna(popularity)
+            ):
+
+                score += (
+                    popularity - finish
+                ) * 2
+
+            scores.append(score)
+
+        if scores:
+
+            weights = [
+                1.0,
+                0.8,
+                0.6,
+                0.4,
+                0.2
+            ]
+
+            weighted_score = 0
+            weight_total = 0
+
+            for score, weight in zip(
+                scores,
+                weights
+            ):
+
+                weighted_score += score * weight
+                weight_total += weight
+
+            areru_score = (
+                weighted_score / weight_total
+            )
+
+        else:
+
+            areru_score = 0
+
+        results.append({
+            "レース": race,
+            "馬名": horse,
+            "AREru指数": round(
+                areru_score,
+                2
+            )
+        })
+
+    result = pd.DataFrame(results)
+
+    result["順位"] = (
+        result.groupby("レース")
+        ["AREru指数"]
+        .rank(
+            ascending=False,
+            method="first"
+        )
+        .astype(int)
+    )
+
+    result = result.sort_values(
+        ["レース", "順位"]
+    )
+
+    for race, race_data in result.groupby(
+        "レース"
+    ):
+
+        print()
+        print("====================")
+        print("🏇", race)
+        print("====================")
+
+        for _, row in race_data.iterrows():
+
+            print(
+                f"{row['順位']}位 "
+                f"{row['馬名']} "
+                f"AREru指数 "
+                f"{row['AREru指数']}"
+            )
+
+    result.to_csv(
+        "data/areru_ranking.csv",
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    print()
+    print("✅ AREruランキング保存完了")
+    print("📁 data/areru_ranking.csv")
+
+
+if __name__ == "__main__":
+    analyze_races()===== predict.py =====
+import pandas as pd
+
+
+def predict():
+
+    areru = pd.read_csv(
+        "data/areru_ranking.csv",
+        encoding="utf-8-sig"
+    )
+
+    judgement = pd.read_csv(
+        "data/race_judgement.csv",
+        encoding="utf-8-sig"
+    )
+
+    odds = pd.read_csv(
+        "data/odds.csv",
+        encoding="utf-8-sig"
+    )
+
+    # 数値化
+    areru["レース"] = pd.to_numeric(
+        areru["レース"],
+        errors="coerce"
+    )
+
+    odds["レース"] = pd.to_numeric(
+        odds["レース"],
+        errors="coerce"
+    )
+
+    odds["単勝オッズ"] = pd.to_numeric(
+        odds["単勝オッズ"],
+        errors="coerce"
+    )
+
+    odds["人気"] = pd.to_numeric(
+        odds["人気"],
+        errors="coerce"
+    )
+
+    # AREru指数 + オッズ合体
+    merged = pd.merge(
+        areru,
+        odds,
+        on=["レース", "馬名"],
+        how="left"
+    )
+
+    predictions = []
+
+    for race, race_data in merged.groupby("レース"):
+
+        race_data = race_data.sort_values(
+            "AREru指数",
+            ascending=False
+        )
+
+        judge_data = judgement[
+            judgement["レース"] == race
+        ]
+
+        if len(judge_data) > 0:
+            judge = judge_data.iloc[0]
+
+            areru_level = judge["荒れ度"]
+            judge_text = judge["判定"]
+
+        else:
+            areru_level = 0
+            judge_text = "判定なし"
+
+        # 本命候補
+        main_candidates = race_data[
+            race_data["人気"] <= 5
+        ]
+
+        # 穴候補
+        hole_candidates = race_data[
+            (race_data["人気"] >= 6)
+            & (race_data["単勝オッズ"] >= 10)
+        ]
+
+        if len(main_candidates) > 0:
+            main = main_candidates.iloc[0]
+        else:
+            main = race_data.iloc[0]
+
+        holes = hole_candidates.head(3)
+
+        print()
+        print("==============================")
+        print(f"🏇 レース {int(race)}")
+        print("==============================")
+        print(f"🔥 荒れ度: {areru_level}")
+        print(f"判定: {judge_text}")
+
+        print()
+        print(
+            f"◎ 本命 {main['馬名']} "
+            f"AREru {main['AREru指数']} "
+            f"/ {main['単勝オッズ']}倍 "
+            f"/ {main['人気']}人気"
+        )
+
+        print()
+        print("💣 穴候補")
+
+        hole_names = []
+
+        for _, horse in holes.iterrows():
+
+            print(
+                f"・{horse['馬名']} "
+                f"AREru {horse['AREru指数']} "
+                f"/ {horse['単勝オッズ']}倍 "
+                f"/ {horse['人気']}人気"
+            )
+
+            hole_names.append(
+                horse["馬名"]
+            )
+
+        predictions.append({
+            "レース": race,
+            "荒れ度": areru_level,
+            "判定": judge_text,
+            "本命": main["馬名"],
+            "本命AREru指数": main["AREru指数"],
+            "本命オッズ": main["単勝オッズ"],
+            "穴候補": " / ".join(hole_names)
+        })
+
+    result = pd.DataFrame(predictions)
+
+    result.to_csv(
+        "data/predictions.csv",
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    print()
+    print("==============================")
+    print("✅ 最終予想作成完了")
+    print("📁 data/predictions.csv")
+
+
+if __name__ == "__main__":
+    predict()===== verify.py =====
+import pandas as pd
+
+
+def verify():
+
+    predictions = pd.read_csv(
+        "data/predictions.csv",
+        encoding="utf-8-sig"
+    )
+
+    results = pd.read_csv(
+        "data/results.csv",
+        encoding="utf-8-sig"
+    )
+
+    predictions["レース"] = pd.to_numeric(
+        predictions["レース"],
+        errors="coerce"
+    )
+
+    results["レース"] = pd.to_numeric(
+        results["レース"],
+        errors="coerce"
+    )
+
+    results["着順"] = pd.to_numeric(
+        results["着順"],
+        errors="coerce"
+    )
+
+    verification = []
+
+    for _, pred in predictions.iterrows():
+
+        race = pred["レース"]
+        main_horse = str(pred["本命"]).strip()
+
+        race_results = results[
+            results["レース"] == race
+        ]
+
+        main_result = race_results[
+            race_results["馬名"]
+            .astype(str)
+            .str.strip()
+            == main_horse
+        ]
+
+        if len(main_result) > 0:
+            main_finish = main_result.iloc[0]["着順"]
+        else:
+            main_finish = None
+
+        hole_text = str(pred["穴候補"])
+
+        hole_horses = [
+            horse.strip()
+            for horse in hole_text.split("/")
+            if horse.strip()
+        ]
+
+        hole_finishes = []
+        top3_holes = 0
+
+        for horse in hole_horses:
+
+            horse_result = race_results[
+                race_results["馬名"]
+                .astype(str)
+                .str.strip()
+                == horse
+            ]
+
+            if len(horse_result) > 0:
+
+                finish = horse_result.iloc[0]["着順"]
+
+                hole_finishes.append(
+                    f"{horse}:{int(finish)}着"
+                )
+
+                if finish <= 3:
+                    top3_holes += 1
+
+        verification.append({
+            "レース": race,
+            "荒れ度": pred["荒れ度"],
+            "判定": pred["判定"],
+            "本命": main_horse,
+            "本命着順": main_finish,
+            "本命TOP3": (
+                main_finish <= 3
+                if pd.notna(main_finish)
+                else False
+            ),
+            "穴候補結果": " / ".join(hole_finishes),
+            "穴TOP3頭数": top3_holes
+        })
+
+    result = pd.DataFrame(verification)
+
+    print()
+    print("===== AREru検証結果 =====")
+
+    for _, row in result.iterrows():
+
+        print()
+        print(f"🏇 {int(row['レース'])}R")
+
+        print(
+            f"荒れ度 {row['荒れ度']} "
+            f"{row['判定']}"
+        )
+
+        print(
+            f"本命 {row['本命']} "
+            f"→ {row['本命着順']}着"
+        )
+
+        print(
+            f"穴結果 {row['穴候補結果']}"
+        )
+
+        print(
+            f"穴TOP3頭数 {row['穴TOP3頭数']}"
+        )
+
+    total = len(result)
+
+    main_hits = result["本命TOP3"].sum()
+
+    hole_hits = (
+        result["穴TOP3頭数"] > 0
+    ).sum()
+
+    print()
+    print("====================")
+    print("📊 総合成績")
+    print("====================")
+
+    print(
+        "対象レース:",
+        total
+    )
+
+    print(
+        "本命3着内:",
+        main_hits,
+        "/",
+        total
+    )
+
+    print(
+        "穴候補3着内あり:",
+        hole_hits,
+        "/",
+        total
+    )
+
+    result.to_csv(
+        "data/verification.csv",
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    print()
+    print("✅ 検証保存完了")
+    print("📁 data/verification.csv")
+
+
+if __name__ == "__main__":
+    verify()

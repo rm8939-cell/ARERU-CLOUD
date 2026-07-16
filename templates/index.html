@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARERU.EXE</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--line:#e1e7eb;--text:#17212b;--muted:#6f7b87;--red:#e53935;--gold:#9a6b00;--green:#176b45;--yellow:#d9a600;--orange:#ef8b25;--brand:#176b45;--soft:#e9f5ef} body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+.wrap{max-width:760px;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32)}
+.eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:30px;font-weight:800;letter-spacing:.06em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:5px;font-size:13px}
+.toolbar{display:flex;gap:8px;padding:16px 0}.toolbar select,.toolbar button{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1}.toolbar button{font-weight:700}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
+.targets{border:1px solid #3a3032;background:#fff;border-radius:16px;overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid #30262a;color:#ddd}
+.target-row{display:grid;grid-template-columns:38px 1fr 72px;align-items:center;text-decoration:none;color:var(--text);padding:13px 14px;border-bottom:1px solid #251f22}.target-row:last-child{border-bottom:0}.rank{font-weight:800;color:var(--red)}.target-name{font-weight:750}.target-name small{display:block;color:var(--muted);font-weight:400;margin-top:4px}.target-score{text-align:right;font-size:20px;font-weight:800}.target-score small{display:block;font-weight:400}
+.race{scroll-margin-top:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:16px;margin:0 0 18px;overflow:hidden}.race.caution{border-left-color:var(--yellow)}.race.wave{border-left-color:var(--orange)}.race.storm{border-left-color:var(--red)}
+.race-head{display:flex;justify-content:space-between;align-items:flex-start;padding:17px 17px 12px}.venue{font-size:19px;font-weight:800}.venue small{display:block;margin-top:5px}.heat{text-align:right;font-size:25px;font-weight:850}.heat small{display:block}.betbar{display:flex;justify-content:space-between;padding:10px 17px;background:var(--soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-weight:750;font-size:13px}
+.box,.section{padding:16px 17px;border-bottom:1px solid var(--line)}.horse{font-size:20px;font-weight:800;margin:7px 0 12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.metric{background:#f8fafb;border:1px solid #20242a;border-radius:10px;padding:10px}.metric b{display:block;font-size:18px}.metric small{color:var(--muted);font-size:9px}.reason{color:#b7bcc5;font-size:12px;line-height:1.6;margin-top:10px}
+.section-title{font-weight:800;margin-bottom:12px}.gold{color:var(--gold)}.marks{display:grid;gap:8px}.mark{display:flex;gap:10px;align-items:flex-start}.mark b{width:22px}.mark span{font-weight:700}.mark small{display:block;color:var(--muted);font-weight:400;margin-top:3px}
+.strategy{background:var(--soft);border:1px solid #2b3037;border-radius:12px;padding:13px;margin-bottom:12px}.strategy strong{font-size:18px;color:var(--gold)}.strategy p{color:#b7bcc5;font-size:12px;line-height:1.65;margin:7px 0 0}
+.betplan{display:grid;gap:10px}.ticket{background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:12px}.ticket-head{display:flex;justify-content:space-between;font-weight:800}.ticket-score{color:var(--gold)}.ticket ul{padding:0;margin:10px 0 0;list-style:none}.ticket li{padding:7px 0;border-top:1px solid #1e2228;font-size:13px;line-height:1.5}.ticket .compress{color:var(--muted);font-size:11px;margin-top:8px}.odds-wait{margin-top:12px;border:1px dashed #4a4140;border-radius:10px;padding:11px;color:#c7b7a9;font-size:12px;line-height:1.6}
+.danger{color:#ff8090}.beta{padding:13px 17px;color:#747b86;font-size:10px;line-height:1.6}.toplink{text-align:right;padding:0 17px 16px}.toplink a{color:#b7bcc5;font-size:12px;text-decoration:none}
+
+.source-tabs,.mode-tabs{display:flex;gap:8px}.source-tabs{padding:16px 0 8px}.mode-tabs{padding:0 0 4px}
+.source-tabs a,.mode-tabs a{flex:1;text-align:center;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:#0d0f12;border-radius:12px;padding:12px;font-weight:800;font-size:13px}
+.source-tabs a.active{color:var(--text);border-color:#ff334f;background:linear-gradient(135deg,#17191d,#2a1016);box-shadow:inset 0 -2px 0 var(--red)}
+.mode-tabs a{padding:9px;font-size:12px}.mode-tabs a.active{color:var(--gold);border-color:#4b4030}
+.empty-state,.result-summary{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:20px;margin:12px 0 20px}
+.empty-state h2,.result-summary h2{font-size:17px;margin:7px 0}.empty-state p,.result-summary p{color:var(--muted);font-size:12px;line-height:1.7}
+.empty-kicker{letter-spacing:.15em;color:var(--red);font-size:10px;font-weight:800}
+.result-grid{display:grid;gap:8px}.result-row{display:grid;grid-template-columns:30px 1fr 70px;align-items:center;background:#f8fafb;border:1px solid #20242a;border-radius:10px;padding:11px}
+.result-row b{color:var(--red)}.result-row span{font-weight:700}.result-row strong{text-align:right;color:var(--gold)}
+.review{color:#c4c8cf;font-size:13px;line-height:1.8;background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:13px}
+</style></head>
+<body class="{{'nar' if source=='nar' else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{{"LOCAL RACING AI / 地方専用" if source=="nar" else "CENTRAL RACING AI / JRA中央"}}</div></div></header>
+<main class="wrap">
+<nav class="source-tabs">
+<a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA 中央</a>
+<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}&date={{selected_date}}">NAR 地方</a>
+</nav>
+<nav class="mode-tabs">
+<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}">予想分析</a>
+<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}">結果検証</a><a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
+</nav>
+<form class="toolbar"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button>表示</button></form>
+<div class="message">{{message}}</div>
+{% if source=='nar' %}
+<section class="empty-state"><div class="empty-kicker">NAR LOCAL RACING</div><h2>地方競馬エンジン 接続準備中</h2><p>JRA版を流用せず、競馬場別の地方専用評価へ分離します。タブの土台は実装済みです。</p></section>
+{% elif mode=='analysis' %}
+<section class="result-summary"><h2>AI STATUS｜分析ダッシュボード</h2><p>架空の回収率は出さず、現在保存されている予想・照合データだけを集計します。</p></section>
+<section class="targets"><h2>解析状況</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px"><div class="metric"><b>{{analysis.total}}R</b><small>予想レース</small></div><div class="metric"><b>{{analysis.verified}}R</b><small>結果照合済み</small></div></div></section>
+<section class="targets"><h2>勝負ランク分布</h2>{% for x in analysis.ranks %}<div class="target-row"><div class="rank">{{x.label}}</div><div class="target-name">ランク {{x.label}}</div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>
+<section class="targets"><h2>買い期待度 分布</h2>{% for x in analysis.bands %}<div class="target-row"><div class="rank">●</div><div class="target-name">{{x.label}}</div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>
+<section class="targets"><h2>競馬場別 解析数</h2>{% for x in analysis.venues %}<div class="target-row"><div class="rank">▰</div><div class="target-name">{{x.label}}</div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>
+<div class="message">回収率・券種別的中率・収支推移は実オッズと払戻の照合後だけ表示します。</div>
+{% elif mode=='result' %}
+{% if races %}
+<section class="result-summary"><h2>結果検証｜予想と実着順の照合</h2><p>◎○▲△☆を消さずに、確定着順を横に並べて検証します。保存済み結果があるレースだけ着順を表示します。</p></section>
+{% for r in races %}<section class="race result-card">
+<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>{{r['勝負ランク']}}｜{{r['BET判定']}}</small></div><div class="heat">{{r['BET期待値']}}<small>予想時 買い期待度</small></div></div>
+<div class="section"><div class="section-title">予想印 × 実着順</div><div class="result-grid">{% for x in r['結果一覧'] %}<div class="result-row"><b>{{x['印']}}</b><span>{{x['馬名']}}</span><strong>{{x['着順']}}</strong></div>{% endfor %}</div></div>
+<div class="section"><div class="section-title gold">AI振り返り</div><div class="review">{{r['AI振り返り']}}</div></div>
+</section>{% endfor %}
+{% else %}<section class="empty-state"><h2>検証データなし</h2></section>{% endif %}
+{% else %}
+{% if targets %}<section class="targets"><h2>本日の買い候補｜S・Aランクのみ</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}"><div class="rank">{{t['勝負ランク']}}</div><div class="target-name">{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
+{% for r in races %}<section id="race-{{r['race_id']|urlencode}}" class="race {{r['荒れクラス']}}">
+<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>20,000回 仮想レース</small></div><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div>
+<div class="betbar"><span>{{r['勝負ランク']}}｜{{r['BET判定']}}</span><span>買い期待度 {{r['BET期待値']}}</span></div>
+<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍 · {{r['本命理由']}}</div></div>
+<div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
+<div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r['人気馬危険']}}</div><div class="reason">危険度 {{r['危険度']}} · {{r['危険理由']}}</div></div>
+<div class="section"><div class="section-title gold">AI馬券戦略</div><div class="strategy"><div class="label">このレースの主戦</div><strong>{{r['推奨券種']}}</strong><p>{{r['馬券戦略理由']}}</p></div>
+<div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r[kind+'判定']}}</span><span class="ticket-score">適性 {{r[kind+'評価']}}</span></div><ul>{% for x in r[kind+'買い目一覧'] %}<li>{{x}}</li>{% endfor %}</ul><div class="compress">{{r[kind+'圧縮']}}</div></div>{% endfor %}</div>
+<div class="odds-wait"><b>合成オッズ・期待回収率</b><br>券種別の当日オッズ接続後に算出。数字を作らず、実オッズが取れた時だけ「合成オッズ・的中期待・期待回収率・妙味」を表示します。</div></div>
+<div class="beta">β版 · 実着順は予想入力に未使用 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div></section>{% endfor %}
+{% endif %}
+</main></body></html>

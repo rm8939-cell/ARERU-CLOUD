@@ -1,0 +1,248 @@
+===== horse_links.py =====
+import csv
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+
+from races import get_races
+
+
+def save_horse_links():
+    race_urls = get_races()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    horse_data = []
+
+    print()
+    print("🔗 馬詳細リンク取得開始")
+    print("====================")
+
+    for number, race_url in enumerate(race_urls, start=1):
+        print(f"🏇 {number}/{len(race_urls)} レース取得中...")
+
+        response = requests.get(
+            race_url,
+            headers=headers
+        )
+
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding
+
+        soup = BeautifulSoup(
+            response.text,
+            "lxml"
+        )
+
+        for link in soup.find_all("a"):
+            href = link.get("href", "")
+            horse_name = link.get_text(strip=True)
+
+            if "accessU.html" in href and horse_name:
+                horse_url = urljoin(
+                    "https://www.jra.go.jp",
+                    href
+                )
+
+                horse_data.append({
+                    "race": number,
+                    "horse": horse_name,
+                    "url": horse_url
+                })
+
+    file_path = "data/horse_links.csv"
+
+    with open(
+        file_path,
+        "w",
+        newline="",
+        encoding="utf-8-sig"
+    ) as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["race", "horse", "url"]
+        )
+
+        writer.writeheader()
+        writer.writerows(horse_data)
+
+    print()
+    print("====================")
+    print("✅ 馬リンクCSV保存完了")
+    print("📁", file_path)
+    print("🐴 保存件数:", len(horse_data))
+
+
+if __name__ == "__main__":
+    save_horse_links()===== race_judge.py =====
+import pandas as pd
+
+
+def judge_races():
+
+    df = pd.read_csv(
+        "data/areru_ranking.csv",
+        encoding="utf-8-sig"
+    )
+
+    results = []
+
+    for race, race_data in df.groupby("レース"):
+
+        race_data = race_data.sort_values(
+            "AREru指数",
+            ascending=False
+        ).copy()
+
+        scores = race_data["AREru指数"]
+
+        horse_count = len(race_data)
+
+        average_score = scores.mean()
+
+        high_score_horses = (
+            scores >= 15
+        ).sum()
+
+        close_horses = (
+            scores >= scores.max() * 0.7
+        ).sum()
+
+        race_score = 0
+
+        race_score += average_score * 2
+        race_score += high_score_horses * 3
+        race_score += close_horses * 2
+        race_score += horse_count * 0.5
+
+        if race_score >= 55:
+            judge = "🔥 大波乱警戒"
+
+        elif race_score >= 40:
+            judge = "⚠️ 波乱注意"
+
+        else:
+            judge = "🟢 比較的平穏"
+
+        top3 = race_data.head(3)
+
+        hole_horses = " / ".join(
+            top3["馬名"].tolist()
+        )
+
+        results.append({
+            "レース": race,
+            "荒れ度": round(race_score, 2),
+            "判定": judge,
+            "穴候補TOP3": hole_horses
+        })
+
+    result = pd.DataFrame(results)
+
+    result = result.sort_values(
+        "荒れ度",
+        ascending=False
+    )
+
+    print()
+    print("========================")
+    print("🔥 AREru 波乱レース判定")
+    print("========================")
+
+    for rank, (_, row) in enumerate(
+        result.iterrows(),
+        start=1
+    ):
+
+        print()
+        print(
+            f"{rank}位｜"
+            f"レース {row['レース']}"
+        )
+
+        print(
+            f"荒れ度: {row['荒れ度']}"
+        )
+
+        print(
+            f"判定: {row['判定']}"
+        )
+
+        print(
+            f"🐴 候補: {row['穴候補TOP3']}"
+        )
+
+    result.to_csv(
+        "data/race_judgement.csv",
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    print()
+    print("========================")
+    print("✅ 波乱レース判定保存完了")
+    print("📁 data/race_judgement.csv")
+
+
+if __name__ == "__main__":
+    judge_races()===== save_horses.py =====
+import csv
+
+from all_races import get_all_horses
+
+
+def save_horses():
+    horses = get_all_horses()
+
+    file_path = "data/all_horses.csv"
+
+    with open(
+        file_path,
+        "w",
+        newline="",
+        encoding="utf-8-sig"
+    ) as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["race", "horse"]
+        )
+
+        writer.writeheader()
+        writer.writerows(horses)
+
+    print()
+    print("====================")
+    print("✅ CSV保存完了")
+    print("📁", file_path)
+    print("🐴 保存件数:", len(horses))
+
+
+if __name__ == "__main__":
+    save_horses()===== main.py =====
+from race import get_horses
+from database import save_csv
+from scraper import get_jra
+from analyzer import analyze
+
+
+def main():
+    print("========================")
+    print("🏇 ARERU.EXE")
+    print("AI競馬異常研究所")
+    print("Version 0.1")
+    print("========================")
+    print()
+
+    get_jra()
+    get_horses()
+    data = [
+    ["馬名", "人気", "オッズ"],
+    ["テストホース", 1, 2.5]]
+
+    save_csv("test.csv", data)
+    analyze()
+
+if __name__ == "__main__":
+    main()

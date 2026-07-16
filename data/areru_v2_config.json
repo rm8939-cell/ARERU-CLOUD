@@ -1,0 +1,6 @@
+{
+  "version": "2.0",
+  "weights": {"performance": 0.28, "upset": 0.24, "consistency": 0.12, "trend": 0.12, "value": 0.14, "context": 0.10},
+  "status": "baseline_ready_for_optimize_v2",
+  "note": "実着順は評価専用。指数入力には未使用。"
+}

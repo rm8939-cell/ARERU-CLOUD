@@ -1,0 +1,138 @@
+import pandas as pd
+
+
+def analyze_races():
+    history = pd.read_csv("data/all_history.csv", encoding="utf-8-sig")
+    links = pd.read_csv("data/horse_links.csv", encoding="utf-8-sig")
+    odds = pd.read_csv("data/odds.csv", encoding="utf-8-sig")
+
+    print("📊 過去走データ:", len(history))
+
+    required_history = {"今回レース", "馬名", "人気", "着順"}
+    missing = required_history - set(history.columns)
+    if missing:
+        raise ValueError(f"all_history.csv 必須列不足: {sorted(missing)}")
+
+    link_cols = {"race_id", "race_number", "horse"}
+    missing_links = link_cols - set(links.columns)
+    if missing_links:
+        raise ValueError(f"horse_links.csv 必須列不足: {sorted(missing_links)}")
+
+    odds_cols = {"race_id", "馬名"}
+    missing_odds = odds_cols - set(odds.columns)
+    if missing_odds:
+        raise ValueError(f"odds.csv 必須列不足: {sorted(missing_odds)}")
+
+    # オッズに存在する馬 = 現在の出走馬として扱う。
+    # 出馬表の別枠リンク（取消・除外等）が horse_links に混ざっても指数対象にしない。
+    current_runners = odds[["race_id", "馬名"]].drop_duplicates()
+
+    links = links[["race_id", "race_number", "horse"]].drop_duplicates()
+    links = links.merge(
+        current_runners,
+        left_on=["race_id", "horse"],
+        right_on=["race_id", "馬名"],
+        how="inner",
+    ).drop(columns=["馬名"])
+
+    links["race_number"] = pd.to_numeric(links["race_number"], errors="coerce")
+    history["今回レース"] = pd.to_numeric(history["今回レース"], errors="coerce")
+
+    history = history.merge(
+        links,
+        left_on=["今回レース", "馬名"],
+        right_on=["race_number", "horse"],
+        how="inner",
+    )
+
+    history["人気"] = pd.to_numeric(history["人気"], errors="coerce")
+    history["着順"] = pd.to_numeric(history["着順"], errors="coerce")
+
+    if "年月日" in history.columns:
+        history["解析日付"] = pd.to_datetime(
+            history["年月日"].astype(str).str.extract(
+                r"(\d{4}年\d{1,2}月\d{1,2}日)", expand=False
+            ),
+            format="%Y年%m月%d日",
+            errors="coerce",
+        )
+        history = history.sort_values("解析日付", ascending=False)
+
+    results = []
+    weights = [1.0, 0.9, 0.7, 0.5, 0.3]
+
+    # 現在の出走馬を基準に全頭作成。過去走0件の馬も指数0で残す。
+    runners = links[["race_id", "race_number", "horse"]].drop_duplicates()
+
+    for _, runner in runners.iterrows():
+        race_id = runner["race_id"]
+        race = runner["race_number"]
+        horse = runner["horse"]
+
+        data = history[
+            (history["race_id"] == race_id)
+            & (history["馬名"] == horse)
+        ].head(5)
+
+        scores = []
+        for _, row in data.iterrows():
+            score = 0
+            finish = row["着順"]
+            popularity = row["人気"]
+
+            if pd.notna(finish):
+                if finish == 1:
+                    score += 30
+                elif finish == 2:
+                    score += 25
+                elif finish == 3:
+                    score += 10
+                elif finish <= 5:
+                    score += 5
+
+            scores.append(score)
+
+        if scores:
+            used_weights = weights[:len(scores)]
+            areru_score = sum(
+                score * weight for score, weight in zip(scores, used_weights)
+            ) / sum(used_weights)
+        else:
+            areru_score = 0
+
+        results.append({
+            "race_id": race_id,
+            "レース": int(race) if pd.notna(race) else race,
+            "馬名": horse,
+            "AREru指数": round(areru_score, 2),
+        })
+
+    result = pd.DataFrame(results)
+    if result.empty:
+        raise ValueError("AREru指数を計算できる出走馬が0頭です")
+
+    result["順位"] = (
+        result.groupby("race_id")["AREru指数"]
+        .rank(ascending=False, method="first")
+        .astype(int)
+    )
+    result = result.sort_values(["レース", "順位"])
+
+    print("🐴 オッズ確認済み出走馬:", len(result))
+
+    for race, race_data in result.groupby("レース"):
+        print()
+        print("====================")
+        print("🏇", f"{race}R")
+        print("====================")
+        for _, row in race_data.iterrows():
+            print(f"{row['順位']}位 {row['馬名']} AREru指数 {row['AREru指数']}")
+
+    result.to_csv("data/areru_ranking.csv", index=False, encoding="utf-8-sig")
+    print()
+    print("✅ AREruランキング保存完了")
+    print("📁 data/areru_ranking.csv")
+
+
+if __name__ == "__main__":
+    analyze_races()
