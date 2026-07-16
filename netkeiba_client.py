@@ -13,6 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 
 BASE = "https://race.netkeiba.com"
+NAR_BASE = "https://nar.netkeiba.com"
 DB = "https://db.netkeiba.com"
 CACHE = Path("data/cache/horse_results")
 CACHE.mkdir(parents=True, exist_ok=True)
@@ -201,10 +202,37 @@ class NetkeibaClient:
 
     def fetch_results(self, race_id: str) -> dict[str, str]:
         """馬名 -> 着順"""
-        url = f"{BASE}/race/result.html?race_id={race_id}"
+        detail = self.fetch_result_detail(race_id)
+        return {r["馬名"]: r["着順"] for r in detail.get("horses", []) if r.get("着順")}
+
+    def fetch_result_detail(self, race_id: str, source: str = "jra") -> dict:
+        """着順・人気・確定オッズ・払戻を一括取得。
+
+        戻り値:
+          {
+            race_id, date, venue, race_no, source,
+            horses: [{馬名, 馬番, 着順, 人気, 確定オッズ}, ...],
+            payouts: [{bet_type, combination, payout, ninki}, ...],
+          }
+        """
+        base = NAR_BASE if source == "nar" else BASE
+        url = f"{base}/race/result.html?race_id={race_id}"
         soup = self._get(url)
-        out = {}
-        for tr in soup.select("tr.HorseList"):
+        meta = self.parse_race_id(race_id)
+        title = soup.title.get_text(" ", strip=True) if soup.title else ""
+        dm = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", title)
+        race_date = (
+            f"{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None
+        )
+
+        horses = []
+        # 走行データ等の別表にも HorseList があるため、結果表だけを対象にする
+        rows = soup.select("table.RaceTable01 tr.HorseList") or soup.select("tr.HorseList")
+        for tr in rows:
+            table = tr.find_parent("table")
+            table_cls = " ".join((table.get("class") if table else None) or [])
+            if table_cls and "RaceTable01" not in table_cls:
+                continue
             tds = tr.find_all("td")
             if len(tds) < 4:
                 continue
@@ -213,9 +241,40 @@ class NetkeibaClient:
             if not a:
                 continue
             name = a.get_text(strip=True)
-            if finish.isdigit():
-                out[name] = finish
-        return out
+            # 標準列: 着順, 枠, 馬番, 馬名, ...
+            ban = tds[2].get_text(strip=True) if len(tds) > 2 else ""
+            if not str(ban).isdigit():
+                for td in tds:
+                    cls = " ".join(td.get("class") or [])
+                    if "Txt_C" in cls and "Num" in cls:
+                        cand = td.get_text(strip=True)
+                        if cand.isdigit():
+                            ban = cand
+                            break
+            # 人気・単勝オッズは Odds クラスの並び（人気 → オッズ）
+            odds_cells = [td.get_text(strip=True) for td in tds if "Odds" in " ".join(td.get("class") or [])]
+            ninki = _num_or_blank(odds_cells[0]) if odds_cells else ""
+            kakutei = _parse_odds_text(odds_cells[1]) if len(odds_cells) > 1 else ""
+            if not finish.isdigit() or not str(ban).isdigit():
+                continue
+            horses.append({
+                "馬名": name,
+                "馬番": str(int(ban)),
+                "着順": finish,
+                "人気": ninki,
+                "確定オッズ": kakutei,
+            })
+
+        payouts = _parse_payout_tables(soup)
+        return {
+            "race_id": str(race_id),
+            "date": race_date,
+            "venue": meta.get("venue") or "開催地不明",
+            "race_no": meta.get("race_no"),
+            "source": source,
+            "horses": horses,
+            "payouts": payouts,
+        }
 
     def fetch_horse_history(self, horse_id: str, use_cache: bool = True) -> list[dict]:
         cache_path = CACHE / f"{horse_id}.json"
@@ -294,6 +353,96 @@ def _parse_odds_text(v) -> str:
         return ""
     m = re.search(r"\d+(?:\.\d+)?", s)
     return m.group(0) if m else ""
+
+
+def _parse_yen(text: str) -> Optional[int]:
+    s = str(text).replace(",", "").replace("円", "").strip()
+    m = re.search(r"\d+", s)
+    return int(m.group(0)) if m else None
+
+
+def _normalize_bet_type(label: str) -> str:
+    t = str(label).strip().replace("３", "3").replace("　", "")
+    mapping = {
+        "単勝": "単勝",
+        "複勝": "複勝",
+        "枠連": "枠連",
+        "馬連": "馬連",
+        "ワイド": "ワイド",
+        "馬単": "馬単",
+        "3連複": "三連複",
+        "三連複": "三連複",
+        "3連単": "三連単",
+        "三連単": "三連単",
+    }
+    return mapping.get(t, t)
+
+
+def _parse_payout_tables(soup: BeautifulSoup) -> list[dict]:
+    """Payout_Detail_Table から券種別払戻を抽出。"""
+    out: list[dict] = []
+    for table in soup.select("table.Payout_Detail_Table"):
+        for tr in table.select("tr"):
+            th = tr.select_one("th")
+            if not th:
+                continue
+            bet_type = _normalize_bet_type(th.get_text(strip=True))
+            result_td = tr.select_one("td.Result")
+            payout_td = tr.select_one("td.Payout")
+            ninki_td = tr.select_one("td.Ninki")
+            if result_td is None or payout_td is None:
+                continue
+
+            combos: list[str] = []
+            for ul in result_td.select("ul"):
+                nums = re.findall(r"\d+", ul.get_text(" ", strip=True))
+                if nums:
+                    combos.append("-".join(nums))
+            if not combos:
+                # 単勝/複勝は div 並び
+                nums = [
+                    d.get_text(strip=True)
+                    for d in result_td.select("div")
+                    if d.get_text(strip=True).isdigit()
+                ]
+                if bet_type == "複勝":
+                    combos = nums[:]  # 各馬番を個別扱い
+                elif nums:
+                    combos = ["-".join(nums)]
+
+            pays = [_parse_yen(x) for x in re.findall(r"[\d,]+円", payout_td.get_text(" ", strip=True))]
+            pays = [p for p in pays if p is not None]
+            ninkis = re.findall(r"\d+", ninki_td.get_text(" ", strip=True) if ninki_td else "")
+
+            if bet_type == "複勝":
+                for i, combo in enumerate(combos):
+                    out.append({
+                        "bet_type": bet_type,
+                        "combination": str(combo),
+                        "payout": pays[i] if i < len(pays) else (pays[0] if pays else None),
+                        "ninki": ninkis[i] if i < len(ninkis) else "",
+                    })
+                continue
+
+            if bet_type == "ワイド" and len(combos) == len(pays) and combos:
+                for i, combo in enumerate(combos):
+                    out.append({
+                        "bet_type": bet_type,
+                        "combination": combo,
+                        "payout": pays[i],
+                        "ninki": ninkis[i] if i < len(ninkis) else "",
+                    })
+                continue
+
+            # 単一組合せ券種
+            if combos:
+                out.append({
+                    "bet_type": bet_type,
+                    "combination": combos[0],
+                    "payout": pays[0] if pays else None,
+                    "ninki": ninkis[0] if ninkis else "",
+                })
+    return out
 
 
 def venue_from_netkeiba_id(race_id: str) -> str:
