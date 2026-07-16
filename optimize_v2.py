@@ -3,7 +3,8 @@ import json, random
 import numpy as np, pandas as pd
 from areru_engine import build_predictions, parse_date, DEFAULT_WEIGHTS
 DATA=Path('data'); random.seed(42)
-r=pd.read_csv(DATA/'score_test_data.csv'); h=pd.read_csv(DATA/'all_history.csv')
+runners_path=DATA/'runners.csv' if (DATA/'runners.csv').exists() else DATA/'score_test_data.csv'
+r=pd.read_csv(runners_path); h=pd.read_csv(DATA/'all_history.csv')
 dates=sorted(parse_date(r['日付']).dropna().dt.strftime('%Y-%m-%d').unique())
 if len(dates)<2: raise SystemExit('検証できる開催日が不足')
 train=dates[:-1]; holdout=dates[-1:]
