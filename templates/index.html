@@ -3,8 +3,8 @@
 <title>ARERU.EXE</title>
 <style>
 :root{--bg:#f4f6f8;--card:#fff;--line:#e1e7eb;--text:#17212b;--muted:#6f7b87;--red:#e53935;--gold:#9a6b00;--green:#176b45;--yellow:#d9a600;--orange:#ef8b25;--brand:#176b45;--soft:#e9f5ef} body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
-.wrap{max-width:760px;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32)}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow-x:hidden}
+.wrap{max-width:760px;width:100%;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32)}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:30px;font-weight:800;letter-spacing:.06em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:5px;font-size:13px}
 .toolbar{display:flex;gap:8px;padding:16px 0}.toolbar select,.toolbar button{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1}.toolbar button{font-weight:700}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
 .targets{border:1px solid #3a3032;background:#fff;border-radius:16px;overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid #30262a;color:#ddd}
@@ -29,10 +29,49 @@
 .review{color:#c4c8cf;font-size:13px;line-height:1.8;background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:13px}
 .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:15px}.kpi b{display:block;font-size:22px;font-weight:850}.kpi small{color:var(--muted);font-size:10px;letter-spacing:.1em}
 .bar-row{display:grid;grid-template-columns:72px 1fr 64px;gap:8px;align-items:center;padding:8px 15px;border-bottom:1px solid var(--line)}.bar-row:last-child{border-bottom:0}
-.bar-track{height:10px;background:#e8eef1;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,var(--brand),#2d9b6c);border-radius:999px}
-.bar-fill.neg{background:linear-gradient(90deg,#b23b3b,#e53935)}.bar-val{text-align:right;font-weight:750;font-size:12px}
+.bar-track{height:10px;background:#e8eef1;border-radius:999px;overflow:hidden}.bar-fill{height:100%;border-radius:999px}
+.bar-fill.roi-good,.tone.roi-good{color:#176b45}.bar-fill.roi-good{background:linear-gradient(90deg,#0f7a4a,#2d9b6c)}
+.bar-fill.roi-mid,.tone.roi-mid{color:#b8860b}.bar-fill.roi-mid{background:linear-gradient(90deg,#c9a227,#e0b93a)}
+.bar-fill.roi-bad,.tone.roi-bad{color:#b23b3b}.bar-fill.roi-bad{background:linear-gradient(90deg,#b23b3b,#e53935)}
+.bar-val{text-align:right;font-weight:750;font-size:12px}.bar-val.roi-good{color:#176b45}.bar-val.roi-mid{color:#b8860b}.bar-val.roi-bad{color:#b23b3b}
+.kpi b.roi-good{color:#176b45}.kpi b.roi-mid{color:#b8860b}.kpi b.roi-bad{color:#b23b3b}
 .hit{color:var(--brand);font-weight:800}.miss{color:#b23b3b;font-weight:800}
 .vtable{width:100%;border-collapse:collapse;font-size:12px}.vtable th,.vtable td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.vtable th{color:var(--muted);font-size:10px;letter-spacing:.1em}
+/* PO-4 result cards */
+.filter-bar{display:flex;flex-wrap:wrap;gap:8px;padding:12px 15px 14px}
+.filter-chip{appearance:none;border:1px solid var(--line);background:#f8fafb;color:var(--muted);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;line-height:1.2}
+.filter-chip.active{background:var(--soft);border-color:var(--brand);color:var(--brand)}
+.verify-list{display:grid;gap:12px;padding:0 12px 16px}
+.verify-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px;overflow:hidden;min-width:0}
+.verify-card.hit-card{border-left:4px solid var(--brand)}.verify-card.miss-card{border-left:4px solid #c62828}
+.vc-date{font-size:12px;color:var(--muted);letter-spacing:.04em}.vc-race{font-size:18px;font-weight:850;margin:4px 0 8px;word-break:keep-all}
+.vc-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.vc-pill{display:inline-flex;align-items:center;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:750;background:#f3f6f8;color:var(--text);border:1px solid #e4eaee}
+.vc-pill.bet{background:var(--soft);border-color:#cfe5d9;color:var(--brand)}
+.vc-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:10px 0 6px}
+.combo-list{display:grid;gap:8px;min-width:0}
+.combo-block{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0;padding:10px;background:#f8fafb;border:1px solid #e4eaee;border-radius:12px}
+.horse-chip{display:block;width:100%;max-width:100%;background:#fff;border:1px solid #d7dee4;border-radius:10px;padding:8px 10px;font-size:14px;font-weight:750;line-height:1.4;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;text-align:center}
+.combo-arrow{color:var(--muted);font-size:12px;font-weight:700;text-align:center;line-height:1}
+.ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ai-item{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:9px 10px;min-width:0}
+.ai-item b{display:block;font-size:16px;font-weight:850;word-break:break-word}.ai-item small{color:var(--muted);font-size:10px;letter-spacing:.08em}
+.reason-list{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.reason-list li{position:relative;padding:7px 10px 7px 28px;background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;font-size:12px;line-height:1.5;color:#334}
+.reason-list li:before{content:"・";position:absolute;left:12px;top:7px;color:var(--brand);font-weight:800}
+.vc-result{display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:15px;font-weight:850}
+.vc-money{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
+.vc-money div{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px;text-align:center;min-width:0}
+.vc-money b{display:block;font-size:13px;font-weight:800;word-break:break-all}.vc-money small{color:var(--muted);font-size:9px;letter-spacing:.08em}
+.vc-comment{margin-top:10px;font-size:12px;line-height:1.65;color:#55616c;background:#f8fafb;border:1px dashed #d7dee4;border-radius:10px;padding:10px}
+.filter-empty{display:none;padding:18px 15px;color:var(--muted);font-size:13px;text-align:center}
+@media (max-width:420px){
+  .wrap{padding:0 10px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+  .bar-row{grid-template-columns:56px 1fr 52px;padding:8px 12px;font-size:12px}
+  .ai-grid{grid-template-columns:1fr 1fr}.vc-money{grid-template-columns:1fr 1fr 1fr}
+  .verify-card{padding:12px}.vc-race{font-size:17px}.horse-chip{font-size:12px;padding:6px 8px}
+  .filter-chip{padding:7px 10px;font-size:11px}.mode-tabs a{font-size:11px;padding:8px 4px}
+}
 </style></head>
 <body class="{{'nar' if source=='nar' else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{{"LOCAL RACING AI / 地方専用" if source=="nar" else "CENTRAL RACING AI / JRA中央"}}</div></div></header>
 <main class="wrap">
@@ -57,10 +96,10 @@
 {% if verification and verification.has_data %}
 <section class="targets"><h2>払戻ベース回収率（全期間）</h2>
 <div class="kpi-grid">
-<div class="metric kpi"><b>{{'%.1f'|format(verification.recovery)}}%</b><small>回収率</small></div>
+<div class="metric kpi"><b class="{{verification.tone}}">{{'%.1f'|format(verification.recovery)}}%</b><small>回収率</small></div>
 <div class="metric kpi"><b>{{'%.1f'|format(verification.hit_rate)}}%</b><small>的中率</small></div>
-<div class="metric kpi"><b>{{verification.profit}}</b><small>累計収支(円)</small></div>
-<div class="metric kpi"><b>{{verification.roi}}</b><small>ROI%</small></div>
+<div class="metric kpi"><b class="{{'roi-good' if verification.profit>=0 else 'roi-bad'}}">{{verification.profit}}</b><small>累計収支(円)</small></div>
+<div class="metric kpi"><b class="{{verification.tone}}">{{verification.roi}}</b><small>ROI%</small></div>
 </div></section>
 {% else %}
 <div class="message">回収率・券種別的中率・収支推移は `python3 results.py` 実行後に表示します。</div>
@@ -71,9 +110,9 @@
 {% if verification and verification.has_data %}
 <section class="targets"><h2>{% if verification.scope=='day' %}{{verification.selected_date}} サマリー{% else %}全期間サマリー{% endif %}</h2>
 <div class="kpi-grid">
-<div class="metric kpi"><b>{{'%.1f'|format(verification.recovery)}}%</b><small>回収率</small></div>
+<div class="metric kpi"><b class="{{verification.tone}}">{{'%.1f'|format(verification.recovery)}}%</b><small>回収率</small></div>
 <div class="metric kpi"><b>{{'%.1f'|format(verification.hit_rate)}}%</b><small>的中率</small></div>
-<div class="metric kpi"><b>{{verification.profit}}</b><small>収支(円)</small></div>
+<div class="metric kpi"><b class="{{'roi-good' if verification.profit>=0 else 'roi-bad'}}">{{verification.profit}}</b><small>収支(円)</small></div>
 <div class="metric kpi"><b>{{verification.investment}}</b><small>投資(円)</small></div>
 </div></section>
 
@@ -81,44 +120,138 @@
 <div class="kpi-grid">
 <div class="metric kpi"><b>{{verification.main.hits}}/{{verification.main.total_bets}}</b><small>的中数</small></div>
 <div class="metric kpi"><b>{{'%.1f'|format(verification.main.hit_rate)}}%</b><small>的中率</small></div>
-<div class="metric kpi"><b>{{'%.1f'|format(verification.main.recovery)}}%</b><small>回収率</small></div>
-<div class="metric kpi"><b>{{verification.main.profit}}</b><small>収支(円)</small></div>
+<div class="metric kpi"><b class="{{verification.main.tone}}">{{'%.1f'|format(verification.main.recovery)}}%</b><small>回収率</small></div>
+<div class="metric kpi"><b class="{{'roi-good' if verification.main.profit>=0 else 'roi-bad'}}">{{verification.main.profit}}</b><small>収支(円)</small></div>
 </div></section>
 
 <section class="targets"><h2>券種別ROI</h2>
 {% for x in verification.by_type %}
-<div class="bar-row"><div>{{x.bet_type}}</div><div class="bar-track"><div class="bar-fill {% if x.recovery<100 %}neg{% endif %}" style="width:{% if x.recovery>100 %}100{% else %}{{x.recovery}}{% endif %}%"></div></div><div class="bar-val">{{'%.1f'|format(x.recovery)}}%</div></div>
+<div class="bar-row"><div>{{x.bet_type}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.bar}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.recovery)}}%</div></div>
 <div class="message" style="margin:0 15px 8px">的中率 {{'%.1f'|format(x.hit_rate)}}% · 収支 {{x.profit}}円 · 投資 {{x.investment}}円</div>
 {% endfor %}
 </section>
 
 <section class="targets"><h2>日別ROI / 回収率</h2>
 {% for x in verification.daily %}
-<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {% if x.recovery<100 %}neg{% endif %}" style="width:{% if x.recovery>100 %}100{% else %}{{x.recovery}}{% endif %}%"></div></div><div class="bar-val">{{'%.1f'|format(x.roi)}}%</div></div>
+<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.bar}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.recovery)}}%</div></div>
 {% endfor %}
 </section>
 
 <section class="targets"><h2>累計収支</h2>
 {% for x in verification.cum_profit %}
-<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {% if not x.pos %}neg{% endif %}" style="width:{{x.pct}}%"></div></div><div class="bar-val">{{x.value}}</div></div>
+<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.pct}}%"></div></div><div class="bar-val {{x.tone}}">{{x.value}}</div></div>
 {% endfor %}
 </section>
 
 <section class="targets"><h2>回収率グラフ（累計）</h2>
 {% for x in verification.recovery_series %}
-<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {% if x.value<100 %}neg{% endif %}" style="width:{{x.pct}}%"></div></div><div class="bar-val">{{'%.1f'|format(x.value)}}%</div></div>
+<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.pct}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.value)}}%</div></div>
 {% endfor %}
 </section>
 
-<section class="targets"><h2>照合明細</h2>
-<div style="overflow:auto;padding:0 0 8px">
-<table class="vtable"><thead><tr><th>日付</th><th>レース</th><th>券種</th><th>予想</th><th>結果</th><th>的中</th><th>払戻</th><th>投資</th><th>収支</th></tr></thead>
-<tbody>{% for r in verification.recent_rows %}<tr>
-<td>{{r.date}}</td><td>{{r.race}}</td><td>{{r.bet_type}}</td><td>{{r.prediction}}</td><td>{{r.result}}</td>
-<td class="{{'hit' if r.hit else 'miss'}}">{{'的中' if r.hit else '不的中'}}</td>
-<td>{{r.payout}}</td><td>{{r.investment}}</td><td>{{r.profit}}</td>
-</tr>{% endfor %}</tbody></table>
-</div></section>
+<section class="targets" id="verify-section"><h2>照合明細</h2>
+<div class="filter-bar" id="verify-filters" role="tablist" aria-label="結果フィルター">
+<button type="button" class="filter-chip active" data-filter="all">全部</button>
+<button type="button" class="filter-chip" data-filter="hit">的中のみ</button>
+<button type="button" class="filter-chip" data-filter="miss">不的中のみ</button>
+<button type="button" class="filter-chip" data-filter="rank-s">Sランクのみ</button>
+<button type="button" class="filter-chip" data-filter="ワイド">ワイド</button>
+<button type="button" class="filter-chip" data-filter="馬連">馬連</button>
+<button type="button" class="filter-chip" data-filter="三連複">三連複</button>
+<button type="button" class="filter-chip" data-filter="三連単">三連単</button>
+</div>
+<div class="verify-list" id="verify-list">
+{% for r in verification.recent_rows %}
+<article class="verify-card {{'hit-card' if r.hit else 'miss-card'}}" data-hit="{{r.hit}}" data-rank="{{r.rank}}" data-bet="{{r.bet_type}}">
+<div class="vc-date">{{r.date}}</div>
+<div class="vc-race">{{r.race}}</div>
+<div class="vc-meta">
+<span class="vc-pill bet">券種：{{r.bet_type}}</span>
+{% if r.rank %}<span class="vc-pill">AIランク {{r.rank}}</span>{% endif %}
+{% if r.recommend %}<span class="vc-pill">推奨 {{r.recommend}}</span>{% endif %}
+</div>
+
+<div class="vc-label">買い目</div>
+{% if r.combos %}
+<div class="combo-list">
+{% for combo in r.combos[:8] %}
+<div class="combo-block">
+{% for h in combo %}
+<span class="horse-chip">【{{h}}】</span>
+{% if not loop.last %}<span class="combo-arrow">↓</span>{% endif %}
+{% endfor %}
+</div>
+{% endfor %}
+{% if r.combos|length > 8 %}
+<div class="message" style="margin:0">他 {{r.combos|length - 8}} 点</div>
+{% endif %}
+</div>
+{% else %}
+<div class="message" style="margin:0">見送り / 買い目なし</div>
+{% endif %}
+
+{% if r.has_ai %}
+<div class="vc-label">AI評価</div>
+<div class="ai-grid">
+<div class="ai-item"><b>{{r.rank or '—'}}</b><small>AIランク</small></div>
+<div class="ai-item"><b>{{r.areru or '—'}}</b><small>ARERU指数</small></div>
+<div class="ai-item"><b>{{r.expect or '—'}}</b><small>買い期待度</small></div>
+<div class="ai-item"><b>{{r.recommend or '—'}}</b><small>推奨券種</small></div>
+</div>
+{% endif %}
+
+{% if r.reasons %}
+<div class="vc-label">購入理由</div>
+<ul class="reason-list">{% for reason in r.reasons %}<li>{{reason}}</li>{% endfor %}</ul>
+{% endif %}
+{% if r.ai_comment %}
+<div class="vc-comment">{{r.ai_comment}}</div>
+{% endif %}
+
+<div class="vc-result {{'hit' if r.hit else 'miss'}}">{% if r.hit %}✅ 的中{% else %}❌ 不的中{% endif %}{% if r.result %} · {{r.result}}{% endif %}</div>
+<div class="vc-money">
+<div><b>{{r.investment}}円</b><small>投資</small></div>
+<div><b>{{r.payout}}円</b><small>払戻</small></div>
+<div><b class="{{'roi-good' if r.profit>=0 else 'roi-bad'}}">{{r.profit}}円</b><small>収支</small></div>
+</div>
+</article>
+{% endfor %}
+</div>
+<div class="filter-empty" id="verify-empty">該当条件に合う結果がありません</div>
+</section>
+<script>
+(function(){
+  var bar=document.getElementById('verify-filters');
+  var list=document.getElementById('verify-list');
+  var empty=document.getElementById('verify-empty');
+  if(!bar||!list) return;
+  var cards=[].slice.call(list.querySelectorAll('.verify-card'));
+  function apply(filter){
+    var shown=0;
+    cards.forEach(function(card){
+      var hit=card.getAttribute('data-hit')==='1';
+      var rank=(card.getAttribute('data-rank')||'').toUpperCase();
+      var bet=card.getAttribute('data-bet')||'';
+      var ok=true;
+      if(filter==='hit') ok=hit;
+      else if(filter==='miss') ok=!hit;
+      else if(filter==='rank-s') ok=rank==='S';
+      else if(filter==='all') ok=true;
+      else ok=bet===filter;
+      card.style.display=ok?'':'none';
+      if(ok) shown++;
+    });
+    if(empty) empty.style.display=shown?'none':'block';
+  }
+  bar.addEventListener('click',function(e){
+    var btn=e.target.closest('.filter-chip');
+    if(!btn) return;
+    [].forEach.call(bar.querySelectorAll('.filter-chip'),function(b){b.classList.remove('active')});
+    btn.classList.add('active');
+    apply(btn.getAttribute('data-filter')||'all');
+  });
+})();
+</script>
 {% else %}
 <section class="empty-state"><h2>検証データなし</h2><p>ターミナルで <code>python3 results.py</code> を実行すると、最新開催日の結果取得と回収率集計が始まります。</p></section>
 {% endif %}
