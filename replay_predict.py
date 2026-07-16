@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from areru_engine import build_predictions, parse_date
+from ticket_value import enrich_predictions, load_ticket_odds
 
 DATA=Path('data'); OUT=DATA/'predictions_by_date'; OUT.mkdir(parents=True,exist_ok=True)
 
@@ -11,9 +12,13 @@ def available_dates(runners):
 
 def run_date(target,runners,history):
     result,scores=build_predictions(target,runners,history)
+    try:
+        result=enrich_predictions(result,scores,load_ticket_odds())
+    except Exception as e:
+        print(f'⚠️ オッズ接続スキップ: {e}')
     result.to_csv(OUT/f'predictions_{target}.csv',index=False,encoding='utf-8-sig')
     scores.to_csv(OUT/f'scores_{target}.csv',index=False,encoding='utf-8-sig')
-    print(f'✅ {target}: {len(result)}レース → {OUT/f"predictions_{target}.csv"}')
+    print(f'✅ {target}: {len(result)}レース → {OUT/f"predictions_{target}.csv"}', flush=True)
     return result
 
 def main():

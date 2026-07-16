@@ -1,13 +1,21 @@
 import csv
+import os
 import time
 import requests
 import pandas as pd
 import re
-
+from datetime import date
 from io import StringIO
 
 
-TARGET_DATE = "2026年7月12日"
+def _default_exclude_date() -> str:
+    # Linuxでは %-m が使えない環境があるため手動でゼロ埋めなしにする
+    t = date.today()
+    return f"{t.year}年{t.month}月{t.day}日"
+
+
+# 当日結果のリーク防止。環境変数 ARERU_EXCLUDE_DATE（例: 2026年7月18日）で上書き可。
+TARGET_DATE = os.environ.get("ARERU_EXCLUDE_DATE", _default_exclude_date())
 
 
 def normalize_date(value):
