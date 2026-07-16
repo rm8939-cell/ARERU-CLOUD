@@ -133,11 +133,16 @@ def index():
 
 @app.route('/refresh', methods=['POST','GET'])
 def refresh_route():
-    """最新開催日を取得して runners / predictions を更新。"""
+    """最新開催日・オッズを取得して runners / predictions を更新。"""
+    mode=request.args.get('mode','full')
     try:
-        subprocess.run([sys.executable,'refresh_data.py','--latest-only'],check=True,timeout=1800)
+        if mode=='odds':
+            cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only']
+        else:
+            cmd=[sys.executable,'refresh_data.py','--latest-only']
+        subprocess.run(cmd,check=True,timeout=1800)
         av=dates()
-        return {'ok':True,'dates':av,'latest':av[0] if av else None}
+        return {'ok':True,'dates':av,'latest':av[0] if av else None,'mode':mode}
     except Exception as e:
         return {'ok':False,'error':str(e)}, 500
 

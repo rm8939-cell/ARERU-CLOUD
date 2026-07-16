@@ -108,6 +108,11 @@ class NetkeibaClient:
             horse_id = hm.group(1) if hm else ""
             umaban = tr.select_one("td.Umaban1, td[class*=Umaban]")
             ban = umaban.get_text(strip=True) if umaban else ""
+            # 出馬表に出ている暫定オッズ/人気（未発表は ---.-**）
+            odds_td = tr.select_one("td.Txt_R.Popular, td.Popular")
+            ninki_td = tr.select_one("td.Popular_Ninki")
+            shutuba_odds = _parse_odds_text(odds_td.get_text(strip=True) if odds_td else "")
+            shutuba_ninki = _num_or_blank(ninki_td.get_text(strip=True) if ninki_td else "")
             rows.append({
                 "race_id": race_id,
                 "日付": race_date,
@@ -116,8 +121,83 @@ class NetkeibaClient:
                 "horse_id": horse_id,
                 "馬番": ban,
                 "開催地": meta["venue"],
+                "単勝オッズ": shutuba_odds,
+                "人気": shutuba_ninki,
             })
         return rows
+
+    def fetch_odds_api(self, race_id: str, odds_type: int = 1) -> dict:
+        """netkeiba JRA オッズ API。
+
+        type: 1単勝 2複勝 3枠連 4馬連 5ワイド 6馬単 7三連複 8三連単
+        戻り値: {status, updated_at, odds: {key: {...}}}
+        """
+        url = f"{BASE}/api/api_get_jra_odds.html?type={odds_type}&race_id={race_id}"
+        r = self.session.get(url, timeout=40)
+        r.raise_for_status()
+        time.sleep(self.sleep)
+        try:
+            payload = r.json()
+        except Exception:
+            return {"status": "error", "updated_at": "", "odds": {}}
+        status = str(payload.get("status") or "")
+        data = payload.get("data") or {}
+        if not isinstance(data, dict):
+            return {"status": status or "empty", "updated_at": "", "odds": {}}
+        updated = str(data.get("official_datetime") or "")
+        raw = (data.get("odds") or {}).get(str(odds_type), {}) or {}
+        parsed = {}
+        for key, vals in raw.items():
+            if not isinstance(vals, (list, tuple)) or not vals:
+                continue
+            odds_val = _parse_odds_text(vals[0])
+            odds_hi = _parse_odds_text(vals[1]) if len(vals) > 1 else ""
+            ninki = _num_or_blank(vals[2]) if len(vals) > 2 else ""
+            entry = {"単勝オッズ" if odds_type == 1 else "オッズ": odds_val, "人気": ninki}
+            if odds_type in (2, 5) and odds_hi:
+                entry["オッズ下限"] = odds_val
+                entry["オッズ上限"] = odds_hi
+                # ワイド/複勝は中央値を代表オッズに
+                try:
+                    lo = float(odds_val); hi = float(odds_hi)
+                    entry["オッズ"] = f"{(lo + hi) / 2:.1f}"
+                except Exception:
+                    entry["オッズ"] = odds_val
+            parsed[str(key)] = entry
+        return {"status": status, "updated_at": updated, "odds": parsed}
+
+    def fetch_win_odds(self, race_id: str) -> dict[str, dict]:
+        """馬番(str) -> {単勝オッズ, 人気, オッズ更新日時, オッズ状態}"""
+        api = self.fetch_odds_api(race_id, 1)
+        out = {}
+        for ban, info in api["odds"].items():
+            ban_key = str(int(ban)) if str(ban).isdigit() else str(ban).lstrip("0") or "0"
+            out[ban_key] = {
+                "単勝オッズ": info.get("単勝オッズ", ""),
+                "人気": info.get("人気", ""),
+                "オッズ更新日時": api.get("updated_at", ""),
+                "オッズ状態": api.get("status", ""),
+            }
+            # zero-padded key も残す
+            out[str(ban).zfill(2)] = out[ban_key]
+        return out
+
+    def fetch_ticket_odds_maps(self, race_id: str) -> dict:
+        """券種別オッズマップ。キーは馬番ゼロ埋め連結（昇順）。"""
+        mapping = {"馬連": 4, "ワイド": 5, "三連複": 7}
+        out = {"updated_at": "", "status": ""}
+        for kind, t in mapping.items():
+            api = self.fetch_odds_api(race_id, t)
+            if api.get("updated_at") and not out["updated_at"]:
+                out["updated_at"] = api["updated_at"]
+            if api.get("status"):
+                out["status"] = api["status"]
+            table = {}
+            for key, info in api["odds"].items():
+                odds = info.get("オッズ") or info.get("単勝オッズ") or ""
+                table[str(key)] = odds
+            out[kind] = table
+        return out
 
     def fetch_results(self, race_id: str) -> dict[str, str]:
         """馬名 -> 着順"""
@@ -205,6 +285,14 @@ def _num_or_blank(v) -> str:
     if not s or s in {"--", "**", "除外", "中止", "取消", "失格"}:
         return ""
     m = re.search(r"\d+", s)
+    return m.group(0) if m else ""
+
+
+def _parse_odds_text(v) -> str:
+    s = str(v).strip().replace(",", "")
+    if not s or s in {"---.-", "****", "**", "-", "--", "---"}:
+        return ""
+    m = re.search(r"\d+(?:\.\d+)?", s)
     return m.group(0) if m else ""
 
 

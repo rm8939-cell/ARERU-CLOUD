@@ -1,10 +1,12 @@
 """最新開催日を自動取得し、runners.csv と predictions_by_date を更新する。
 
-score_test_data.csv への依存を廃止し、canonical な出走データは data/runners.csv。
+PO-3: 単勝オッズ/人気を netkeiba API から取得して runners.csv へ統合し、
+AIスコア再計算（predictions 再生成）まで一気通貫で行う。
 """
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from datetime import datetime
@@ -25,12 +27,15 @@ DATA = Path("data")
 RUNNERS = DATA / "runners.csv"
 LEGACY = DATA / "score_test_data.csv"
 PRED_DIR = DATA / "predictions_by_date"
+ODDS_TICKETS = DATA / "odds_tickets"
 PRED_DIR.mkdir(parents=True, exist_ok=True)
+ODDS_TICKETS.mkdir(parents=True, exist_ok=True)
 
 RUNNER_COLS = [
-    "race_id", "日付", "レース", "馬名", "実着順",
+    "race_id", "日付", "レース", "馬名", "馬番", "実着順",
     "着順1", "人気1", "着順2", "人気2", "着順3", "人気3",
     "着順4", "人気4", "着順5", "人気5",
+    "単勝オッズ", "人気", "オッズ更新日時",
 ]
 
 
@@ -41,6 +46,13 @@ def _normalize_runners(df: pd.DataFrame) -> pd.DataFrame:
     df = df[RUNNER_COLS].copy()
     df["日付"] = parse_date(df["日付"]).dt.strftime("%Y-%m-%d")
     df["レース"] = pd.to_numeric(df["レース"], errors="coerce")
+    # 馬番は "4.0" にならないよう整数文字列へ
+    ban = pd.to_numeric(df["馬番"], errors="coerce")
+    df["馬番"] = ban.apply(lambda x: str(int(x)) if pd.notna(x) else "")
+    pop = pd.to_numeric(df["人気"], errors="coerce")
+    df["人気"] = pop.apply(lambda x: str(int(x)) if pd.notna(x) else "")
+    odds = pd.to_numeric(df["単勝オッズ"], errors="coerce")
+    df["単勝オッズ"] = odds.apply(lambda x: f"{float(x):.1f}" if pd.notna(x) else "")
     return df.dropna(subset=["日付", "馬名"]).reset_index(drop=True)
 
 
@@ -60,7 +72,47 @@ def available_dates(runners: pd.DataFrame) -> list[str]:
     return sorted(d, reverse=True)
 
 
-def build_date_runners(client: NetkeibaClient, target: str, include_results: bool = True) -> pd.DataFrame:
+def _apply_win_odds(entries: list[dict], win_odds: dict[str, dict]) -> list[dict]:
+    """馬番で単勝オッズを上書き。API未公開時は出馬表の値を残す。"""
+    if not win_odds:
+        return entries
+    for e in entries:
+        ban = str(e.get("馬番") or "").strip()
+        info = win_odds.get(ban) or win_odds.get(ban.zfill(2))
+        if not info:
+            continue
+        if info.get("単勝オッズ"):
+            e["単勝オッズ"] = info["単勝オッズ"]
+        if info.get("人気"):
+            e["人気"] = info["人気"]
+        if info.get("オッズ更新日時"):
+            e["オッズ更新日時"] = info["オッズ更新日時"]
+    return entries
+
+
+def _save_ticket_odds(client: NetkeibaClient, race_id: str) -> None:
+    """券種別オッズを data/odds_tickets/{race_id}.json に保存。"""
+    rid = str(race_id)
+    if not (rid.isdigit() and len(rid) == 12):
+        return
+    try:
+        maps = client.fetch_ticket_odds_maps(rid)
+        if not any(maps.get(k) for k in ("ワイド", "馬連", "三連複")):
+            return
+        (ODDS_TICKETS / f"{rid}.json").write_text(
+            json.dumps(maps, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as e:
+        print(f"  ⚠️ 券種オッズ保存失敗 {rid}: {e}")
+
+
+def build_date_runners(
+    client: NetkeibaClient,
+    target: str,
+    include_results: bool = True,
+    include_odds: bool = True,
+) -> pd.DataFrame:
     ymd = target.replace("-", "")
     race_ids = client.list_race_ids(ymd)
     if not race_ids:
@@ -72,7 +124,12 @@ def build_date_runners(client: NetkeibaClient, target: str, include_results: boo
     for i, rid in enumerate(race_ids, 1):
         entries = client.fetch_entries(rid)
         results = client.fetch_results(rid) if include_results else {}
-        print(f"  [{i}/{len(race_ids)}] {rid} 出走{len(entries)}頭")
+        win_odds = client.fetch_win_odds(rid) if include_odds else {}
+        entries = _apply_win_odds(entries, win_odds)
+        odds_n = sum(1 for e in entries if e.get("単勝オッズ"))
+        if include_odds and odds_n:
+            _save_ticket_odds(client, rid)
+        print(f"  [{i}/{len(race_ids)}] {rid} 出走{len(entries)}頭 オッズ{odds_n}頭")
         for e in entries:
             hist = client.fetch_horse_history(e["horse_id"]) if e.get("horse_id") else []
             score = client.past_five_for_score(hist, target)
@@ -82,12 +139,59 @@ def build_date_runners(client: NetkeibaClient, target: str, include_results: boo
                 "日付": e.get("日付") or target,
                 "レース": e.get("レース"),
                 "馬名": e["馬名"],
+                "馬番": e.get("馬番", ""),
                 "実着順": finish or score.get("実着順", ""),
+                "単勝オッズ": e.get("単勝オッズ", ""),
+                "人気": e.get("人気", ""),
+                "オッズ更新日時": e.get("オッズ更新日時", ""),
                 **{k: score[k] for k in score if k != "実着順"},
             })
             if finish:
                 rows[-1]["実着順"] = finish
     return _normalize_runners(pd.DataFrame(rows))
+
+
+def refresh_odds_for_dates(client: NetkeibaClient, runners: pd.DataFrame, dates: list[str]) -> pd.DataFrame:
+    """既存 runners の対象日だけオッズ列を更新（履歴再取得なし）。"""
+    if runners.empty or not dates:
+        return runners
+    df = runners.copy()
+    date_mask = parse_date(df["日付"]).dt.strftime("%Y-%m-%d").isin(dates)
+    target = df[date_mask].copy()
+    if target.empty:
+        print(f"⚠️  オッズ更新対象なし: {dates}")
+        return runners
+
+    race_ids = sorted(set(target["race_id"].astype(str)))
+    print(f"💰 オッズ更新: {len(race_ids)}レース / 日={dates}")
+    odds_by_race: dict[str, dict] = {}
+    for i, rid in enumerate(race_ids, 1):
+        # 旧JRA URL 行はスキップ
+        if not str(rid).isdigit() or len(str(rid)) != 12:
+            print(f"  [{i}/{len(race_ids)}] {rid}: skip (非netkeiba ID)")
+            continue
+        win = client.fetch_win_odds(rid)
+        odds_by_race[rid] = win
+        n = len({k: v for k, v in win.items() if len(k) <= 2 and v.get("単勝オッズ")})
+        if n:
+            _save_ticket_odds(client, rid)
+        print(f"  [{i}/{len(race_ids)}] {rid}: オッズ{n}頭")
+
+    updated = 0
+    for idx in target.index:
+        rid = str(df.at[idx, "race_id"])
+        ban = str(df.at[idx, "馬番"] or "").strip()
+        info = (odds_by_race.get(rid) or {}).get(ban) or (odds_by_race.get(rid) or {}).get(ban.zfill(2))
+        if not info or not info.get("単勝オッズ"):
+            continue
+        df.at[idx, "単勝オッズ"] = info["単勝オッズ"]
+        if info.get("人気"):
+            df.at[idx, "人気"] = info["人気"]
+        if info.get("オッズ更新日時"):
+            df.at[idx, "オッズ更新日時"] = info["オッズ更新日時"]
+        updated += 1
+    print(f"✅ オッズ反映: {updated}頭")
+    return _normalize_runners(df)
 
 
 def merge_runners(base: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
@@ -125,6 +229,8 @@ def refresh(
     lookahead: int = 14,
     skip_predict: bool = False,
     migrate_only: bool = False,
+    odds_only: bool = False,
+    include_odds: bool = True,
 ) -> list[str]:
     runners = load_existing_runners()
     if migrate_only:
@@ -161,11 +267,18 @@ def refresh(
         target_dates = available_dates(runners)
 
     print(f"🎯 更新対象: {target_dates}")
-    for d in target_dates:
-        built = build_date_runners(client, d, include_results=True)
-        runners = merge_runners(runners, built)
 
-    save_runners(runners)
+    if odds_only:
+        runners = refresh_odds_for_dates(client, runners, target_dates)
+        save_runners(runners)
+    else:
+        for d in target_dates:
+            built = build_date_runners(
+                client, d, include_results=True, include_odds=include_odds
+            )
+            runners = merge_runners(runners, built)
+        save_runners(runners)
+
     av = available_dates(runners)
     if not skip_predict:
         # 更新した日を優先生成。未生成日もまとめて --all
@@ -179,12 +292,16 @@ def refresh(
 
 
 def main():
-    ap = argparse.ArgumentParser(description="ARERU P0-2: 最新開催日取得 & runners/predictions 更新")
+    ap = argparse.ArgumentParser(
+        description="ARERU PO-3: 最新開催日・オッズ取得 & runners/predictions 更新"
+    )
     ap.add_argument("--dates", nargs="*", help="YYYY-MM-DD を明示指定")
     ap.add_argument("--latest-only", action="store_true", help="最新開催週末だけ更新")
     ap.add_argument("--no-discover", action="store_true", help="開催日自動検出をしない")
     ap.add_argument("--skip-predict", action="store_true", help="predictions 生成をスキップ")
     ap.add_argument("--migrate-only", action="store_true", help="既存CSVの移行のみ")
+    ap.add_argument("--odds-only", action="store_true", help="オッズ列だけ再取得して再予想")
+    ap.add_argument("--no-odds", action="store_true", help="オッズ取得をスキップ")
     ap.add_argument("--lookback", type=int, default=28)
     ap.add_argument("--lookahead", type=int, default=14)
     ap.add_argument("--list", action="store_true", help="検出開催日を表示して終了")
@@ -203,10 +320,12 @@ def main():
         lookahead=args.lookahead,
         skip_predict=args.skip_predict,
         migrate_only=args.migrate_only,
+        odds_only=args.odds_only,
+        include_odds=not args.no_odds,
     )
     print()
     print("=" * 50)
-    print("✅ P0-2 データ更新完了")
+    print("✅ PO-3 データ更新完了")
     print("開催日:", ", ".join(av))
     print("runners:", RUNNERS)
     print("predictions:", PRED_DIR)
