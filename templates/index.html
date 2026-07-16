@@ -27,6 +27,12 @@
 .result-grid{display:grid;gap:8px}.result-row{display:grid;grid-template-columns:30px 1fr 70px;align-items:center;background:#f8fafb;border:1px solid #20242a;border-radius:10px;padding:11px}
 .result-row b{color:var(--red)}.result-row span{font-weight:700}.result-row strong{text-align:right;color:var(--gold)}
 .review{color:#c4c8cf;font-size:13px;line-height:1.8;background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:13px}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:15px}.kpi b{display:block;font-size:22px;font-weight:850}.kpi small{color:var(--muted);font-size:10px;letter-spacing:.1em}
+.bar-row{display:grid;grid-template-columns:72px 1fr 64px;gap:8px;align-items:center;padding:8px 15px;border-bottom:1px solid var(--line)}.bar-row:last-child{border-bottom:0}
+.bar-track{height:10px;background:#e8eef1;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,var(--brand),#2d9b6c);border-radius:999px}
+.bar-fill.neg{background:linear-gradient(90deg,#b23b3b,#e53935)}.bar-val{text-align:right;font-weight:750;font-size:12px}
+.hit{color:var(--brand);font-weight:800}.miss{color:#b23b3b;font-weight:800}
+.vtable{width:100%;border-collapse:collapse;font-size:12px}.vtable th,.vtable td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.vtable th{color:var(--muted);font-size:10px;letter-spacing:.1em}
 </style></head>
 <body class="{{'nar' if source=='nar' else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{{"LOCAL RACING AI / 地方専用" if source=="nar" else "CENTRAL RACING AI / JRA中央"}}</div></div></header>
 <main class="wrap">
@@ -48,16 +54,83 @@
 <section class="targets"><h2>勝負ランク分布</h2>{% for x in analysis.ranks %}<div class="target-row"><div class="rank">{{x.label}}</div><div class="target-name">ランク {{x.label}}</div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>
 <section class="targets"><h2>買い期待度 分布</h2>{% for x in analysis.bands %}<div class="target-row"><div class="rank">●</div><div class="target-name">{{x.label}}</div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>
 <section class="targets"><h2>競馬場別 解析数</h2>{% for x in analysis.venues %}<div class="target-row"><div class="rank">▰</div><div class="target-name">{{x.label}}</div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>
-<div class="message">回収率・券種別的中率・収支推移は実オッズと払戻の照合後だけ表示します。</div>
+{% if verification and verification.has_data %}
+<section class="targets"><h2>払戻ベース回収率（全期間）</h2>
+<div class="kpi-grid">
+<div class="metric kpi"><b>{{'%.1f'|format(verification.recovery)}}%</b><small>回収率</small></div>
+<div class="metric kpi"><b>{{'%.1f'|format(verification.hit_rate)}}%</b><small>的中率</small></div>
+<div class="metric kpi"><b>{{verification.profit}}</b><small>累計収支(円)</small></div>
+<div class="metric kpi"><b>{{verification.roi}}</b><small>ROI%</small></div>
+</div></section>
+{% else %}
+<div class="message">回収率・券種別的中率・収支推移は `python3 results.py` 実行後に表示します。</div>
+{% endif %}
 {% elif mode=='result' %}
+<section class="result-summary"><h2>結果検証｜払戻ベース自動集計</h2>
+<p>JRA結果を取得し、本命・ワイド・馬連・三連複・三連単を照合します。日別ROI・券種別ROI・的中率・累計収支を表示します。</p></section>
+{% if verification and verification.has_data %}
+<section class="targets"><h2>{% if verification.scope=='day' %}{{verification.selected_date}} サマリー{% else %}全期間サマリー{% endif %}</h2>
+<div class="kpi-grid">
+<div class="metric kpi"><b>{{'%.1f'|format(verification.recovery)}}%</b><small>回収率</small></div>
+<div class="metric kpi"><b>{{'%.1f'|format(verification.hit_rate)}}%</b><small>的中率</small></div>
+<div class="metric kpi"><b>{{verification.profit}}</b><small>収支(円)</small></div>
+<div class="metric kpi"><b>{{verification.investment}}</b><small>投資(円)</small></div>
+</div></section>
+
+<section class="targets"><h2>本命成績（単勝）</h2>
+<div class="kpi-grid">
+<div class="metric kpi"><b>{{verification.main.hits}}/{{verification.main.total_bets}}</b><small>的中数</small></div>
+<div class="metric kpi"><b>{{'%.1f'|format(verification.main.hit_rate)}}%</b><small>的中率</small></div>
+<div class="metric kpi"><b>{{'%.1f'|format(verification.main.recovery)}}%</b><small>回収率</small></div>
+<div class="metric kpi"><b>{{verification.main.profit}}</b><small>収支(円)</small></div>
+</div></section>
+
+<section class="targets"><h2>券種別ROI</h2>
+{% for x in verification.by_type %}
+<div class="bar-row"><div>{{x.bet_type}}</div><div class="bar-track"><div class="bar-fill {% if x.recovery<100 %}neg{% endif %}" style="width:{% if x.recovery>100 %}100{% else %}{{x.recovery}}{% endif %}%"></div></div><div class="bar-val">{{'%.1f'|format(x.recovery)}}%</div></div>
+<div class="message" style="margin:0 15px 8px">的中率 {{'%.1f'|format(x.hit_rate)}}% · 収支 {{x.profit}}円 · 投資 {{x.investment}}円</div>
+{% endfor %}
+</section>
+
+<section class="targets"><h2>日別ROI / 回収率</h2>
+{% for x in verification.daily %}
+<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {% if x.recovery<100 %}neg{% endif %}" style="width:{% if x.recovery>100 %}100{% else %}{{x.recovery}}{% endif %}%"></div></div><div class="bar-val">{{'%.1f'|format(x.roi)}}%</div></div>
+{% endfor %}
+</section>
+
+<section class="targets"><h2>累計収支</h2>
+{% for x in verification.cum_profit %}
+<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {% if not x.pos %}neg{% endif %}" style="width:{{x.pct}}%"></div></div><div class="bar-val">{{x.value}}</div></div>
+{% endfor %}
+</section>
+
+<section class="targets"><h2>回収率グラフ（累計）</h2>
+{% for x in verification.recovery_series %}
+<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {% if x.value<100 %}neg{% endif %}" style="width:{{x.pct}}%"></div></div><div class="bar-val">{{'%.1f'|format(x.value)}}%</div></div>
+{% endfor %}
+</section>
+
+<section class="targets"><h2>照合明細</h2>
+<div style="overflow:auto;padding:0 0 8px">
+<table class="vtable"><thead><tr><th>日付</th><th>レース</th><th>券種</th><th>予想</th><th>結果</th><th>的中</th><th>払戻</th><th>投資</th><th>収支</th></tr></thead>
+<tbody>{% for r in verification.recent_rows %}<tr>
+<td>{{r.date}}</td><td>{{r.race}}</td><td>{{r.bet_type}}</td><td>{{r.prediction}}</td><td>{{r.result}}</td>
+<td class="{{'hit' if r.hit else 'miss'}}">{{'的中' if r.hit else '不的中'}}</td>
+<td>{{r.payout}}</td><td>{{r.investment}}</td><td>{{r.profit}}</td>
+</tr>{% endfor %}</tbody></table>
+</div></section>
+{% else %}
+<section class="empty-state"><h2>検証データなし</h2><p>ターミナルで <code>python3 results.py</code> を実行すると、最新開催日の結果取得と回収率集計が始まります。</p></section>
+{% endif %}
+
 {% if races %}
-<section class="result-summary"><h2>結果検証｜予想と実着順の照合</h2><p>◎○▲△☆を消さずに、確定着順を横に並べて検証します。保存済み結果があるレースだけ着順を表示します。</p></section>
+<section class="result-summary"><h2>予想印 × 実着順</h2><p>◎○▲△☆を消さずに、確定着順を横に並べて検証します。</p></section>
 {% for r in races %}<section class="race result-card">
 <div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>{{r['勝負ランク']}}｜{{r['BET判定']}}</small></div><div class="heat">{{r['BET期待値']}}<small>予想時 買い期待度</small></div></div>
-<div class="section"><div class="section-title">予想印 × 実着順</div><div class="result-grid">{% for x in r['結果一覧'] %}<div class="result-row"><b>{{x['印']}}</b><span>{{x['馬名']}}</span><strong>{{x['着順']}}</strong></div>{% endfor %}</div></div>
-<div class="section"><div class="section-title gold">AI振り返り</div><div class="review">{{r['AI振り返り']}}</div></div>
+<div class="section"><div class="section-title">予想印 × 実着順</div><div class="result-grid">{% for x in r.get('結果一覧',[]) %}<div class="result-row"><b>{{x['印']}}</b><span>{{x['馬名']}}</span><strong>{{x['着順']}}</strong></div>{% endfor %}</div></div>
+<div class="section"><div class="section-title gold">AI振り返り</div><div class="review">{{r.get('AI振り返り','')}}</div></div>
 </section>{% endfor %}
-{% else %}<section class="empty-state"><h2>検証データなし</h2></section>{% endif %}
+{% endif %}
 {% else %}
 {% if targets %}<section class="targets"><h2>本日の買い候補｜S・Aランクのみ</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}"><div class="rank">{{t['勝負ランク']}}</div><div class="target-name">{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
 {% for r in races %}<section id="race-{{r['race_id']|urlencode}}" class="race {{r['荒れクラス']}}">
