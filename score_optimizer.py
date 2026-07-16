@@ -543,7 +543,7 @@ def create_test_data():
     )
 
     test_data.to_csv(
-        "data/score_test_data.csv",
+        "data/runners.csv",
         index=False,
         encoding="utf-8-sig"
     )
