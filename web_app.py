@@ -687,8 +687,20 @@ def _pred_for_analysis_row(r, pred_meta):
     return {}
 
 
+def _ticket_judge_is_buy(pred, bet_type):
+    """予想メタの券種判定が買い候補か。"""
+    bt=str(bet_type or '').strip()
+    if bt in ('本命','単勝'):
+        rec=str(pred.get('推奨券種','') or '').strip()
+        return rec in ('本命','単勝')
+    col={'ワイド':'ワイド判定','馬連':'馬連判定','三連複':'三連複判定'}.get(bt)
+    if not col or not pred:
+        return False
+    return str(pred.get(col,'') or '').strip()=='買い候補'
+
+
 def _ensure_purchase_flags(df, pred_meta):
-    """購入対象フラグを保証。列が無い古いCSVは推奨券種照合で補完。"""
+    """購入対象フラグを保証。推奨券種 or 券種判定「買い候補」を購入単位とする。"""
     out=df.copy()
     if '推奨券種' not in out.columns:
         out['推奨券種']=''
@@ -700,11 +712,44 @@ def _ensure_purchase_flags(df, pred_meta):
         rec=str(pred.get('推奨券種','') or '').strip()
         if rec:
             out.at[idx,'推奨券種']=rec
-    # 購入対象 = bet_type == 推奨券種
-    recs=out['推奨券種'].astype(str).str.strip()
-    bts=out['bet_type'].astype(str).str.strip()
-    out['購入対象']=((recs!='') & (bts==recs)).astype(int)
+    flags=[]
+    for _,row in out.iterrows():
+        bt=str(row.get('bet_type','') or '').strip()
+        rec=str(row.get('推奨券種','') or '').strip()
+        pred=_pred_for_analysis_row(row, pred_meta)
+        is_buy=(rec!='' and bt==rec) or _ticket_judge_is_buy(pred, bt)
+        flags.append(1 if is_buy else 0)
+    out['購入対象']=flags
     return out
+
+
+def _ticket_marks_label(prediction, pred):
+    """買い目を ◎-○ / ◎-○-▲ 形式に短縮（表示用）。"""
+    if not pred:
+        return ''
+    name_to_mark={}
+    main=str(pred.get('本命','') or '').strip()
+    if main:
+        name_to_mark[main]='◎'
+    try:
+        marks=json.loads(pred.get('印データ','[]') or '[]')
+    except Exception:
+        marks=[]
+    for x in marks:
+        name=str(x.get('馬名','') or '').strip()
+        mk=str(x.get('印','') or '').strip()
+        if name and mk and name not in name_to_mark:
+            name_to_mark[name]=mk
+    combos=parse_prediction_combos(prediction)
+    if not combos:
+        return ''
+    parts=[]
+    for h in combos[0]:
+        parts.append(name_to_mark.get(h, h))
+    # 印に置換できたときだけ短縮表示
+    if parts and all(p in ('◎','○','▲','△','☆') for p in parts):
+        return '-'.join(parts)
+    return ''
 
 
 def _buy_reasons(pred):
@@ -783,24 +828,33 @@ def _enrich_verify_row(r, pred_meta):
     expect=str(pred.get('BET期待値','') or '')
     recommend=str(r.get('推奨券種') or pred.get('推奨券種','') or '')
     ai_comment=str(pred.get('馬券戦略理由','') or '')
+    bet_type_raw=str(r.get('bet_type','') or '')
     try:
         is_purchase=int(float(r.get('購入対象') or 0))
     except (TypeError, ValueError):
         is_purchase=0
-    if not is_purchase and recommend and str(r.get('bet_type',''))==recommend:
-        is_purchase=1
+    if not is_purchase:
+        if recommend and bet_type_raw==recommend:
+            is_purchase=1
+        elif _ticket_judge_is_buy(pred, bet_type_raw):
+            is_purchase=1
     venue=str(r.get('開催地','') or pred.get('開催地','') or '')
     race_label=str(r.get('race','') or '')
     if not venue and race_label:
         venue=re.sub(r'\d+\s*R.*$','',race_label,flags=re.I).strip()
     race_no=_parse_race_no(race_label, pred)
+    marks=_ticket_marks_label(prediction, pred)
+    bet_label=_bet_type_label(bet_type_raw)
+    ticket_short=f'{bet_label} {marks}'.strip() if marks else bet_label
     return {
         'date':str(r.get('date','')),
         'race':race_label,
         'race_id':rid,
         'venue':venue,
         'race_no':race_no,
-        'bet_type':str(r.get('bet_type','')),
+        'bet_type':bet_type_raw,
+        'ticket_marks':marks,
+        'ticket_short':ticket_short,
         'prediction':prediction,
         'combos':combos,
         'result':str(r.get('result','') or ''),
@@ -860,7 +914,7 @@ def verification_data(selected_date='', source='all'):
     df=_ensure_purchase_flags(df, pred_meta)
     all_df=df.copy()
     day_df=all_df[all_df['date'].astype(str)==str(selected_date)] if selected_date else all_df
-    # 購入対象 = 各レースの推奨券種1件。「Sだけ買えば勝てるか」の母集団
+    # 購入対象 = 推奨券種 or 買い候補の馬券。「Sだけ買えば勝てるか」の母集団（レース単位ではない）
     purchase_all=all_df[pd.to_numeric(all_df['購入対象'],errors='coerce').fillna(0).astype(int)==1].copy()
 
     def pack(frame):
@@ -909,17 +963,16 @@ def verification_data(selected_date='', source='all'):
     # 本命（単勝）成績
     main_df=src[src['bet_type'].astype(str).isin(['本命','単勝'])] if not src.empty else pd.DataFrame()
     main=pack(main_df) if not main_df.empty else dict(empty_pack)
-    # AIランク別KPI（購入対象単位・全期間）
+    # AIランク別KPI（購入対象の馬券単位・全期間）※レース単位ではない
     ranked=_attach_rank_column(purchase_all, pred_meta)
     by_rank=[]
     for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','見送り')]:
         g=ranked[ranked['勝負ランク']==key] if not ranked.empty else ranked
         s=pack(g)
         by_rank.append({'key':key,'name':name,**s})
-    # ランク×券種（全評価券種・運用判断用）
-    typed=_attach_rank_column(all_df, pred_meta)
+    # ランク×券種（購入対象のみ）
+    typed=ranked.copy()
     if not typed.empty:
-        typed=typed.copy()
         typed['券種表示']=typed['bet_type'].map(_bet_type_label)
     by_rank_type=[]
     for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','見送り')]:
@@ -929,11 +982,13 @@ def verification_data(selected_date='', source='all'):
             g=g_rank[g_rank['券種表示']==label] if not g_rank.empty else g_rank
             types.append({'bet_type':label,**pack(g)})
         by_rank_type.append({'key':key,'name':name,'types':types,**pack(g_rank)})
-    # 一覧は購入対象のみ（レース全券種ではなく推奨馬券単位）
+    # 照合明細＝購入対象の馬券のみ（S押下でS購入分だけ）
     recent=[]
     if not ranked.empty:
         for _,r in ranked.sort_values(['date','race','bet_type'],ascending=[False,True,True]).iterrows():
             row=_enrich_verify_row(r, pred_meta)
+            if not row.get('is_purchase'):
+                continue
             row['bet_type']=_bet_type_label(row.get('bet_type'))
             recent.append(row)
     # グラフ用スケール
