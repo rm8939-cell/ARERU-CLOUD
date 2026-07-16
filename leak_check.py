@@ -1,4 +1,6 @@
+import os
 import pandas as pd
+from datetime import date
 
 
 history = pd.read_csv(
@@ -6,7 +8,7 @@ history = pd.read_csv(
     encoding="utf-8-sig"
 )
 
-TARGET_DATE = pd.Timestamp("2026-07-12")
+TARGET_DATE = pd.Timestamp(os.environ.get("ARERU_LEAK_DATE", date.today().isoformat()))
 
 date_text = history["年月日"].astype(str)
 
@@ -35,7 +37,7 @@ print("解析失敗:", history["解析日付"].isna().sum())
 print()
 print("最古日付:", history["解析日付"].min())
 print("最新日付:", history["解析日付"].max())
-print("2026年7月12日以降:", len(leak))
+print(f"{TARGET_DATE.date()} 以降:", len(leak))
 
 if len(leak) > 0:
 
