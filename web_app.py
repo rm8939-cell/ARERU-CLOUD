@@ -368,16 +368,51 @@ def _safe_pct(num, den):
 
 
 def _roi_tone(recovery):
-    """回収率の色区分: 100%以上緑 / 80〜99%黄 / 79%以下赤"""
+    """回収率の色区分: 100%以上緑 / 90〜99%黄 / 89%以下赤"""
     try:
         v=float(recovery)
     except (TypeError, ValueError):
         v=0.0
     if v>=100:
         return 'roi-good'
-    if v>=80:
+    if v>=90:
         return 'roi-mid'
     return 'roi-bad'
+
+
+# analysis_result の bet_type → 画面表示名（本命＝単勝）
+BET_TYPE_DISPLAY = {
+    '本命': '単勝',
+    '単勝': '単勝',
+    'ワイド': 'ワイド',
+    '馬連': '馬連',
+    '三連複': '三連複',
+    '三連単': '三連単',
+}
+RANK_TYPE_ORDER = ['単勝', 'ワイド', '馬連', '三連複', '三連単']
+
+
+def _bet_type_label(bet_type):
+    key=str(bet_type or '').strip()
+    return BET_TYPE_DISPLAY.get(key, key or '—')
+
+
+def _attach_rank_column(frame, pred_meta):
+    """勝負ランク列を保証（欠損は予想メタから補完）。"""
+    out=frame.copy()
+    if out.empty:
+        out['勝負ランク']=''
+        return out
+    if '勝負ランク' not in out.columns:
+        out['勝負ランク']=''
+    blank=out['勝負ランク'].astype(str).str.strip().eq('')
+    if blank.any():
+        out.loc[blank,'勝負ランク']=out.loc[blank].apply(
+            lambda row: str((_pred_for_analysis_row(row, pred_meta) or {}).get('勝負ランク','') or ''),
+            axis=1,
+        )
+    out['勝負ランク']=out['勝負ランク'].astype(str).str.upper().str.strip()
+    return out
 
 
 def _bar_width(recovery):
@@ -406,21 +441,73 @@ def parse_prediction_combos(prediction):
 
 
 def _load_prediction_meta():
-    """race_id → 予想時メタデータ。"""
+    """race_id / date+会場+R → 予想時メタデータ。旧JRA URL 形式にも対応。"""
     meta={}
     for f in ARCH.glob('predictions_*.csv'):
         try:
             df=pd.read_csv(f,encoding='utf-8-sig').fillna('')
         except Exception:
             continue
-        if 'race_id' not in df.columns:
+        if df.empty:
             continue
+        m=re.fullmatch(r'predictions_(\d{4}-\d{2}-\d{2})\.csv', f.name)
+        file_date=m.group(1) if m else ''
         for _,row in df.iterrows():
-            rid=_norm_race_id(row.get('race_id',''))
-            if not rid or rid in meta:
-                continue
-            meta[rid]=row.to_dict()
+            d=row.to_dict()
+            rid=_norm_race_id(d.get('race_id',''))
+            if rid and rid not in meta:
+                meta[rid]=d
+            venue=str(d.get('開催地','') or '').strip()
+            try:
+                race_i=int(float(d.get('レース',0) or 0))
+            except (TypeError, ValueError):
+                race_i=0
+            day=str(d.get('日付','') or file_date or '').strip()
+            if day and venue and race_i:
+                alt=f'{day}|{venue}|{race_i}'
+                if alt not in meta:
+                    meta[alt]=d
     return meta
+
+
+def _pred_for_analysis_row(r, pred_meta):
+    """analysis 行から予想メタを解決（race_id優先、date+会場+Rフォールバック）。"""
+    rid=_norm_race_id(r.get('race_id',''))
+    if rid and rid in pred_meta:
+        return pred_meta[rid]
+    venue=str(r.get('開催地','') or '').strip()
+    day=str(r.get('date','') or '').strip()
+    race_i=0
+    race_label=str(r.get('race','') or '')
+    m=re.search(r'(\d+)\s*R', race_label)
+    if m:
+        race_i=int(m.group(1))
+    if not race_i:
+        try: race_i=int(float(r.get('レース',0) or 0))
+        except (TypeError, ValueError): race_i=0
+    if day and venue and race_i:
+        return pred_meta.get(f'{day}|{venue}|{race_i}') or {}
+    return {}
+
+
+def _ensure_purchase_flags(df, pred_meta):
+    """購入対象フラグを保証。列が無い古いCSVは推奨券種照合で補完。"""
+    out=df.copy()
+    if '推奨券種' not in out.columns:
+        out['推奨券種']=''
+    if '購入対象' not in out.columns:
+        out['購入対象']=0
+    # 推奨券種が空の行だけメタから補完
+    for idx in out.index[out['推奨券種'].astype(str).str.strip().eq('')]:
+        pred=_pred_for_analysis_row(out.loc[idx], pred_meta)
+        rec=str(pred.get('推奨券種','') or '').strip()
+        if rec:
+            out.at[idx,'推奨券種']=rec
+    # 購入対象 = bet_type == 推奨券種
+    recs=out['推奨券種'].astype(str).str.strip()
+    bts=out['bet_type'].astype(str).str.strip()
+    out['購入対象']=((recs!='') & (bts==recs)).astype(int)
+    return out
 
 
 def _buy_reasons(pred):
@@ -468,9 +555,24 @@ def _rank_label(rank):
     return RANK_LABELS.get(str(rank).upper(),'')
 
 
+def _parse_race_no(race_label, pred=None):
+    """開催ラベル / 予想メタからレース番号を抽出。"""
+    text=str(race_label or '')
+    m=re.search(r'(\d+)\s*R', text, re.I)
+    if m:
+        return f'{int(m.group(1)):02d}'
+    if pred is not None:
+        raw=pred.get('レース','')
+        try:
+            return f'{int(float(raw)):02d}'
+        except (TypeError, ValueError):
+            pass
+    return ''
+
+
 def _enrich_verify_row(r, pred_meta):
     rid=_norm_race_id(r.get('race_id',''))
-    pred=pred_meta.get(rid) or {}
+    pred=_pred_for_analysis_row(r, pred_meta)
     prediction=str(r.get('prediction','') or '')
     combos=parse_prediction_combos(prediction)
     recovery=_safe_pct(float(r.get('payout') or 0), float(r.get('investment') or 0))
@@ -482,13 +584,25 @@ def _enrich_verify_row(r, pred_meta):
     bet_judge=str(pred.get('BET判定','') or _rank_label(rank) or '')
     areru=str(pred.get('荒れ度','') or '')
     expect=str(pred.get('BET期待値','') or '')
-    recommend=str(pred.get('推奨券種','') or '')
+    recommend=str(r.get('推奨券種') or pred.get('推奨券種','') or '')
     ai_comment=str(pred.get('馬券戦略理由','') or '')
+    try:
+        is_purchase=int(float(r.get('購入対象') or 0))
+    except (TypeError, ValueError):
+        is_purchase=0
+    if not is_purchase and recommend and str(r.get('bet_type',''))==recommend:
+        is_purchase=1
+    venue=str(r.get('開催地','') or pred.get('開催地','') or '')
+    race_label=str(r.get('race','') or '')
+    if not venue and race_label:
+        venue=re.sub(r'\d+\s*R.*$','',race_label,flags=re.I).strip()
+    race_no=_parse_race_no(race_label, pred)
     return {
         'date':str(r.get('date','')),
-        'race':str(r.get('race','')),
+        'race':race_label,
         'race_id':rid,
-        'venue':str(r.get('開催地','') or pred.get('開催地','') or ''),
+        'venue':venue,
+        'race_no':race_no,
         'bet_type':str(r.get('bet_type','')),
         'prediction':prediction,
         'combos':combos,
@@ -509,6 +623,7 @@ def _enrich_verify_row(r, pred_meta):
         'ai_comment':ai_comment,
         'reasons':_buy_reasons(pred),
         'has_ai':bool(pred) or bool(rank),
+        'is_purchase':is_purchase,
     }
 
 
@@ -522,7 +637,7 @@ def verification_data(selected_date=''):
         'has_data':False,'selected_date':selected_date,
         'total_bets':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,
         'investment':0,'payout':0,'profit':0,'tone':'roi-bad',
-        'daily':[],'by_type':[],'by_rank':[],'main':{},
+        'daily':[],'by_type':[],'by_rank':[],'by_rank_type':[],'main':{},
         'recovery_series':[],'cum_profit':[],'recent_rows':[],
     }
     if not ANALYSIS_CSV.exists():
@@ -536,8 +651,12 @@ def verification_data(selected_date=''):
     for c in ['hit','payout','investment','profit','roi']:
         if c in df.columns:
             df[c]=pd.to_numeric(df[c],errors='coerce').fillna(0)
+    pred_meta=_load_prediction_meta()
+    df=_ensure_purchase_flags(df, pred_meta)
     all_df=df.copy()
     day_df=all_df[all_df['date'].astype(str)==str(selected_date)] if selected_date else all_df
+    # 購入対象 = 各レースの推奨券種1件。「Sだけ買えば勝てるか」の母集団
+    purchase_all=all_df[pd.to_numeric(all_df['購入対象'],errors='coerce').fillna(0).astype(int)==1].copy()
 
     def pack(frame):
         if frame is None or len(frame)==0:
@@ -580,33 +699,38 @@ def verification_data(selected_date=''):
     src=day_df if not day_df.empty else all_df
     for bt,g in src.groupby('bet_type'):
         s=pack(g)
-        by_type.append({'bet_type':str(bt),**s})
+        by_type.append({'bet_type':_bet_type_label(bt),'bet_key':str(bt),**s})
     by_type=sorted(by_type,key=lambda x:x['investment'],reverse=True)
-    # 本命成績
-    main_df=src[src['bet_type']=='本命'] if '本命' in set(src['bet_type'].astype(str)) else pd.DataFrame()
+    # 本命（単勝）成績
+    main_df=src[src['bet_type'].astype(str).isin(['本命','単勝'])] if not src.empty else pd.DataFrame()
     main=pack(main_df) if not main_df.empty else dict(empty_pack)
-    # AIランク結合 → ランク別KPI（件数・的中率・回収率・ROI・収支）
-    pred_meta=_load_prediction_meta()
-    ranked=src.copy()
-    if '勝負ランク' not in ranked.columns or ranked['勝負ランク'].astype(str).str.strip().eq('').all():
-        ranked['勝負ランク']=ranked['race_id'].map(
-            lambda rid: str((pred_meta.get(_norm_race_id(rid)) or {}).get('勝負ランク','') or '').upper()
-        )
-    else:
-        ranked['勝負ランク']=ranked['勝負ランク'].astype(str).str.upper().str.strip()
+    # AIランク別KPI（購入対象単位・全期間）
+    ranked=_attach_rank_column(purchase_all, pred_meta)
     by_rank=[]
-    for key, ranks, name in [
-        ('S',['S'],'勝負'),('A',['A'],'買い'),('B',['B'],'様子見'),
-        ('C',['C'],'見送り'),('S+A',['S','A'],'勝負+買い'),
-    ]:
-        g=ranked[ranked['勝負ランク'].isin(ranks)]
+    for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','見送り')]:
+        g=ranked[ranked['勝負ランク']==key] if not ranked.empty else ranked
         s=pack(g)
         by_rank.append({'key':key,'name':name,**s})
-    # カード表示用明細（予想メタ結合）
-    show=day_df if not day_df.empty else all_df
+    # ランク×券種（全評価券種・運用判断用）
+    typed=_attach_rank_column(all_df, pred_meta)
+    if not typed.empty:
+        typed=typed.copy()
+        typed['券種表示']=typed['bet_type'].map(_bet_type_label)
+    by_rank_type=[]
+    for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','見送り')]:
+        g_rank=typed[typed['勝負ランク']==key] if not typed.empty else typed
+        types=[]
+        for label in RANK_TYPE_ORDER:
+            g=g_rank[g_rank['券種表示']==label] if not g_rank.empty else g_rank
+            types.append({'bet_type':label,**pack(g)})
+        by_rank_type.append({'key':key,'name':name,'types':types,**pack(g_rank)})
+    # 一覧は購入対象のみ（レース全券種ではなく推奨馬券単位）
     recent=[]
-    for _,r in show.tail(120).iloc[::-1].iterrows():
-        recent.append(_enrich_verify_row(r, pred_meta))
+    if not ranked.empty:
+        for _,r in ranked.sort_values(['date','race','bet_type'],ascending=[False,True,True]).iterrows():
+            row=_enrich_verify_row(r, pred_meta)
+            row['bet_type']=_bet_type_label(row.get('bet_type'))
+            recent.append(row)
     # グラフ用スケール
     max_abs=max([abs(x['value']) for x in cum_profit]+[1])
     for x in cum_profit:
@@ -624,10 +748,12 @@ def verification_data(selected_date=''):
         'daily':daily,
         'by_type':by_type,
         'by_rank':by_rank,
+        'by_rank_type':by_rank_type,
         'main':main,
         'recovery_series':recovery_series,
         'cum_profit':cum_profit,
         'recent_rows':recent,
+        'purchase_count':len(recent),
     }
 
 @app.route('/')

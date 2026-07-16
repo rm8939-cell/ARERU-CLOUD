@@ -65,29 +65,63 @@
 .vc-money b{display:block;font-size:13px;font-weight:800;word-break:break-all}.vc-money small{color:var(--muted);font-size:9px;letter-spacing:.08em}
 .vc-comment{margin-top:10px;font-size:12px;line-height:1.65;color:#55616c;background:#f8fafb;border:1px dashed #d7dee4;border-radius:10px;padding:10px}
 .filter-empty{display:none;padding:18px 15px;color:var(--muted);font-size:13px;text-align:center}
-/* PO-5 AI rank */
+/* PO-5/PO-6 AI rank — purchase-level verification */
 .rank-badge{display:inline-flex;align-items:center;gap:6px;font-weight:850}
 .rank-pill{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border-radius:8px;font-size:14px;font-weight:900;letter-spacing:.04em;color:#fff}
-.rank-pill.S,.vc-pill.rank-S{background:#c62828;border-color:#b71c1c;color:#fff}
-.rank-pill.A,.vc-pill.rank-A{background:#ef6c00;border-color:#e65100;color:#fff}
-.rank-pill.B,.vc-pill.rank-B{background:#546e7a;border-color:#455a64;color:#fff}
-.rank-pill.C,.vc-pill.rank-C{background:#90a4ae;border-color:#78909c;color:#fff}
+/* S=金 / A=緑 / B=青 / C=グレー */
+.rank-pill.S,.vc-pill.rank-S,.filter-chip.rank-s.active{background:linear-gradient(145deg,#d4a017,#b8860b);border-color:#9a6b00;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.rank-pill.A,.vc-pill.rank-A,.filter-chip.rank-a.active{background:#176b45;border-color:#0f5a38;color:#fff}
+.rank-pill.B,.vc-pill.rank-B,.filter-chip.rank-b.active{background:#176db0;border-color:#125a94;color:#fff}
+.rank-pill.C,.vc-pill.rank-C,.filter-chip.rank-c.active{background:#90a4ae;border-color:#78909c;color:#fff}
 .rank-name{font-size:12px;font-weight:700;color:var(--muted)}
 .rank-kpi{display:grid;gap:0}
-.rank-kpi-row{display:grid;grid-template-columns:64px 1fr;gap:8px;align-items:start;padding:12px 15px;border-bottom:1px solid var(--line)}
+.rank-kpi-row{display:grid;grid-template-columns:56px 1fr;gap:8px;align-items:center;width:100%;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .rank-kpi-row:last-child{border-bottom:0}
-.rank-kpi-meta{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.rank-kpi-meta div{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 6px;text-align:center;min-width:0}
-.rank-kpi-meta b{display:block;font-size:13px;font-weight:850;word-break:break-all}.rank-kpi-meta small{color:var(--muted);font-size:9px;letter-spacing:.06em}
+.rank-kpi-row:active,.rank-kpi-row.active{background:var(--soft)}
+.rank-kpi-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rank-kpi-meta div{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 4px;text-align:center;min-width:0}
+.rank-kpi-meta b{display:block;font-size:14px;font-weight:850;word-break:break-all}.rank-kpi-meta small{color:var(--muted);font-size:9px;letter-spacing:.04em}
 .betbar .rank-badge{gap:8px}
-.filter-bar.rank-filters{border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:2px}
+.filter-bar.rank-filters{border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:0;position:sticky;top:0;z-index:5;background:#fff}
+.live-kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);background:#fafbfc}
+.live-kpi .metric{padding:10px 8px}.live-kpi b{font-size:20px}
+.live-kpi-label{padding:10px 14px 0;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.purchase-card{padding:12px}
+.pc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.pc-venue{font-size:17px;font-weight:850;line-height:1.25}
+.pc-venue small{display:block;margin-top:2px;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.pc-rank{flex-shrink:0}
+.pc-ticket{font-size:13px;line-height:1.45;color:#334;background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:9px 10px;margin:8px 0;word-break:break-word;overflow-wrap:anywhere}
+.pc-ticket b{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);margin-bottom:4px;font-weight:800}
+.pc-result{display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:14px;font-weight:850}
+.pc-money{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.pc-money div{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 4px;text-align:center;min-width:0}
+.pc-money b{display:block;font-size:13px;font-weight:800;word-break:break-all}.pc-money small{color:var(--muted);font-size:9px;letter-spacing:.06em}
+.race-review-block.hidden{display:none}
+/* PO-6 ランク×券種 */
+.rank-type-block{border-bottom:1px solid var(--line);padding:14px;min-width:0}
+.rank-type-block:last-child{border-bottom:0}
+.rank-type-block.hidden{display:none}
+.rank-type-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.rank-type-head .rank-badge{gap:8px}
+.rank-type-list{display:grid;gap:8px;min-width:0}
+.rank-type-card{background:#f8fafb;border:1px solid #e4eaee;border-radius:12px;padding:10px;min-width:0}
+.rank-type-card .rt-name{font-size:13px;font-weight:850;margin-bottom:8px}
+.rank-type-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rank-type-meta div{background:#fff;border:1px solid #e4eaee;border-radius:10px;padding:8px 4px;text-align:center;min-width:0}
+.rank-type-meta b{display:block;font-size:13px;font-weight:850;word-break:break-all}.rank-type-meta small{color:var(--muted);font-size:9px;letter-spacing:.04em}
+.race-head-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.race-head .rank-pill{min-width:32px;height:32px;font-size:15px}
 @media (max-width:420px){
   .wrap{padding:0 10px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
   .bar-row{grid-template-columns:56px 1fr 52px;padding:8px 12px;font-size:12px}
   .ai-grid{grid-template-columns:1fr 1fr}.vc-money{grid-template-columns:1fr 1fr 1fr}
   .verify-card{padding:12px}.vc-race{font-size:17px}.horse-chip{font-size:12px;padding:6px 8px}
-  .filter-chip{padding:7px 10px;font-size:11px}.mode-tabs a{font-size:11px;padding:8px 4px}
-  .rank-kpi-meta{grid-template-columns:repeat(3,1fr)}.rank-kpi-row{grid-template-columns:52px 1fr}
+  .filter-chip{padding:8px 12px;font-size:12px;min-width:44px}.mode-tabs a{font-size:11px;padding:8px 4px}
+  .rank-kpi-meta{grid-template-columns:repeat(2,1fr)}.rank-kpi-row{grid-template-columns:48px 1fr;padding:12px}
+  .live-kpi{grid-template-columns:repeat(2,1fr)}.pc-money{grid-template-columns:1fr 1fr 1fr}
+  .rank-type-meta{grid-template-columns:repeat(2,1fr)}.rank-type-block{padding:12px 10px}
+  .race-head{padding:14px 12px 10px}.heat{font-size:20px}
 }
 </style></head>
 <body class="{{'nar' if source=='nar' else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{{"LOCAL RACING AI / 地方専用" if source=="nar" else "CENTRAL RACING AI / JRA中央"}}</div></div></header>
@@ -122,185 +156,224 @@
 <div class="message">回収率・券種別的中率・収支推移は `python3 results.py` 実行後に表示します。</div>
 {% endif %}
 {% elif mode=='result' %}
-<section class="result-summary"><h2>結果検証｜払戻ベース自動集計</h2>
-<p>JRA結果を取得し、本命・ワイド・馬連・三連複・三連単を照合します。日別ROI・券種別ROI・的中率・累計収支を表示します。</p></section>
+<section class="result-summary"><h2>結果検証｜AIランク分析</h2>
+<p>ランク別・券種別の成績から「S×ワイドだけ買う」など運用判断できます。一覧・集計はS/A/B/Cで切り替えます。</p></section>
 {% if verification and verification.has_data %}
-<section class="targets"><h2>{% if verification.scope=='day' %}{{verification.selected_date}} サマリー{% else %}全期間サマリー{% endif %}</h2>
-<div class="kpi-grid">
-<div class="metric kpi"><b class="{{verification.tone}}">{{'%.1f'|format(verification.recovery)}}%</b><small>回収率</small></div>
-<div class="metric kpi"><b>{{'%.1f'|format(verification.hit_rate)}}%</b><small>的中率</small></div>
-<div class="metric kpi"><b class="{{'roi-good' if verification.profit>=0 else 'roi-bad'}}">{{verification.profit}}</b><small>収支(円)</small></div>
-<div class="metric kpi"><b>{{verification.investment}}</b><small>投資(円)</small></div>
-</div></section>
 
-<section class="targets"><h2>AIランク別成績（S勝負 / A買い / B様子見 / C見送り）</h2>
-<div class="rank-kpi">
-{% for x in verification.by_rank %}
-<div class="rank-kpi-row">
-<div class="rank-badge"><span class="rank-pill {{x.key if x.key!='S+A' else 'S'}}">{{x.key}}</span><span class="rank-name">{{x.name}}</span></div>
-<div class="rank-kpi-meta">
-<div><b>{{x.total_bets}}</b><small>件数</small></div>
-<div><b>{{'%.1f'|format(x.hit_rate)}}%</b><small>的中率</small></div>
-<div><b class="{{x.tone}}">{{'%.1f'|format(x.recovery)}}%</b><small>回収率</small></div>
-<div><b class="{{x.tone}}">{{'%.1f'|format(x.roi)}}%</b><small>ROI</small></div>
-<div><b class="{{'roi-good' if x.profit>=0 else 'roi-bad'}}">{{x.profit}}</b><small>収支</small></div>
-</div>
-</div>
-{% endfor %}
-</div>
-</section>
-
-<section class="targets"><h2>本命成績（単勝）</h2>
-<div class="kpi-grid">
-<div class="metric kpi"><b>{{verification.main.hits}}/{{verification.main.total_bets}}</b><small>的中数</small></div>
-<div class="metric kpi"><b>{{'%.1f'|format(verification.main.hit_rate)}}%</b><small>的中率</small></div>
-<div class="metric kpi"><b class="{{verification.main.tone}}">{{'%.1f'|format(verification.main.recovery)}}%</b><small>回収率</small></div>
-<div class="metric kpi"><b class="{{'roi-good' if verification.main.profit>=0 else 'roi-bad'}}">{{verification.main.profit}}</b><small>収支(円)</small></div>
-</div></section>
-
-<section class="targets"><h2>券種別ROI</h2>
-{% for x in verification.by_type %}
-<div class="bar-row"><div>{{x.bet_type}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.bar}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.recovery)}}%</div></div>
-<div class="message" style="margin:0 15px 8px">的中率 {{'%.1f'|format(x.hit_rate)}}% · 収支 {{x.profit}}円 · 投資 {{x.investment}}円</div>
-{% endfor %}
-</section>
-
-<section class="targets"><h2>日別ROI / 回収率</h2>
-{% for x in verification.daily %}
-<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.bar}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.recovery)}}%</div></div>
-{% endfor %}
-</section>
-
-<section class="targets"><h2>累計収支</h2>
-{% for x in verification.cum_profit %}
-<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.pct}}%"></div></div><div class="bar-val {{x.tone}}">{{x.value}}</div></div>
-{% endfor %}
-</section>
-
-<section class="targets"><h2>回収率グラフ（累計）</h2>
-{% for x in verification.recovery_series %}
-<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.pct}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.value)}}%</div></div>
-{% endfor %}
-</section>
-
-<section class="targets" id="verify-section"><h2>照合明細</h2>
+<section class="targets" id="rank-summary-section"><h2>① AIランク別サマリー</h2>
 <div class="filter-bar rank-filters" id="verify-filters" role="tablist" aria-label="AIランクフィルター">
 <button type="button" class="filter-chip active" data-filter="all">全部</button>
-<button type="button" class="filter-chip" data-filter="rank-s">S</button>
-<button type="button" class="filter-chip" data-filter="rank-a">A</button>
-<button type="button" class="filter-chip" data-filter="rank-b">B</button>
-<button type="button" class="filter-chip" data-filter="rank-c">C</button>
-<button type="button" class="filter-chip" data-filter="rank-sa">S+A</button>
+<button type="button" class="filter-chip rank-s" data-filter="rank-s">S</button>
+<button type="button" class="filter-chip rank-a" data-filter="rank-a">A</button>
+<button type="button" class="filter-chip rank-b" data-filter="rank-b">B</button>
+<button type="button" class="filter-chip rank-c" data-filter="rank-c">C</button>
 </div>
-<div class="filter-bar" id="verify-filters-extra" role="tablist" aria-label="詳細フィルター">
-<button type="button" class="filter-chip" data-filter="hit">的中のみ</button>
-<button type="button" class="filter-chip" data-filter="miss">不的中のみ</button>
-<button type="button" class="filter-chip" data-filter="ワイド">ワイド</button>
-<button type="button" class="filter-chip" data-filter="馬連">馬連</button>
-<button type="button" class="filter-chip" data-filter="三連複">三連複</button>
-<button type="button" class="filter-chip" data-filter="三連単">三連単</button>
+<div class="rank-kpi" id="rank-kpi">
+{% for x in verification.by_rank %}
+<button type="button" class="rank-kpi-row" data-filter="rank-{{x.key|lower}}" data-rank="{{x.key}}" aria-pressed="false">
+<div class="rank-badge"><span class="rank-pill {{x.key}}">{{x.key}}</span></div>
+<div class="rank-kpi-meta">
+<div><b>{{x.total_bets}}</b><small>対象件数</small></div>
+<div><b>{{'%.1f'|format(x.hit_rate)}}%</b><small>的中率</small></div>
+<div><b class="{{x.tone}}">{{'%.1f'|format(x.recovery)}}%</b><small>回収率</small></div>
+<div><b class="{{'roi-good' if x.profit>=0 else 'roi-bad'}}">{{x.profit}}</b><small>収支</small></div>
+</div>
+</button>
+{% endfor %}
+</div>
+</section>
+
+<section class="targets" id="rank-type-section"><h2>③ ランク×券種分析</h2>
+{% for block in verification.by_rank_type %}
+<div class="rank-type-block" data-rank="{{block.key}}">
+<div class="rank-type-head">
+<div class="rank-badge"><span class="rank-pill {{block.key}}">{{block.key}}</span><span class="rank-name">{{block.name}}</span></div>
+</div>
+<div class="rank-type-list">
+{% for t in block.types %}
+<div class="rank-type-card">
+<div class="rt-name">{{t.bet_type}}</div>
+<div class="rank-type-meta">
+<div><b>{{t.total_bets}}</b><small>対象件数</small></div>
+<div><b>{{'%.1f'|format(t.hit_rate)}}%</b><small>的中率</small></div>
+<div><b class="{{t.tone}}">{{'%.1f'|format(t.recovery)}}%</b><small>回収率</small></div>
+<div><b class="{{'roi-good' if t.profit>=0 else 'roi-bad'}}">{{t.profit}}</b><small>収支</small></div>
+</div>
+</div>
+{% endfor %}
+</div>
+</div>
+{% endfor %}
+</section>
+
+<section class="targets" id="verify-section"><h2>購入履歴（購入対象単位）</h2>
+<div class="live-kpi-label" id="live-kpi-label">表示中の集計</div>
+<div class="live-kpi" id="live-kpi">
+<div class="metric kpi"><b id="live-count">0</b><small>対象件数</small></div>
+<div class="metric kpi"><b id="live-hit">0%</b><small>的中率</small></div>
+<div class="metric kpi"><b id="live-recovery">0%</b><small>回収率</small></div>
+<div class="metric kpi"><b id="live-profit">0</b><small>収支</small></div>
 </div>
 <div class="verify-list" id="verify-list">
 {% for r in verification.recent_rows %}
-<article class="verify-card {{'hit-card' if r.hit else 'miss-card'}}" data-hit="{{r.hit}}" data-rank="{{r.rank}}" data-bet="{{r.bet_type}}">
-<div class="vc-date">{{r.date}}</div>
-<div class="vc-race">{{r.race}}</div>
-<div class="vc-meta">
-<span class="vc-pill bet">券種：{{r.bet_type}}</span>
-{% if r.rank %}<span class="vc-pill rank-{{r.rank}}">{{r.rank}} {{r.rank_label or ''}}</span>{% endif %}
-{% if r.recommend %}<span class="vc-pill">推奨 {{r.recommend}}</span>{% endif %}
+<article class="verify-card purchase-card {{'hit-card' if r.hit else 'miss-card'}}"
+  data-hit="{{1 if r.hit else 0}}"
+  data-rank="{{r.rank}}"
+  data-bet="{{r.bet_type}}"
+  data-investment="{{r.investment}}"
+  data-payout="{{r.payout}}"
+  data-profit="{{r.profit}}">
+<div class="pc-top">
+<div class="pc-venue">{{r.venue or r.race}}{% if r.race_no %} {{r.race_no}}R{% endif %}
+<small>{{r.date}} · {{r.bet_type}}</small></div>
+<div class="pc-rank">{% if r.rank %}<span class="rank-pill {{r.rank}}">{{r.rank}}</span>{% else %}<span class="rank-pill C">—</span>{% endif %}</div>
 </div>
-
-<div class="vc-label">買い目</div>
-{% if r.combos %}
-<div class="combo-list">
-{% for combo in r.combos[:8] %}
-<div class="combo-block">
-{% for h in combo %}
-<span class="horse-chip">【{{h}}】</span>
-{% if not loop.last %}<span class="combo-arrow">↓</span>{% endif %}
-{% endfor %}
-</div>
-{% endfor %}
-{% if r.combos|length > 8 %}
-<div class="message" style="margin:0">他 {{r.combos|length - 8}} 点</div>
-{% endif %}
-</div>
-{% else %}
-<div class="message" style="margin:0">見送り / 買い目なし</div>
-{% endif %}
-
-{% if r.has_ai %}
-<div class="vc-label">AI評価</div>
-<div class="ai-grid">
-<div class="ai-item"><b>{% if r.rank %}<span class="rank-pill {{r.rank}}">{{r.rank}}</span> {{r.rank_label}}{% else %}—{% endif %}</b><small>AIランク</small></div>
-<div class="ai-item"><b>{{r.areru or '—'}}</b><small>ARERU指数</small></div>
-<div class="ai-item"><b>{{r.expect or '—'}}</b><small>買い期待度</small></div>
-<div class="ai-item"><b>{{r.recommend or '—'}}</b><small>推奨券種</small></div>
-</div>
-{% endif %}
-
-{% if r.reasons %}
-<div class="vc-label">購入理由</div>
-<ul class="reason-list">{% for reason in r.reasons %}<li>{{reason}}</li>{% endfor %}</ul>
-{% endif %}
-{% if r.ai_comment %}
-<div class="vc-comment">{{r.ai_comment}}</div>
-{% endif %}
-
-<div class="vc-result {{'hit' if r.hit else 'miss'}}">{% if r.hit %}✅ 的中{% else %}❌ 不的中{% endif %}{% if r.result %} · {{r.result}}{% endif %}</div>
-<div class="vc-money">
-<div><b>{{r.investment}}円</b><small>投資</small></div>
+<div class="pc-ticket"><b>購入馬券</b>{{r.prediction if r.prediction else '見送り / 買い目なし'}}</div>
+<div class="pc-result {{'hit' if r.hit else 'miss'}}">{% if r.hit %}的中{% else %}不的中{% endif %}{% if r.result %} · {{r.result}}{% endif %}</div>
+<div class="pc-money">
 <div><b>{{r.payout}}円</b><small>払戻</small></div>
+<div><b>{{r.investment}}円</b><small>投資</small></div>
 <div><b class="{{'roi-good' if r.profit>=0 else 'roi-bad'}}">{{r.profit}}円</b><small>収支</small></div>
 </div>
 </article>
 {% endfor %}
 </div>
-<div class="filter-empty" id="verify-empty">該当条件に合う結果がありません</div>
+<div class="filter-empty" id="verify-empty">該当する購入がありません</div>
 </section>
+
+<details class="targets" style="padding:0">
+<summary style="padding:14px 16px;font-size:13px;letter-spacing:.12em;cursor:pointer;list-style:none;color:#ddd;background:#1a1a1a">その他の集計（本命・券種・日別）</summary>
+<section style="border:0;margin:0;border-radius:0"><h2 style="display:none">本命</h2>
+<div class="kpi-grid">
+<div class="metric kpi"><b>{{verification.main.hits}}/{{verification.main.total_bets}}</b><small>単勝 的中</small></div>
+<div class="metric kpi"><b class="{{verification.main.tone}}">{{'%.1f'|format(verification.main.recovery)}}%</b><small>単勝 回収率</small></div>
+<div class="metric kpi"><b>{{'%.1f'|format(verification.hit_rate)}}%</b><small>全体 的中率</small></div>
+<div class="metric kpi"><b class="{{verification.tone}}">{{'%.1f'|format(verification.recovery)}}%</b><small>全体 回収率</small></div>
+</div>
+{% for x in verification.by_type %}
+<div class="bar-row"><div>{{x.bet_type}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.bar}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.recovery)}}%</div></div>
+{% endfor %}
+{% for x in verification.daily %}
+<div class="bar-row"><div>{{x.date[5:]}}</div><div class="bar-track"><div class="bar-fill {{x.tone}}" style="width:{{x.bar}}%"></div></div><div class="bar-val {{x.tone}}">{{'%.1f'|format(x.recovery)}}%</div></div>
+{% endfor %}
+</section>
+</details>
+
 <script>
 (function(){
   var bar=document.getElementById('verify-filters');
-  var extra=document.getElementById('verify-filters-extra');
   var list=document.getElementById('verify-list');
   var empty=document.getElementById('verify-empty');
+  var rankKpi=document.getElementById('rank-kpi');
+  var rankType=document.getElementById('rank-type-section');
+  var liveLabel=document.getElementById('live-kpi-label');
   if(!bar||!list) return;
   var cards=[].slice.call(list.querySelectorAll('.verify-card'));
-  var activeFilter='all';
+  var elCount=document.getElementById('live-count');
+  var elHit=document.getElementById('live-hit');
+  var elRec=document.getElementById('live-recovery');
+  var elProfit=document.getElementById('live-profit');
+  var labels={all:'全部の購入', 'rank-s':'Sランクだけ買った場合', 'rank-a':'Aランクだけ買った場合', 'rank-b':'Bランクだけ買った場合', 'rank-c':'Cランクだけ買った場合'};
+
+  function tone(rec){
+    if(rec>=100) return 'roi-good';
+    if(rec>=90) return 'roi-mid';
+    return 'roi-bad';
+  }
+  function fmt(n){
+    return (Math.round(n*10)/10).toFixed(1);
+  }
+  function rankFromFilter(filter){
+    if(filter==='rank-s') return 'S';
+    if(filter==='rank-a') return 'A';
+    if(filter==='rank-b') return 'B';
+    if(filter==='rank-c') return 'C';
+    return '';
+  }
+  function syncChips(filter){
+    [].forEach.call(bar.querySelectorAll('.filter-chip'),function(b){
+      b.classList.toggle('active', (b.getAttribute('data-filter')||'')===filter);
+    });
+    if(rankKpi){
+      [].forEach.call(rankKpi.querySelectorAll('.rank-kpi-row'),function(row){
+        var on=(row.getAttribute('data-filter')||'')===filter;
+        row.classList.toggle('active', on);
+        row.setAttribute('aria-pressed', on?'true':'false');
+        // 全部表示時は全行、絞り込み時は該当ランクのみ
+        if(filter==='all') row.style.display='';
+        else row.style.display=on?'':'none';
+      });
+    }
+    if(rankType){
+      var rk=rankFromFilter(filter);
+      [].forEach.call(rankType.querySelectorAll('.rank-type-block'),function(block){
+        var br=(block.getAttribute('data-rank')||'').toUpperCase();
+        block.classList.toggle('hidden', !!(rk && br!==rk));
+      });
+    }
+  }
   function apply(filter){
-    activeFilter=filter||'all';
-    var shown=0;
+    filter=filter||'all';
+    syncChips(filter);
+    if(liveLabel) liveLabel.textContent=labels[filter]||'表示中の集計';
+    var raceBlock=document.getElementById('race-review-block');
+    if(raceBlock){
+      var rk=rankFromFilter(filter);
+      [].forEach.call(raceBlock.querySelectorAll('.result-card'),function(card){
+        var cr=(card.getAttribute('data-rank')||'').toUpperCase();
+        card.style.display=(!rk || cr===rk)?'':'none';
+      });
+    }
+
+    var shown=0, hits=0, inv=0, pay=0, profit=0;
     cards.forEach(function(card){
-      var hit=card.getAttribute('data-hit')==='1';
       var rank=(card.getAttribute('data-rank')||'').toUpperCase();
-      var bet=card.getAttribute('data-bet')||'';
       var ok=true;
-      if(activeFilter==='hit') ok=hit;
-      else if(activeFilter==='miss') ok=!hit;
-      else if(activeFilter==='rank-s') ok=rank==='S';
-      else if(activeFilter==='rank-a') ok=rank==='A';
-      else if(activeFilter==='rank-b') ok=rank==='B';
-      else if(activeFilter==='rank-c') ok=rank==='C';
-      else if(activeFilter==='rank-sa') ok=rank==='S'||rank==='A';
-      else if(activeFilter==='all') ok=true;
-      else ok=bet===activeFilter;
+      if(filter==='rank-s') ok=rank==='S';
+      else if(filter==='rank-a') ok=rank==='A';
+      else if(filter==='rank-b') ok=rank==='B';
+      else if(filter==='rank-c') ok=rank==='C';
       card.style.display=ok?'':'none';
-      if(ok) shown++;
+      if(!ok) return;
+      shown++;
+      if(card.getAttribute('data-hit')==='1') hits++;
+      inv+=parseInt(card.getAttribute('data-investment')||'0',10)||0;
+      pay+=parseInt(card.getAttribute('data-payout')||'0',10)||0;
+      profit+=parseInt(card.getAttribute('data-profit')||'0',10)||0;
     });
     if(empty) empty.style.display=shown?'none':'block';
+    var hitRate=shown? (hits/shown*100) : 0;
+    var recovery=inv? (pay/inv*100) : 0;
+    if(elCount) elCount.textContent=String(shown);
+    if(elHit) elHit.textContent=fmt(hitRate)+'%';
+    if(elRec){
+      elRec.textContent=fmt(recovery)+'%';
+      elRec.className=tone(recovery);
+    }
+    if(elProfit){
+      elProfit.textContent=String(profit);
+      elProfit.className=profit>=0?'roi-good':'roi-bad';
+    }
   }
-  function wire(el){
-    if(!el) return;
-    el.addEventListener('click',function(e){
-      var btn=e.target.closest('.filter-chip');
-      if(!btn) return;
-      [].forEach.call(document.querySelectorAll('#verify-filters .filter-chip, #verify-filters-extra .filter-chip'),function(b){b.classList.remove('active')});
-      btn.classList.add('active');
-      apply(btn.getAttribute('data-filter')||'all');
+
+  bar.addEventListener('click',function(e){
+    var btn=e.target.closest('.filter-chip');
+    if(!btn) return;
+    apply(btn.getAttribute('data-filter')||'all');
+  });
+  if(rankKpi){
+    rankKpi.addEventListener('click',function(e){
+      var row=e.target.closest('.rank-kpi-row');
+      if(!row) return;
+      var f=row.getAttribute('data-filter')||'all';
+      var cur=bar.querySelector('.filter-chip.active');
+      if(cur && (cur.getAttribute('data-filter')||'')===f) f='all';
+      apply(f);
+      var sec=document.getElementById('rank-type-section');
+      if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
     });
   }
-  wire(bar); wire(extra);
+  apply('all');
 })();
 </script>
 {% else %}
@@ -308,12 +381,13 @@
 {% endif %}
 
 {% if races %}
-<section class="result-summary"><h2>予想印 × 実着順</h2><p>◎○▲△☆を消さずに、確定着順と馬券の的中／不的中を並べて検証します。</p></section>
-{% for r in races %}<section class="race result-card">
-<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small class="rank-badge"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span> <span class="rank-name">{{r['BET判定']}}</span></small></div><div class="heat">{{r['BET期待値']}}<small>予想時 買い期待度</small></div></div>
+<div id="race-review-block" class="race-review-block">
+<section class="result-summary"><h2>予想印 × 実着順</h2><p>参考表示です。ランク成績の本体は上の購入履歴です。</p></section>
+{% for r in races %}<section class="race result-card" data-rank="{{r['勝負ランク']}}">
+<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>予想時 買い期待度 {{r['BET期待値']}}</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['BET期待値']}}<small>{{r['BET判定']}}</small></div></div></div>
 {% if r.get('的中一覧') %}
 <div class="section"><div class="section-title">馬券結果</div>
-<div class="result-grid">{% for h in r['的中一覧'] %}<div class="result-row"><b>{{h.bet_type}}</b><span class="{{'hit' if h.hit else 'miss'}}">{% if h.hit %}✅ 的中{% else %}❌ 不的中{% endif %}{% if h.result %} · {{h.result}}{% endif %}</span><strong></strong></div>{% endfor %}</div>
+<div class="result-grid">{% for h in r['的中一覧'] %}<div class="result-row"><b>{{h.bet_type}}</b><span class="{{'hit' if h.hit else 'miss'}}">{% if h.hit %}的中{% else %}不的中{% endif %}{% if h.result %} · {{h.result}}{% endif %}</span><strong></strong></div>{% endfor %}</div>
 </div>
 {% elif r.get('的中表示')=='結果待ち' %}
 <div class="section"><div class="section-title">馬券結果</div><div class="message" style="margin:0">結果待ち</div></div>
@@ -321,12 +395,13 @@
 <div class="section"><div class="section-title">予想印 × 実着順</div><div class="result-grid">{% for x in r.get('結果一覧',[]) %}<div class="result-row"><b>{{x['印']}}</b><span>{{x['馬名']}}</span><strong>{{x['着順']}}</strong></div>{% endfor %}</div></div>
 <div class="section"><div class="section-title gold">AI振り返り</div><div class="review">{{r.get('AI振り返り','')}}</div></div>
 </section>{% endfor %}
+</div>
 {% endif %}
 {% else %}
 {% if targets %}<section class="targets"><h2>本日の買い候補｜S勝負・A買い</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t['勝負ランク']}}">{{t['勝負ランク']}}</span></div><div class="target-name">{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
 {% for r in races %}<section id="race-{{r['race_id']|urlencode}}" class="race {{r['荒れクラス']}}">
-<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>20,000回 仮想レース</small></div><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div>
-<div class="betbar"><span class="rank-badge"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><span>{{r['BET判定']}}</span></span><span>買い期待度 {{r['BET期待値']}}</span></div>
+<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>20,000回 仮想レース</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div></div>
+<div class="betbar"><span class="rank-badge"><span>{{r['BET判定']}}</span></span><span>買い期待度 {{r['BET期待値']}}</span></div>
 <div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍{% if r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %} · 市場 {{r['本命オッズ']}}倍{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}（{{r['本命人気']}}人気）{% endif %}{% endif %} · {{r['本命理由']}}</div></div>
 <div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
 <div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r['人気馬危険']}}</div><div class="reason">危険度 {{r['危険度']}} · {{r['危険理由']}}</div></div>

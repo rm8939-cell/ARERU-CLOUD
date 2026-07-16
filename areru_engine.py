@@ -8,6 +8,21 @@ DATA_DIR=Path('data'); CONFIG_FILE=DATA_DIR/'areru_v2_config.json'
 DEFAULT_WEIGHTS={'performance':0.28,'upset':0.24,'consistency':0.12,'trend':0.12,'value':0.14,'context':0.10}
 RECENCY=np.array([1.0,.82,.65,.48,.34])
 
+# AIランク選別（PO-5/PO-6）。ラベルと閾値は将来ROI学習で自動調整可能な構造。
+RANK_LABELS={'S':'勝負','A':'買い','B':'様子見','C':'見送り'}
+RANK_CLASSES={'S':'battle','A':'target','B':'watch','C':'skip'}
+DEFAULT_RANK_THRESHOLDS={
+    'mode':'percentile',  # percentile | absolute | hybrid
+    's_top_n':2,
+    'a_top_n':5,
+    'b_percentile':0.35,
+    'b_min_n':8,
+    # absolute / hybrid: 買い期待度基礎値の下限（学習で更新）
+    's_min_score':0.0,
+    'a_min_score':0.0,
+    'b_min_score':0.0,
+}
+
 def clean_name(x): return re.sub(r'[\s\u3000]+','',str(x)).strip()
 def parse_date(s):
     s=s.astype(str).str.strip().str.replace('年','-',regex=False).str.replace('月','-',regex=False).str.replace('日','',regex=False).str.replace('/','-',regex=False)
@@ -15,11 +30,90 @@ def parse_date(s):
 def num(x): return pd.to_numeric(x,errors='coerce')
 def clamp(x,a=0,b=100): return float(max(a,min(b,x)))
 
-def load_weights():
+def _load_config():
     if CONFIG_FILE.exists():
-        try: return {**DEFAULT_WEIGHTS,**json.loads(CONFIG_FILE.read_text(encoding='utf-8')).get('weights',{})}
+        try: return json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
         except Exception: pass
-    return DEFAULT_WEIGHTS.copy()
+    return {}
+
+def load_weights():
+    cfg=_load_config()
+    return {**DEFAULT_WEIGHTS,**cfg.get('weights',{})} if cfg else DEFAULT_WEIGHTS.copy()
+
+def load_rank_thresholds():
+    """ランク閾値をconfigから読み込む。未設定時はDEFAULTを返す。"""
+    cfg=_load_config()
+    raw=cfg.get('rank_thresholds') or {}
+    out={**DEFAULT_RANK_THRESHOLDS,**raw}
+    for k in ('s_top_n','a_top_n','b_min_n'):
+        try: out[k]=int(out[k])
+        except (TypeError,ValueError): out[k]=DEFAULT_RANK_THRESHOLDS[k]
+    for k in ('b_percentile','s_min_score','a_min_score','b_min_score'):
+        try: out[k]=float(out[k])
+        except (TypeError,ValueError): out[k]=DEFAULT_RANK_THRESHOLDS[k]
+    mode=str(out.get('mode') or 'percentile').lower()
+    out['mode']=mode if mode in ('percentile','absolute','hybrid') else 'percentile'
+    return out
+
+def rank_label(rank):
+    return RANK_LABELS.get(str(rank).upper(),'')
+
+def assign_ai_ranks(result, thresholds=None):
+    """開催日内の相対順位（または絶対スコア）で S/A/B/C を付与。
+
+    thresholds は load_rank_thresholds() 形式。将来 rank_optimizer が
+    各ランクの実ROIを見て s_top_n / a_top_n / *_min_score を自動更新する。
+    """
+    if result is None or len(result)==0:
+        return result
+    th=thresholds or load_rank_thresholds()
+    raw_bet=result['BET期待値'].astype(float).copy()
+    order=raw_bet.rank(method='first',ascending=False).astype(int)
+    total=len(result)
+    pct=(total-order)/(max(total-1,1))
+    raw_min=float(raw_bet.min()); raw_max=float(raw_bet.max())
+    raw_norm=(raw_bet-raw_min)/(raw_max-raw_min) if raw_max>raw_min else pd.Series(0.5,index=result.index)
+    display_score=(38 + pct*52 + raw_norm*8).clip(0,98.7)
+    result=result.copy()
+    result['買い期待度基礎値']=raw_bet.round(1)
+    result['BET期待値']=display_score.round(1)
+
+    s_n=max(1,min(int(th['s_top_n']),total))
+    a_n=max(s_n,min(int(th['a_top_n']),total))
+    b_cut=max(int(th['b_min_n']),int(total*float(th['b_percentile'])))
+    b_n=max(a_n,min(b_cut,total))
+    mode=th.get('mode','percentile')
+    s_min=float(th.get('s_min_score') or 0)
+    a_min=float(th.get('a_min_score') or 0)
+    b_min=float(th.get('b_min_score') or 0)
+
+    def grade(rank_i, score):
+        # absolute: 基礎値のみ / hybrid: 相対順位かつ基礎値下限 / percentile: 相対のみ
+        if mode=='absolute':
+            if score>=s_min and s_min>0: return 'S'
+            if score>=a_min and a_min>0: return 'A'
+            if score>=b_min and b_min>0: return 'B'
+            if s_min<=0 and a_min<=0 and b_min<=0:
+                # 未学習時は相対フォールバック
+                pass
+            else:
+                return 'C'
+        if rank_i<=s_n:
+            if mode=='hybrid' and s_min>0 and score<s_min: return 'A' if rank_i<=a_n else 'B'
+            return 'S'
+        if rank_i<=a_n:
+            if mode=='hybrid' and a_min>0 and score<a_min: return 'B'
+            return 'A'
+        if rank_i<=b_n:
+            if mode=='hybrid' and b_min>0 and score<b_min: return 'C'
+            return 'B'
+        return 'C'
+
+    ranks=[grade(int(order.loc[i]), float(raw_bet.loc[i])) for i in result.index]
+    result['勝負ランク']=ranks
+    result['BET判定']=result['勝負ランク'].map(RANK_LABELS)
+    result['BETクラス']=result['勝負ランク'].map(RANK_CLASSES)
+    return result
 
 def weighted(vals):
     vals=np.asarray(vals,dtype=float); ok=~np.isnan(vals)
@@ -367,26 +461,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           'データ頭数':n})
 
     result=pd.DataFrame(out).sort_values(['開催地','レース']).reset_index(drop=True)
-
-    # 開催日内の相対順位でS/A/B/Cを付与。
-    # 生の基礎値は上限100に張り付きやすいため、表示用の買い期待度は
-    # 順位パーセンタイル + 基礎値の差を使って再スケールする。
-    raw_bet=result['BET期待値'].astype(float).copy()
-    order=raw_bet.rank(method='first',ascending=False).astype(int)
-    total=len(result)
-    pct=(total-order)/(max(total-1,1))
-    raw_min=float(raw_bet.min()); raw_max=float(raw_bet.max())
-    raw_norm=(raw_bet-raw_min)/(raw_max-raw_min) if raw_max>raw_min else pd.Series(0.5,index=result.index)
-    display_score=(38 + pct*52 + raw_norm*8).clip(0,98.7)
-    result['買い期待度基礎値']=raw_bet.round(1)
-    result['BET期待値']=display_score.round(1)
-    def grade(rank):
-        if rank<=min(2,total): return 'S'
-        if rank<=min(5,total): return 'A'
-        if rank<=max(8,int(total*.35)): return 'B'
-        return 'C'
-    result['勝負ランク']=order.map(grade)
-    result['BET判定']=result['勝負ランク'].map({'S':'今日の勝負','A':'買い候補','B':'オッズ次第','C':'見送り'})
-    result['BETクラス']=result['勝負ランク'].map({'S':'battle','A':'target','B':'watch','C':'skip'})
+    # 開催日内の相対順位でS/A/B/Cを付与（閾値はconfig、将来ROI学習で自動調整）。
+    result=assign_ai_ranks(result)
     return result,sd
 

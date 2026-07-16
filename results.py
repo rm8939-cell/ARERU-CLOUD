@@ -41,6 +41,7 @@ PAYOUT_COLS = [
 ]
 ANALYSIS_COLS = [
     "date", "race", "race_id", "開催地", "bet_type", "勝負ランク",
+    "推奨券種", "購入対象",
     "prediction", "result", "hit", "payout", "investment", "profit", "roi",
 ]
 
@@ -384,12 +385,13 @@ def analyze_predictions(
             race_no = prow.get("レース", "")
             race_label = f"{venue}{int(float(race_no)):02d}R" if str(race_no).replace('.','',1).isdigit() else str(race_no)
             ai_rank = str(prow.get("勝負ランク", "") or "").upper()
+            recommend = str(prow.get("推奨券種", "") or "").strip()
 
             # 本命（単勝）
             main = _clean(prow.get("本命", ""))
             if main:
                 ev = _eval_win(main, finishes, pays, bans)
-                rows.append(_analysis_row(d, race_label, rid, venue, "本命", ev, ai_rank))
+                rows.append(_analysis_row(d, race_label, rid, venue, "本命", ev, ai_rank, recommend))
 
             # ワイド / 馬連 / 三連複
             for kind, col, ordered in [
@@ -401,23 +403,35 @@ def analyze_predictions(
                 # 見送り判定でも買い目があれば仮想検証する
                 ev = _eval_combo(kind, tickets, bans, pays, ordered=ordered)
                 if ev["investment"] > 0 or tickets:
-                    rows.append(_analysis_row(d, race_label, rid, venue, kind, ev, ai_rank))
+                    rows.append(_analysis_row(d, race_label, rid, venue, kind, ev, ai_rank, recommend))
 
             # 三連単: ◎→○→▲ の順で1点
             marks = dict(_marks_from_prediction(prow.to_dict()))
             trio_names = [marks.get("◎", ""), marks.get("○", ""), marks.get("▲", "")]
             if all(trio_names):
                 ev = _eval_combo("三連単", [trio_names], bans, pays, ordered=True)
-                rows.append(_analysis_row(d, race_label, rid, venue, "三連単", ev, ai_rank))
+                rows.append(_analysis_row(d, race_label, rid, venue, "三連単", ev, ai_rank, recommend))
 
     return pd.DataFrame(rows, columns=ANALYSIS_COLS)
 
 
-def _analysis_row(date: str, race: str, race_id: str, venue: str, bet_type: str, ev: dict, ai_rank: str = "") -> dict:
+def _analysis_row(
+    date: str,
+    race: str,
+    race_id: str,
+    venue: str,
+    bet_type: str,
+    ev: dict,
+    ai_rank: str = "",
+    recommend: str = "",
+) -> dict:
     inv = int(ev.get("investment") or 0)
     pay = int(ev.get("payout") or 0)
     profit = pay - inv
     roi = round((pay / inv) * 100, 1) if inv > 0 else 0.0
+    rec = str(recommend or "").strip()
+    # 購入対象 = そのレースの推奨券種（AIが主戦として出す馬券）1件
+    is_purchase = 1 if rec and bet_type == rec else 0
     return {
         "date": date,
         "race": race,
@@ -425,6 +439,8 @@ def _analysis_row(date: str, race: str, race_id: str, venue: str, bet_type: str,
         "開催地": venue,
         "bet_type": bet_type,
         "勝負ランク": str(ai_rank or "").upper(),
+        "推奨券種": rec,
+        "購入対象": is_purchase,
         "prediction": ev.get("prediction", ""),
         "result": ev.get("result", ""),
         "hit": int(ev.get("hit") or 0),
@@ -457,14 +473,38 @@ def summarize(analysis: pd.DataFrame) -> None:
         h = g["hit"].mean() * 100 if len(g) else 0
         print(f"  {bt}: 的中率{h:.1f}% / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円")
     if "勝負ランク" in analysis.columns:
-        print("  --- AIランク別 ---")
+        print("  --- AIランク別（購入対象のみ） ---")
+        base = analysis
+        if "購入対象" in analysis.columns:
+            base = analysis[pd.to_numeric(analysis["購入対象"], errors="coerce").fillna(0).astype(int) == 1]
         for rk in ["S", "A", "B", "C"]:
-            g = analysis[analysis["勝負ランク"].astype(str).str.upper() == rk]
+            g = base[base["勝負ランク"].astype(str).str.upper() == rk]
             if g.empty:
+                print(f"  {rk}: 対象0件")
                 continue
             i, p = g["investment"].sum(), g["payout"].sum()
             h = g["hit"].mean() * 100 if len(g) else 0
-            print(f"  {rk}: 件数{len(g)} / 的中率{h:.1f}% / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円")
+            print(f"  {rk}: 対象{len(g)} / 的中率{h:.1f}% / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円")
+        print("  --- ランク×券種 ---")
+        label = {"本命": "単勝", "単勝": "単勝"}
+        order = ["単勝", "ワイド", "馬連", "三連複", "三連単"]
+        for rk in ["S", "A", "B", "C"]:
+            g_rank = analysis[analysis["勝負ランク"].astype(str).str.upper() == rk]
+            if g_rank.empty:
+                continue
+            print(f"  [{rk}]")
+            buckets = {}
+            for bt, g in g_rank.groupby("bet_type"):
+                name = label.get(str(bt), str(bt))
+                buckets[name] = g
+            for name in order:
+                g = buckets.get(name)
+                if g is None or g.empty:
+                    print(f"    {name}: 対象0件")
+                    continue
+                i, p = g["investment"].sum(), g["payout"].sum()
+                h = g["hit"].mean() * 100 if len(g) else 0
+                print(f"    {name}: 対象{len(g)} / 的中率{h:.1f}% / 回収率{(p/i*100) if i else 0:.1f}% / 収支{p-i:+,}円")
 
 
 def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) -> None:
