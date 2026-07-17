@@ -101,7 +101,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .pc-money{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .pc-money div{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 4px;text-align:center;min-width:0}
 .pc-money b{display:block;font-size:13px;font-weight:800;word-break:break-all}.pc-money small{color:var(--muted);font-size:9px;letter-spacing:.06em}
-.race-review-block.hidden{display:none}
+.race-review-block.hidden,.race-list-panel.hidden{display:none}
 /* PO-6 ランク×券種 */
 .rank-type-block{border-bottom:1px solid var(--line);padding:14px;min-width:0}
 .rank-type-block:last-child{border-bottom:0}
@@ -116,6 +116,42 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .rank-type-meta b{display:block;font-size:13px;font-weight:850;word-break:break-all}.rank-type-meta small{color:var(--muted);font-size:9px;letter-spacing:.04em}
 .race-head-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .race-head .rank-pill{min-width:32px;height:32px;font-size:15px}
+/* 結果検証: スマホ向けレース一覧アコーディオン */
+.race-list-panel{border:1px solid var(--line);background:var(--card);border-radius:16px;margin:10px 0 16px;overflow:hidden}
+.race-list-panel>h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 14px 0;color:var(--muted)}
+.race-list-filters{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px}
+.race-acc-list{display:grid;gap:0}
+.race-acc{border-bottom:1px solid var(--line);background:#fff}
+.race-acc:last-child{border-bottom:0}
+.race-acc-toggle{width:100%;appearance:none;border:0;background:transparent;padding:12px 12px 10px;text-align:left;cursor:pointer;font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+.race-acc-toggle:active{background:#f3f7f5}
+.race-acc.open .race-acc-toggle{background:var(--soft)}
+.race-acc-line{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:16px;font-weight:850;line-height:1.35}
+.race-acc-chevron{display:inline-block;width:1.1em;color:var(--muted);font-weight:700;flex-shrink:0}
+.race-acc.open .race-acc-chevron{color:var(--brand)}
+.race-acc-title{letter-spacing:.02em}
+.race-acc-rank{font-weight:900}
+.race-acc-score{font-variant-numeric:tabular-nums;color:#334}
+.race-acc-marks{margin-top:6px;font-size:14px;font-weight:750;letter-spacing:.06em;color:#1f2a33;line-height:1.45;word-break:keep-all}
+.race-acc-body{display:none;padding:0 12px 12px;border-top:1px dashed #e4eaee}
+.race-acc.open .race-acc-body{display:block}
+.race-acc-body .section{padding:12px 0;border-bottom:1px solid var(--line)}
+.race-acc-body .section:last-child{border-bottom:0;padding-bottom:0}
+.race-acc-body .section-title{margin-bottom:8px}
+.race-acc-body .result-row{grid-template-columns:28px 1fr 52px;padding:9px 10px;border-color:#e4eaee;background:#f8fafb}
+.race-acc-body .result-row strong{font-size:13px}
+.race-acc-body .review{color:#334;background:#f8fafb;border-color:#e4eaee;font-size:12px;padding:11px;line-height:1.7}
+.race-ticket{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:9px 10px;margin-top:8px;font-size:13px;line-height:1.45}
+.race-ticket:first-child{margin-top:0}
+.race-ticket .rt-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px}
+.race-ticket .rt-name{font-weight:850}
+.race-ticket .rt-detail{color:#445;word-break:break-word}
+.stats-drawer{margin:8px 0 20px;border:1px solid var(--line);background:var(--card);border-radius:16px;overflow:hidden}
+.stats-drawer>summary{padding:14px 16px;font-size:13px;font-weight:800;letter-spacing:.08em;cursor:pointer;list-style:none;color:var(--muted);background:#fafbfc}
+.stats-drawer>summary::-webkit-details-marker{display:none}
+.stats-drawer[open]>summary{border-bottom:1px solid var(--line);color:var(--text)}
+.stats-drawer .targets{border:0;border-radius:0;margin:0}
+.filter-empty.race-empty{padding:24px 16px}
 @media (max-width:420px){
   .wrap{padding:0 10px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
   .bar-row{grid-template-columns:56px 1fr 52px;padding:8px 12px;font-size:12px}
@@ -127,6 +163,8 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   .live-kpi,.live-kpi.kpi7{grid-template-columns:repeat(2,1fr)}.pc-money{grid-template-columns:1fr 1fr 1fr}
   .rank-type-meta{grid-template-columns:repeat(2,1fr)}.rank-type-block{padding:12px 10px}
   .race-head{padding:14px 12px 10px}.heat{font-size:20px}
+  .race-acc-line{font-size:15px;gap:6px}.race-acc-marks{font-size:13px;letter-spacing:.04em}
+  .race-acc-toggle{padding:11px 10px 9px}
 }
 </style></head>
 <body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
@@ -160,18 +198,98 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="message">回収率・券種別的中率・収支推移は `python3 results.py` 実行後に表示します。</div>
 {% endif %}
 {% elif mode=='result' %}
-<section class="result-summary"><h2>結果検証｜購入馬券単位</h2>
-<p>AIが各ランクで購入対象にした馬券（例: ワイド ◎-○ / 馬連 ◎-○）だけを集計します。レース一覧ではありません。</p></section>
+{% if races %}
+<section class="race-list-panel" id="race-review-block">
+<h2>結果検証｜レース一覧</h2>
 {% if verification and verification.has_data %}
-
-<section class="targets" id="rank-summary-section"><h2>① AIランク別サマリー（購入馬券）</h2>
-<div class="filter-bar rank-filters" id="verify-filters" role="tablist" aria-label="AIランクフィルター">
+<div class="race-list-filters" id="verify-filters" role="tablist" aria-label="AIランクフィルター">
 <button type="button" class="filter-chip active" data-filter="all">全部</button>
 <button type="button" class="filter-chip rank-s" data-filter="rank-s">S</button>
 <button type="button" class="filter-chip rank-a" data-filter="rank-a">A</button>
 <button type="button" class="filter-chip rank-b" data-filter="rank-b">B</button>
 <button type="button" class="filter-chip rank-c" data-filter="rank-c">C</button>
 </div>
+{% endif %}
+<div class="race-acc-list" id="race-acc-list">
+{% for r in races %}
+<article class="race-acc result-card"
+  data-race-id="{{r.get('race_id','')}}"
+  data-purchase-ranks="{{ (r.get('purchase_ranks') or [])|join(' ') }}"
+  data-race-rank="{{r.get('勝負ランク','')}}">
+<button type="button" class="race-acc-toggle" aria-expanded="false">
+<div class="race-acc-line">
+<span class="race-acc-chevron" aria-hidden="true">▶</span>
+<span class="race-acc-title">{{r['開催地']}}{{'%02d'|format(r['レース']|int)}}R</span>
+<span class="race-acc-rank rank-pill {{r['勝負ランク']}}" style="min-width:26px;height:24px;font-size:12px">{{r['勝負ランク']}}</span>
+<span class="race-acc-score">{{r['BET期待値']}}</span>
+</div>
+{% if r.get('印着順要約') %}
+<div class="race-acc-marks">{{r['印着順要約']}}</div>
+{% endif %}
+</button>
+<div class="race-acc-body">
+<div class="section">
+<div class="section-title">予想印 × 実着順</div>
+<div class="result-grid">
+{% for x in r.get('結果一覧',[]) %}
+<div class="result-row"><b>{{x['印']}}</b><span>{{x['馬名']}}</span><strong>{{x.get('着順丸') or x['着順']}}</strong></div>
+{% endfor %}
+</div>
+</div>
+<div class="section">
+<div class="section-title gold">AI振り返り</div>
+<div class="review">{{r.get('AI振り返り','')}}</div>
+</div>
+<div class="section">
+<div class="section-title">購入馬券</div>
+{% if r.get('購入馬券一覧') %}
+{% for t in r['購入馬券一覧'] %}
+<div class="race-ticket">
+<div class="rt-head">
+<span class="rt-name">{{t.ticket_short or t.bet_type}}</span>
+<span class="{{'hit' if t.hit else 'miss'}}">{% if t.hit %}的中{% else %}不的中{% endif %}</span>
+</div>
+<div class="rt-detail">{{t.prediction if t.prediction else '見送り / 買い目なし'}}{% if t.result %} · {{t.result}}{% endif %}</div>
+{% if t.investment or t.payout %}
+<div class="pc-money" style="margin-top:8px">
+<div><b>{{t.investment}}円</b><small>投資</small></div>
+<div><b>{{t.payout}}円</b><small>払戻</small></div>
+<div><b class="{{'roi-good' if t.profit>=0 else 'roi-bad'}}">{{t.profit}}円</b><small>収支</small></div>
+</div>
+{% endif %}
+</div>
+{% endfor %}
+{% elif r.get('的中一覧') %}
+{% for h in r['的中一覧'] %}
+<div class="race-ticket">
+<div class="rt-head">
+<span class="rt-name">{{h.bet_type}}</span>
+<span class="{{'hit' if h.hit else 'miss'}}">{% if h.hit %}的中{% else %}不的中{% endif %}</span>
+</div>
+{% if h.result %}<div class="rt-detail">{{h.result}}</div>{% endif %}
+</div>
+{% endfor %}
+{% elif r.get('的中表示')=='結果待ち' %}
+<div class="message" style="margin:0">結果待ち</div>
+{% else %}
+<div class="message" style="margin:0">購入馬券なし / 見送り</div>
+{% endif %}
+</div>
+</div>
+</article>
+{% endfor %}
+</div>
+<div class="filter-empty race-empty" id="race-empty">該当条件に合うレースがありません</div>
+</section>
+{% else %}
+<section class="empty-state"><h2>検証データなし</h2><p>この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。</p></section>
+{% endif %}
+
+{% if verification and verification.has_data %}
+<details class="stats-drawer" id="verify-stats-drawer">
+<summary>購入馬券の集計・明細</summary>
+
+<section class="targets" id="rank-summary-section"><h2>① AIランク別サマリー（購入馬券）</h2>
 <div class="rank-kpi" id="rank-kpi">
 {% for x in verification.by_rank %}
 <button type="button" class="rank-kpi-row" data-filter="rank-{{x.key|lower}}" data-rank="{{x.key}}" aria-pressed="false">
@@ -254,8 +372,8 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="filter-empty" id="verify-empty">該当条件に合う結果がありません</div>
 </section>
 
-<details class="targets" style="padding:0">
-<summary style="padding:14px 16px;font-size:13px;letter-spacing:.12em;cursor:pointer;list-style:none;color:#ddd;background:#1a1a1a">その他の集計（本命・券種・日別）</summary>
+<details class="targets" style="padding:0;border:0;border-radius:0;margin:0">
+<summary style="padding:14px 16px;font-size:13px;letter-spacing:.12em;cursor:pointer;list-style:none;color:var(--muted);background:#fafbfc">その他の集計（本命・券種・日別）</summary>
 <section style="border:0;margin:0;border-radius:0"><h2 style="display:none">本命</h2>
 <div class="kpi-grid">
 <div class="metric kpi"><b>{{verification.main.hits}}/{{verification.main.total_bets}}</b><small>単勝 的中</small></div>
@@ -271,37 +389,22 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% endfor %}
 </section>
 </details>
-
-{% if races %}
-<div id="race-review-block" class="race-review-block">
-<section class="result-summary"><h2>予想印 × 実着順</h2><p>参考表示です。S/A/B/C絞り込み時は、そのランクの購入馬券があるレースだけを表示します。</p></section>
-{% for r in races %}<section class="race result-card"
-  data-race-id="{{r.get('race_id','')}}"
-  data-purchase-ranks="{{ (r.get('purchase_ranks') or [])|join(' ') }}">
-<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>予想時 買い期待度 {{r['BET期待値']}}</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['BET期待値']}}<small>{{r['BET判定']}}</small></div></div></div>
-{% if r.get('的中一覧') %}
-<div class="section"><div class="section-title">馬券結果</div>
-<div class="result-grid">{% for h in r['的中一覧'] %}<div class="result-row"><b>{{h.bet_type}}</b><span class="{{'hit' if h.hit else 'miss'}}">{% if h.hit %}的中{% else %}不的中{% endif %}{% if h.result %} · {{h.result}}{% endif %}</span><strong></strong></div>{% endfor %}</div>
-</div>
-{% elif r.get('的中表示')=='結果待ち' %}
-<div class="section"><div class="section-title">馬券結果</div><div class="message" style="margin:0">結果待ち</div></div>
-{% endif %}
-<div class="section"><div class="section-title">予想印 × 実着順</div><div class="result-grid">{% for x in r.get('結果一覧',[]) %}<div class="result-row"><b>{{x['印']}}</b><span>{{x['馬名']}}</span><strong>{{x['着順']}}</strong></div>{% endfor %}</div></div>
-<div class="section"><div class="section-title gold">AI振り返り</div><div class="review">{{r.get('AI振り返り','')}}</div></div>
-</section>{% endfor %}
-</div>
+</details>
 {% endif %}
 
 <script>
 (function(){
+  var raceList=document.getElementById('race-acc-list');
+  var raceEmpty=document.getElementById('race-empty');
+  var raceBlock=document.getElementById('race-review-block');
   var bar=document.getElementById('verify-filters');
   var list=document.getElementById('verify-list');
   var empty=document.getElementById('verify-empty');
   var rankKpi=document.getElementById('rank-kpi');
   var rankType=document.getElementById('rank-type-section');
   var liveLabel=document.getElementById('live-kpi-label');
-  if(!bar||!list) return;
-  var cards=[].slice.call(list.querySelectorAll('.verify-card'));
+  var cards=list ? [].slice.call(list.querySelectorAll('.verify-card')) : [];
+  var raceCards=raceList ? [].slice.call(raceList.querySelectorAll('.result-card')) : [];
   var elCount=document.getElementById('live-count');
   var elHits=document.getElementById('live-hits');
   var elHit=document.getElementById('live-hit');
@@ -310,6 +413,19 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   var elRec=document.getElementById('live-recovery');
   var elProfit=document.getElementById('live-profit');
   var labels={all:'全部の購入馬券', 'rank-s':'Sランク購入分のみ', 'rank-a':'Aランク購入分のみ', 'rank-b':'Bランク購入分のみ', 'rank-c':'Cランク購入分のみ'};
+
+  if(raceList){
+    raceList.addEventListener('click',function(e){
+      var btn=e.target.closest('.race-acc-toggle');
+      if(!btn) return;
+      var card=btn.closest('.race-acc');
+      if(!card) return;
+      var open=card.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open?'true':'false');
+      var chev=btn.querySelector('.race-acc-chevron');
+      if(chev) chev.textContent=open?'▼':'▶';
+    });
+  }
 
   function tone(rec){
     if(rec>=100) return 'roi-good';
@@ -327,9 +443,11 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
     return '';
   }
   function syncChips(filter){
-    [].forEach.call(bar.querySelectorAll('.filter-chip'),function(b){
-      b.classList.toggle('active', (b.getAttribute('data-filter')||'')===filter);
-    });
+    if(bar){
+      [].forEach.call(bar.querySelectorAll('.filter-chip'),function(b){
+        b.classList.toggle('active', (b.getAttribute('data-filter')||'')===filter);
+      });
+    }
     if(rankKpi){
       [].forEach.call(rankKpi.querySelectorAll('.rank-kpi-row'),function(row){
         var on=(row.getAttribute('data-filter')||'')===filter;
@@ -365,23 +483,23 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
       pay+=parseInt(card.getAttribute('data-payout')||'0',10)||0;
       profit+=parseInt(card.getAttribute('data-profit')||'0',10)||0;
     });
-    // レース一覧も同じ購入馬券ソースで絞る（S/A/B/C時はそのランク購入があるレースのみ）
-    var raceBlock=document.getElementById('race-review-block');
+
     var raceShown=0;
-    if(raceBlock){
-      [].forEach.call(raceBlock.querySelectorAll('.result-card'),function(card){
-        var ranks=(card.getAttribute('data-purchase-ranks')||'').toUpperCase().split(/\s+/).filter(Boolean);
-        var ok=false;
-        if(shown>0){
-          // 全部: 実着順を全レース表示 / ランク指定: そのランク購入があるレースのみ
-          ok=rk ? ranks.indexOf(rk)>=0 : true;
-        }
-        card.style.display=ok?'':'none';
-        if(ok) raceShown++;
-      });
-      raceBlock.classList.toggle('hidden', raceShown===0);
-    }
-    if(empty) empty.style.display=shown?'none':'block';
+    raceCards.forEach(function(card){
+      var ranks=(card.getAttribute('data-purchase-ranks')||'').toUpperCase().split(/\s+/).filter(Boolean);
+      var raceRank=(card.getAttribute('data-race-rank')||'').toUpperCase();
+      var ok=true;
+      if(rk){
+        // 購入馬券ランクがあれば優先、なければレースの勝負ランクで絞る
+        ok=ranks.length ? ranks.indexOf(rk)>=0 : raceRank===rk;
+      }
+      card.style.display=ok?'':'none';
+      if(ok) raceShown++;
+    });
+    if(raceEmpty) raceEmpty.style.display=raceShown?'none':'block';
+    if(raceBlock) raceBlock.classList.toggle('hidden', raceCards.length>0 && raceShown===0);
+
+    if(empty) empty.style.display=(list && shown)?'none':'block';
     var hitRate=shown? (hits/shown*100) : 0;
     var recovery=inv? (pay/inv*100) : 0;
     if(elCount) elCount.textContent=String(shown);
@@ -399,29 +517,27 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
     }
   }
 
-  bar.addEventListener('click',function(e){
-    var btn=e.target.closest('.filter-chip');
-    if(!btn) return;
-    apply(btn.getAttribute('data-filter')||'all');
-  });
+  if(bar){
+    bar.addEventListener('click',function(e){
+      var btn=e.target.closest('.filter-chip');
+      if(!btn) return;
+      apply(btn.getAttribute('data-filter')||'all');
+    });
+  }
   if(rankKpi){
     rankKpi.addEventListener('click',function(e){
       var row=e.target.closest('.rank-kpi-row');
       if(!row) return;
       var f=row.getAttribute('data-filter')||'all';
-      var cur=bar.querySelector('.filter-chip.active');
+      var cur=bar && bar.querySelector('.filter-chip.active');
       if(cur && (cur.getAttribute('data-filter')||'')===f) f='all';
       apply(f);
-      var sec=document.getElementById('verify-section');
-      if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
+      if(raceBlock) raceBlock.scrollIntoView({behavior:'smooth',block:'start'});
     });
   }
   apply('all');
 })();
 </script>
-{% else %}
-<section class="empty-state"><h2>検証データなし</h2><p>ターミナルで <code>python3 results.py</code> を実行すると、最新開催日の結果取得と回収率集計が始まります。</p></section>
-{% endif %}
 {% else %}
 {% if targets %}<section class="targets"><h2>本日の買い候補｜S勝負・A買い</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t['勝負ランク']}}">{{t['勝負ランク']}}</span></div><div class="target-name">{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
 {% for r in races %}<section id="race-{{r['race_id']|urlencode}}" class="race {{r['荒れクラス']}}">
