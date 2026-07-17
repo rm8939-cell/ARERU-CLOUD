@@ -133,6 +133,54 @@ def _filter_records_by_source(records, source):
         if src==source:
             out.append(r)
     return out
+
+
+def _venue_meetings(records):
+    """日付内の開催場一覧（レース数・S/A件数付き）。"""
+    buckets={}
+    for r in records or []:
+        venue=str(r.get('開催地') or '').strip()
+        if not venue:
+            continue
+        buckets.setdefault(venue, []).append(r)
+    meetings=[]
+    for venue, rows in sorted(buckets.items(), key=lambda x: x[0]):
+        try:
+            race_nos=sorted({int(float(x.get('レース') or 0)) for x in rows if x.get('レース') not in ('',None)})
+        except Exception:
+            race_nos=[]
+        ranks={}
+        for x in rows:
+            rk=str(x.get('勝負ランク') or '').upper()
+            if rk:
+                ranks[rk]=ranks.get(rk,0)+1
+        meetings.append({
+            'name':venue,
+            'count':len(rows),
+            'race_nos':race_nos,
+            'race_label':f'{min(race_nos)}〜{max(race_nos)}R' if race_nos else f'{len(rows)}R',
+            's':ranks.get('S',0),
+            'a':ranks.get('A',0),
+            'b':ranks.get('B',0),
+            'c':ranks.get('C',0),
+        })
+    return meetings
+
+
+def _pick_today_date(available, today_str=''):
+    """本日開催日を解決。当日が無ければ直近の開催日へ。"""
+    today_str=str(today_str or date.today().isoformat())
+    av=list(available or [])
+    if not av:
+        return ''
+    if today_str in av:
+        return today_str
+    past=[d for d in av if d<=today_str]
+    if past:
+        return max(past)
+    return min(av)
+
+
 def prep(records):
     from areru_engine import RANK_LABELS, RANK_CLASSES
     for r in records:
@@ -373,17 +421,25 @@ def index():
             threading.Thread(target=bootstrap_source, args=(source,), daemon=True).start()
     except Exception as e:
         print(f'[bootstrap] skip: {e}')
+    today=date.today().isoformat()
     av=dates(source)
     selected=request.args.get('date','').strip()
+    want_today=str(request.args.get('today') or '').strip() in ('1','true','yes')
+    # 本日開催: 当日（無ければ直近開催日）へ寄せ、開催場一覧を出す
+    if want_today and source=='nar':
+        selected=_pick_today_date(av, today)
     # ソース切替で他開催の日付が残っていても、そのソースの開催日へ寄せる
     if not selected or selected not in av:
         selected=av[0] if av else ''
     # 結果検証タブ: 選択日に結果が無い場合は最新の結果日へ寄せる（結果待ちの誤表示を防ぐ）
+    # ※本日開催指定時は当日（または直近）を優先し、結果日へ強制しない
     result_days=dates_with_results(source)
-    if mode=='result' and result_days:
+    if mode=='result' and result_days and not want_today:
         if not selected or selected not in result_days:
             selected=result_days[0]
+    selected_venue=str(request.args.get('venue') or '').strip()
     races=[]; targets=[]; message='予想データがありません'; has_results=False
+    venues=[]; show_venue_picker=False
     verification=verification_data(selected, source=source)
 
     if selected in av:
@@ -408,23 +464,51 @@ def index():
                     rid=_norm_race_id(row.get('race_id',''))
                     row['purchase_ranks']=list(ranks_map.get(rid, []))
                     row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
+            venues=_venue_meetings(races)
+            venue_names={v['name'] for v in venues}
+            # 地方: 日付→開催場一覧→レース一覧。開催場未選択なら場一覧を出す
+            if source=='nar' and mode in ('predict','result'):
+                show_venue_picker=True
+                if selected_venue and selected_venue not in venue_names:
+                    selected_venue=''
+                if selected_venue:
+                    races=[r for r in races if str(r.get('開催地') or '').strip()==selected_venue]
+                    show_venue_picker=False
+                else:
+                    # 開催場選択前はレース詳細を出さない
+                    races=[]
+            else:
+                selected_venue=''
             targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
             label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
-            if not races:
+            if source=='nar' and show_venue_picker:
+                if venues:
+                    message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                else:
+                    message=f'{selected} / {label} の開催場がありません'
+            elif not races:
                 message=f'{selected} / {label} のレースがありません'
             elif mode=='result':
-                message=f'{selected} / {label} / 結果検証モード'
+                if selected_venue:
+                    message=f'{selected} / {selected_venue} / 結果検証'
+                else:
+                    message=f'{selected} / {label} / 結果検証モード'
             elif mode=='analysis':
                 message=f'{selected} / {label} / AI仮想レース分析 β版'
             else:
-                message=f'{selected} / {label} / AI仮想レース分析 β版'
+                if selected_venue:
+                    message=f'{selected} / {selected_venue} / 予想分析'
+                else:
+                    message=f'{selected} / {label} / AI仮想レース分析 β版'
         except Exception as e: message=f'生成エラー: {e}'
     elif selected: message=f'{selected} は保存データにありません'
     elif source=='nar':
         message='地方開催データがありません。/refresh?source=nar で取得できます。'
-    return render_template('index.html',races=races,targets=targets,selected_date=selected,today=date.today().isoformat(),
+    return render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
-        analysis=analysis_data(races),verification=verification)
+        analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
+        venues=venues,selected_venue=selected_venue,show_venue_picker=show_venue_picker,
+        today_date=_pick_today_date(av, today) if source=='nar' else today)
 
 
 def attach_results(records, selected_date=''):
