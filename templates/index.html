@@ -8,7 +8,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 *{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow-x:hidden}
 .wrap{max-width:760px;width:100%;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32)}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:30px;font-weight:800;letter-spacing:.06em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:5px;font-size:13px}
-.toolbar{display:flex;gap:8px;padding:16px 0;flex-wrap:wrap;align-items:stretch}.toolbar select,.toolbar button,.toolbar a.today-btn{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1;min-width:140px}.toolbar button{font-weight:700}.toolbar a.today-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:800;font-size:13px;white-space:nowrap;background:var(--soft);border-color:var(--brand);color:var(--brand)}.toolbar a.today-btn:active{opacity:.85}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
+.toolbar{display:flex;gap:8px;padding:16px 0;flex-wrap:wrap;align-items:stretch}.toolbar-date{display:flex;gap:8px;flex:1;min-width:0;align-items:stretch}.toolbar-today{display:flex;align-items:stretch}.toolbar select,.toolbar button,.toolbar .today-btn{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1;min-width:140px}.toolbar button{font-weight:700;cursor:pointer}.toolbar .today-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:800;font-size:13px;white-space:nowrap;background:var(--soft);border-color:var(--brand);color:var(--brand)}.toolbar .today-btn:active{opacity:.85}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
 .targets{border:1px solid #3a3032;background:#fff;border-radius:16px;overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid #30262a;color:#ddd}
 .target-row{display:grid;grid-template-columns:38px 1fr 72px;align-items:center;text-decoration:none;color:var(--text);padding:13px 14px;border-bottom:1px solid #251f22}.target-row:last-child{border-bottom:0}.rank{font-weight:800;color:var(--red)}.target-name{font-weight:750}.target-name small{display:block;color:var(--muted);font-weight:400;margin-top:4px}.target-score{text-align:right;font-size:20px;font-weight:800}.target-score small{display:block;font-weight:400}
 .race{scroll-margin-top:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:16px;margin:0 0 18px;overflow:hidden}.race.caution{border-left-color:var(--yellow)}.race.wave{border-left-color:var(--orange)}.race.storm{border-left-color:var(--red)}
@@ -194,12 +194,15 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">予想分析</a>
 <a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果検証</a><a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
 </nav>
-<form class="toolbar"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button>表示</button>{% if source=='nar' %}<a class="today-btn" href="/?source=nar&mode={{mode}}&today=1">本日開催</a>{% endif %}</form>
+<div class="toolbar">
+<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
+{% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
+</div>
 <div class="message">{{message}}</div>
 {% if show_venue_picker %}
 <section class="venue-panel">
-<h2>{{selected_date}}｜開催場一覧</h2>
-<p>開催場を選ぶと、その競馬場のレース一覧を表示します。</p>
+<h2>{{selected_date}}｜{% if mode=='result' %}結果検証｜{% elif mode=='predict' %}予想分析｜{% endif %}開催場一覧</h2>
+<p>{% if mode=='result' %}開催場を選ぶと、その競馬場の結果検証レース一覧を表示します。{% else %}開催場を選ぶと、その競馬場の予想分析を表示します。{% endif %}</p>
 {% if venues %}
 <div class="venue-list">
 {% for v in venues %}
@@ -328,7 +331,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <section class="empty-state"><h2>検証データなし</h2><p>この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。</p></section>
 {% endif %}
 
-{% if verification and verification.has_data %}
+{% if verification and verification.has_data and not show_venue_picker %}
 <details class="stats-drawer" id="verify-stats-drawer">
 <summary>購入馬券の集計・明細</summary>
 

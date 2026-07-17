@@ -415,6 +415,8 @@ def index():
     if source not in ('jra','nar','all'):
         source='jra'
     mode=request.args.get('mode','predict')
+    if mode not in ('predict','result','analysis'):
+        mode='predict'
     # 地方タブ初回/鮮度切れ時は実データを自動取得（リクエストは待たせない）
     try:
         if source=='nar':
@@ -425,9 +427,15 @@ def index():
     av=dates(source)
     selected=request.args.get('date','').strip()
     want_today=str(request.args.get('today') or '').strip() in ('1','true','yes')
-    # 本日開催: 当日（無ければ直近開催日）へ寄せ、開催場一覧を出す
+    # 本日開催: 会場選択を外し、当日（無ければ直近開催日）の開催場一覧へ
     if want_today and source=='nar':
         selected=_pick_today_date(av, today)
+        # カレンダー当日が未取得なら、バックグラウンド取得を促しつつ直近を表示
+        if selected != today:
+            try:
+                threading.Thread(target=bootstrap_source, args=('nar',), daemon=True).start()
+            except Exception:
+                pass
     # ソース切替で他開催の日付が残っていても、そのソースの開催日へ寄せる
     if not selected or selected not in av:
         selected=av[0] if av else ''
@@ -437,7 +445,8 @@ def index():
     if mode=='result' and result_days and not want_today:
         if not selected or selected not in result_days:
             selected=result_days[0]
-    selected_venue=str(request.args.get('venue') or '').strip()
+    # 本日開催では必ず開催場一覧からやり直す
+    selected_venue='' if want_today else str(request.args.get('venue') or '').strip()
     races=[]; targets=[]; message='予想データがありません'; has_results=False
     venues=[]; show_venue_picker=False
     verification=verification_data(selected, source=source)
@@ -445,7 +454,8 @@ def index():
     if selected in av:
         try:
             pred_path=ARCH/f'predictions_{selected}.csv'
-            if pred_path.exists() or mode!='result':
+            # 地方の開催場一覧は predict/result とも predictions を用意して場を出す
+            if pred_path.exists() or mode!='result' or source=='nar':
                 df=pd.read_csv(ensure(selected, source=source)).fillna('なし')
                 races=prep(df.to_dict('records'))
                 races=_filter_records_by_source(races, source)
@@ -483,7 +493,12 @@ def index():
             label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
             if source=='nar' and show_venue_picker:
                 if venues:
-                    message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                    if want_today and selected==today:
+                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                    elif want_today:
+                        message=f'本日({today})の開催データなし → 直近 {selected} / {label} / 開催場 {len(venues)}場'
+                    else:
+                        message=f'{selected} / {label} / 開催場 {len(venues)}場'
                 else:
                     message=f'{selected} / {label} の開催場がありません'
             elif not races:
