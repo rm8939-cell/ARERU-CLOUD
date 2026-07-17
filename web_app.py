@@ -187,6 +187,25 @@ def _format_finish(raw) -> str:
     return s
 
 
+_CIRCLED_FINISH='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'
+
+
+def _finish_circled(fin: str) -> str:
+    """着順表示を一覧用の丸数字へ（例: 3着→③）。"""
+    s=str(fin or '').strip()
+    if not s or s=='結果待ち':
+        return '－'
+    if s in ('取消','除外','中止'):
+        return '×'
+    m=re.match(r'(\d+)', s)
+    if not m:
+        return '？'
+    n=int(m.group(1))
+    if 1<=n<=len(_CIRCLED_FINISH):
+        return _CIRCLED_FINISH[n-1]
+    return str(n)
+
+
 def _race_date(record) -> str:
     for k in ('日付','_date','date'):
         v=str(record.get(k,'') or '').strip()
@@ -380,9 +399,15 @@ def index():
                 races,has_results=attach_results(races, selected_date=selected)
                 # 結果検証のレース一覧は購入馬券データと同一ソースで紐づける
                 ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
+                tickets_by_race={}
+                for t in (verification or {}).get('recent_rows') or []:
+                    tid=_norm_race_id(t.get('race_id',''))
+                    if tid:
+                        tickets_by_race.setdefault(tid, []).append(t)
                 for row in races:
                     rid=_norm_race_id(row.get('race_id',''))
                     row['purchase_ranks']=list(ranks_map.get(rid, []))
+                    row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
             targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
             label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
             if not races:
@@ -504,8 +529,10 @@ def attach_results(records, selected_date=''):
                 disp='取消'
             else:
                 disp='結果待ち'
-            review.append({'印':mark,'馬名':name,'着順':disp})
+            circled=_finish_circled(disp)
+            review.append({'印':mark,'馬名':name,'着順':disp,'着順丸':circled})
         r['結果一覧']=review
+        r['印着順要約']=' '.join(f"{x['印']}{x['着順丸']}" for x in review) if review else ''
         r['結果確定']=bool(race_has_result)
 
         # 的中 / 不的中（analysis_result 優先）
