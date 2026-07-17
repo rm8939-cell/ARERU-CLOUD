@@ -273,9 +273,8 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </details>
 
 {% if races %}
-<details class="targets race-review-block" style="padding:0" id="race-review-block">
-<summary style="padding:14px 16px;font-size:13px;letter-spacing:.12em;cursor:pointer;list-style:none;color:#ddd;background:#1a1a1a">参考｜予想印 × 実着順（購入馬券があるレースのみ）</summary>
-<div style="padding:12px 12px 4px" id="race-review-list">
+<div id="race-review-block" class="race-review-block">
+<section class="result-summary"><h2>予想印 × 実着順</h2><p>参考表示です。S/A/B/C絞り込み時は、そのランクの購入馬券があるレースだけを表示します。</p></section>
 {% for r in races %}<section class="race result-card"
   data-race-id="{{r.get('race_id','')}}"
   data-purchase-ranks="{{ (r.get('purchase_ranks') or [])|join(' ') }}">
@@ -291,7 +290,6 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="section"><div class="section-title gold">AI振り返り</div><div class="review">{{r.get('AI振り返り','')}}</div></div>
 </section>{% endfor %}
 </div>
-</details>
 {% endif %}
 
 <script>
@@ -367,7 +365,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
       pay+=parseInt(card.getAttribute('data-payout')||'0',10)||0;
       profit+=parseInt(card.getAttribute('data-profit')||'0',10)||0;
     });
-    // レース一覧も同じ購入馬券ソースで絞る（そのランク購入があるレースのみ）
+    // レース一覧も同じ購入馬券ソースで絞る（S/A/B/C時はそのランク購入があるレースのみ）
     var raceBlock=document.getElementById('race-review-block');
     var raceShown=0;
     if(raceBlock){
@@ -375,7 +373,8 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
         var ranks=(card.getAttribute('data-purchase-ranks')||'').toUpperCase().split(/\s+/).filter(Boolean);
         var ok=false;
         if(shown>0){
-          ok=rk ? ranks.indexOf(rk)>=0 : ranks.length>0;
+          // 全部: 実着順を全レース表示 / ランク指定: そのランク購入があるレースのみ
+          ok=rk ? ranks.indexOf(rk)>=0 : true;
         }
         card.style.display=ok?'':'none';
         if(ok) raceShown++;

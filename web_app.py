@@ -1,5 +1,5 @@
 from flask import Flask,render_template,request
-import subprocess,sys,json,re
+import subprocess,sys,json,re,threading
 from pathlib import Path
 from datetime import date
 import os
@@ -348,10 +348,10 @@ def index():
     if source not in ('jra','nar','all'):
         source='jra'
     mode=request.args.get('mode','predict')
-    # 地方タブ初回/鮮度切れ時は実データを自動取得
+    # 地方タブ初回/鮮度切れ時は実データを自動取得（リクエストは待たせない）
     try:
         if source=='nar':
-            bootstrap_source(source)
+            threading.Thread(target=bootstrap_source, args=(source,), daemon=True).start()
     except Exception as e:
         print(f'[bootstrap] skip: {e}')
     av=dates(source)
