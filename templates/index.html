@@ -8,7 +8,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 *{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow-x:hidden}
 .wrap{max-width:760px;width:100%;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32)}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:30px;font-weight:800;letter-spacing:.06em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:5px;font-size:13px}
-.toolbar{display:flex;gap:8px;padding:16px 0}.toolbar select,.toolbar button{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1}.toolbar button{font-weight:700}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
+.toolbar{display:flex;gap:8px;padding:16px 0;flex-wrap:wrap;align-items:stretch}.toolbar select,.toolbar button,.toolbar a.today-btn{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1;min-width:140px}.toolbar button{font-weight:700}.toolbar a.today-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:800;font-size:13px;white-space:nowrap;background:var(--soft);border-color:var(--brand);color:var(--brand)}.toolbar a.today-btn:active{opacity:.85}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
 .targets{border:1px solid #3a3032;background:#fff;border-radius:16px;overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid #30262a;color:#ddd}
 .target-row{display:grid;grid-template-columns:38px 1fr 72px;align-items:center;text-decoration:none;color:var(--text);padding:13px 14px;border-bottom:1px solid #251f22}.target-row:last-child{border-bottom:0}.rank{font-weight:800;color:var(--red)}.target-name{font-weight:750}.target-name small{display:block;color:var(--muted);font-weight:400;margin-top:4px}.target-score{text-align:right;font-size:20px;font-weight:800}.target-score small{display:block;font-weight:400}
 .race{scroll-margin-top:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:16px;margin:0 0 18px;overflow:hidden}.race.caution{border-left-color:var(--yellow)}.race.wave{border-left-color:var(--orange)}.race.storm{border-left-color:var(--red)}
@@ -152,6 +152,22 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .stats-drawer[open]>summary{border-bottom:1px solid var(--line);color:var(--text)}
 .stats-drawer .targets{border:0;border-radius:0;margin:0}
 .filter-empty.race-empty{padding:24px 16px}
+/* 地方: 開催場一覧 */
+.venue-panel{border:1px solid var(--line);background:var(--card);border-radius:16px;margin:10px 0 16px;overflow:hidden}
+.venue-panel>h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 14px 8px;color:var(--muted)}
+.venue-panel>p{margin:0;padding:0 14px 12px;color:var(--muted);font-size:12px;line-height:1.6}
+.venue-list{display:grid;gap:0}
+.venue-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-decoration:none;color:inherit;padding:14px;border-top:1px solid var(--line);-webkit-tap-highlight-color:transparent}
+.venue-row:active{background:var(--soft)}
+.venue-row-name{font-size:18px;font-weight:850;line-height:1.25}
+.venue-row-name small{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.venue-row-meta{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.venue-chip{display:inline-flex;align-items:center;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:750;background:#f3f6f8;border:1px solid #e4eaee;color:var(--text)}
+.venue-chip.s{background:linear-gradient(145deg,#d4a017,#b8860b);border-color:#9a6b00;color:#fff}
+.venue-chip.a{background:#176b45;border-color:#0f5a38;color:#fff}
+.venue-back{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;padding:8px 0;color:var(--brand);font-size:13px;font-weight:800;text-decoration:none}
+.venue-back:active{opacity:.75}
+.race-list-panel>h2 .venue-tag{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:8px;background:var(--soft);color:var(--brand);font-size:12px;letter-spacing:0;text-transform:none}
 @media (max-width:420px){
   .wrap{padding:0 10px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
   .bar-row{grid-template-columns:56px 1fr 52px;padding:8px 12px;font-size:12px}
@@ -171,15 +187,39 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <main class="wrap">
 <nav class="source-tabs">
 <a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
-<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}&date={{selected_date}}">地方</a>
+<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}{% if today_date %}&date={{today_date}}{% elif selected_date %}&date={{selected_date}}{% endif %}">地方</a>
 <a class="{{'active' if source=='all' else ''}}" href="/?source=all&mode={{mode}}&date={{selected_date}}">全開催</a>
 </nav>
 <nav class="mode-tabs">
-<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}">予想分析</a>
-<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}">結果検証</a><a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
+<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">予想分析</a>
+<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果検証</a><a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
 </nav>
-<form class="toolbar"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button>表示</button></form>
+<form class="toolbar"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button>表示</button>{% if source=='nar' %}<a class="today-btn" href="/?source=nar&mode={{mode}}&today=1">本日開催</a>{% endif %}</form>
 <div class="message">{{message}}</div>
+{% if show_venue_picker %}
+<section class="venue-panel">
+<h2>{{selected_date}}｜開催場一覧</h2>
+<p>開催場を選ぶと、その競馬場のレース一覧を表示します。</p>
+{% if venues %}
+<div class="venue-list">
+{% for v in venues %}
+<a class="venue-row" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}&venue={{v.name|urlencode}}">
+<div class="venue-row-name">{{v.name}}<small>{{v.race_label}} · {{v.count}}レース</small></div>
+<div class="venue-row-meta">
+{% if v.s %}<span class="venue-chip s">S {{v.s}}</span>{% endif %}
+{% if v.a %}<span class="venue-chip a">A {{v.a}}</span>{% endif %}
+{% if v.b %}<span class="venue-chip">B {{v.b}}</span>{% endif %}
+{% if v.c %}<span class="venue-chip">C {{v.c}}</span>{% endif %}
+<span class="venue-chip">開く ▶</span>
+</div>
+</a>
+{% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="border:0;margin:0;border-radius:0"><h2>開催場なし</h2><p>この日の地方開催データがありません。日付を変えるか、「本日開催」を押してください。</p></div>
+{% endif %}
+</section>
+{% endif %}
 {% if mode=='analysis' %}
 <section class="result-summary"><h2>AI STATUS｜分析ダッシュボード</h2><p>架空の回収率は出さず、現在保存されている予想・照合データだけを集計します。</p></section>
 <section class="targets"><h2>解析状況</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px"><div class="metric"><b>{{analysis.total}}R</b><small>予想レース</small></div><div class="metric"><b>{{analysis.verified}}R</b><small>結果照合済み</small></div></div></section>
@@ -198,9 +238,12 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="message">回収率・券種別的中率・収支推移は `python3 results.py` 実行後に表示します。</div>
 {% endif %}
 {% elif mode=='result' %}
-{% if races %}
+{% if not show_venue_picker and races %}
+{% if selected_venue %}
+<a class="venue-back" href="/?source={{source}}&mode=result&date={{selected_date}}">← {{selected_date}} の開催場一覧</a>
+{% endif %}
 <section class="race-list-panel" id="race-review-block">
-<h2>結果検証｜レース一覧</h2>
+<h2>結果検証｜レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
 {% if verification and verification.has_data %}
 <div class="race-list-filters" id="verify-filters" role="tablist" aria-label="AIランクフィルター">
 <button type="button" class="filter-chip active" data-filter="all">全部</button>
@@ -219,7 +262,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <button type="button" class="race-acc-toggle" aria-expanded="false">
 <div class="race-acc-line">
 <span class="race-acc-chevron" aria-hidden="true">▶</span>
-<span class="race-acc-title">{{r['開催地']}}{{'%02d'|format(r['レース']|int)}}R</span>
+<span class="race-acc-title">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}}{{'%02d'|format(r['レース']|int)}}R{% endif %}</span>
 <span class="race-acc-rank rank-pill {{r['勝負ランク']}}" style="min-width:26px;height:24px;font-size:12px">{{r['勝負ランク']}}</span>
 <span class="race-acc-score">{{r['BET期待値']}}</span>
 </div>
@@ -281,7 +324,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </div>
 <div class="filter-empty race-empty" id="race-empty">該当条件に合うレースがありません</div>
 </section>
-{% else %}
+{% elif not show_venue_picker %}
 <section class="empty-state"><h2>検証データなし</h2><p>この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。</p></section>
 {% endif %}
 
@@ -539,9 +582,13 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 })();
 </script>
 {% else %}
-{% if targets %}<section class="targets"><h2>本日の買い候補｜S勝負・A買い</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t['勝負ランク']}}">{{t['勝負ランク']}}</span></div><div class="target-name">{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
+{% if not show_venue_picker %}
+{% if selected_venue %}
+<a class="venue-back" href="/?source={{source}}&mode=predict&date={{selected_date}}">← {{selected_date}} の開催場一覧</a>
+{% endif %}
+{% if targets %}<section class="targets"><h2>{% if selected_venue %}{{selected_venue}}｜{% endif %}買い候補｜S勝負・A買い</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t['勝負ランク']}}">{{t['勝負ランク']}}</span></div><div class="target-name">{% if selected_venue %}{{'%02d'|format(t['レース']|int)}}R{% else %}{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R{% endif %}<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
 {% for r in races %}<section id="race-{{r['race_id']|urlencode}}" class="race {{r['荒れクラス']}}">
-<div class="race-head"><div class="venue">{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R<small>20,000回 仮想レース</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div></div>
+<div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R{% endif %}<small>20,000回 仮想レース</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div></div>
 <div class="betbar"><span class="rank-badge"><span>{{r['BET判定']}}</span></span><span>買い期待度 {{r['BET期待値']}}</span></div>
 <div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍{% if r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %} · 市場 {{r['本命オッズ']}}倍{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}（{{r['本命人気']}}人気）{% endif %}{% endif %} · {{r['本命理由']}}</div></div>
 <div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
@@ -558,5 +605,6 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% endif %}
 </div>
 <div class="beta">β版 · 実着順は予想入力に未使用 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div></section>{% endfor %}
+{% endif %}
 {% endif %}
 </main></body></html>
