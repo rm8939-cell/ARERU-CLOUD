@@ -177,6 +177,44 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .predict-acc .race-acc-body .race{margin:10px 0 0;border-radius:12px}
 .predict-acc .race-acc-body .toplink{display:none}
 .predict-acc.open .race-acc-body{padding-top:10px}
+/* 期待値メイン表示 */
+.ev-main{display:inline-flex;align-items:baseline;gap:6px;font-size:20px;font-weight:900;letter-spacing:.02em;font-variant-numeric:tabular-nums;line-height:1.2}
+.ev-main .ev-fire{font-size:16px;line-height:1}
+.ev-main small{font-size:11px;font-weight:700;letter-spacing:.08em;margin-left:2px}
+.ev-buy{color:#176b45}.ev-consider{color:#c9a227}.ev-neutral{color:#78909c}.ev-skip{color:#c62828}.ev-none{color:var(--muted)}
+.predict-acc .race-acc-ev{margin-top:6px}
+.predict-acc .race-acc-ev .ev-main{font-size:22px}
+.ev-detail{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}
+.ev-detail .metric b{font-size:16px}
+.ev-hero{margin:8px 0 4px}
+.ev-hero .ev-main{font-size:28px}
+.ev-hero .ev-tag{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:800;background:#f3f6f8;border:1px solid #e4eaee;vertical-align:middle}
+.ev-hero .ev-tag.ev-buy{background:#e9f5ef;border-color:#b7dbc8;color:#176b45}
+.ev-hero .ev-tag.ev-consider{background:#fff8e6;border-color:#f0e0a8;color:#9a6b00}
+.ev-hero .ev-tag.ev-skip{background:#fdecea;border-color:#f5c2c0;color:#c62828}
+/* 本日成績ダッシュボード */
+.day-dash{border:1px solid var(--line);background:var(--card);border-radius:16px;margin:10px 0 14px;overflow:hidden}
+.day-dash>h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 14px 0;color:var(--muted)}
+.day-ranks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 14px}
+.day-ranks .dr{background:#f8fafb;border:1px solid #e4eaee;border-radius:12px;padding:10px 6px;text-align:center}
+.day-ranks .dr b{display:block;font-size:22px;font-weight:900;line-height:1.1}
+.day-ranks .dr small{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.06em}
+.day-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 14px 14px}
+.day-kpis .metric{padding:11px 10px}.day-kpis b{font-size:18px}
+/* AI自己評価 */
+.ai-score-block{background:#f8fafb;border:1px solid #e4eaee;border-radius:12px;padding:12px;margin-bottom:10px}
+.ai-score-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ai-score-stars{font-size:20px;letter-spacing:.08em;color:var(--gold);font-weight:800}
+.ai-score-pts{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums}
+.ai-eval-grid{display:grid;gap:8px}
+.ai-eval-row{display:grid;grid-template-columns:72px 1fr;gap:8px;align-items:start;background:#fff;border:1px solid #e4eaee;border-radius:10px;padding:10px}
+.ai-eval-row b{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.ai-eval-row span{font-size:15px;font-weight:800;line-height:1.4}
+.ai-eval-ev{display:flex;flex-wrap:wrap;gap:8px}
+.ai-eval-ev .ev-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;background:#f3f6f8;border:1px solid #e4eaee;font-size:14px;font-weight:850}
+.ai-improve{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.ai-improve li{position:relative;padding:8px 10px 8px 26px;background:#fff;border:1px solid #e4eaee;border-radius:10px;font-size:13px;line-height:1.5;color:#334}
+.ai-improve li:before{content:"・";position:absolute;left:10px;top:8px;color:var(--brand);font-weight:800}
 @media (max-width:420px){
   .wrap{padding:0 10px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
   .bar-row{grid-template-columns:56px 1fr 52px;padding:8px 12px;font-size:12px}
@@ -191,6 +229,13 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   .race-acc-line{font-size:15px;gap:6px}.race-acc-marks{font-size:13px;letter-spacing:.04em}
   .race-acc-toggle{padding:11px 10px 9px}
   .predict-acc .race-acc-meta{font-size:12px;gap:6px}
+  .predict-acc .race-acc-ev .ev-main{font-size:20px}
+  .ev-hero .ev-main{font-size:24px}
+  .ev-detail{grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .day-ranks{gap:6px;padding:10px}.day-ranks .dr b{font-size:20px}
+  .day-kpis{grid-template-columns:repeat(2,1fr);padding:0 10px 12px}
+  .ai-eval-row{grid-template-columns:64px 1fr;padding:9px}
+  .ai-score-pts{font-size:20px}.ai-score-stars{font-size:18px}
 }
 </style></head>
 <body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
@@ -255,6 +300,24 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% if selected_venue %}
 <a class="venue-back" href="/?source={{source}}&mode=result&date={{selected_date}}">← {{selected_date}} の開催場一覧</a>
 {% endif %}
+{% if day_stats and day_stats.has_data %}
+<section class="day-dash" id="day-dash">
+<h2>本日成績{% if selected_venue %}｜{{selected_venue}}{% endif %}</h2>
+<div class="day-ranks">
+<div class="dr"><b>{{day_stats.S}}</b><small>S</small></div>
+<div class="dr"><b>{{day_stats.A}}</b><small>A</small></div>
+<div class="dr"><b>{{day_stats.B}}</b><small>B</small></div>
+<div class="dr"><b>{{day_stats.C}}</b><small>C</small></div>
+</div>
+<div class="day-kpis">
+<div class="metric"><b>{% if day_stats.本命勝率 is not none %}{{'%.0f'|format(day_stats.本命勝率)}}%{% else %}—{% endif %}</b><small>本命勝率</small></div>
+<div class="metric"><b>{% if day_stats.複勝率 is not none %}{{'%.0f'|format(day_stats.複勝率)}}%{% else %}—{% endif %}</b><small>複勝率</small></div>
+<div class="metric"><b class="{{day_stats.回収率トーン}}">{% if day_stats.回収率 is not none %}{{'%.0f'|format(day_stats.回収率)}}%{% else %}—{% endif %}</b><small>回収率</small></div>
+<div class="metric"><b class="{{day_stats.期待値トーン}}">{{day_stats.期待値表示}}</b><small>期待値</small></div>
+<div class="metric" style="grid-column:1/-1"><b class="{{'roi-good' if (day_stats.利益 or 0)>=0 else 'roi-bad'}}">{{day_stats.利益表示}}</b><small>利益 · {{day_stats.件数}}レース</small></div>
+</div>
+</section>
+{% endif %}
 <section class="race-list-panel" id="race-review-block">
 <h2>結果検証｜レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
 {% if verification and verification.has_data %}
@@ -279,11 +342,44 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <span class="race-acc-rank rank-pill {{r['勝負ランク']}}" style="min-width:26px;height:24px;font-size:12px">{{r['勝負ランク']}}</span>
 <span class="race-acc-score">{{r['BET期待値']}}</span>
 </div>
-{% if r.get('印着順要約') %}
+{% if r.get('AI評価') and r['AI評価'].get('あり') %}
+<div class="race-acc-marks">{{r['AI評価']['星']}}（{{r['AI評価']['採点']}}点） · {{r.get('印着順要約','')}}</div>
+{% elif r.get('印着順要約') %}
 <div class="race-acc-marks">{{r['印着順要約']}}</div>
 {% endif %}
 </button>
 <div class="race-acc-body">
+{% set ae = r.get('AI評価') or {} %}
+{% if ae.get('あり') %}
+<div class="section">
+<div class="section-title gold">AI自己評価</div>
+<div class="ai-score-block">
+<div class="ai-score-head">
+<span class="ai-score-stars">{{ae['星']}}</span>
+<span class="ai-score-pts">{{ae['採点']}}点</span>
+</div>
+</div>
+<div class="ai-eval-grid">
+<div class="ai-eval-row"><b>本命評価</b><span>{{ae['本命評価']}}</span></div>
+<div class="ai-eval-row"><b>対抗評価</b><span>{{ae['対抗評価']}}</span></div>
+<div class="ai-eval-row"><b>印順位</b><span>{{ae['印順位']}}</span></div>
+<div class="ai-eval-row"><b>期待値</b>
+<span class="ai-eval-ev">
+{% for e in ae.get('期待値行',[]) %}
+<span class="ev-chip {{e['トーン']}}">{{e['印']}} {{e['表示']}}</span>
+{% endfor %}
+</span>
+</div>
+<div class="ai-eval-row"><b>改善</b>
+<ul class="ai-improve">
+{% for tip in ae.get('改善ポイント',[]) %}
+<li>{{tip}}</li>
+{% endfor %}
+</ul>
+</div>
+</div>
+</div>
+{% endif %}
 <div class="section">
 <div class="section-title">予想印 × 実着順</div>
 <div class="result-grid">
@@ -292,10 +388,12 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% endfor %}
 </div>
 </div>
+{% if not ae.get('あり') %}
 <div class="section">
 <div class="section-title gold">AI振り返り</div>
 <div class="review">{{r.get('AI振り返り','')}}</div>
 </div>
+{% endif %}
 <div class="section">
 <div class="section-title">購入馬券</div>
 {% if r.get('購入馬券一覧') %}
@@ -613,16 +711,34 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <span class="race-acc-rank rank-pill {{r['勝負ランク']}}" style="min-width:26px;height:24px;font-size:12px">{{r['勝負ランク']}}</span>
 </div>
 <div class="race-acc-meta">
-<span class="race-acc-bet">{{r['BET期待値']}}<small>買い期待度</small></span>
 <span class="race-acc-honmei">{{r.get('本命表示','◎—')}}</span>
+<span class="race-acc-bet">{{r['BET期待値']}}<small>買い期待度</small></span>
 </div>
+{% if r.get('期待値あり') %}
+<div class="race-acc-ev"><span class="ev-main {{r['期待値トーン']}}"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 {{r['期待値表示']}}</span></div>
+{% else %}
+<div class="race-acc-ev"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span></div>
+{% endif %}
 </button>
 <div class="race-acc-body" data-lazy="1"></div>
 <template class="race-detail-tpl">
 <section class="race {{r['荒れクラス']}}">
 <div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R{% endif %}<small>20,000回 仮想レース</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div></div>
 <div class="betbar"><span class="rank-badge"><span>{{r['BET判定']}}</span></span><span>買い期待度 {{r['BET期待値']}}</span></div>
-<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}{% if r.get('本命馬番') %}（{{r['本命馬番']}}番）{% endif %}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍{% if r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %} · 市場 {{r['本命オッズ']}}倍{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}（{{r['本命人気']}}人気）{% endif %}{% endif %} · {{r['本命理由']}}</div></div>
+<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}{% if r.get('本命馬番') %}（{{r['本命馬番']}}番）{% endif %}
+{% if r.get('期待値あり') %}
+<div class="ev-hero"><span class="ev-main {{r['期待値トーン']}}"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 {{r['期待値表示']}}</span><span class="ev-tag {{r['期待値トーン']}}">{{r['期待値ラベル']}}</span></div>
+{% else %}
+<div class="ev-hero"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span><span class="ev-tag ev-none">オッズ待ち</span></div>
+{% endif %}
+</div>
+<div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div>
+<div class="ev-detail">
+<div class="metric"><b class="{{r.get('期待値トーン','ev-none')}}">{% if r.get('期待値あり') %}{{r['期待値表示']}}{% else %}—{% endif %}</b><small>期待値</small></div>
+<div class="metric"><b>{% if r.get('AI適正オッズ') and r['AI適正オッズ']!='なし' %}{{r['AI適正オッズ']}}倍{% else %}—{% endif %}</b><small>AI適正オッズ</small></div>
+<div class="metric"><b>{% if r.get('現在オッズ') %}{{r['現在オッズ']}}倍{% elif r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %}{{r['本命オッズ']}}倍{% else %}—{% endif %}</b><small>現在オッズ</small></div>
+</div>
+<div class="reason">{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}{{r['本命人気']}}人気 · {% endif %}{{r['本命理由']}}</div></div>
 <div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
 <div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r['人気馬危険']}}</div><div class="reason">危険度 {{r['危険度']}} · {{r['危険理由']}}</div></div>
 <div class="section"><div class="section-title gold">AI馬券戦略</div><div class="strategy"><div class="label">このレースの主戦</div><strong>{{r['推奨券種']}}</strong><p>{{r['馬券戦略理由']}}</p></div>

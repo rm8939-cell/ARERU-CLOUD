@@ -397,7 +397,15 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         ranked=rest.sort_values(['_hole','SIM3着内率'],ascending=False).head(4)
         marks=['○','▲','△','☆']; mark_rows=[]
         for mark,(_,x) in zip(marks,ranked.iterrows()):
-            mark_rows.append({'印':mark,'馬名':str(x['馬名']),'3着内率':round(float(x['SIM3着内率']),1),'理由':str(x['理由'])})
+            mo=num(x.get('単勝オッズ'))
+            fo=num(x.get('AI適正オッズ'))
+            mark_rows.append({
+                '印':mark,'馬名':str(x['馬名']),
+                '3着内率':round(float(x['SIM3着内率']),1),
+                '理由':str(x['理由']),
+                'AI適正オッズ':round(float(fo),1) if pd.notna(fo) else None,
+                '単勝オッズ':round(float(mo),1) if pd.notna(mo) else None,
+            })
         main_place=float(main['SIM3着内率']); alt_place=float(ranked['SIM3着内率'].max()) if len(ranked) else 0
         clarity=max(0,float(main['SIM3着内率'])-float(g['SIM3着内率'].median()))
         bet=clamp(main_place*.38+alt_place*.22+clarity*.75+chaos*.16+float(danger_score.max())*.08)
