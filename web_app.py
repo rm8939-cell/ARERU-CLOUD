@@ -187,6 +187,62 @@ def _pick_today_date(available, today_str=''):
     return min(av)
 
 
+def _anchor_meeting_date(found, today_str=''):
+    """検出開催日から『本日優先・無ければ直近過去』のアンカー日を返す。未来日は選ばない。"""
+    today_str=str(today_str or date.today().isoformat())
+    days=[str(d) for d in (found or []) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(d))]
+    if not days:
+        return ''
+    if today_str in days:
+        return today_str
+    past=[d for d in days if d<=today_str]
+    if past:
+        return max(past)
+    # すべて未来なら最も近い未来日（カード先行取得用）
+    return min(days)
+
+
+def _result_available_dates(meeting_dates, result_days, today_str=''):
+    """結果検証用の日付一覧。開催日(≦本日)と結果確定日を合流し、新しい順。"""
+    today_str=str(today_str or date.today().isoformat())
+    meet=[d for d in (meeting_dates or []) if d<=today_str]
+    res=list(result_days or [])
+    return sorted(set(meet) | set(res), reverse=True)
+
+
+def bootstrap_missing_results(source: str = 'jra') -> bool:
+    """予想があるのに結果未取込の直近日をバックグラウンド取得。"""
+    if source not in ('jra','nar','all'):
+        return False
+    today=date.today().isoformat()
+    meet=dates(source)
+    have=set(dates_with_results(source))
+    # 昨日以前で結果が無い開催日のみ（当日は未確定が多いので対象外・新しい順・最大2日）
+    missing=[d for d in meet if d<today and d not in have][:2]
+    if not missing:
+        return False
+    lock=DATA/f'.results_bootstrap_{source}.lock'
+    if lock.exists():
+        try:
+            age=(__import__('time').time()-lock.stat().st_mtime)
+            if age < 900:
+                return False
+        except Exception:
+            pass
+    print(f'[bootstrap-results] source={source} missing={missing}')
+    try:
+        lock.write_text(str(__import__('os').getpid()), encoding='utf-8')
+        cmd=[sys.executable,'results.py','--source',source,'--dates',*missing]
+        subprocess.run(cmd,check=True,timeout=1800)
+    except Exception as e:
+        print(f'[bootstrap-results] fail: {e}')
+        return False
+    finally:
+        try: lock.unlink(missing_ok=True)
+        except Exception: pass
+    return True
+
+
 def _norm_ban(x) -> str:
     """馬番を表示用の整数文字列へ。欠損は空文字。"""
     s=str(x or '').strip()
@@ -419,16 +475,22 @@ def bootstrap_source(source: str) -> bool:
     """
     if source != 'nar':
         return False
+    today=date.today().isoformat()
     # 直近数日だけ走査（毎回28日走査しない）
     try:
         from netkeiba_client import NetkeibaClient
         found=NetkeibaClient(sleep=0.12).discover_kaisai_dates(
             lookback=4, lookahead=1, source='nar'
         )
-        remote=found[0] if found else ''
+        # 未来日ではなく「本日 or 直近過去」を鮮度比較の基準にする
+        remote=_anchor_meeting_date(found, today)
     except Exception:
         remote=''
+        found=[]
     local=_source_latest_in_runners('nar')
+    # 本日データが既にあれば bootstrap 不要
+    if today in dates('nar'):
+        return False
     if remote and local and local>=remote:
         return False
     if not remote and local:
@@ -442,9 +504,10 @@ def bootstrap_source(source: str) -> bool:
                 return False
         except Exception:
             pass
-    print(f'[bootstrap] source=nar local={local or "-"} remote={remote or "-"}')
+    print(f'[bootstrap] source=nar local={local or "-"} remote={remote or "-"} found={found[:5]}')
     try:
         lock.write_text(str(__import__('os').getpid()), encoding='utf-8')
+        # 本日〜直近を確実に取る（lookaheadはカード先行用に残すが、refresh側で本日優先）
         subprocess.run(
             [sys.executable,'refresh_data.py','--latest-only','--source','nar','--lookback','5','--lookahead','1'],
             check=True,timeout=1800,
@@ -470,12 +533,13 @@ def index():
     except Exception as e:
         print(f'[bootstrap] skip: {e}')
     today=date.today().isoformat()
-    av=dates(source)
+    meeting_dates=dates(source)
+    av=list(meeting_dates)
     selected=request.args.get('date','').strip()
     want_today=str(request.args.get('today') or '').strip() in ('1','true','yes')
     # 本日開催: 会場選択を外し、当日（無ければ直近開催日）の開催場一覧へ
     if want_today and source=='nar':
-        selected=_pick_today_date(av, today)
+        selected=_pick_today_date(meeting_dates, today)
         # カレンダー当日が未取得なら、バックグラウンド取得を促しつつ直近を表示
         if selected != today:
             try:
@@ -485,14 +549,27 @@ def index():
     # ソース切替で他開催の日付が残っていても、そのソースの開催日へ寄せる
     if not selected or selected not in av:
         selected=av[0] if av else ''
-    # 結果検証タブ: 選択日に結果が無い場合は最新の結果日へ寄せる（結果待ちの誤表示を防ぐ）
-    # ※本日開催指定時は当日（または直近）を優先し、結果日へ強制しない
-    # 日付プルダウンも結果確定日のみにし、「選べるのに選択できない」を防ぐ
+    # 結果検証タブ:
+    # - プルダウンは「本日以前の開催日 + 結果確定日」（最新開催日も選択可）
+    # - 明示指定日に予想があれば結果未取込でも寄せない（結果待ち表示＋バックグラウンド取得）
+    # - 本日開催指定時は結果日へ強制しない
     result_days=dates_with_results(source)
-    if mode=='result' and result_days and not want_today:
-        if not selected or selected not in result_days:
-            selected=result_days[0]
-        av=result_days
+    if mode=='result' and not want_today:
+        av=_result_available_dates(meeting_dates, result_days, today)
+        explicit=str(request.args.get('date') or '').strip()
+        pred_exists=(ARCH/f'predictions_{explicit}.csv').exists() if explicit else False
+        if explicit and (explicit in av or pred_exists):
+            selected=explicit
+            if explicit not in av:
+                av=sorted(set(av)|{explicit}, reverse=True)
+        elif not selected or selected not in av:
+            # デフォルトは最新の結果確定日。無ければ本日以前の最新開催日
+            selected=(result_days[0] if result_days else (av[0] if av else ''))
+        # 結果未取込の確定候補を裏で補完
+        try:
+            threading.Thread(target=bootstrap_missing_results, args=(source,), daemon=True).start()
+        except Exception as e:
+            print(f'[bootstrap-results] skip: {e}')
     # 本日開催では必ず開催場一覧からやり直す
     selected_venue='' if want_today else str(request.args.get('venue') or '').strip()
     races=[]; targets=[]; message='予想データがありません'; has_results=False
@@ -574,7 +651,7 @@ def index():
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
         venues=venues,selected_venue=selected_venue,show_venue_picker=show_venue_picker,
-        today_date=_pick_today_date(av, today) if source=='nar' else today,
+        today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
         day_stats=day_stats)
 
 

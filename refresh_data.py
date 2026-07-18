@@ -9,7 +9,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -295,13 +295,17 @@ def refresh(
                 print(f"⚠️  {src.upper()} 開催日なし")
                 continue
             if latest_only:
-                target_dates = [found[0]]
-                for d in found[1:]:
-                    delta = abs((datetime.fromisoformat(found[0]) - datetime.fromisoformat(d)).days)
+                # 未来カードではなく「本日 or 直近過去」を中心に ±2 日を取る
+                today_str = date.today().isoformat()
+                past_or_today = [d for d in found if d <= today_str]
+                anchor = max(past_or_today) if past_or_today else found[0]
+                target_dates = [anchor]
+                for d in found:
+                    if d == anchor:
+                        continue
+                    delta = abs((datetime.fromisoformat(anchor) - datetime.fromisoformat(d)).days)
                     if delta <= 2:
                         target_dates.append(d)
-                    else:
-                        break
                 target_dates = sorted(set(target_dates))
             else:
                 existing = set(available_dates(runners, source=src))
