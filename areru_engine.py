@@ -413,6 +413,11 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         if bet<50: bet_reason.append('買い条件不足')
         judge='大荒れ警戒' if chaos>=80 else ('波乱' if chaos>=60 else ('注意' if chaos>=40 else '平穏'))
         names={x['印']:x['馬名'] for x in mark_rows}; main_name=str(main['馬名'])
+        main_ban=str(main.get('馬番','') or '').strip()
+        try:
+            main_ban=str(int(float(main_ban))) if main_ban else ''
+        except Exception:
+            main_ban=main_ban if main_ban and main_ban.lower() not in ('nan','none','なし') else ''
 
         # 券種別実オッズ（キャッシュ優先）。単勝が無いレースは取得を省略。
         main_win=num(main.get('単勝オッズ'))
@@ -476,7 +481,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           'race_id':race_id,'source':src,'開催地':venue_from_race_id(race_id),'レース':int(float(main['レース'])),'荒れ度':round(chaos,1),'判定':judge,
           '荒れクラス':'storm' if chaos>=80 else ('wave' if chaos>=60 else ('caution' if chaos>=40 else 'calm')),
           'BET期待値':round(bet,1),'BET判定':bet_label,'BETクラス':bet_class,'BET理由':' / '.join(bet_reason),
-          'シミュレーション回数':20000,'本命':main_name,'本命AREru指数':main['AREru指数'],'シミュレーション勝率':round(main['SIM勝率'],1),'シミュレーション3着内率':round(main['SIM3着内率'],1),'AI適正オッズ':round(main['AI適正オッズ'],1),'本命理由':main['理由'],
+          'シミュレーション回数':20000,'本命':main_name,'本命馬番':main_ban,'本命AREru指数':main['AREru指数'],'シミュレーション勝率':round(main['SIM勝率'],1),'シミュレーション3着内率':round(main['SIM3着内率'],1),'AI適正オッズ':round(main['AI適正オッズ'],1),'本命理由':main['理由'],
           '本命オッズ':main_odds_disp,'本命人気':main_pop_disp,
           '人気馬危険':danger['馬名'],'危険度':round(clamp(danger_score.loc[danger_idx]),1),'危険理由':'近走評価と人気履歴のズレを検出',
           '印データ':json.dumps(mark_rows,ensure_ascii=False),
