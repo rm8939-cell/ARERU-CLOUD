@@ -9,8 +9,10 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
+
+JST = timezone(timedelta(hours=9))
 
 import pandas as pd
 
@@ -295,8 +297,8 @@ def refresh(
                 print(f"⚠️  {src.upper()} 開催日なし")
                 continue
             if latest_only:
-                # 未来カードではなく「本日 or 直近過去」を中心に ±2 日を取る
-                today_str = date.today().isoformat()
+                # 未来カードではなく「本日 or 直近過去」を中心に ±2 日を取る（JST）
+                today_str = datetime.now(JST).date().isoformat()
                 past_or_today = [d for d in found if d <= today_str]
                 anchor = max(past_or_today) if past_or_today else found[0]
                 target_dates = [anchor]
