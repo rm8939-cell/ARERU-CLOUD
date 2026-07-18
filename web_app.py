@@ -5,6 +5,12 @@ from datetime import date
 import os
 import pandas as pd
 from areru_engine import parse_date
+from ev_analysis import (
+    apply_expected_value,
+    build_ai_self_eval,
+    day_performance,
+    load_score_odds,
+)
 
 app=Flask(__name__)
 BASE=Path(__file__).resolve().parent
@@ -232,6 +238,7 @@ def prep(records, ban_map=None):
             ban=ban_map.get(key, '')
         r['本命馬番']=ban
         r['本命表示']=f'◎{ban}' if ban else (f"◎{r.get('本命','')}" if r.get('本命') else '◎—')
+        apply_expected_value(r)
     return records
 
 def clean_horse(x):
@@ -480,10 +487,12 @@ def index():
         selected=av[0] if av else ''
     # 結果検証タブ: 選択日に結果が無い場合は最新の結果日へ寄せる（結果待ちの誤表示を防ぐ）
     # ※本日開催指定時は当日（または直近）を優先し、結果日へ強制しない
+    # 日付プルダウンも結果確定日のみにし、「選べるのに選択できない」を防ぐ
     result_days=dates_with_results(source)
     if mode=='result' and result_days and not want_today:
         if not selected or selected not in result_days:
             selected=result_days[0]
+        av=result_days
     # 本日開催では必ず開催場一覧からやり直す
     selected_venue='' if want_today else str(request.args.get('venue') or '').strip()
     races=[]; targets=[]; message='予想データがありません'; has_results=False
@@ -558,11 +567,15 @@ def index():
     elif selected: message=f'{selected} は保存データにありません'
     elif source=='nar':
         message='地方開催データがありません。/refresh?source=nar で取得できます。'
+    day_stats=None
+    if mode=='result' and races and not show_venue_picker:
+        day_stats=day_performance(races, verification, safe_pct=_safe_pct)
     return render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
         venues=venues,selected_venue=selected_venue,show_venue_picker=show_venue_picker,
-        today_date=_pick_today_date(av, today) if source=='nar' else today)
+        today_date=_pick_today_date(av, today) if source=='nar' else today,
+        day_stats=day_stats)
 
 
 def attach_results(records, selected_date=''):
@@ -608,6 +621,7 @@ def attach_results(records, selected_date=''):
 
     analysis_by_race=_load_analysis_by_race()
     score_cache={}
+    odds_cache={}
     any_result=False
 
     for r in records:
@@ -627,7 +641,9 @@ def attach_results(records, selected_date=''):
 
         if d and d not in score_cache:
             score_cache[d]=_load_score_finishes(d)
+            odds_cache[d]=load_score_odds(ARCH, d, _norm_race_id, clean_horse)
         score_lu=score_cache.get(d,{})
+        odds_lu=odds_cache.get(d,{})
 
         def lookup_finish(horse_name: str) -> str:
             hn=clean_horse(horse_name)
@@ -691,8 +707,15 @@ def attach_results(records, selected_date=''):
         else:
             r['的中表示']='結果待ち'
 
+        o_name=next((x.get('馬名','') for x in r.get('印一覧',[]) if x.get('印')=='○'), '')
+        rival_odds=odds_lu.get((rid, clean_horse(o_name))) if (rid and o_name) else None
+        ai_eval=build_ai_self_eval(r, review, clean_horse, rival_odds=rival_odds)
+        r['AI評価']=ai_eval
+
         main_finish=lookup_finish(r.get('本命',''))
-        if race_has_result and main_finish:
+        if ai_eval.get('あり'):
+            r['AI振り返り']=ai_eval.get('サマリー') or ''
+        elif race_has_result and main_finish:
             parts=[f"◎{r.get('本命')}は{main_finish}"]
             if hits:
                 main_hits=[h for h in hits if h['bet_type']=='本命']
