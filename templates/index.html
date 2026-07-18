@@ -168,6 +168,15 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .venue-back{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;padding:8px 0;color:var(--brand);font-size:13px;font-weight:800;text-decoration:none}
 .venue-back:active{opacity:.75}
 .race-list-panel>h2 .venue-tag{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:8px;background:var(--soft);color:var(--brand);font-size:12px;letter-spacing:0;text-transform:none}
+/* 予想分析: レース一覧アコーディオン（初期は一覧のみ・詳細は Lazy Load） */
+.predict-acc .race-acc-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px;font-weight:700;line-height:1.4}
+.predict-acc .race-acc-bet{font-variant-numeric:tabular-nums;color:#334}
+.predict-acc .race-acc-bet small{display:inline;margin-left:4px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.predict-acc .race-acc-honmei{font-weight:850;color:var(--text);letter-spacing:.02em}
+.predict-acc .race-acc-body{min-height:0}
+.predict-acc .race-acc-body .race{margin:10px 0 0;border-radius:12px}
+.predict-acc .race-acc-body .toplink{display:none}
+.predict-acc.open .race-acc-body{padding-top:10px}
 @media (max-width:420px){
   .wrap{padding:0 10px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
   .bar-row{grid-template-columns:56px 1fr 52px;padding:8px 12px;font-size:12px}
@@ -181,6 +190,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   .race-head{padding:14px 12px 10px}.heat{font-size:20px}
   .race-acc-line{font-size:15px;gap:6px}.race-acc-marks{font-size:13px;letter-spacing:.04em}
   .race-acc-toggle{padding:11px 10px 9px}
+  .predict-acc .race-acc-meta{font-size:12px;gap:6px}
 }
 </style></head>
 <body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
@@ -589,11 +599,30 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% if selected_venue %}
 <a class="venue-back" href="/?source={{source}}&mode=predict&date={{selected_date}}">← {{selected_date}} の開催場一覧</a>
 {% endif %}
-{% if targets %}<section class="targets"><h2>{% if selected_venue %}{{selected_venue}}｜{% endif %}買い候補｜S勝負・A買い</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t['勝負ランク']}}">{{t['勝負ランク']}}</span></div><div class="target-name">{% if selected_venue %}{{'%02d'|format(t['レース']|int)}}R{% else %}{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R{% endif %}<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
-{% for r in races %}<section id="race-{{r['race_id']|urlencode}}" class="race {{r['荒れクラス']}}">
+{% if races %}
+{% if targets %}<section class="targets" id="predict-targets"><h2>{% if selected_venue %}{{selected_venue}}｜{% endif %}買い候補｜S勝負・A買い</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}" data-open-race="race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t['勝負ランク']}}">{{t['勝負ランク']}}</span></div><div class="target-name">{% if selected_venue %}{{'%02d'|format(t['レース']|int)}}R{% else %}{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R{% endif %}<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
+<section class="race-list-panel" id="predict-race-panel">
+<h2>予想分析｜レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
+<div class="race-acc-list" id="predict-acc-list">
+{% for r in races %}
+<article class="race-acc predict-acc" id="race-{{r['race_id']|urlencode}}" data-race-id="{{r.get('race_id','')}}">
+<button type="button" class="race-acc-toggle" aria-expanded="false">
+<div class="race-acc-line">
+<span class="race-acc-chevron" aria-hidden="true">▶</span>
+<span class="race-acc-title">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} {{'%02d'|format(r['レース']|int)}}R{% endif %}</span>
+<span class="race-acc-rank rank-pill {{r['勝負ランク']}}" style="min-width:26px;height:24px;font-size:12px">{{r['勝負ランク']}}</span>
+</div>
+<div class="race-acc-meta">
+<span class="race-acc-bet">{{r['BET期待値']}}<small>買い期待度</small></span>
+<span class="race-acc-honmei">{{r.get('本命表示','◎—')}}</span>
+</div>
+</button>
+<div class="race-acc-body" data-lazy="1"></div>
+<template class="race-detail-tpl">
+<section class="race {{r['荒れクラス']}}">
 <div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R{% endif %}<small>20,000回 仮想レース</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div></div>
 <div class="betbar"><span class="rank-badge"><span>{{r['BET判定']}}</span></span><span>買い期待度 {{r['BET期待値']}}</span></div>
-<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍{% if r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %} · 市場 {{r['本命オッズ']}}倍{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}（{{r['本命人気']}}人気）{% endif %}{% endif %} · {{r['本命理由']}}</div></div>
+<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}{% if r.get('本命馬番') %}（{{r['本命馬番']}}番）{% endif %}</div><div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div><div class="reason">AI適正オッズ {{r['AI適正オッズ']}}倍{% if r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %} · 市場 {{r['本命オッズ']}}倍{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}（{{r['本命人気']}}人気）{% endif %}{% endif %} · {{r['本命理由']}}</div></div>
 <div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
 <div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r['人気馬危険']}}</div><div class="reason">危険度 {{r['危険度']}} · {{r['危険理由']}}</div></div>
 <div class="section"><div class="section-title gold">AI馬券戦略</div><div class="strategy"><div class="label">このレースの主戦</div><strong>{{r['推奨券種']}}</strong><p>{{r['馬券戦略理由']}}</p></div>
@@ -607,7 +636,92 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="odds-wait"><b>合成オッズ・期待回収率</b><br>券種別の当日オッズ接続後に算出。数字を作らず、実オッズが取れた時だけ「合成オッズ・的中期待・期待回収率・妙味」を表示します。</div>
 {% endif %}
 </div>
-<div class="beta">β版 · 実着順は予想入力に未使用 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div></section>{% endfor %}
+<div class="beta">β版 · 実着順は予想入力に未使用 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div>
+</section>
+</template>
+</article>
+{% endfor %}
+</div>
+</section>
+<script>
+(function(){
+  var list=document.getElementById('predict-acc-list');
+  if(!list) return;
+
+  function setChevron(btn, open){
+    var chev=btn && btn.querySelector('.race-acc-chevron');
+    if(chev) chev.textContent=open?'▼':'▶';
+    if(btn) btn.setAttribute('aria-expanded', open?'true':'false');
+  }
+
+  function mountDetail(card){
+    var body=card.querySelector('.race-acc-body');
+    if(!body || body.getAttribute('data-lazy')!=='1') return;
+    var tpl=card.querySelector('template.race-detail-tpl');
+    if(tpl && tpl.content){
+      body.appendChild(tpl.content.cloneNode(true));
+    }
+    body.setAttribute('data-lazy','0');
+  }
+
+  function closeCard(card){
+    if(!card || !card.classList.contains('open')) return;
+    card.classList.remove('open');
+    setChevron(card.querySelector('.race-acc-toggle'), false);
+  }
+
+  function openCard(card, scroll){
+    if(!card) return;
+    [].forEach.call(list.querySelectorAll('.race-acc.open'), function(other){
+      if(other!==card) closeCard(other);
+    });
+    mountDetail(card);
+    card.classList.add('open');
+    setChevron(card.querySelector('.race-acc-toggle'), true);
+    if(scroll){
+      try{ card.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){ card.scrollIntoView(true); }
+    }
+  }
+
+  function toggleCard(card){
+    if(!card) return;
+    if(card.classList.contains('open')) closeCard(card);
+    else openCard(card, false);
+  }
+
+  list.addEventListener('click', function(e){
+    var btn=e.target.closest('.race-acc-toggle');
+    if(!btn || !list.contains(btn)) return;
+    toggleCard(btn.closest('.race-acc'));
+  });
+
+  document.addEventListener('click', function(e){
+    var a=e.target.closest('[data-open-race]');
+    if(!a) return;
+    var id=a.getAttribute('data-open-race');
+    if(!id) return;
+    var card=document.getElementById(id);
+    if(!card || !list.contains(card)) return;
+    e.preventDefault();
+    openCard(card, true);
+    if(history && history.replaceState){
+      try{ history.replaceState(null,'','#'+id); }catch(err){}
+    }
+  });
+
+  function openFromHash(){
+    var id=(location.hash||'').replace(/^#/,'');
+    if(!id) return;
+    var card=document.getElementById(id);
+    if(card && list.contains(card)) openCard(card, true);
+  }
+  openFromHash();
+  window.addEventListener('hashchange', openFromHash);
+})();
+</script>
+{% else %}
+<section class="empty-state"><h2>予想データなし</h2><p>この日の予想レースがありません。日付を変えるか、データ更新後に再表示してください。</p></section>
+{% endif %}
 {% endif %}
 {% endif %}
 </main></body></html>

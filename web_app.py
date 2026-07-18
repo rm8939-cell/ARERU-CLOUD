@@ -181,8 +181,41 @@ def _pick_today_date(available, today_str=''):
     return min(av)
 
 
-def prep(records):
+def _norm_ban(x) -> str:
+    """馬番を表示用の整数文字列へ。欠損は空文字。"""
+    s=str(x or '').strip()
+    if not s or s.lower() in ('nan','none','なし'):
+        return ''
+    try:
+        return str(int(float(s)))
+    except Exception:
+        return s
+
+
+def _main_ban_map(selected_date: str) -> dict:
+    """scores CSV から (race_id, 正規化馬名) → 馬番 を構築。"""
+    p=ARCH/f'scores_{selected_date}.csv'
+    if not p.exists():
+        return {}
+    try:
+        sdf=pd.read_csv(p).fillna('')
+    except Exception:
+        return {}
+    if 'race_id' not in sdf.columns or '馬名' not in sdf.columns or '馬番' not in sdf.columns:
+        return {}
+    m={}
+    for _, row in sdf.iterrows():
+        rid=_norm_race_id(row.get('race_id',''))
+        name=clean_horse(row.get('馬名',''))
+        ban=_norm_ban(row.get('馬番',''))
+        if rid and name and ban:
+            m[(rid, name)]=ban
+    return m
+
+
+def prep(records, ban_map=None):
     from areru_engine import RANK_LABELS, RANK_CLASSES
+    ban_map=ban_map or {}
     for r in records:
         try: r['印一覧']=json.loads(r.get('印データ','[]'))
         except: r['印一覧']=[]
@@ -193,6 +226,12 @@ def prep(records):
             r['勝負ランク']=rank
             r['BET判定']=RANK_LABELS[rank]
             r['BETクラス']=RANK_CLASSES.get(rank, r.get('BETクラス',''))
+        ban=_norm_ban(r.get('本命馬番',''))
+        if not ban and ban_map:
+            key=(_norm_race_id(r.get('race_id','')), clean_horse(r.get('本命','')))
+            ban=ban_map.get(key, '')
+        r['本命馬番']=ban
+        r['本命表示']=f'◎{ban}' if ban else (f"◎{r.get('本命','')}" if r.get('本命') else '◎—')
     return records
 
 def clean_horse(x):
@@ -457,7 +496,7 @@ def index():
             # 地方の開催場一覧は predict/result とも predictions を用意して場を出す
             if pred_path.exists() or mode!='result' or source=='nar':
                 df=pd.read_csv(ensure(selected, source=source)).fillna('なし')
-                races=prep(df.to_dict('records'))
+                races=prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
                 races=_filter_records_by_source(races, source)
                 for row in races:
                     if not _race_date(row):
