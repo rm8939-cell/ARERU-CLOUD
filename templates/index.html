@@ -30,6 +30,10 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .fund-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #d7e6dd;font-size:13px}.fund-row .amt{font-size:18px;font-weight:900;color:var(--brand)}
 .form-box{background:#f8fafb;border:1px dashed #c5ced6;border-radius:10px;padding:10px;margin-top:8px;font-size:13px}.form-box .slot{margin:4px 0}.form-box .slot b{display:inline-block;min-width:3.5em;color:var(--muted)}
 .ledger-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.ledger-metric{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}.ledger-metric b{display:block;font-size:22px}.month-row{display:grid;grid-template-columns:72px 1fr 70px;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.status-banner{border-radius:12px;padding:12px 14px;margin:0 0 12px;font-size:13px;line-height:1.55;font-weight:700}
+.status-banner.warn{background:#fff8e6;border:1px solid #f0d48a;color:#7a5a00}
+.status-banner.error{background:#fdecea;border:1px solid #f5c2c0;color:#8a1f1a}
+.status-banner a{color:inherit;text-decoration:underline}
 @media (max-width:560px){.ai-card .ban-xl{font-size:30px}.ticket-ban{font-size:26px}.pace-grid{grid-template-columns:1fr 1fr}.ledger-grid{grid-template-columns:1fr 1fr}}
 
 .source-tabs,.mode-tabs{display:flex;gap:8px}.source-tabs{padding:16px 0 8px}.mode-tabs{padding:0 0 4px}
@@ -269,6 +273,14 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
 <div class="message">{{message}}</div>
+{% set _ds = data_status|default('ready') %}
+{% if _ds == 'generating' %}
+<div class="status-banner warn">データ取得中です。予想の再計算が終わるまで数十秒かかることがあります。<br><a href="{{ request.url }}">再読み込み</a></div>
+{% elif _ds == 'updating' %}
+<div class="status-banner warn">データ更新中です。表示は現在のキャッシュです。<a href="{{ request.url }}">再読み込み</a></div>
+{% elif _ds == 'error' %}
+<div class="status-banner error">通信エラーが発生しました。時間をおいて再読み込みしてください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/">トップへ</a></div>
+{% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
 <h2>{{selected_date}}｜{% if mode=='result' %}結果検証｜{% elif mode=='predict' %}予想分析｜{% endif %}開催場一覧</h2>
@@ -776,10 +788,10 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 
 {% set cards = r.get('ピックカード一覧') or [] %}
 {% for c in cards %}
-{% if c.get('役割') in ['本命','対抗','穴馬'] %}
+{% if c is mapping and c.get('役割') in ['本命','対抗','穴馬'] %}
 <div class="section" style="padding-top:12px;padding-bottom:4px">
 <div class="ai-card">
-<h3>{{c['役割']}}</h3>
+<h3>{{c.get('役割')}}</h3>
 <div class="ban-xl">{{c.get('馬番表示') or c.get('馬番') or '－'}}</div>
 <div class="kv">
 <div>AI評価 <b>{{c.get('AI評価','—')}}</b></div>
@@ -787,7 +799,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div>勝率 <b>{{c.get('勝率','—')}}%</b></div>
 <div>連対 <b>{{c.get('連対率','—')}}%</b></div>
 <div>複勝 <b>{{c.get('複勝率','—')}}%</b></div>
-<div>期待値 <b>{% if c.get('期待値') %}{{c['期待値']}}%{% else %}—{% endif %}</b></div>
+<div>期待値 <b>{% if c.get('期待値') %}{{c.get('期待値')}}%{% else %}—{% endif %}</b></div>
 <div>距離 <b>{{c.get('距離適性','—')}}</b></div>
 <div>コース <b>{{c.get('コース適性','—')}}</b></div>
 <div>ラップ <b>{{c.get('ラップ適性','—')}}</b></div>
@@ -809,8 +821,8 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="section">
 <div class="ai-card">
 <h3 class="danger">危険人気馬</h3>
-{% if danger and danger.get('馬番表示') %}
-<div class="ban-xl">{{danger['馬番表示']}}</div>
+{% if danger is mapping and danger.get('馬番表示') %}
+<div class="ban-xl">{{danger.get('馬番表示')}}</div>
 <div class="reason">{{danger.get('人気')}}人気 · AI{{danger.get('AI順位')}}位 · 期待値{{danger.get('期待値')}}%</div>
 <div class="reason">{{danger.get('危険理由','')}}</div>
 {% else %}
@@ -819,7 +831,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </div>
 </div>
 
-{% set pace = r.get('展開予想データ') or {} %}
+{% set pace = r.get('展開予想データ') if r.get('展開予想データ') is mapping else {} %}
 <div class="section">
 <div class="ai-card">
 <h3>展開予想</h3>
@@ -842,32 +854,34 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="section-title gold">AI推奨馬券</div>
 <div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '—'}}</strong><p>{{r.get('馬券戦略理由') or ''}}</p></div>
 <div class="fund-box" data-fund-box>
-<script type="application/json" data-tickets-json>{{ r.get("推奨馬券一覧", []) | tojson }}</script>
 <label class="label">軍資金（円）</label>
 <input type="number" min="100" step="100" value="10000" data-fund-input inputmode="numeric">
 <div data-fund-alloc></div>
 </div>
 {% set tickets = r.get('推奨馬券一覧') or [] %}
 {% if tickets %}
-<div class="betplan">
+<div class="betplan" data-fund-tickets>
 {% for t in tickets[:8] %}
-<div class="ticket ai-card" style="margin:0">
+{% if t is mapping %}
+{% set form = t.get('フォーメーション') if t.get('フォーメーション') is mapping else none %}
+<div class="ticket ai-card" style="margin:0" data-fund-item data-kind="{{t.get('券種','')}}" data-ban="{{t.get('馬番表示','')}}" data-ev="{{t.get('期待値') or t.get('推定回収率') or 100}}" data-hit="{{t.get('的中率') or 1}}">
 <div class="ticket-head"><span>{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
 <div class="ticket-ban">{{t.get('馬番表示') or '—'}}</div>
-{% if t.get('フォーメーション') %}
+{% if form %}
 <div class="form-box">
-<div class="slot"><b>1頭目</b>{{ (t['フォーメーション'].get('1頭目') or [])|join(' ') }}</div>
-<div class="slot"><b>2頭目</b>{{ (t['フォーメーション'].get('2頭目') or [])|join(' ') }}</div>
-{% if t['フォーメーション'].get('3頭目') %}<div class="slot"><b>3頭目</b>{{ (t['フォーメーション'].get('3頭目') or [])|join(' ') }}</div>{% endif %}
-<div class="slot"><b>点数</b>{{ t['フォーメーション'].get('点数','—') }}点</div>
+<div class="slot"><b>1頭目</b>{{ (form.get('1頭目') or [])|join(' ') }}</div>
+<div class="slot"><b>2頭目</b>{{ (form.get('2頭目') or [])|join(' ') }}</div>
+{% if form.get('3頭目') %}<div class="slot"><b>3頭目</b>{{ (form.get('3頭目') or [])|join(' ') }}</div>{% endif %}
+<div class="slot"><b>点数</b>{{ form.get('点数','—') }}点</div>
 </div>
 {% endif %}
 <div class="kv">
-<div>期待値 <b>{% if t.get('期待値') %}{{t['期待値']}}%{% else %}—{% endif %}</b></div>
-<div>的中率 <b>{% if t.get('的中率') %}{{t['的中率']}}%{% else %}—{% endif %}</b></div>
-<div>推定回収率 <b>{% if t.get('推定回収率') %}{{t['推定回収率']}}%{% else %}—{% endif %}</b></div>
+<div>期待値 <b>{% if t.get('期待値') %}{{t.get('期待値')}}%{% else %}—{% endif %}</b></div>
+<div>的中率 <b>{% if t.get('的中率') %}{{t.get('的中率')}}%{% else %}—{% endif %}</b></div>
+<div>推定回収率 <b>{% if t.get('推定回収率') %}{{t.get('推定回収率')}}%{% else %}—{% endif %}</b></div>
 </div>
 </div>
+{% endif %}
 {% endfor %}
 </div>
 {% else %}
@@ -950,22 +964,28 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   function renderFund(box){
     var input=box.querySelector('[data-fund-input]');
     var out=box.querySelector('[data-fund-alloc]');
-    var js=box.querySelector('[data-tickets-json]');
-    var tickets=[];
-    try{ tickets=JSON.parse(js ? js.textContent : '[]') || []; }catch(e){ tickets=[]; }
+    var section=box.closest('.section') || box.parentElement;
+    var items=section ? [].slice.call(section.querySelectorAll('[data-fund-item]')) : [];
+    var tickets=items.map(function(el){
+      return {
+        kind: el.getAttribute('data-kind')||'',
+        ban: el.getAttribute('data-ban')||'',
+        ev: parseFloat(el.getAttribute('data-ev')||'100')||100,
+        hit: parseFloat(el.getAttribute('data-hit')||'1')||1
+      };
+    });
     var fund=parseInt(input && input.value,10)||0;
     if(!out) return;
     if(!tickets.length || fund<100){ out.innerHTML='<div class="reason">配分対象の推奨馬券がありません</div>'; return; }
     var weights=tickets.map(function(t){
-      var ev=parseFloat(t['期待値']||t['推定回収率']||0)||0;
-      return Math.max(ev-95, 1);
+      return Math.max(Math.min(t.ev,200)-95, 1) * (0.5 + Math.min(t.hit,20)/20);
     });
     var sum=weights.reduce(function(a,b){return a+b;},0)||1;
     var html='';
     tickets.forEach(function(t,i){
       var amt=Math.floor(fund*weights[i]/sum/100)*100;
       if(amt<100 && fund>=100) amt=100;
-      html+='<div class="fund-row"><span>'+ (t['券種']||'') +' '+ (t['馬番表示']||'') +'</span><span class="amt">'+yen(amt)+'</span></div>';
+      html+='<div class="fund-row"><span>'+ t.kind +' '+ t.ban +'</span><span class="amt">'+yen(amt)+'</span></div>';
     });
     out.innerHTML=html;
   }

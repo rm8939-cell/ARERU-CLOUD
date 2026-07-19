@@ -20,6 +20,21 @@ LEGACY=DATA/'score_test_data.csv'
 ANALYSIS_CSV=DATA/'analysis_result.csv'
 JST=timezone(timedelta(hours=9))
 
+# プロセス内キャッシュ / バックグラウンド生成（ページ表示をブロックしない）
+_DATES_CACHE={}
+_VERIFY_CACHE={}
+_PRED_META_CACHE={'sig':None,'data':{}}
+_PREDICT_JOBS={}
+_PREDICT_JOBS_LOCK=threading.Lock()
+_EMPTY_VERIFY={
+    'has_data':False,'selected_date':'',
+    'total_bets':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,
+    'investment':0,'payout':0,'profit':0,'tone':'roi-bad',
+    'daily':[],'by_type':[],'by_rank':[],'by_rank_type':[],'main':{},
+    'recovery_series':[],'cum_profit':[],'recent_rows':[],
+    'purchase_ranks_by_race':{},
+}
+
 
 @app.errorhandler(Exception)
 def _unhandled_error(exc):
@@ -38,14 +53,34 @@ def _unhandled_error(exc):
         '<title>ARERU.CLOUD</title>'
         '<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;'
         'margin:40px auto;max-width:640px;padding:0 16px;color:#17212b;background:#f4f6f8}'
-        'a{color:#176b45;font-weight:700}</style></head><body>'
+        'a{color:#176b45;font-weight:700}.box{background:#fff;border:1px solid #e1e7eb;'
+        'border-radius:12px;padding:16px;margin:16px 0}</style></head><body>'
         '<h1>ARERU.CLOUD</h1>'
+        '<div class="box"><p><b>通信エラー</b></p>'
         '<p>表示中にエラーが発生しました。再読み込みするか、トップへ戻ってください。</p>'
         f'<p style="color:#6f7b87;font-size:13px">{type(exc).__name__}</p>'
-        '<p><a href="/">トップへ戻る</a></p>'
+        '<p><a href="javascript:location.reload()">再読み込み</a> · <a href="/">トップへ戻る</a></p></div>'
         '</body></html>'
     )
     return html, 500
+
+
+def _fs_sig(*paths):
+    """キャッシュ無効化用の簡易シグネチャ（mtime/size）。"""
+    parts=[]
+    for p in paths:
+        try:
+            st=Path(p).stat()
+            parts.append(f'{st.st_mtime_ns}:{st.st_size}')
+        except Exception:
+            parts.append('0')
+    # predictions ディレクトリの件数変化も拾う
+    try:
+        parts.append(str(sum(1 for _ in ARCH.glob('predictions_*.csv'))))
+        parts.append(str(int(ARCH.stat().st_mtime_ns)))
+    except Exception:
+        parts.append('0')
+    return '|'.join(parts)
 
 
 def _today_jst() -> str:
@@ -59,14 +94,17 @@ def _runner_path():
 
 def dates(source='all'):
     """開催日一覧。runners.csv を正とし、生成済み predictions も合流する。"""
+    rp=_runner_path()
+    sig=_fs_sig(rp or Path('.'), ANALYSIS_CSV)
+    key=(source,sig)
+    hit=_DATES_CACHE.get(key)
+    if hit is not None:
+        return list(hit)
     found=set()
-    p=_runner_path()
-    if p is not None:
+    if rp is not None:
         try:
-            rdf=pd.read_csv(p,encoding='utf-8-sig')
-            if '日付' not in rdf.columns:
-                pass
-            else:
+            rdf=pd.read_csv(rp,encoding='utf-8-sig')
+            if '日付' in rdf.columns:
                 if source in ('jra','nar'):
                     if 'source' in rdf.columns:
                         rdf=rdf[rdf['source'].astype(str).str.lower()==source]
@@ -82,67 +120,97 @@ def dates(source='all'):
         if not m:
             continue
         day=m.group(1)
-        if source in ('jra','nar'):
-            try:
-                pdf=pd.read_csv(f,encoding='utf-8-sig')
-                if 'source' in pdf.columns:
-                    if (pdf['source'].astype(str).str.lower()==source).any():
-                        found.add(day)
-                elif 'race_id' in pdf.columns:
-                    from areru_engine import source_from_race_id
-                    if pdf['race_id'].map(source_from_race_id).eq(source).any():
-                        found.add(day)
-                else:
+        if source not in ('jra','nar'):
+            found.add(day)
+            continue
+        # 高速化: 全行読まず source 列の先頭数千行相当だけ usecols
+        try:
+            pdf=pd.read_csv(f,encoding='utf-8-sig',usecols=lambda c: c in ('source','race_id'))
+            if 'source' in pdf.columns:
+                if (pdf['source'].astype(str).str.lower()==source).any():
                     found.add(day)
-            except Exception:
+            elif 'race_id' in pdf.columns:
+                from areru_engine import source_from_race_id
+                if pdf['race_id'].map(source_from_race_id).eq(source).any():
+                    found.add(day)
+            else:
                 found.add(day)
-        else:
+        except Exception:
             found.add(day)
     if ANALYSIS_CSV.exists():
         try:
-            ad=pd.read_csv(ANALYSIS_CSV,encoding='utf-8-sig').fillna('')
+            ad=pd.read_csv(ANALYSIS_CSV,encoding='utf-8-sig',usecols=lambda c: c in ('date','source')).fillna('')
             if source in ('jra','nar') and 'source' in ad.columns:
                 ad=ad[ad['source'].astype(str).str.lower()==source]
             found.update([x for x in ad['date'].astype(str).tolist() if re.fullmatch(r'\d{4}-\d{2}-\d{2}', x)])
         except Exception:
             pass
-    return sorted(found, reverse=True)
+    out=sorted(found, reverse=True)
+    _DATES_CACHE[key]=list(out)
+    # 古いキャッシュ肥大化防止
+    if len(_DATES_CACHE)>24:
+        _DATES_CACHE.clear(); _DATES_CACHE[key]=list(out)
+    return out
 
-def ensure(d, source='all'):
-    f=ARCH/f'predictions_{d}.csv'; regen=True
-    if f.exists():
-        try:
-            pdf=pd.read_csv(f,encoding='utf-8-sig')
-            regen='印データ' not in pdf.columns
-            # 指定ソースのレースが predictions に無いが runners にある場合は再生成
-            if not regen and source in ('jra','nar'):
-                from areru_engine import source_from_race_id
-                if 'source' in pdf.columns:
-                    has_src=(pdf['source'].astype(str).str.lower()==source).any()
-                else:
-                    has_src=pdf['race_id'].map(source_from_race_id).eq(source).any() if 'race_id' in pdf.columns else False
-                if not has_src:
-                    rp=_runner_path()
-                    if rp is not None:
-                        rdf=pd.read_csv(rp,encoding='utf-8-sig')
-                        day=parse_date(rdf['日付']).dt.strftime('%Y-%m-%d')==d
-                        if 'source' in rdf.columns:
-                            need=(rdf[day]['source'].astype(str).str.lower()==source).any()
-                        else:
-                            need=rdf.loc[day,'race_id'].map(source_from_race_id).eq(source).any()
-                        if need:
-                            regen=True
-        except Exception:
-            regen=True
-    if regen:
-        # runners が無い/対象日が無い場合は refresh で取得を試みる
+
+def _predictions_has_source(pdf, source) -> bool:
+    if source not in ('jra','nar'):
+        return True
+    from areru_engine import source_from_race_id
+    if 'source' in pdf.columns:
+        return bool((pdf['source'].astype(str).str.lower()==source).any())
+    if 'race_id' in pdf.columns:
+        return bool(pdf['race_id'].map(source_from_race_id).eq(source).any())
+    return False
+
+
+def _runners_need_source(d, source) -> bool:
+    if source not in ('jra','nar'):
+        return False
+    rp=_runner_path()
+    if rp is None:
+        return False
+    try:
+        rdf=pd.read_csv(rp,encoding='utf-8-sig',usecols=lambda c: c in ('日付','source','race_id'))
+        day=parse_date(rdf['日付']).dt.strftime('%Y-%m-%d')==d
+        if not day.any():
+            return False
+        if 'source' in rdf.columns:
+            return bool((day & (rdf['source'].astype(str).str.lower()==source)).any())
+        from areru_engine import source_from_race_id
+        return bool(rdf.loc[day,'race_id'].map(source_from_race_id).eq(source).any())
+    except Exception:
+        return False
+
+
+def _need_regen(d, source='all') -> bool:
+    f=ARCH/f'predictions_{d}.csv'
+    if not f.exists():
+        return True
+    try:
+        cols=pd.read_csv(f,encoding='utf-8-sig',nrows=0).columns.tolist()
+        if '印データ' not in cols:
+            return True
+        if source in ('jra','nar'):
+            pdf=pd.read_csv(f,encoding='utf-8-sig',usecols=lambda c: c in ('source','race_id'))
+            if not _predictions_has_source(pdf, source) and _runners_need_source(d, source):
+                return True
+    except Exception:
+        return True
+    return False
+
+
+def _run_predict_job(d, source='all'):
+    """refresh + replay_predict をバックグラウンド実行。"""
+    key=f'{d}:{source}'
+    try:
         need_refresh=False
         rp=_runner_path()
         if rp is None:
             need_refresh=True
         else:
             try:
-                rdf=pd.read_csv(rp,encoding='utf-8-sig')
+                rdf=pd.read_csv(rp,encoding='utf-8-sig',usecols=lambda c: c in ('日付','source'))
                 rd=parse_date(rdf['日付']).dt.strftime('%Y-%m-%d')
                 day_mask=rd==d
                 if source in ('jra','nar') and 'source' in rdf.columns:
@@ -155,10 +223,69 @@ def ensure(d, source='all'):
             src=source if source in ('jra','nar','all') else 'all'
             subprocess.run(
                 [sys.executable,'refresh_data.py','--dates',d,'--skip-predict','--source',src],
-                check=True,timeout=900,
+                check=False,timeout=900,
             )
-        subprocess.run([sys.executable,'replay_predict.py',d],check=True,timeout=600)
-    return f
+        subprocess.run([sys.executable,'replay_predict.py',d],check=False,timeout=600)
+        print(f'[predict-job] done {key}')
+    except Exception as e:
+        print(f'[predict-job] fail {key}: {e}')
+    finally:
+        with _PREDICT_JOBS_LOCK:
+            _PREDICT_JOBS.pop(key, None)
+        _DATES_CACHE.clear()
+        _VERIFY_CACHE.clear()
+        _PRED_META_CACHE['sig']=None
+
+
+def _start_predict_job(d, source='all'):
+    key=f'{d}:{source}'
+    with _PREDICT_JOBS_LOCK:
+        if key in _PREDICT_JOBS:
+            return False
+        _PREDICT_JOBS[key]='running'
+    threading.Thread(target=_run_predict_job, args=(d, source), daemon=True).start()
+    print(f'[predict-job] start {key}')
+    return True
+
+
+def ensure_for_page(d, source='all'):
+    """ページ表示用。同期再生成はしない。 (path|None, status)
+
+    status: ready | updating | generating | error
+    """
+    f=ARCH/f'predictions_{d}.csv'
+    try:
+        if f.exists() and not _need_regen(d, source):
+            return f, 'ready'
+        if _need_regen(d, source):
+            _start_predict_job(d, source)
+            if f.exists():
+                # 既存ファイルがあれば表示しつつ更新中
+                return f, 'updating'
+            return None, 'generating'
+        return f, 'ready'
+    except Exception as e:
+        print(f'[ensure_for_page] {d}: {e}')
+        if f.exists():
+            return f, 'ready'
+        return None, 'error'
+
+
+def ensure(d, source='all'):
+    """互換用。ページでは使わず、明示更新時のみ同期実行可。"""
+    f=ARCH/f'predictions_{d}.csv'
+    if not _need_regen(d, source):
+        return f
+    # 同期は重いのでジョブ起動＋既存があればそれを返す
+    _start_predict_job(d, source)
+    if f.exists():
+        return f
+    # ファイルが全く無いときだけ短時間待機（最大8秒）
+    for _ in range(16):
+        if f.exists():
+            return f
+        threading.Event().wait(0.5)
+    raise FileNotFoundError(f'predictions_{d}.csv を生成中です。しばらくして再読み込みしてください。')
 
 def _filter_records_by_source(records, source):
     if source not in ('jra','nar') or not records:
@@ -317,6 +444,8 @@ def _json_field(raw, default=None):
     if not s or s.lower() in ('nan','none','なし'):
         return default
     try:
+        # pandas 由来の NaN を JSON として壊さない
+        s=s.replace('NaN','null').replace('Infinity','null')
         return json.loads(s)
     except Exception:
         return default
@@ -327,17 +456,33 @@ def prep(records, ban_map=None):
     from race_sim import circle_ban
     ban_map=ban_map or {}
     for r in records:
-        try: r['印一覧']=json.loads(r.get('印データ','[]'))
+        try: r['印一覧']=json.loads(str(r.get('印データ','[]')).replace('NaN','null'))
         except: r['印一覧']=[]
+        if not isinstance(r['印一覧'], list):
+            r['印一覧']=[]
         for k in ['ワイド買い目','馬連買い目','三連複買い目','馬単買い目','三連単買い目']:
             r[k+'一覧']=str(r.get(k,'見送り')).split('｜')
-        r['ピックカード一覧']=_json_field(r.get('ピックカード'), [])
-        r['展開予想データ']=_json_field(r.get('展開予想'), {})
-        r['推奨馬券一覧']=_json_field(r.get('推奨馬券'), [])
-        r['危険人気カード']=_json_field(r.get('危険人気詳細'), {})
-        r['本命カード']=_json_field(r.get('本命詳細'), {})
+        cards=_json_field(r.get('ピックカード'), [])
+        r['ピックカード一覧']=[c for c in cards if isinstance(c, dict)][:6]
+        pace=_json_field(r.get('展開予想'), {})
+        r['展開予想データ']=pace if isinstance(pace, dict) else {}
+        tickets=_json_field(r.get('推奨馬券'), [])
+        clean_tickets=[]
+        for t in tickets if isinstance(tickets, list) else []:
+            if not isinstance(t, dict):
+                continue
+            form=t.get('フォーメーション')
+            if form is not None and not isinstance(form, dict):
+                t=dict(t); t['フォーメーション']=None
+            clean_tickets.append(t)
+        r['推奨馬券一覧']=clean_tickets[:8]
+        danger=_json_field(r.get('危険人気詳細'), {})
+        r['危険人気カード']=danger if isinstance(danger, dict) else {}
+        mainc=_json_field(r.get('本命詳細'), {})
+        r['本命カード']=mainc if isinstance(mainc, dict) else {}
         for kind in ('ワイド','馬連','馬単','三連複','三連単'):
-            r[kind+'プラン']=_json_field(r.get(kind+'詳細'), {})
+            plan=_json_field(r.get(kind+'詳細'), {})
+            r[kind+'プラン']=plan if isinstance(plan, dict) else {}
         rank=str(r.get('勝負ランク','') or '').upper()
         if rank in RANK_LABELS:
             r['勝負ランク']=rank
@@ -644,86 +789,139 @@ def index():
     selected_venue='' if want_today else str(request.args.get('venue') or '').strip()
     races=[]; targets=[]; message='予想データがありません'; has_results=False
     venues=[]; show_venue_picker=False
-    verification=verification_data(selected, source=source)
+    data_status='ready'
+    label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
+
+    # モード別に重い集計をスキップ（予想タブでは検証CSVを読まない）
+    if mode=='ledger':
+        verification=verification_data('', source=source)
+    elif mode in ('result','analysis'):
+        verification=verification_data(selected, source=source)
+    else:
+        verification=dict(_EMPTY_VERIFY)
+
+    # 収支タブはレース詳細を組み立てない（高速化）
+    if mode=='ledger':
+        message=f'{label} / 収支分析'
+        return render_template('index.html',races=[],targets=[],selected_date=selected,today=today,
+            message=message,available_dates=av,source=source,mode=mode,has_results=False,
+            analysis={'total':0,'verified':0,'ranks':[],'bands':[],'venues':[]},
+            verification=verification,ledger=ledger_data(source=source, verification=verification),
+            venues=[],selected_venue='',show_venue_picker=False,
+            today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
+            day_stats=None,data_status='ready')
 
     if selected in av:
         try:
-            pred_path=ARCH/f'predictions_{selected}.csv'
-            # 地方の開催場一覧は predict/result とも predictions を用意して場を出す
-            if pred_path.exists() or mode!='result' or source=='nar':
-                df=pd.read_csv(ensure(selected, source=source)).fillna('なし')
+            pred_path, data_status = ensure_for_page(selected, source=source)
+            if pred_path is None:
+                message='データ取得中です。完了後に再読み込みしてください。'
+                if data_status=='error':
+                    message='通信エラー: 予想データの準備に失敗しました。再読み込みしてください。'
+            else:
+                # 地方の開催場一覧は predict/result とも predictions を用意して場を出す
+                df=pd.read_csv(pred_path, encoding='utf-8-sig').fillna('なし')
+                # 先にソース絞り込み（中央タブで地方行まで prep しない）
+                if source in ('jra','nar') and 'source' in df.columns:
+                    df=df[df['source'].astype(str).str.lower()==source].copy()
+                # 予想タブは表示に不要な巨大JSON列を落とす（HTML肥大・パース負荷対策）
+                if mode=='predict':
+                    drop_cols=[c for c in (
+                        'ワイド詳細','馬連詳細','馬単詳細','三連複詳細','三連単詳細','本命詳細'
+                    ) if c in df.columns]
+                    if drop_cols:
+                        df=df.drop(columns=drop_cols, errors='ignore')
                 races=prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
                 races=_filter_records_by_source(races, source)
                 for row in races:
                     if not _race_date(row):
                         row['日付']=selected
-                races,has_results=attach_results(races, selected_date=selected)
-                # 結果検証のレース一覧は購入馬券データと同一ソースで紐づける
-                ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
-                tickets_by_race={}
-                for t in (verification or {}).get('recent_rows') or []:
-                    tid=_norm_race_id(t.get('race_id',''))
-                    if tid:
-                        tickets_by_race.setdefault(tid, []).append(t)
-                for row in races:
-                    rid=_norm_race_id(row.get('race_id',''))
-                    row['purchase_ranks']=list(ranks_map.get(rid, []))
-                    row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
-            venues=_venue_meetings(races)
-            venue_names={v['name'] for v in venues}
-            # 地方: 日付→開催場一覧→レース一覧。開催場未選択なら場一覧を出す
-            if source=='nar' and mode in ('predict','result'):
-                show_venue_picker=True
-                if selected_venue and selected_venue not in venue_names:
-                    selected_venue=''
-                if selected_venue:
-                    races=[r for r in races if str(r.get('開催地') or '').strip()==selected_venue]
-                    show_venue_picker=False
-                else:
-                    # 開催場選択前はレース詳細を出さない
-                    races=[]
-            else:
-                selected_venue=''
-            targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
-            label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
-            if source=='nar' and show_venue_picker:
-                if venues:
-                    if want_today and selected==today:
-                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                    elif want_today:
-                        message=f'本日({today})の開催データなし → 直近 {selected} / {label} / 開催場 {len(venues)}場'
+                # 結果照合は結果検証タブのみ（予想タブの表示遅延を避ける）
+                if mode=='result':
+                    races,has_results=attach_results(races, selected_date=selected)
+                    ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
+                    tickets_by_race={}
+                    for t in (verification or {}).get('recent_rows') or []:
+                        tid=_norm_race_id(t.get('race_id',''))
+                        if tid:
+                            tickets_by_race.setdefault(tid, []).append(t)
+                    for row in races:
+                        rid=_norm_race_id(row.get('race_id',''))
+                        row['purchase_ranks']=list(ranks_map.get(rid, []))
+                        row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
+                venues=_venue_meetings(races)
+                venue_names={v['name'] for v in venues}
+                # 地方: 日付→開催場一覧→レース一覧。開催場未選択なら場一覧を出す
+                if source=='nar' and mode in ('predict','result'):
+                    show_venue_picker=True
+                    if selected_venue and selected_venue not in venue_names:
+                        selected_venue=''
+                    if selected_venue:
+                        races=[r for r in races if str(r.get('開催地') or '').strip()==selected_venue]
+                        show_venue_picker=False
                     else:
-                        message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                        races=[]
                 else:
-                    message=f'{selected} / {label} の開催場がありません'
-            elif not races:
-                message=f'{selected} / {label} のレースがありません'
-            elif mode=='result':
-                if selected_venue:
-                    message=f'{selected} / {selected_venue} / 結果検証'
-                else:
-                    message=f'{selected} / {label} / 結果検証モード'
-            elif mode=='analysis':
-                message=f'{selected} / {label} / AI仮想レース分析 β版'
-            else:
-                if selected_venue:
-                    message=f'{selected} / {selected_venue} / 予想分析'
-                else:
+                    selected_venue=''
+                targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
+                if data_status=='updating':
+                    message=f'{selected} / {label} / データ更新中（表示はキャッシュ）'
+                elif data_status=='generating':
+                    message='データ取得中です。完了後に再読み込みしてください。'
+                elif source=='nar' and show_venue_picker:
+                    if venues:
+                        if want_today and selected==today:
+                            message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                        elif want_today:
+                            message=f'本日({today})の開催データなし → 直近 {selected} / {label} / 開催場 {len(venues)}場'
+                        else:
+                            message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                    else:
+                        message=f'{selected} / {label} の開催場がありません'
+                elif not races:
+                    message=f'{selected} / {label} のレースがありません'
+                elif mode=='result':
+                    if selected_venue:
+                        message=f'{selected} / {selected_venue} / 結果検証'
+                    else:
+                        message=f'{selected} / {label} / 結果検証モード'
+                elif mode=='analysis':
                     message=f'{selected} / {label} / AI仮想レース分析 β版'
-        except Exception as e: message=f'生成エラー: {e}'
-    elif selected: message=f'{selected} は保存データにありません'
+                else:
+                    if selected_venue:
+                        message=f'{selected} / {selected_venue} / 予想分析'
+                    else:
+                        message=f'{selected} / {label} / AI仮想レース分析 β版'
+        except FileNotFoundError as e:
+            data_status='generating'
+            message=str(e) or 'データ取得中です。完了後に再読み込みしてください。'
+        except Exception as e:
+            data_status='error'
+            message=f'通信エラー: {e}'
+    elif selected:
+        data_status='error'
+        message=f'{selected} は保存データにありません'
     elif source=='nar':
-        message='地方開催データがありません。/refresh?source=nar で取得できます。'
+        data_status='generating'
+        message='地方開催データがありません。取得を開始しています…'
+        try:
+            threading.Thread(target=bootstrap_source, args=('nar',), daemon=True).start()
+        except Exception:
+            pass
     day_stats=None
     if mode=='result' and races and not show_venue_picker:
         day_stats=day_performance(races, verification, safe_pct=_safe_pct)
+    ledger=ledger_data(source=source, verification=verification) if mode in ('analysis','ledger') else {
+        'has_data':False,'investment':0,'payout':0,'recovery':0.0,'profit':0,
+        'by_type':[],'monthly':[],'tone':'roi-bad',
+    }
     return render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
-        ledger=ledger_data(source=source),
+        ledger=ledger,
         venues=venues,selected_venue=selected_venue,show_venue_picker=show_venue_picker,
         today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
-        day_stats=day_stats)
+        day_stats=day_stats,data_status=data_status)
 
 
 def attach_results(records, selected_date=''):
@@ -980,10 +1178,20 @@ def parse_prediction_combos(prediction):
 
 def _load_prediction_meta():
     """race_id / date+会場+R → 予想時メタデータ。旧JRA URL 形式にも対応。"""
+    sig=_fs_sig(ANALYSIS_CSV)
+    if _PRED_META_CACHE.get('sig')==sig and _PRED_META_CACHE.get('data') is not None:
+        return _PRED_META_CACHE['data']
     meta={}
+    # メタに必要な列だけ読む
+    want={'race_id','開催地','レース','日付','勝負ランク','推奨券種','本命','本命馬番',
+          'ワイド判定','馬連判定','三連複判定','印データ','BET判定','BET期待値','source'}
     for f in ARCH.glob('predictions_*.csv'):
         try:
-            df=pd.read_csv(f,encoding='utf-8-sig').fillna('')
+            cols=pd.read_csv(f,encoding='utf-8-sig',nrows=0).columns.tolist()
+            use=[c for c in cols if c in want]
+            if not use:
+                continue
+            df=pd.read_csv(f,encoding='utf-8-sig',usecols=use).fillna('')
         except Exception:
             continue
         if df.empty:
@@ -1005,6 +1213,8 @@ def _load_prediction_meta():
                 alt=f'{day}|{venue}|{race_i}'
                 if alt not in meta:
                     meta[alt]=d
+    _PRED_META_CACHE['sig']=sig
+    _PRED_META_CACHE['data']=meta
     return meta
 
 
@@ -1233,13 +1443,21 @@ def verification_data(selected_date='', source='all'):
         'recovery_series':[],'cum_profit':[],'recent_rows':[],
         'purchase_ranks_by_race':{},
     }
+    sig=_fs_sig(ANALYSIS_CSV)
+    cache_key=(str(selected_date or ''), source, sig)
+    cached=_VERIFY_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     if not ANALYSIS_CSV.exists():
+        _VERIFY_CACHE[cache_key]=empty
         return empty
     try:
         df=pd.read_csv(ANALYSIS_CSV,encoding='utf-8-sig').fillna('')
     except Exception:
+        _VERIFY_CACHE[cache_key]=empty
         return empty
     if df.empty or 'bet_type' not in df.columns:
+        _VERIFY_CACHE[cache_key]=empty
         return empty
     if source in ('jra','nar'):
         if 'source' in df.columns:
@@ -1248,6 +1466,7 @@ def verification_data(selected_date='', source='all'):
             from areru_engine import source_from_race_id
             df=df[df['race_id'].map(source_from_race_id)==source].copy()
         if df.empty:
+            _VERIFY_CACHE[cache_key]=empty
             return empty
     for c in ['hit','payout','investment','profit','roi']:
         if c in df.columns:
@@ -1351,7 +1570,7 @@ def verification_data(selected_date='', source='all'):
     for x in recovery_series:
         x['pct']=x.get('bar',_bar_width(x['value']))
 
-    return {
+    out={
         'has_data':True,
         'selected_date':selected_date,
         'scope':'day' if selected_date and not day_df.empty else 'all',
@@ -1363,14 +1582,20 @@ def verification_data(selected_date='', source='all'):
         'main':main,
         'recovery_series':recovery_series,
         'cum_profit':cum_profit,
-        'recent_rows':recent,
+        'recent_rows':recent[:300],
         'purchase_count':len(recent),
         'purchase_ranks_by_race':purchase_ranks_by_race,
     }
+    _VERIFY_CACHE[cache_key]=out
+    if len(_VERIFY_CACHE)>16:
+        # 古いエントリを間引く
+        for k in list(_VERIFY_CACHE.keys())[:-8]:
+            _VERIFY_CACHE.pop(k, None)
+    return out
 
-def ledger_data(source='all'):
+def ledger_data(source='all', verification=None):
     """AI推奨どおり購入した場合の収支分析（月別・券種別）。"""
-    v=verification_data('', source=source)
+    v=verification if verification is not None else verification_data('', source=source)
     if not v.get('has_data'):
         return {
             'has_data':False,'investment':0,'payout':0,'recovery':0.0,'profit':0,
