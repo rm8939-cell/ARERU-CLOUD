@@ -308,14 +308,36 @@ def _main_ban_map(selected_date: str) -> dict:
     return m
 
 
+def _json_field(raw, default=None):
+    if default is None:
+        default=[]
+    if isinstance(raw, (dict, list)):
+        return raw
+    s=str(raw or '').strip()
+    if not s or s.lower() in ('nan','none','なし'):
+        return default
+    try:
+        return json.loads(s)
+    except Exception:
+        return default
+
+
 def prep(records, ban_map=None):
     from areru_engine import RANK_LABELS, RANK_CLASSES
+    from race_sim import circle_ban
     ban_map=ban_map or {}
     for r in records:
         try: r['印一覧']=json.loads(r.get('印データ','[]'))
         except: r['印一覧']=[]
-        for k in ['ワイド買い目','馬連買い目','三連複買い目']:
+        for k in ['ワイド買い目','馬連買い目','三連複買い目','馬単買い目','三連単買い目']:
             r[k+'一覧']=str(r.get(k,'見送り')).split('｜')
+        r['ピックカード一覧']=_json_field(r.get('ピックカード'), [])
+        r['展開予想データ']=_json_field(r.get('展開予想'), {})
+        r['推奨馬券一覧']=_json_field(r.get('推奨馬券'), [])
+        r['危険人気カード']=_json_field(r.get('危険人気詳細'), {})
+        r['本命カード']=_json_field(r.get('本命詳細'), {})
+        for kind in ('ワイド','馬連','馬単','三連複','三連単'):
+            r[kind+'プラン']=_json_field(r.get(kind+'詳細'), {})
         rank=str(r.get('勝負ランク','') or '').upper()
         if rank in RANK_LABELS:
             r['勝負ランク']=rank
@@ -326,7 +348,20 @@ def prep(records, ban_map=None):
             key=(_norm_race_id(r.get('race_id','')), clean_horse(r.get('本命','')))
             ban=ban_map.get(key, '')
         r['本命馬番']=ban
+        r['本命馬番表示']=r.get('本命馬番表示') or (circle_ban(ban) if ban else '')
         r['本命表示']=f'◎{ban}' if ban else (f"◎{r.get('本命','')}" if r.get('本命') else '◎—')
+        # 投資判定のフォールバック
+        if not r.get('投資判定'):
+            try:
+                ev=float(str(r.get('レース期待回収率') or '').replace('%',''))
+                if ev>=110:
+                    r['投資判定']='買いレース'; r['投資判定アイコン']='🟢'; r['投資判定トーン']='buy'
+                else:
+                    r['投資判定']='見送りレース'; r['投資判定アイコン']='🔴'; r['投資判定トーン']='skip'
+            except Exception:
+                r['投資判定']=r.get('投資判定') or '判定待ち'
+                r['投資判定アイコン']=r.get('投資判定アイコン') or '⚪'
+                r['投資判定トーン']=r.get('投資判定トーン') or 'wait'
         apply_expected_value(r)
     return records
 
@@ -557,7 +592,7 @@ def index():
     if source not in ('jra','nar','all'):
         source='jra'
     mode=request.args.get('mode','predict')
-    if mode not in ('predict','result','analysis'):
+    if mode not in ('predict','result','analysis','ledger'):
         mode='predict'
     # 地方タブ初回/鮮度切れ時は実データを自動取得（リクエストは待たせない）
     try:
@@ -685,6 +720,7 @@ def index():
     return render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
+        ledger=ledger_data(source=source),
         venues=venues,selected_venue=selected_venue,show_venue_picker=show_venue_picker,
         today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
         day_stats=day_stats)
@@ -1331,6 +1367,45 @@ def verification_data(selected_date='', source='all'):
         'purchase_count':len(recent),
         'purchase_ranks_by_race':purchase_ranks_by_race,
     }
+
+def ledger_data(source='all'):
+    """AI推奨どおり購入した場合の収支分析（月別・券種別）。"""
+    v=verification_data('', source=source)
+    if not v.get('has_data'):
+        return {
+            'has_data':False,'investment':0,'payout':0,'recovery':0.0,'profit':0,
+            'by_type':[],'monthly':[],'tone':'roi-bad',
+        }
+    monthly=[]
+    for row in v.get('daily') or []:
+        ym=str(row.get('date') or '')[:7]
+        if not ym:
+            continue
+        if not monthly or monthly[-1]['month']!=ym:
+            monthly.append({'month':ym,'investment':0,'payout':0,'profit':0,'hits':0,'bets':0})
+        m=monthly[-1]
+        m['investment']+=int(row.get('investment') or 0)
+        m['payout']+=int(row.get('payout') or 0)
+        m['profit']+=int(row.get('profit') or 0)
+        m['hits']+=int(row.get('hits') or 0)
+        m['bets']+=int(row.get('total_bets') or 0)
+    for m in monthly:
+        inv=m['investment'] or 0
+        m['recovery']=_safe_pct(m['payout'], inv)
+        m['tone']=_roi_tone(m['recovery'])
+    return {
+        'has_data':True,
+        'investment':v.get('investment',0),
+        'payout':v.get('payout',0),
+        'profit':v.get('profit',0),
+        'recovery':v.get('recovery',0),
+        'hit_rate':v.get('hit_rate',0),
+        'tone':v.get('tone','roi-bad'),
+        'by_type':v.get('by_type') or [],
+        'monthly':monthly,
+        'daily':v.get('daily') or [],
+    }
+
 
 @app.route('/refresh', methods=['POST','GET'])
 def refresh_route():

@@ -19,6 +19,18 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .strategy{background:var(--soft);border:1px solid #2b3037;border-radius:12px;padding:13px;margin-bottom:12px}.strategy strong{font-size:18px;color:var(--gold)}.strategy p{color:#b7bcc5;font-size:12px;line-height:1.65;margin:7px 0 0}
 .betplan{display:grid;gap:10px}.ticket{background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:12px}.ticket-head{display:flex;justify-content:space-between;font-weight:800}.ticket-score{color:var(--gold)}.ticket ul{padding:0;margin:10px 0 0;list-style:none}.ticket li{padding:7px 0;border-top:1px solid #1e2228;font-size:13px;line-height:1.5}.ticket .compress{color:var(--muted);font-size:11px;margin-top:8px}.odds-wait,.odds-ready{margin-top:12px;border:1px dashed #4a4140;border-radius:10px;padding:11px;color:#c7b7a9;font-size:12px;line-height:1.6}.odds-ready{border-style:solid;border-color:#2d6a4f;color:#1b4332;background:#e9f5ef}
 .danger{color:#ff8090}.beta{padding:13px 17px;color:#747b86;font-size:10px;line-height:1.6}.toplink{text-align:right;padding:0 17px 16px}.toplink a{color:#b7bcc5;font-size:12px;text-decoration:none}
+/* V7 cards */
+.ai-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 10px}
+.ai-card h3{margin:0 0 10px;font-size:13px;letter-spacing:.1em;color:var(--muted)}.ai-card .ban-xl{font-size:34px;font-weight:900;letter-spacing:.04em;line-height:1.1;margin:4px 0 8px}
+.ai-card .kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px;color:var(--muted)}.ai-card .kv b{color:var(--text);font-weight:800}
+.invest-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;font-weight:850;font-size:13px}
+.invest-pill.buy{background:#e8f7ef;color:#176b45}.invest-pill.skip{background:#fdecea;color:#c62828}.invest-pill.wait{background:#f4f6f8;color:var(--muted)}
+.pace-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.pace-item{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:10px}.pace-item b{display:block;font-size:20px}.ticket-ban{font-size:28px;font-weight:900;margin:6px 0}.stars{color:#c9a227;letter-spacing:.06em;font-weight:800}
+.fund-box{background:var(--soft);border:1px solid #cfe3d8;border-radius:12px;padding:12px;margin:10px 0}.fund-box input{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:16px;font-weight:800}
+.fund-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #d7e6dd;font-size:13px}.fund-row .amt{font-size:18px;font-weight:900;color:var(--brand)}
+.form-box{background:#f8fafb;border:1px dashed #c5ced6;border-radius:10px;padding:10px;margin-top:8px;font-size:13px}.form-box .slot{margin:4px 0}.form-box .slot b{display:inline-block;min-width:3.5em;color:var(--muted)}
+.ledger-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.ledger-metric{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}.ledger-metric b{display:block;font-size:22px}.month-row{display:grid;grid-template-columns:72px 1fr 70px;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+@media (max-width:560px){.ai-card .ban-xl{font-size:30px}.ticket-ban{font-size:26px}.pace-grid{grid-template-columns:1fr 1fr}.ledger-grid{grid-template-columns:1fr 1fr}}
 
 .source-tabs,.mode-tabs{display:flex;gap:8px}.source-tabs{padding:16px 0 8px}.mode-tabs{padding:0 0 4px}
 .source-tabs a,.mode-tabs a{flex:1;text-align:center;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 8px;font-weight:800;font-size:13px}
@@ -248,7 +260,9 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </nav>
 <nav class="mode-tabs">
 <a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">予想分析</a>
-<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果検証</a><a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
+<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果検証</a>
+<a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
+<a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={{selected_date}}">収支分析</a>
 </nav>
 <div class="toolbar">
 <form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
@@ -279,7 +293,34 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% endif %}
 </section>
 {% endif %}
-{% if mode=='analysis' %}
+{% if mode=='ledger' %}
+<section class="empty-state">
+<h2>収支分析｜AI推奨どおり購入</h2>
+<p>推奨券種・買い候補として記録された馬券の実績です。</p>
+{% if ledger and ledger.has_data %}
+<div class="ledger-grid">
+<div class="ledger-metric"><b>{{'{:,}'.format(ledger.investment)}}円</b><small>投資額</small></div>
+<div class="ledger-metric"><b>{{'{:,}'.format(ledger.payout)}}円</b><small>払戻額</small></div>
+<div class="ledger-metric"><b class="{{ledger.tone}}">{{'%.1f'|format(ledger.recovery)}}%</b><small>回収率</small></div>
+<div class="ledger-metric"><b>{{'{:,}'.format(ledger.profit)}}円</b><small>収支</small></div>
+</div>
+<h3 style="font-size:13px;color:var(--muted);letter-spacing:.1em">券種別回収率</h3>
+{% for t in ledger.by_type %}
+<div class="month-row"><span>{{t.bet_type}}</span><span>投資 {{'{:,}'.format(t.investment)}} / 払戻 {{'{:,}'.format(t.payout)}}</span><strong class="{{t.tone}}">{{'%.0f'|format(t.recovery)}}%</strong></div>
+{% else %}
+<p class="message">券種別データがありません</p>
+{% endfor %}
+<h3 style="font-size:13px;color:var(--muted);letter-spacing:.1em;margin-top:18px">月別収支</h3>
+{% for m in ledger.monthly %}
+<div class="month-row"><span>{{m.month}}</span><span>{{'{:,}'.format(m.investment)}} → {{'{:,}'.format(m.payout)}}</span><strong class="{{m.tone}}">{{'{:,}'.format(m.profit)}}</strong></div>
+{% else %}
+<p class="message">月別データがありません</p>
+{% endfor %}
+{% else %}
+<p class="message">analysis_result.csv がありません。結果取込後に表示されます。</p>
+{% endif %}
+</section>
+{% elif mode=='analysis' %}
 <section class="result-summary"><h2>AI STATUS｜分析ダッシュボード</h2><p>架空の回収率は出さず、現在保存されている予想・照合データだけを集計します。</p></section>
 <section class="targets"><h2>解析状況</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px"><div class="metric"><b>{{analysis.total}}R</b><small>予想レース</small></div><div class="metric"><b>{{analysis.verified}}R</b><small>結果照合済み</small></div></div></section>
 <section class="targets"><h2>AIランク分布（S勝負 / A買い / B様子見 / C見送り）</h2>{% for x in analysis.ranks %}<div class="target-row"><div class="rank"><span class="rank-pill {{x.label}}">{{x.label}}</span></div><div class="target-name">{{x.name}}<small>ランク {{x.label}}</small></div><div class="target-score">{{x.count}}<small>RACE</small></div></div>{% endfor %}</section>
@@ -727,45 +768,113 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </button>
 <div class="race-acc-body">
 <section class="race {{r['荒れクラス']}}">
-<div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R{% endif %}<small>20,000回 仮想レース</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div></div>
-<div class="betbar"><span class="rank-badge"><span>{{r['BET判定']}}</span></span><span>買い期待度 {{r['BET期待値']}}</span></div>
-<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}{% if r.get('本命馬番') %}（{{r['本命馬番']}}番）{% endif %}</div>
-{% if r.get('期待値あり') %}
-<div class="ev-hero"><span class="ev-main {{r['期待値トーン']}}"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 {{r['期待値表示']}}</span><span class="ev-tag {{r['期待値トーン']}}">{{r['期待値ラベル']}}</span></div>
-{% elif r.get('オッズ取得済') %}
-<div class="ev-hero"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span></div>
-{% else %}
-<div class="ev-hero"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span><span class="ev-tag ev-none">オッズ待ち</span></div>
-{% endif %}
+<div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R{% endif %}<small>{{r.get('シミュレーション回数',100000)|int}}回 段階シミュレーション</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>荒れ指数 · {{r['判定']}}</small></div></div></div>
+<div class="betbar">
+<span class="invest-pill {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定アイコン','⚪')}} {{r.get('投資判定','判定待ち')}}{% if r.get('レース期待回収率') and r['レース期待回収率']!='' %} · 期待回収率 {{r['レース期待回収率']}}%{% endif %}</span>
+<span>買い期待度 {{r['BET期待値']}}</span>
+</div>
 
-<div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div>
-{# 現在オッズ取得後は 現在オッズ / AI適正オッズ / 期待値 を自動表示 #}
-<div class="ev-detail">
-<div class="metric"><b>{% if r.get('現在オッズ') %}{{r['現在オッズ']}}倍{% else %}—{% endif %}</b><small>現在オッズ</small></div>
-<div class="metric"><b>{% if r.get('AI適正オッズ') and r['AI適正オッズ']!='なし' %}{{r['AI適正オッズ']}}倍{% else %}—{% endif %}</b><small>AI適正オッズ</small></div>
-<div class="metric"><b class="{{r.get('期待値トーン','ev-none')}}">{% if r.get('期待値あり') %}{{r['期待値表示']}}{% else %}—{% endif %}</b><small>期待値</small></div>
+{% set cards = r.get('ピックカード一覧') or [] %}
+{% for c in cards %}
+{% if c.get('役割') in ['本命','対抗','穴馬'] %}
+<div class="section" style="padding-top:12px;padding-bottom:4px">
+<div class="ai-card">
+<h3>{{c['役割']}}</h3>
+<div class="ban-xl">{{c.get('馬番表示') or c.get('馬番') or '－'}}</div>
+<div class="kv">
+<div>AI評価 <b>{{c.get('AI評価','—')}}</b></div>
+<div>指数順位 <b>{{c.get('近走指数順位','—')}}</b></div>
+<div>勝率 <b>{{c.get('勝率','—')}}%</b></div>
+<div>連対 <b>{{c.get('連対率','—')}}%</b></div>
+<div>複勝 <b>{{c.get('複勝率','—')}}%</b></div>
+<div>期待値 <b>{% if c.get('期待値') %}{{c['期待値']}}%{% else %}—{% endif %}</b></div>
+<div>距離 <b>{{c.get('距離適性','—')}}</b></div>
+<div>コース <b>{{c.get('コース適性','—')}}</b></div>
+<div>ラップ <b>{{c.get('ラップ適性','—')}}</b></div>
+<div>上がり <b>{{c.get('上がり評価','—')}}</b></div>
 </div>
-<div class="reason">{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}{{r['本命人気']}}人気 · {% endif %}{{r['本命理由']}}</div></div>
-<div class="section"><div class="section-title">AI評価順位</div>
-{% if r.get('印一覧') %}
-<div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div>
-{% else %}
-<div class="message" style="margin:0">印候補を生成中、または出走データ不足です（オッズ未取得でも順位は表示されます）</div>
+<div class="reason" style="margin-top:8px">展開 {{c.get('展開相性','—')}}</div>
+<div class="reason">＋ {{c.get('プラス材料','—')}}</div>
+<div class="reason">− {{c.get('不安材料','—')}}</div>
+{% if c.get('役割')=='穴馬' %}
+<div class="reason">期待値理由: {{c.get('期待値が高い理由','—')}}</div>
+<div class="reason">人気以上: {{c.get('人気以上に評価した理由','—')}}</div>
 {% endif %}
 </div>
-<div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r.get('人気馬危険') or '—'}}</div><div class="reason">危険度 {{r.get('危険度','—')}} · {{r.get('危険理由','')}}</div></div>
-<div class="section"><div class="section-title gold">AI馬券戦略</div><div class="strategy"><div class="label">このレースの主戦</div><strong>{{r.get('推奨券種') or '—'}}</strong><p>{{r.get('馬券戦略理由') or ''}}</p></div>
-<div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r[kind+'判定']}}</span><span class="ticket-score">適性 {{r[kind+'評価']}}</span></div><ul>{% for x in r[kind+'買い目一覧'] %}<li>{{x}}</li>{% endfor %}</ul><div class="compress">{{r[kind+'圧縮']}}</div></div>{% endfor %}</div>
-{% set odds_ready = r.get('期待回収率') and r['期待回収率'] not in ['オッズ接続後に算出','なし',''] and r.get('合成オッズ') and r['合成オッズ'] not in ['券種別オッズ待ち','なし',''] %}
-{% if odds_ready %}
-<div class="odds-ready"><b>合成オッズ・期待回収率（{{r['推奨券種']}}）</b><br>
-合成オッズ {{r['合成オッズ']}} · 期待回収率 {{r['期待回収率']}} · 均等買い想定（実オッズ×仮想的中率）
 </div>
+{% endif %}
+{% endfor %}
+
+{% set danger = r.get('危険人気カード') or {} %}
+<div class="section">
+<div class="ai-card">
+<h3 class="danger">危険人気馬</h3>
+{% if danger and danger.get('馬番表示') %}
+<div class="ban-xl">{{danger['馬番表示']}}</div>
+<div class="reason">{{danger.get('人気')}}人気 · AI{{danger.get('AI順位')}}位 · 期待値{{danger.get('期待値')}}%</div>
+<div class="reason">{{danger.get('危険理由','')}}</div>
 {% else %}
-<div class="odds-wait"><b>合成オッズ・期待回収率</b><br>券種別の当日オッズ接続後に算出。数字を作らず、実オッズが取れた時だけ「合成オッズ・的中期待・期待回収率・妙味」を表示します。</div>
+<div class="reason">1〜5番人気で条件を満たす馬なし（人気薄は表示しません）</div>
 {% endif %}
 </div>
-<div class="beta">β版 · 実着順は予想入力に未使用 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div>
+</div>
+
+{% set pace = r.get('展開予想データ') or {} %}
+<div class="section">
+<div class="ai-card">
+<h3>展開予想</h3>
+<div class="pace-grid">
+<div class="pace-item"><b>{{pace.get('逃げ有利度','—')}}</b><small>逃げ有利度</small></div>
+<div class="pace-item"><b>{{pace.get('先行有利度','—')}}</b><small>先行有利度</small></div>
+<div class="pace-item"><b>{{pace.get('差し有利度','—')}}</b><small>差し有利度</small></div>
+<div class="pace-item"><b>{{pace.get('追込有利度','—')}}</b><small>追込有利度</small></div>
+</div>
+<div class="kv" style="margin-top:10px">
+<div>想定ペース <b>{{pace.get('想定ペース','—')}}</b></div>
+<div>有利枠 <b>{{pace.get('有利枠','—')}}</b></div>
+<div>荒れ指数 <b>{{pace.get('荒れ指数','—')}}</b></div>
+</div>
+<div class="reason" style="margin-top:8px">{{pace.get('AI総評','')}}</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title gold">AI推奨馬券</div>
+<div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '—'}}</strong><p>{{r.get('馬券戦略理由') or ''}}</p></div>
+<div class="fund-box" data-fund-box>
+<script type="application/json" data-tickets-json>{{ r.get("推奨馬券一覧", []) | tojson }}</script>
+<label class="label">軍資金（円）</label>
+<input type="number" min="100" step="100" value="10000" data-fund-input inputmode="numeric">
+<div data-fund-alloc></div>
+</div>
+{% set tickets = r.get('推奨馬券一覧') or [] %}
+{% if tickets %}
+<div class="betplan">
+{% for t in tickets[:8] %}
+<div class="ticket ai-card" style="margin:0">
+<div class="ticket-head"><span>{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
+<div class="ticket-ban">{{t.get('馬番表示') or '—'}}</div>
+{% if t.get('フォーメーション') %}
+<div class="form-box">
+<div class="slot"><b>1頭目</b>{{ (t['フォーメーション'].get('1頭目') or [])|join(' ') }}</div>
+<div class="slot"><b>2頭目</b>{{ (t['フォーメーション'].get('2頭目') or [])|join(' ') }}</div>
+{% if t['フォーメーション'].get('3頭目') %}<div class="slot"><b>3頭目</b>{{ (t['フォーメーション'].get('3頭目') or [])|join(' ') }}</div>{% endif %}
+<div class="slot"><b>点数</b>{{ t['フォーメーション'].get('点数','—') }}点</div>
+</div>
+{% endif %}
+<div class="kv">
+<div>期待値 <b>{% if t.get('期待値') %}{{t['期待値']}}%{% else %}—{% endif %}</b></div>
+<div>的中率 <b>{% if t.get('的中率') %}{{t['的中率']}}%{% else %}—{% endif %}</b></div>
+<div>推定回収率 <b>{% if t.get('推定回収率') %}{{t['推定回収率']}}%{% else %}—{% endif %}</b></div>
+</div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r.get(kind+'判定','—')}}</span><span class="ticket-score">適性 {{r.get(kind+'評価','—')}}</span></div><ul>{% for x in r.get(kind+'買い目一覧', []) %}<li>{{x}}</li>{% endfor %}</ul></div>{% endfor %}</div>
+{% endif %}
+</div>
+<div class="beta">段階シミュレーション · 印非依存の期待値買い目 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div>
 </section>
 </div>
 </article>
@@ -836,6 +945,38 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   }
   openFromHash();
   window.addEventListener('hashchange', openFromHash);
+
+  function yen(n){ return (Math.round(n/100)*100).toLocaleString('ja-JP')+'円'; }
+  function renderFund(box){
+    var input=box.querySelector('[data-fund-input]');
+    var out=box.querySelector('[data-fund-alloc]');
+    var js=box.querySelector('[data-tickets-json]');
+    var tickets=[];
+    try{ tickets=JSON.parse(js ? js.textContent : '[]') || []; }catch(e){ tickets=[]; }
+    var fund=parseInt(input && input.value,10)||0;
+    if(!out) return;
+    if(!tickets.length || fund<100){ out.innerHTML='<div class="reason">配分対象の推奨馬券がありません</div>'; return; }
+    var weights=tickets.map(function(t){
+      var ev=parseFloat(t['期待値']||t['推定回収率']||0)||0;
+      return Math.max(ev-95, 1);
+    });
+    var sum=weights.reduce(function(a,b){return a+b;},0)||1;
+    var html='';
+    tickets.forEach(function(t,i){
+      var amt=Math.floor(fund*weights[i]/sum/100)*100;
+      if(amt<100 && fund>=100) amt=100;
+      html+='<div class="fund-row"><span>'+ (t['券種']||'') +' '+ (t['馬番表示']||'') +'</span><span class="amt">'+yen(amt)+'</span></div>';
+    });
+    out.innerHTML=html;
+  }
+  [].forEach.call(document.querySelectorAll('[data-fund-box]'), function(box){
+    var input=box.querySelector('[data-fund-input]');
+    if(input){
+      input.addEventListener('input', function(){ renderFund(box); });
+      input.addEventListener('change', function(){ renderFund(box); });
+    }
+    renderFund(box);
+  });
   }catch(err){ try{ console.error('predict-acc', err); }catch(e){} }
 })();
 </script>

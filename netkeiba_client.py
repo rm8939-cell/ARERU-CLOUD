@@ -472,29 +472,23 @@ class NetkeibaClient:
     def fetch_ticket_odds_maps(self, race_id: str, source: Optional[str] = None) -> dict:
         """券種別オッズマップ。キーは馬番ゼロ埋め連結（昇順）。"""
         src = source or infer_source(race_id)
-        mapping = {"馬連": 4, "ワイド": 5, "三連複": 7}
+        mapping = {"馬連": 4, "ワイド": 5, "馬単": 6, "三連複": 7, "三連単": 8}
         out = {"updated_at": "", "status": "", "source": src}
         for kind, t in mapping.items():
-            api = self.fetch_odds_api(race_id, t, source=src)
+            try:
+                api = self.fetch_odds_api(race_id, t, source=src)
+            except Exception:
+                out[kind] = {}
+                continue
             if api.get("updated_at") and not out["updated_at"]:
                 out["updated_at"] = api["updated_at"]
             if api.get("status"):
                 out["status"] = api["status"]
             table = {}
-            for key, info in api["odds"].items():
+            for key, info in (api.get("odds") or {}).items():
                 odds = info.get("オッズ") or info.get("単勝オッズ") or ""
                 table[str(key)] = odds
             out[kind] = table
-        # 三連単も取得（検証用）
-        try:
-            api8 = self.fetch_odds_api(race_id, 8, source=src)
-            table = {}
-            for key, info in api8["odds"].items():
-                odds = info.get("オッズ") or ""
-                table[str(key)] = odds
-            out["三連単"] = table
-        except Exception:
-            out["三連単"] = {}
         return out
 
     def fetch_results(self, race_id: str, source: Optional[str] = None) -> dict[str, str]:
@@ -647,7 +641,7 @@ class NetkeibaClient:
         return hist
 
     def past_five_for_score(self, history: list[dict], before_date: str) -> dict:
-        """対象日より前の直近5走の着順/人気を score 用列に変換。"""
+        """対象日より前の直近5走の着順/人気/場/レース名を score 用列に変換。"""
         target = before_date.replace("/", "-")
         past = []
         for h in history:
@@ -660,11 +654,16 @@ class NetkeibaClient:
         out = {"実着順": ""}
         for i in range(1, 6):
             if i <= len(past):
-                out[f"着順{i}"] = _num_or_blank(past[i - 1].get("着順"))
-                out[f"人気{i}"] = _num_or_blank(past[i - 1].get("人気"))
+                row = past[i - 1]
+                out[f"着順{i}"] = _num_or_blank(row.get("着順"))
+                out[f"人気{i}"] = _num_or_blank(row.get("人気"))
+                out[f"場{i}"] = str(row.get("場") or "").strip()
+                out[f"レース名{i}"] = str(row.get("レース名") or "").strip()
             else:
                 out[f"着順{i}"] = ""
                 out[f"人気{i}"] = ""
+                out[f"場{i}"] = ""
+                out[f"レース名{i}"] = ""
         return out
 
 
