@@ -222,19 +222,41 @@ def refresh_odds_for_dates(
 
 
 def merge_runners(base: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
-    """同一 race_id を差し替え（JRA/NAR 同日混在でも他ソースを消さない）。"""
+    """同一 race_id を差し替え（JRA/NAR 同日混在でも他ソースを消さない）。
+
+    重要: 重複除去は (race_id, 馬番) ではなく (race_id, 馬名)。
+    馬番未採番/空文字の出走を (race_id, 馬番='') でまとめると
+    1レース1頭に潰れ、印・馬券候補が消える。
+    """
     if new.empty:
         return base
     if base.empty:
         out = new
     else:
+        # 既存より明らかに頭数が少ない取得結果で上書きしない（途中取得の破壊を防ぐ）
+        base_n = base.groupby(base["race_id"].astype(str)).size().to_dict()
+        new_n = new.groupby(new["race_id"].astype(str)).size().to_dict()
+        safe_ids = set()
+        skip_ids = set()
+        for rid, n_new in new_n.items():
+            n_old = int(base_n.get(rid, 0))
+            # 既存が2頭以上あるのに新規が1頭以下 → 壊れた取得とみなしてスキップ
+            if n_old >= 2 and n_new <= 1:
+                skip_ids.add(rid)
+            else:
+                safe_ids.add(rid)
+        if skip_ids:
+            print(f"⚠️  頭数不足のため上書きスキップ: {sorted(skip_ids)[:8]}{'...' if len(skip_ids)>8 else ''}")
+            new = new[new["race_id"].astype(str).isin(safe_ids)].copy()
+        if new.empty:
+            return base
         drop_ids = set(new["race_id"].astype(str))
         keep = base[~base["race_id"].astype(str).isin(drop_ids)]
         out = pd.concat([keep, new], ignore_index=True)
     out = _normalize_runners(out)
-    # 同一レース・馬番の重複を除去（後勝ち）
+    # 同一レース・馬名の重複を除去（後勝ち）。馬番空でも全頭を潰さない。
     if not out.empty:
-        out = out.drop_duplicates(subset=["race_id", "馬番"], keep="last").reset_index(drop=True)
+        out = out.drop_duplicates(subset=["race_id", "馬名"], keep="last").reset_index(drop=True)
     return out
 
 

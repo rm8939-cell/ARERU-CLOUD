@@ -744,9 +744,15 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="metric"><b class="{{r.get('期待値トーン','ev-none')}}">{% if r.get('期待値あり') %}{{r['期待値表示']}}{% else %}—{% endif %}</b><small>期待値</small></div>
 </div>
 <div class="reason">{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}{{r['本命人気']}}人気 · {% endif %}{{r['本命理由']}}</div></div>
-<div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
-<div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r['人気馬危険']}}</div><div class="reason">危険度 {{r['危険度']}} · {{r['危険理由']}}</div></div>
-<div class="section"><div class="section-title gold">AI馬券戦略</div><div class="strategy"><div class="label">このレースの主戦</div><strong>{{r['推奨券種']}}</strong><p>{{r['馬券戦略理由']}}</p></div>
+<div class="section"><div class="section-title">AI評価順位</div>
+{% if r.get('印一覧') %}
+<div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div>
+{% else %}
+<div class="message" style="margin:0">印候補を生成中、または出走データ不足です（オッズ未取得でも順位は表示されます）</div>
+{% endif %}
+</div>
+<div class="section"><div class="section-title danger">危険な人気馬</div><div class="horse">⚠ {{r.get('人気馬危険') or '—'}}</div><div class="reason">危険度 {{r.get('危険度','—')}} · {{r.get('危険理由','')}}</div></div>
+<div class="section"><div class="section-title gold">AI馬券戦略</div><div class="strategy"><div class="label">このレースの主戦</div><strong>{{r.get('推奨券種') or '—'}}</strong><p>{{r.get('馬券戦略理由') or ''}}</p></div>
 <div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r[kind+'判定']}}</span><span class="ticket-score">適性 {{r[kind+'評価']}}</span></div><ul>{% for x in r[kind+'買い目一覧'] %}<li>{{x}}</li>{% endfor %}</ul><div class="compress">{{r[kind+'圧縮']}}</div></div>{% endfor %}</div>
 {% set odds_ready = r.get('期待回収率') and r['期待回収率'] not in ['オッズ接続後に算出','なし',''] and r.get('合成オッズ') and r['合成オッズ'] not in ['券種別オッズ待ち','なし',''] %}
 {% if odds_ready %}

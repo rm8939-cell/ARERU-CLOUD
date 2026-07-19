@@ -221,6 +221,13 @@ class NetkeibaClient:
                 shutuba_odds = _parse_odds_text(odds_td.get_text(strip=True) if odds_td else "")
                 shutuba_ninki = _num_or_blank(ninki_td.get_text(strip=True) if ninki_td else "")
 
+            name = (name or "").strip()
+            ban = (ban or "").strip()
+            # 取消・空行・馬番なし重複行はスキップ（馬番欠落のまま残すと後段で潰れる）
+            if not name:
+                continue
+            if not ban or not re.fullmatch(r"\d+", ban):
+                continue
             rows.append({
                 "race_id": race_id,
                 "日付": race_date,
@@ -236,7 +243,11 @@ class NetkeibaClient:
                 "人気": shutuba_ninki,
                 "source": src,
             })
-        return rows
+        # 同一馬名が複数ある場合は馬番付きを優先
+        uniq = {}
+        for r in rows:
+            uniq[r["馬名"]] = r
+        return list(uniq.values())
 
     def fetch_odds_api(self, race_id: str, odds_type: int = 1, source: Optional[str] = None) -> dict:
         """オッズ取得。JRAは公式API、NARはHTMLスクレイピング。
