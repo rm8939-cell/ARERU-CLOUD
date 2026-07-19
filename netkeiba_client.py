@@ -254,23 +254,39 @@ class NetkeibaClient:
 
         type: 1単勝 2複勝 3枠連 4馬連 5ワイド 6馬単 7三連複 8三連単
         戻り値: {status, updated_at, odds: {key: {...}}}
+
+        JRA注意:
+        - `action=init` なしだと status=middle（発売中）のとき data が空で
+          reason=result odds empty になる（確定オッズ専用応答）。
+        - 発売中のリアルタイム単勝も取るため、必ず action=init を付ける。
         """
         src = source or infer_source(race_id)
         if src == "nar":
             return self._fetch_nar_odds_html(race_id, odds_type)
 
-        url = f"{BASE}/api/api_get_jra_odds.html?type={odds_type}&race_id={race_id}"
+        # action=init: 発売中(middle)・確定(result)の両方で data.odds が返る
+        url = (
+            f"{BASE}/api/api_get_jra_odds.html"
+            f"?type={odds_type}&race_id={race_id}&action=init"
+        )
         r = self.session.get(url, timeout=40)
         r.raise_for_status()
         time.sleep(self.sleep)
         try:
             payload = r.json()
         except Exception:
+            print(f"  ⚠️ JRAオッズJSON不正 race_id={race_id} type={odds_type} body={r.text[:240]!r}")
             return {"status": "error", "updated_at": "", "odds": {}}
         status = str(payload.get("status") or "")
+        reason = str(payload.get("reason") or "")
         data = payload.get("data") or {}
         if not isinstance(data, dict):
-            return {"status": status or "empty", "updated_at": "", "odds": {}}
+            # 旧挙動: action無しだと middle で data="" になる
+            print(
+                f"  ⚠️ JRAオッズ空 data race_id={race_id} type={odds_type} "
+                f"status={status!r} reason={reason!r} raw={str(payload)[:240]!r}"
+            )
+            return {"status": status or "empty", "updated_at": "", "odds": {}, "reason": reason}
         updated = str(data.get("official_datetime") or "")
         raw = (data.get("odds") or {}).get(str(odds_type), {}) or {}
         parsed = {}
@@ -291,7 +307,13 @@ class NetkeibaClient:
                 except Exception:
                     entry["オッズ"] = odds_val
             parsed[str(key)] = entry
-        return {"status": status, "updated_at": updated, "odds": parsed}
+        if not parsed:
+            print(
+                f"  ⚠️ JRAオッズ0件 race_id={race_id} type={odds_type} "
+                f"status={status!r} reason={reason!r} updated={updated!r} "
+                f"odds_keys={list((data.get('odds') or {}).keys())}"
+            )
+        return {"status": status, "updated_at": updated, "odds": parsed, "reason": reason}
 
     def _fetch_nar_odds_html(self, race_id: str, odds_type: int) -> dict:
         """NAR オッズHTMLから券種別オッズを抽出。"""
