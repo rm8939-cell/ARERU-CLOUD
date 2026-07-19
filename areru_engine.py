@@ -230,6 +230,29 @@ def venue_from_race_id(race_id):
     m=re.search(r"pw01[sd]de\d{2}(\d{2})\d{4}",s)
     return VENUE_CODES.get(m.group(1),"開催地不明") if m else "開催地不明"
 
+# 仮想勝率の上限（99%以上は非現実的）と適正オッズ下限（1.0倍固定を防ぐ）
+SIM_WIN_MAX_PCT = 98.0
+AI_FAIR_ODDS_MIN = 1.1
+
+
+def _cap_sim_win_rates(win_pct, max_win=SIM_WIN_MAX_PCT, min_fair=AI_FAIR_ODDS_MIN):
+    """勝率を上限でクリップし、余りを他馬へ再配分。適正オッズ下限とも整合させる。"""
+    # 1.1倍 ⇔ 約90.91%。1桁表示でも 1.0 に丸まらないよう両方で抑える
+    cap = float(min(max_win, 100.0 / min_fair))
+    win = np.asarray(win_pct, dtype=float).copy()
+    if win.size == 0:
+        return win
+    excess = float(np.maximum(win - cap, 0).sum())
+    win = np.minimum(win, cap)
+    if excess > 1e-9:
+        room = np.maximum(cap - win, 0)
+        total_room = float(room.sum())
+        if total_room > 1e-9:
+            win = win + excess * (room / total_room)
+            win = np.minimum(win, cap)
+    return win
+
+
 def simulate_race(g, runs=20000):
     g=g.copy().reset_index(drop=True)
     base=g["AREru指数"].astype(float).to_numpy()
@@ -248,10 +271,13 @@ def simulate_race(g, runs=20000):
         for pos in range(n_h):
             finish_counts[:,pos] += np.bincount(order[:,pos],minlength=n_h)
     order_all=np.vstack(orders)
-    g["SIM勝率"]=finish_counts[:,0]/runs*100
+    raw_win=finish_counts[:,0]/runs*100
+    win=_cap_sim_win_rates(raw_win)
+    g["SIM勝率"]=win
     g["SIM2着内率"]=finish_counts[:,:min(2,n_h)].sum(axis=1)/runs*100
     g["SIM3着内率"]=finish_counts[:,:min(3,n_h)].sum(axis=1)/runs*100
-    g["AI適正オッズ"]=np.where(g["SIM勝率"]>0,100/g["SIM勝率"],999)
+    fair=np.where(win>0,100.0/win,999.0)
+    g["AI適正オッズ"]=np.maximum(fair, AI_FAIR_ODDS_MIN)
     return g, order_all
 
 def _ticket_candidates(g, orders):
@@ -403,7 +429,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 '印':mark,'馬名':str(x['馬名']),
                 '3着内率':round(float(x['SIM3着内率']),1),
                 '理由':str(x['理由']),
-                'AI適正オッズ':round(float(fo),1) if pd.notna(fo) else None,
+                'AI適正オッズ':round(max(float(fo), AI_FAIR_ODDS_MIN),1) if pd.notna(fo) else None,
                 '単勝オッズ':round(float(mo),1) if pd.notna(mo) else None,
             })
         main_place=float(main['SIM3着内率']); alt_place=float(ranked['SIM3着内率'].max()) if len(ranked) else 0
@@ -489,7 +515,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           'race_id':race_id,'source':src,'開催地':venue_from_race_id(race_id),'レース':int(float(main['レース'])),'荒れ度':round(chaos,1),'判定':judge,
           '荒れクラス':'storm' if chaos>=80 else ('wave' if chaos>=60 else ('caution' if chaos>=40 else 'calm')),
           'BET期待値':round(bet,1),'BET判定':bet_label,'BETクラス':bet_class,'BET理由':' / '.join(bet_reason),
-          'シミュレーション回数':20000,'本命':main_name,'本命馬番':main_ban,'本命AREru指数':main['AREru指数'],'シミュレーション勝率':round(main['SIM勝率'],1),'シミュレーション3着内率':round(main['SIM3着内率'],1),'AI適正オッズ':round(main['AI適正オッズ'],1),'本命理由':main['理由'],
+          'シミュレーション回数':20000,'本命':main_name,'本命馬番':main_ban,'本命AREru指数':main['AREru指数'],'シミュレーション勝率':round(float(main['SIM勝率']),1),'シミュレーション3着内率':round(main['SIM3着内率'],1),'AI適正オッズ':round(max(float(main['AI適正オッズ']), AI_FAIR_ODDS_MIN),1),'本命理由':main['理由'],
           '本命オッズ':main_odds_disp,'本命人気':main_pop_disp,
           '人気馬危険':danger['馬名'],'危険度':round(clamp(danger_score.loc[danger_idx]),1),'危険理由':'近走評価と人気履歴のズレを検出',
           '印データ':json.dumps(mark_rows,ensure_ascii=False),

@@ -91,13 +91,45 @@ def stars_for_score(score: int) -> str:
     return '★' * filled + '☆' * (5 - filled)
 
 
+# 表示側でもエンジンと同じ上限・下限を適用（既存CSVの100%/1.0倍を補正）
+SIM_WIN_MAX_PCT = 98.0
+AI_FAIR_ODDS_MIN = 1.1
+
+
+def normalize_fair_odds_fields(record: dict) -> dict:
+    """仮想勝率99%以上・適正オッズ1.0倍固定を表示前に補正。"""
+    win = parse_odds_value(record.get('シミュレーション勝率'))
+    fair = parse_odds_value(record.get('AI適正オッズ'))
+    cap = min(SIM_WIN_MAX_PCT, 100.0 / AI_FAIR_ODDS_MIN)
+    changed = False
+    if win is not None and win > cap:
+        win = cap
+        changed = True
+    if fair is not None and fair < AI_FAIR_ODDS_MIN:
+        fair = AI_FAIR_ODDS_MIN
+        changed = True
+    if win is not None and (fair is None or changed):
+        # 勝率と適正オッズを整合（下限1.1倍）
+        fair = max(100.0 / win, AI_FAIR_ODDS_MIN) if win > 0 else AI_FAIR_ODDS_MIN
+    if fair is not None and win is None:
+        win = min(100.0 / fair, cap) if fair > 0 else cap
+    if win is not None:
+        record['シミュレーション勝率'] = round(win, 1)
+    if fair is not None:
+        record['AI適正オッズ'] = round(fair, 1)
+    return record
+
+
 def apply_expected_value(record: dict) -> dict:
-    """予想レコードへ期待値フィールドを付与（AI適正オッズ列は保持）。"""
+    """現在オッズ取得後: 現在オッズ・AI適正オッズ・期待値(%) を自動付与。"""
+    normalize_fair_odds_fields(record)
     fair = parse_odds_value(record.get('AI適正オッズ'))
     market = parse_odds_value(record.get('本命オッズ'))
     if fair is not None:
-        record['AI適正オッズ'] = round(fair, 1)
+        record['AI適正オッズ'] = round(max(fair, AI_FAIR_ODDS_MIN), 1)
+        fair = record['AI適正オッズ']
     record['現在オッズ'] = round(market, 1) if market is not None else None
+    # 期待値 = 現在オッズ ÷ AI適正オッズ × 100
     ev = calc_expected_value(market, fair)
     record['期待値'] = ev['期待値']
     record['期待値表示'] = ev['期待値表示']
@@ -105,6 +137,7 @@ def apply_expected_value(record: dict) -> dict:
     record['期待値トーン'] = ev['期待値トーン']
     record['期待値ラベル'] = ev['期待値ラベル']
     record['期待値あり'] = ev['期待値あり']
+    record['オッズ取得済'] = market is not None
     return record
 
 

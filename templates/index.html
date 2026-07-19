@@ -716,8 +716,10 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </div>
 {% if r.get('期待値あり') %}
 <div class="race-acc-ev"><span class="ev-main {{r['期待値トーン']}}"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 {{r['期待値表示']}}</span></div>
-{% else %}
+{% elif r.get('オッズ取得済') %}
 <div class="race-acc-ev"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span></div>
+{% else %}
+<div class="race-acc-ev"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span><small style="margin-left:6px;color:var(--muted);font-size:11px;font-weight:700">オッズ待ち</small></div>
 {% endif %}
 </button>
 <div class="race-acc-body" data-lazy="1"></div>
@@ -728,15 +730,18 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}{% if r.get('本命馬番') %}（{{r['本命馬番']}}番）{% endif %}
 {% if r.get('期待値あり') %}
 <div class="ev-hero"><span class="ev-main {{r['期待値トーン']}}"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 {{r['期待値表示']}}</span><span class="ev-tag {{r['期待値トーン']}}">{{r['期待値ラベル']}}</span></div>
+{% elif r.get('オッズ取得済') %}
+<div class="ev-hero"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span></div>
 {% else %}
 <div class="ev-hero"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span><span class="ev-tag ev-none">オッズ待ち</span></div>
 {% endif %}
 </div>
 <div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div>
+{# 現在オッズ取得後は 現在オッズ / AI適正オッズ / 期待値 を自動表示 #}
 <div class="ev-detail">
-<div class="metric"><b class="{{r.get('期待値トーン','ev-none')}}">{% if r.get('期待値あり') %}{{r['期待値表示']}}{% else %}—{% endif %}</b><small>期待値</small></div>
+<div class="metric"><b>{% if r.get('現在オッズ') %}{{r['現在オッズ']}}倍{% else %}—{% endif %}</b><small>現在オッズ</small></div>
 <div class="metric"><b>{% if r.get('AI適正オッズ') and r['AI適正オッズ']!='なし' %}{{r['AI適正オッズ']}}倍{% else %}—{% endif %}</b><small>AI適正オッズ</small></div>
-<div class="metric"><b>{% if r.get('現在オッズ') %}{{r['現在オッズ']}}倍{% elif r.get('本命オッズ') and r['本命オッズ']!='なし' and r['本命オッズ']!='' %}{{r['本命オッズ']}}倍{% else %}—{% endif %}</b><small>現在オッズ</small></div>
+<div class="metric"><b class="{{r.get('期待値トーン','ev-none')}}">{% if r.get('期待値あり') %}{{r['期待値表示']}}{% else %}—{% endif %}</b><small>期待値</small></div>
 </div>
 <div class="reason">{% if r.get('本命人気') and r['本命人気']!='なし' and r['本命人気']!='' %}{{r['本命人気']}}人気 · {% endif %}{{r['本命理由']}}</div></div>
 <div class="section"><div class="section-title">AI評価順位</div><div class="marks">{% for x in r['印一覧'] %}<div class="mark"><b>{{x['印']}}</b><div><span>{{x['馬名']}}</span><small>仮想3着内 {{x['3着内率']}}% · {{x['理由']}}</small></div></div>{% endfor %}</div></div>
