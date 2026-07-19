@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin
@@ -17,6 +17,7 @@ NAR_BASE = "https://nar.netkeiba.com"
 DB = "https://db.netkeiba.com"
 CACHE = Path("data/cache/horse_results")
 CACHE.mkdir(parents=True, exist_ok=True)
+JST = timezone(timedelta(hours=9))
 
 # JRA: 01-10 / NAR: 30台〜
 JRA_VENUE_CODES = {
@@ -32,6 +33,39 @@ NAR_VENUE_CODES = {
     "65": "帯広",
 }
 VENUE_CODES = {**JRA_VENUE_CODES, **NAR_VENUE_CODES}
+_VENUE_NAME_SET = set(VENUE_CODES.values())
+
+
+def normalize_venue_name(venue: str) -> str:
+    """開催場名を正規化（帯広(ば) → 帯広 など）。マッチング用。"""
+    s = str(venue or "").strip()
+    if not s or s == "開催地不明":
+        return s
+    s = re.sub(r"[（(][^）)]*[）)]", "", s).strip()
+    aliases = {"帯広ば": "帯広", "帯廣": "帯広", "ひめじ": "姫路"}
+    if s in aliases:
+        return aliases[s]
+    if s in _VENUE_NAME_SET:
+        return s
+    for name in sorted(_VENUE_NAME_SET, key=len, reverse=True):
+        if s.startswith(name) or name in s:
+            return name
+    return s
+
+
+def _today_jst_date() -> date:
+    return datetime.now(JST).date()
+
+
+def _resolve_venue(meta: dict, title: str) -> str:
+    """race_id の会場コードを正とし、不明時のみタイトルから補完。"""
+    id_venue = str(meta.get("venue") or "").strip()
+    if id_venue and id_venue != "開催地不明":
+        return normalize_venue_name(id_venue)
+    vm = re.search(r"\d{4}年\d{1,2}月\d{1,2}日\s+(\S+?)\d+R", title or "")
+    if vm:
+        return normalize_venue_name(vm.group(1)) or "開催地不明"
+    return "開催地不明"
 
 # NAR 券種 HTML type コード
 _NAR_ODDS_TYPE = {
@@ -107,8 +141,11 @@ class NetkeibaClient:
         lookahead: int = 14,
         source: str = "jra",
     ) -> list[str]:
-        """周辺カレンダーを走査し、レースがある開催日を新しい順で返す。"""
-        center = center or date.today()
+        """周辺カレンダーを走査し、レースがある開催日を新しい順で返す。
+
+        center 未指定時は JST の本日（Render UTC でも日付ずれしない）。
+        """
+        center = center or _today_jst_date()
         found = []
         for offset in range(-lookback, lookahead + 1):
             d = center + timedelta(days=offset)
@@ -162,7 +199,7 @@ class NetkeibaClient:
         url = f"{base}/race/shutuba.html?race_id={race_id}&rf=race_list"
         soup = self._get(url)
         meta = self.parse_race_id(race_id)
-        # タイトルから日付を拾う
+        # タイトルから日付を拾う / 開催地は race_id を正とする
         title = soup.title.get_text(" ", strip=True) if soup.title else ""
         dm = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", title)
         race_date = (
@@ -170,9 +207,7 @@ class NetkeibaClient:
             if dm
             else meta.get("date")
         )
-        # タイトルから開催地名を補正
-        vm = re.search(r"\d{4}年\d{1,2}月\d{1,2}日\s+(\S+?)\d+R", title)
-        venue = vm.group(1) if vm else meta.get("venue") or "開催地不明"
+        venue = _resolve_venue(meta, title)
 
         rows = []
         for tr in soup.select("tr.HorseList"):
@@ -516,8 +551,7 @@ class NetkeibaClient:
         race_date = (
             f"{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else meta.get("date")
         )
-        vm = re.search(r"\d{4}年\d{1,2}月\d{1,2}日\s+(\S+?)\d+R", title)
-        venue = vm.group(1) if vm else (meta.get("venue") or "開催地不明")
+        venue = _resolve_venue(meta, title)
 
         horses = []
         # NAR: Result_Num 行が本体。JRA: HorseList。混在時は Result_Num を優先。

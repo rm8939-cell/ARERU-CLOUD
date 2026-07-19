@@ -447,10 +447,23 @@ def venue_from_race_id(race_id):
     s=str(race_id)
     # netkeiba: YYYY + venue(2) + ... + race(2)  ※JRAは回次・日次、NARはMMDD
     m=re.fullmatch(r"\d{4}(\d{2})\d{6}",s)
-    if m: return VENUE_CODES.get(m.group(1),"開催地不明")
+    if m:
+        name=VENUE_CODES.get(m.group(1),"開催地不明")
+        try:
+            from netkeiba_client import normalize_venue_name
+            return normalize_venue_name(name)
+        except Exception:
+            return name
     # 旧JRA URL (accessS / accessD)
     m=re.search(r"pw01[sd]de\d{2}(\d{2})\d{4}",s)
-    return VENUE_CODES.get(m.group(1),"開催地不明") if m else "開催地不明"
+    if not m:
+        return "開催地不明"
+    name=VENUE_CODES.get(m.group(1),"開催地不明")
+    try:
+        from netkeiba_client import normalize_venue_name
+        return normalize_venue_name(name)
+    except Exception:
+        return name
 
 # 仮想勝率の上限（99%以上は非現実的）と適正オッズ下限（1.0倍固定を防ぐ）
 SIM_WIN_MAX_PCT = 98.0
@@ -933,7 +946,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 '期待値':win_ev,
                 **pack,
             }
-            if role=='穴馬':
+            if role=='穴馬' or role=='注目馬':
                 detail['期待値が高い理由']=f"単勝期待値{win_ev}%" if win_ev else '仮想複勝率に対し人気が薄い'
                 detail['人気以上に評価した理由']=str(row.get('理由') or '人気薄の上昇余地')
             return detail
@@ -949,13 +962,14 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 'AI適正オッズ':rival_detail['AI適正オッズ'],'単勝オッズ':rival_detail['単勝オッズ'],
                 '詳細':rival_detail,
             })
-        # 穴馬: 本命・対抗以外で穴スコア上位2頭
+        # 穴馬/注目馬: 本命・対抗以外で穴スコア上位。1頭目は☆注目馬
         used={main_detail['馬名']}
         if len(rival): used.add(str(rival.iloc[0]['馬名']))
-        hole_marks=['▲','△','☆']; hi=0
+        hole_marks=['☆','▲','△']; hi=0
         for _,x in hole_pool.iterrows():
             if str(x['馬名']) in used: continue
-            hd=_detail_for(x,'穴馬')
+            role='注目馬' if hi==0 else '穴馬'
+            hd=_detail_for(x, role)
             pick_cards.append(hd)
             mark_rows.append({
                 '印':hole_marks[min(hi,len(hole_marks)-1)],'馬名':hd['馬名'],'馬番':hd['馬番'],'馬番表示':hd['馬番表示'],
