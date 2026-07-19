@@ -23,6 +23,16 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .ai-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 10px}
 .ai-card h3{margin:0 0 10px;font-size:13px;letter-spacing:.1em;color:var(--muted)}.ai-card .ban-xl{font-size:34px;font-weight:900;letter-spacing:.04em;line-height:1.1;margin:4px 0 8px}
 .ai-card .kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px;color:var(--muted)}.ai-card .kv b{color:var(--text);font-weight:800}
+.ai-card .conf-box{display:flex;align-items:baseline;gap:10px;margin:4px 0 12px;padding:10px 12px;background:var(--soft);border-radius:10px}
+.ai-card .conf-box .stars{font-size:18px}.ai-card .conf-box .score{font-size:22px;font-weight:900;color:var(--brand)}.ai-card .conf-box small{color:var(--muted);font-size:11px}
+.ai-card .why-title{margin:14px 0 8px;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.ai-card .why-list{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.ai-card .why-list li{display:grid;grid-template-columns:7.5em 3.2em 1fr;gap:8px;align-items:start;font-size:12px;line-height:1.45;padding:7px 0;border-bottom:1px solid #eef2f5}
+.ai-card .why-list li:last-child{border-bottom:0}.ai-card .why-list .k{color:var(--muted);font-weight:700}.ai-card .why-list .v{font-weight:900;color:var(--text)}.ai-card .why-list .d{color:#4a5560}
+.ai-card .mat-list{margin:0;padding-left:1.1em;font-size:12px;line-height:1.7;color:var(--text)}
+.ai-card .mat-list.plus li::marker{color:var(--green)}.ai-card .mat-list.minus li::marker{color:var(--red)}
+.ai-card .ai-comment{margin-top:10px;padding:12px;background:#f8fafb;border:1px solid var(--line);border-radius:10px;font-size:13px;line-height:1.7;color:var(--text);font-weight:600}
+@media (max-width:560px){.ai-card .why-list li{grid-template-columns:1fr;gap:2px}.ai-card .why-list .v{display:inline-block;margin-right:6px}}
 .invest-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;font-weight:850;font-size:13px}
 .invest-pill.buy{background:#e8f7ef;color:#176b45}.invest-pill.skip{background:#fdecea;color:#c62828}.invest-pill.wait{background:#f4f6f8;color:var(--muted)}
 .pace-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.pace-item{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:10px}.pace-item b{display:block;font-size:20px}.ticket-ban{font-size:28px;font-weight:900;margin:6px 0}.stars{color:#c9a227;letter-spacing:.06em;font-weight:800}
@@ -803,23 +813,62 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="ai-card">
 <h3>{{c.get('役割')}}</h3>
 <div class="horse-line"><span class="ban">{{c.get('馬番表示') or c.get('馬番') or '－'}}</span>{{c.get('馬名') or ''}}</div>
+<div class="conf-box">
+<span class="stars">{{c.get('AI信頼度') or '★★★☆☆'}}</span>
+<span class="score">{{c.get('AI信頼度スコア','—')}}</span>
+<small>AI信頼度 / 0〜100</small>
+</div>
 <div class="kv">
 <div>AI評価 <b>{{c.get('AI評価','—')}}</b></div>
-<div>指数順位 <b>{{c.get('近走指数順位','—')}}</b></div>
+<div>期待値 <b>{% if c.get('期待値') is not none %}{{ c.get('期待値')|int }}%{% else %}—{% endif %}</b></div>
 <div>勝率 <b>{{c.get('勝率','—')}}%</b></div>
 <div>連対 <b>{{c.get('連対率','—')}}%</b></div>
 <div>複勝 <b>{{c.get('複勝率','—')}}%</b></div>
-<div>期待値 <b>{% if c.get('期待値') is not none %}{{ c.get('期待値')|int }}%{% else %}—{% endif %}</b></div>
-<div>距離 <b>{{c.get('距離適性','—')}}</b></div>
-<div>コース <b>{{c.get('コース適性','—')}}</b></div>
-<div>ラップ <b>{{c.get('ラップ適性','—')}}</b></div>
-<div>上がり <b>{{c.get('上がり評価','—')}}</b></div>
+<div>人気 <b>{% if c.get('人気') %}{{c.get('人気')}}番人気{% else %}—{% endif %}</b></div>
 </div>
-<div class="reason" style="margin-top:8px">展開 {{c.get('展開相性','—')}}</div>
-<div class="reason">＋ {{c.get('プラス材料','—')}}</div>
-<div class="reason">− {{c.get('不安材料','—')}}</div>
-{% if c.get('役割')=='穴馬' %}
-<div class="reason">期待値理由: {{c.get('期待値が高い理由','—')}}</div>
+
+<div class="why-title">{% if c.get('役割')=='本命' %}本命にした理由{% elif c.get('役割')=='対抗' %}対抗にした理由{% else %}穴馬にした理由{% endif %}</div>
+<ul class="why-list">
+{% set why = c.get('判断根拠') or [] %}
+{% if why %}
+{% for row in why %}
+<li><span class="k">{{row.get('項目')}}</span><span class="v">{{row.get('評価')}}</span><span class="d">{{row.get('説明')}}</span></li>
+{% endfor %}
+{% else %}
+<li><span class="k">近走指数順位</span><span class="v">{{c.get('近走指数順位','—')}}</span><span class="d">近走指数の場内順位</span></li>
+<li><span class="k">距離適性</span><span class="v">{{c.get('距離適性','—')}}</span><span class="d">同距離帯の適性</span></li>
+<li><span class="k">コース適性</span><span class="v">{{c.get('コース適性','—')}}</span><span class="d">同コースの適性</span></li>
+<li><span class="k">馬場適性</span><span class="v">{{c.get('馬場適性','—')}}</span><span class="d">芝/ダート適性</span></li>
+<li><span class="k">ラップ適性</span><span class="v">{{c.get('ラップ適性','—')}}</span><span class="d">想定ペースとの相性</span></li>
+<li><span class="k">上がり順位</span><span class="v">{{c.get('上がり順位') or c.get('上がり評価','—')}}</span><span class="d">末脚評価</span></li>
+<li><span class="k">展開との相性</span><span class="v">{{c.get('展開相性','—')}}</span><span class="d">脚質×展開</span></li>
+<li><span class="k">シミュレーション勝率</span><span class="v">{{c.get('勝率','—')}}%</span><span class="d">仮想単勝到達率</span></li>
+<li><span class="k">連対率</span><span class="v">{{c.get('連対率','—')}}%</span><span class="d">仮想2着以内</span></li>
+<li><span class="k">複勝率</span><span class="v">{{c.get('複勝率','—')}}%</span><span class="d">仮想3着以内</span></li>
+{% endif %}
+</ul>
+
+<div class="why-title">プラス材料</div>
+<ul class="mat-list plus">
+{% for p in (c.get('プラス材料一覧') or []) %}
+<li>{{p}}</li>
+{% else %}
+<li>{{c.get('プラス材料','—')}}</li>
+{% endfor %}
+</ul>
+<div class="why-title">不安材料</div>
+<ul class="mat-list minus">
+{% for m in (c.get('不安材料一覧') or []) %}
+<li>{{m}}</li>
+{% else %}
+<li>{{c.get('不安材料','—')}}</li>
+{% endfor %}
+</ul>
+
+<div class="why-title">AIコメント</div>
+<div class="ai-comment">{{c.get('AIコメント') or '指数・適性・シミュレーションを総合して評価しています。'}}</div>
+{% if c.get('役割')=='穴馬' and (c.get('期待値が高い理由') or c.get('人気以上に評価した理由')) %}
+<div class="reason" style="margin-top:8px">期待値理由: {{c.get('期待値が高い理由','—')}}</div>
 <div class="reason">人気以上: {{c.get('人気以上に評価した理由','—')}}</div>
 {% endif %}
 </div>

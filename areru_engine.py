@@ -858,22 +858,55 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
             try: return str(int(float(b))) if b else ''
             except Exception: return ''
 
+        # 上がり順位（フィールド内）
+        last3_vals={str(g_base.iloc[i]['馬名']): float(profiles[i].get('last3f') or 50) for i in range(len(profiles))}
+        last3_rank_map={}
+        for rk,(hn,_) in enumerate(sorted(last3_vals.items(), key=lambda x: -x[1]), 1):
+            last3_rank_map[hn]=rk
+
         def _detail_for(row, role):
-            name=str(row['馬名']); pr=prof_by_name.get(name,{})
+            from pick_rationale import build_pick_rationale
+            name=str(row['馬名']); pr=dict(prof_by_name.get(name,{}) or {})
             fo=num(row.get('AI適正オッズ')); mo=num(row.get('単勝オッズ')); pop=num(row.get('人気'))
             idx_rank=int(g['AREru指数'].rank(ascending=False).loc[row.name])
             pace_fit,_=lap_aptitude(pr.get('style',0.5), pace['想定ペース'])
             style=style_label(pr.get('style',0.5))
+            pr['pace_fit']=pace_fit
+            pr['style_label']=style
             plus=list(pr.get('plus') or [])
             minus=list(pr.get('minus') or [])
             if float(row['SIM3着内率'])>=40: plus.append('複勝圏安定')
             if pd.notna(mo) and pd.notna(fo) and float(mo)>float(fo)*1.15: plus.append('市場より割安')
-            if _n_valid_row(row)<3: minus.append('サンプル少')
+            n_sample=_n_valid_row(row)
+            if n_sample<3: minus.append('サンプル少')
             win_ev=None
             if pd.notna(mo) and pd.notna(fo) and float(fo)>0:
                 # 市場比1.30倍超の割安はCSV段階でも認めない（1000%級を防止）
                 fo_cap=max(float(fo), float(mo)/1.30, AI_FAIR_ODDS_MIN)
                 win_ev=int(round(min(130.0, max(70.0, float(mo)/fo_cap*100.0))))
+            pack=build_pick_rationale(
+                role=role,
+                horse=name,
+                row=row.to_dict() if hasattr(row,'to_dict') else dict(row),
+                profile=pr,
+                pace=pace,
+                idx_rank=idx_rank,
+                field_n=int(n),
+                last3_rank=last3_rank_map.get(name),
+                n_sample=n_sample,
+                win_pct=round(float(row['SIM勝率']),1),
+                quinella_pct=round(float(row['SIM2着内率']),1),
+                place_pct=round(float(row['SIM3着内率']),1),
+                market_odds=float(mo) if pd.notna(mo) else None,
+                fair_odds=float(fo) if pd.notna(fo) else None,
+                reason_text=str(row.get('理由') or ''),
+                existing_plus=plus,
+                existing_minus=minus,
+                lap_label=str(pr.get('lap_label') or '平均ペース適性'),
+                lap_fit=float(pr.get('lap_fit') or pace_fit or 50),
+                pace_fit=float(pace_fit),
+                style=style,
+            )
             detail={
                 '役割':role,
                 '馬名':name,
@@ -881,13 +914,6 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 '馬番表示':circle_ban(_ban_str(row)),
                 'AI評価':round(float(row['AREru指数']),1),
                 '近走指数順位':idx_rank,
-                '距離適性':'○' if '距離適性' in plus else ('△' if '距離' in str(row.get('理由')) else '－'),
-                'コース適性':'○' if 'コース適性' in plus else '－',
-                'ラップ適性':pr.get('lap_label','平均ペース適性'),
-                '上がり評価':round(float(pr.get('last3f',50)),0),
-                '展開相性':style + ('・好相性' if pace_fit>=58 else ('・やや不利' if pace_fit<=42 else '・標準')),
-                'プラス材料':' / '.join(plus[:4]) or '総合評価',
-                '不安材料':' / '.join(minus[:3]) or '特記なし',
                 '勝率':round(float(row['SIM勝率']),1),
                 '連対率':round(float(row['SIM2着内率']),1),
                 '複勝率':round(float(row['SIM3着内率']),1),
@@ -895,6 +921,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 '単勝オッズ':round(float(mo),1) if pd.notna(mo) else None,
                 '人気':int(float(pop)) if pd.notna(pop) else None,
                 '期待値':win_ev,
+                **pack,
             }
             if role=='穴馬':
                 detail['期待値が高い理由']=f"単勝期待値{win_ev}%" if win_ev else '仮想複勝率に対し人気が薄い'

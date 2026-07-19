@@ -493,16 +493,21 @@ def normalize_fair_odds_fields(record: dict) -> dict:
 
 
 def _rescore_pick_cards(record: dict, conf: float, repro: float, n: int, apt: float) -> None:
-    """ピックカードの旧エンジン期待値（market/fair）を信頼度補正値へ置換。"""
+    """ピックカードの期待値再計算＋判断根拠の充実。"""
+    from pick_rationale import enrich_pick_card
+
     reasons = str(record.get('本命理由') or '')
     for card in record.get('ピックカード一覧') or []:
         if not isinstance(card, dict):
             continue
+        # 既存CSVでも【AI信頼度】【理由】【コメント】を埋める
+        enrich_pick_card(card, record)
+        horse_conf = float(card.get('AI信頼度スコア') or conf)
         scored = score_horse_ev(
             card.get('単勝オッズ'),
             card.get('勝率'),
             card.get('AI適正オッズ'),
-            conf,
+            horse_conf,
             repro,
             n,
             apt,
