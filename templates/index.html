@@ -5,12 +5,13 @@
 :root{--bg:#f4f6f8;--card:#fff;--line:#e1e7eb;--text:#17212b;--muted:#6f7b87;--red:#e53935;--gold:#9a6b00;--green:#176b45;--yellow:#d9a600;--orange:#ef8b25;--brand:#176b45;--soft:#e9f5ef}
 body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
 body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
-*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow-x:hidden}
-.wrap{max-width:760px;width:100%;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32)}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;color-scheme:only light}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow-x:hidden;min-height:100vh}
+.wrap{max-width:760px;width:100%;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32);color:#fff}
+.header .eyebrow,.header .sub{color:rgba(255,255,255,.82)}.header .logo{color:#fff}.header .logo b{color:#ffd7d4}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:30px;font-weight:800;letter-spacing:.06em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:5px;font-size:13px}
 .toolbar{display:flex;gap:8px;padding:16px 0;flex-wrap:wrap;align-items:stretch}.toolbar-date{display:flex;gap:8px;flex:1;min-width:0;align-items:stretch}.toolbar-today{display:flex;align-items:stretch}.toolbar select,.toolbar button,.toolbar .today-btn{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1;min-width:140px}.toolbar button{font-weight:700;cursor:pointer}.toolbar .today-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:800;font-size:13px;white-space:nowrap;background:var(--soft);border-color:var(--brand);color:var(--brand)}.toolbar .today-btn:active{opacity:.85}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
-.targets{border:1px solid #3a3032;background:#fff;border-radius:16px;overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid #30262a;color:#ddd}
-.target-row{display:grid;grid-template-columns:38px 1fr 72px;align-items:center;text-decoration:none;color:var(--text);padding:13px 14px;border-bottom:1px solid #251f22}.target-row:last-child{border-bottom:0}.rank{font-weight:800;color:var(--red)}.target-name{font-weight:750}.target-name small{display:block;color:var(--muted);font-weight:400;margin-top:4px}.target-score{text-align:right;font-size:20px;font-weight:800}.target-score small{display:block;font-weight:400}
+.targets{border:1px solid var(--line);background:#fff;border-radius:16px;overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--muted)}
+.target-row{display:grid;grid-template-columns:38px 1fr 72px;align-items:center;text-decoration:none;color:var(--text);padding:13px 14px;border-bottom:1px solid var(--line)}.target-row:last-child{border-bottom:0}.rank{font-weight:800;color:var(--red)}.target-name{font-weight:750}.target-name small{display:block;color:var(--muted);font-weight:400;margin-top:4px}.target-score{text-align:right;font-size:20px;font-weight:800}.target-score small{display:block;font-weight:400}
 .race{scroll-margin-top:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:16px;margin:0 0 18px;overflow:hidden}.race.caution{border-left-color:var(--yellow)}.race.wave{border-left-color:var(--orange)}.race.storm{border-left-color:var(--red)}
 .race-head{display:flex;justify-content:space-between;align-items:flex-start;padding:17px 17px 12px}.venue{font-size:19px;font-weight:800}.venue small{display:block;margin-top:5px}.heat{text-align:right;font-size:25px;font-weight:850}.heat small{display:block}.betbar{display:flex;justify-content:space-between;padding:10px 17px;background:var(--soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-weight:750;font-size:13px}
 .box,.section{padding:16px 17px;border-bottom:1px solid var(--line)}.horse{font-size:20px;font-weight:800;margin:7px 0 12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.metric{background:#f8fafb;border:1px solid #20242a;border-radius:10px;padding:10px}.metric b{display:block;font-size:18px}.metric small{color:var(--muted);font-size:9px}.reason{color:#b7bcc5;font-size:12px;line-height:1.6;margin-top:10px}
@@ -548,6 +549,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 
 <script>
 (function(){
+  try{
   var raceList=document.getElementById('race-acc-list');
   var raceEmpty=document.getElementById('race-empty');
   var raceBlock=document.getElementById('race-review-block');
@@ -690,6 +692,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
     });
   }
   apply('all');
+  }catch(err){ try{ console.error('result-acc', err); }catch(e){} }
 })();
 </script>
 {% else %}
@@ -722,12 +725,11 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="race-acc-ev"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span><small style="margin-left:6px;color:var(--muted);font-size:11px;font-weight:700">オッズ待ち</small></div>
 {% endif %}
 </button>
-<div class="race-acc-body" data-lazy="1"></div>
-<template class="race-detail-tpl">
+<div class="race-acc-body">
 <section class="race {{r['荒れクラス']}}">
 <div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R{% endif %}<small>20,000回 仮想レース</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>ARERU指数 · {{r['判定']}}</small></div></div></div>
 <div class="betbar"><span class="rank-badge"><span>{{r['BET判定']}}</span></span><span>買い期待度 {{r['BET期待値']}}</span></div>
-<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}{% if r.get('本命馬番') %}（{{r['本命馬番']}}番）{% endif %}
+<div class="box"><div class="label">本命評価</div><div class="horse">◎ {{r['本命']}}{% if r.get('本命馬番') %}（{{r['本命馬番']}}番）{% endif %}</div>
 {% if r.get('期待値あり') %}
 <div class="ev-hero"><span class="ev-main {{r['期待値トーン']}}"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 {{r['期待値表示']}}</span><span class="ev-tag {{r['期待値トーン']}}">{{r['期待値ラベル']}}</span></div>
 {% elif r.get('オッズ取得済') %}
@@ -735,7 +737,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% else %}
 <div class="ev-hero"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span><span class="ev-tag ev-none">オッズ待ち</span></div>
 {% endif %}
-</div>
+
 <div class="metrics"><div class="metric"><b>{{r['本命AREru指数']}}</b><small>総合指数</small></div><div class="metric"><b>{{r['シミュレーション勝率']}}%</b><small>仮想勝率</small></div><div class="metric"><b>{{r['シミュレーション3着内率']}}%</b><small>仮想3着内率</small></div></div>
 {# 現在オッズ取得後は 現在オッズ / AI適正オッズ / 期待値 を自動表示 #}
 <div class="ev-detail">
@@ -765,13 +767,14 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </div>
 <div class="beta">β版 · 実着順は予想入力に未使用 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div>
 </section>
-</template>
+</div>
 </article>
 {% endfor %}
 </div>
 </section>
 <script>
 (function(){
+  try{
   var list=document.getElementById('predict-acc-list');
   if(!list) return;
 
@@ -779,16 +782,6 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
     var chev=btn && btn.querySelector('.race-acc-chevron');
     if(chev) chev.textContent=open?'▼':'▶';
     if(btn) btn.setAttribute('aria-expanded', open?'true':'false');
-  }
-
-  function mountDetail(card){
-    var body=card.querySelector('.race-acc-body');
-    if(!body || body.getAttribute('data-lazy')!=='1') return;
-    var tpl=card.querySelector('template.race-detail-tpl');
-    if(tpl && tpl.content){
-      body.appendChild(tpl.content.cloneNode(true));
-    }
-    body.setAttribute('data-lazy','0');
   }
 
   function closeCard(card){
@@ -802,7 +795,6 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
     [].forEach.call(list.querySelectorAll('.race-acc.open'), function(other){
       if(other!==card) closeCard(other);
     });
-    mountDetail(card);
     card.classList.add('open');
     setChevron(card.querySelector('.race-acc-toggle'), true);
     if(scroll){
@@ -844,6 +836,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   }
   openFromHash();
   window.addEventListener('hashchange', openFromHash);
+  }catch(err){ try{ console.error('predict-acc', err); }catch(e){} }
 })();
 </script>
 {% else %}
