@@ -272,6 +272,11 @@ def refresh_odds_for_dates(
         win = _fetch_win_odds_with_fallback(client, rid, src)
         odds_by_race[rid] = win
         n = len({k: v for k, v in win.items() if len(str(k)) <= 2 and v.get("単勝オッズ")})
+        sample_status = ""
+        for _k, info in win.items():
+            if isinstance(info, dict) and info.get("オッズ状態"):
+                sample_status = str(info.get("オッズ状態"))
+                break
         if n:
             ok_races += 1
             try:
@@ -280,7 +285,18 @@ def refresh_odds_for_dates(
                 print(f"  ⚠️ 券種保存スキップ {rid}: {e}")
         else:
             empty_races += 1
-        print(f"  [{i}/{len(race_ids)}] {venue}{race_no}R {rid}: オッズ{n}頭")
+            # 4R以降を含む空応答を必ず残す（原因切り分け用）
+            try:
+                raw = client.fetch_odds_api(rid, 1, source=src)
+                print(
+                    f"  🔎 空オッズ詳細 {venue}{race_no}R {rid}: "
+                    f"status={raw.get('status')!r} reason={raw.get('reason')!r} "
+                    f"updated={raw.get('updated_at')!r} keys={len(raw.get('odds') or {})}"
+                )
+            except Exception as e:
+                print(f"  🔎 空オッズ詳細取得失敗 {rid}: {e}")
+        st = f" status={sample_status}" if sample_status else ""
+        print(f"  [{i}/{len(race_ids)}] {venue}{race_no}R {rid}: オッズ{n}頭{st}")
 
     updated = 0
     for idx in target.index:
