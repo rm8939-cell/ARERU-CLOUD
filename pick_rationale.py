@@ -696,8 +696,10 @@ def build_compact_bullets(card: dict, limit: int = 4) -> list[str]:
         elif len(key) <= 10:
             add(key)
 
-    while len(bullets) < min(3, limit):
-        filler = ["総合評価上位", "欠点が少ない", "相手関係でも残せる"][len(bullets)]
+    # 足りなければ定型で埋める（重複で add が空振りしても無限ループしない）
+    for filler in ("総合評価上位", "欠点が少ない", "相手関係でも残せる"):
+        if len(bullets) >= min(3, limit):
+            break
         add(filler)
     return bullets[:limit]
 
