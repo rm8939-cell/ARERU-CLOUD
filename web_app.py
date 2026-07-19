@@ -21,6 +21,33 @@ ANALYSIS_CSV=DATA/'analysis_result.csv'
 JST=timezone(timedelta(hours=9))
 
 
+@app.errorhandler(Exception)
+def _unhandled_error(exc):
+    """未処理例外でも真っ白にせず、必ず可視HTMLを返す。"""
+    # Flask/Werkzeug の HTTPException はそのまま
+    try:
+        from werkzeug.exceptions import HTTPException
+        if isinstance(exc, HTTPException):
+            return exc
+    except Exception:
+        pass
+    print(f'[unhandled] {type(exc).__name__}: {exc}')
+    html=(
+        '<!doctype html><html lang="ja"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>ARERU.CLOUD</title>'
+        '<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;'
+        'margin:40px auto;max-width:640px;padding:0 16px;color:#17212b;background:#f4f6f8}'
+        'a{color:#176b45;font-weight:700}</style></head><body>'
+        '<h1>ARERU.CLOUD</h1>'
+        '<p>表示中にエラーが発生しました。再読み込みするか、トップへ戻ってください。</p>'
+        f'<p style="color:#6f7b87;font-size:13px">{type(exc).__name__}</p>'
+        '<p><a href="/">トップへ戻る</a></p>'
+        '</body></html>'
+    )
+    return html, 500
+
+
 def _today_jst() -> str:
     """開催判定用の『本日』。Render(UTC)でも日本時間を使う。"""
     return datetime.now(JST).date().isoformat()
