@@ -505,6 +505,27 @@ def simulate_race(g, runs=None, profiles=None, pace=None):
     # 合計が理論値に近づくよう再スケール
     if place2.sum()>0: place2=place2*(200.0/place2.sum())
     if place3.sum()>0: place3=place3*(300.0/place3.sum())
+    # 単勝オッズがある場合は市場暗示確率へ部分収縮（大穴の過大勝率→極端EVを抑制）
+    if "単勝オッズ" in g.columns:
+        market_arr=pd.to_numeric(g["単勝オッズ"], errors="coerce").to_numpy(dtype=float)
+        valid=np.isfinite(market_arr) & (market_arr > 1.01)
+        if int(valid.sum()) >= max(3, n_h // 2):
+            impl=np.zeros(n_h, dtype=float)
+            impl[valid]=1.0/market_arr[valid]
+            # オッズ欠損馬は現状SIM比率で埋める
+            if (~valid).any():
+                fallback=np.maximum(win, 0.01)
+                impl[~valid]=fallback[~valid]/max(float(fallback[~valid].sum()), 1e-9)
+            impl=impl/max(float(impl.sum()), 1e-9)*100.0
+            # SIMが市場より強いほど市場寄りへ（長穴の37%勝ち等を潰す）
+            ratio=np.maximum(win, 0.01)/np.maximum(impl, 0.05)
+            sim_w=np.clip(0.58 - 0.12*np.log1p(np.maximum(ratio-1.0, 0.0)), 0.28, 0.62)
+            win=sim_w*win+(1.0-sim_w)*impl
+            win=_cap_sim_win_rates(win)
+            # 合計100%へ再正規化
+            if float(win.sum()) > 0:
+                win=win*(100.0/float(win.sum()))
+                win=_cap_sim_win_rates(win)
     g["SIM勝率"]=win
     g["SIM2着内率"]=place2
     g["SIM3着内率"]=place3
@@ -512,7 +533,9 @@ def simulate_race(g, runs=None, profiles=None, pace=None):
     fair=np.where(win>0,100.0/safe_win,999.0)
     g["AI適正オッズ"]=np.maximum(fair, AI_FAIR_ODDS_MIN)
     market=pd.to_numeric(g["単勝オッズ"], errors="coerce") if "単勝オッズ" in g.columns else pd.Series(np.nan, index=g.index)
-    g["単勝期待値"]=np.where((market>0)&(win>0), market*safe_win, np.nan)
+    # 単勝期待値も信頼できる帯にソフトクリップ（表示・ログ用）
+    raw_ticket_ev=np.where((market>0)&(win>0), market*(win/100.0)*100.0, np.nan)
+    g["単勝期待値"]=np.where(np.isfinite(raw_ticket_ev), np.clip(raw_ticket_ev, 70, 130), np.nan)
     return g, order_all
 
 def _ticket_candidates(g, orders):
@@ -848,7 +871,9 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
             if _n_valid_row(row)<3: minus.append('サンプル少')
             win_ev=None
             if pd.notna(mo) and pd.notna(fo) and float(fo)>0:
-                win_ev=round(float(mo)/float(fo)*100)
+                # 市場比1.30倍超の割安はCSV段階でも認めない（1000%級を防止）
+                fo_cap=max(float(fo), float(mo)/1.30, AI_FAIR_ODDS_MIN)
+                win_ev=int(round(min(130.0, max(70.0, float(mo)/fo_cap*100.0))))
             detail={
                 '役割':role,
                 '馬名':name,
@@ -1025,25 +1050,18 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 parts.append(s)
             return '｜'.join(parts) if parts else '見送り'
 
-        # レース投資判定: ワイド/馬連の中央値EV。過大（モデル過信）も過小も見送り
+        # 投資判定は表示時に ev_analysis が信頼度込みで再計算する（ここでは暫定）
+        main_odds=num(main.get('単勝オッズ'))
         core_evs=[]
         for kind,_,plan in plans:
             if kind not in ('ワイド','馬連'):
                 continue
             ev=plan.get('期待回収率')
             if ev is not None:
-                core_evs.append(float(ev))
+                core_evs.append(min(float(ev), 130.0))
         race_ev=round(float(np.median(core_evs)),1) if core_evs else None
-        main_odds=num(main.get('単勝オッズ'))
-        main_fair=float(main['AI適正オッズ']) if pd.notna(main.get('AI適正オッズ')) else None
-        main_mkt=float(main_odds) if pd.notna(main_odds) else None
-        main_win_ev=(main_mkt/main_fair*100) if (main_mkt and main_fair and main_fair>0) else None
-        if race_ev is None:
-            invest_label='判定待ち'; invest_icon='⚪'; invest_tone='wait'
-        elif 105 <= race_ev <= 145 and (main_win_ev is None or 70 <= main_win_ev <= 200):
-            invest_label='買いレース'; invest_icon='🟢'; invest_tone='buy'
-        else:
-            invest_label='見送りレース'; invest_icon='🔴'; invest_tone='skip'
+        invest_label='判定待ち'; invest_icon='⚪'; invest_tone='wait'
+        main_n_valid=_n_valid_row(main)
 
         # 推奨馬券JSON（UI・資金配分用）
         recommend_tickets=[]
@@ -1086,6 +1104,8 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         ev_disp=f"{ev}%" if ev is not None else 'オッズ接続後に算出'
         fair_odds=round(max(float(main['AI適正オッズ']), AI_FAIR_ODDS_MIN),1)
         if pd.notna(main_odds) and float(main_odds)>0 and fair_odds>0:
+            # 市場から極端に離れた適正はCSV保存値でも抑制（表示は ev_analysis が再計算）
+            fair_odds=round(max(fair_odds, float(main_odds)/1.30, AI_FAIR_ODDS_MIN),1)
             ui_ev=round(float(main_odds)/fair_odds*100)
             if ui_ev>=EV_EXTREME_PCT:
                 log.warning(
@@ -1121,6 +1141,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           '推奨馬券':json.dumps(recommend_tickets,ensure_ascii=False),
           '投資判定':invest_label,'投資判定アイコン':invest_icon,'投資判定トーン':invest_tone,
           'レース期待回収率':race_ev if race_ev is not None else '',
+          '本命データ件数':int(main_n_valid),
           'ワイド評価':round(wide_score,1),'ワイド判定':go_label(wide_score,wide_plan),'ワイド買い目':plan_text(wide_plan),'ワイド圧縮':wide_plan['圧縮理由'],
           'ワイド詳細':json.dumps(wide_plan,ensure_ascii=False),
           '馬連評価':round(quinella_score,1),'馬連判定':go_label(quinella_score,quinella_plan),'馬連買い目':plan_text(quinella_plan),'馬連圧縮':quinella_plan['圧縮理由'],
