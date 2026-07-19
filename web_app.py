@@ -1,7 +1,7 @@
 from flask import Flask,render_template,request
 import subprocess,sys,json,re,threading
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 import os
 import pandas as pd
 from areru_engine import parse_date
@@ -18,6 +18,12 @@ DATA=BASE/'data'; ARCH=DATA/'predictions_by_date'; ARCH.mkdir(parents=True,exist
 RUNNERS=DATA/'runners.csv'
 LEGACY=DATA/'score_test_data.csv'
 ANALYSIS_CSV=DATA/'analysis_result.csv'
+JST=timezone(timedelta(hours=9))
+
+
+def _today_jst() -> str:
+    """開催判定用の『本日』。Render(UTC)でも日本時間を使う。"""
+    return datetime.now(JST).date().isoformat()
 
 def _runner_path():
     if RUNNERS.exists(): return RUNNERS
@@ -175,7 +181,7 @@ def _venue_meetings(records):
 
 def _pick_today_date(available, today_str=''):
     """本日開催日を解決。当日が無ければ直近の開催日へ。"""
-    today_str=str(today_str or date.today().isoformat())
+    today_str=str(today_str or _today_jst())
     av=list(available or [])
     if not av:
         return ''
@@ -189,7 +195,7 @@ def _pick_today_date(available, today_str=''):
 
 def _anchor_meeting_date(found, today_str=''):
     """検出開催日から『本日優先・無ければ直近過去』のアンカー日を返す。未来日は選ばない。"""
-    today_str=str(today_str or date.today().isoformat())
+    today_str=str(today_str or _today_jst())
     days=[str(d) for d in (found or []) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(d))]
     if not days:
         return ''
@@ -204,7 +210,7 @@ def _anchor_meeting_date(found, today_str=''):
 
 def _result_available_dates(meeting_dates, result_days, today_str=''):
     """結果検証用の日付一覧。開催日(≦本日)と結果確定日を合流し、新しい順。"""
-    today_str=str(today_str or date.today().isoformat())
+    today_str=str(today_str or _today_jst())
     meet=[d for d in (meeting_dates or []) if d<=today_str]
     res=list(result_days or [])
     return sorted(set(meet) | set(res), reverse=True)
@@ -214,7 +220,7 @@ def bootstrap_missing_results(source: str = 'jra') -> bool:
     """予想があるのに結果未取込の直近日をバックグラウンド取得。"""
     if source not in ('jra','nar','all'):
         return False
-    today=date.today().isoformat()
+    today=_today_jst()
     meet=dates(source)
     have=set(dates_with_results(source))
     # 昨日以前で結果が無い開催日のみ（当日は未確定が多いので対象外・新しい順・最大2日）
@@ -475,7 +481,7 @@ def bootstrap_source(source: str) -> bool:
     """
     if source != 'nar':
         return False
-    today=date.today().isoformat()
+    today=_today_jst()
     # 直近数日だけ走査（毎回28日走査しない）
     try:
         from netkeiba_client import NetkeibaClient
@@ -532,7 +538,7 @@ def index():
             threading.Thread(target=bootstrap_source, args=(source,), daemon=True).start()
     except Exception as e:
         print(f'[bootstrap] skip: {e}')
-    today=date.today().isoformat()
+    today=_today_jst()
     meeting_dates=dates(source)
     av=list(meeting_dates)
     selected=request.args.get('date','').strip()
@@ -559,11 +565,13 @@ def index():
         explicit=str(request.args.get('date') or '').strip()
         pred_exists=(ARCH/f'predictions_{explicit}.csv').exists() if explicit else False
         if explicit and (explicit in av or pred_exists):
+            # ユーザーが日付を明示したときだけその日を優先（最新開催日も選択可）
             selected=explicit
             if explicit not in av:
                 av=sorted(set(av)|{explicit}, reverse=True)
-        elif not selected or selected not in av:
+        else:
             # デフォルトは最新の結果確定日。無ければ本日以前の最新開催日
+            # ※直前の meeting_dates[0]（当日）へ寄った selected はここで上書きする
             selected=(result_days[0] if result_days else (av[0] if av else ''))
         # 結果未取込の確定候補を裏で補完
         try:
