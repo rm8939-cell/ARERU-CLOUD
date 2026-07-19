@@ -565,11 +565,13 @@ def index():
         explicit=str(request.args.get('date') or '').strip()
         pred_exists=(ARCH/f'predictions_{explicit}.csv').exists() if explicit else False
         if explicit and (explicit in av or pred_exists):
+            # ユーザーが日付を明示したときだけその日を優先（最新開催日も選択可）
             selected=explicit
             if explicit not in av:
                 av=sorted(set(av)|{explicit}, reverse=True)
-        elif not selected or selected not in av:
+        else:
             # デフォルトは最新の結果確定日。無ければ本日以前の最新開催日
+            # ※直前の meeting_dates[0]（当日）へ寄った selected はここで上書きする
             selected=(result_days[0] if result_days else (av[0] if av else ''))
         # 結果未取込の確定候補を裏で補完
         try:
