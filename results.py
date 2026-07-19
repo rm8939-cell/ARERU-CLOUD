@@ -643,7 +643,7 @@ def summarize(analysis: pd.DataFrame) -> None:
         base = analysis
         if "購入対象" in analysis.columns:
             base = analysis[pd.to_numeric(analysis["購入対象"], errors="coerce").fillna(0).astype(int) == 1]
-        for rk in ["S", "A", "B", "C"]:
+        for rk in ["S", "A", "B", "C", "D"]:
             g = base[base["勝負ランク"].astype(str).str.upper() == rk]
             if g.empty:
                 print(f"  {rk}: 購入0件")
@@ -658,7 +658,7 @@ def summarize(analysis: pd.DataFrame) -> None:
         print("  --- ランク×券種（購入分のみ） ---")
         label = {"本命": "単勝", "単勝": "単勝"}
         order = ["単勝", "ワイド", "馬連", "三連複", "三連単"]
-        for rk in ["S", "A", "B", "C"]:
+        for rk in ["S", "A", "B", "C", "D"]:
             g_rank = base[base["勝負ランク"].astype(str).str.upper() == rk]
             if g_rank.empty:
                 continue

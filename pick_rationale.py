@@ -603,6 +603,150 @@ def build_pick_rationale(
     }
 
 
+def horse_grade(score) -> str:
+    """馬のAI評価 S〜D。"""
+    try:
+        v = float(score)
+    except (TypeError, ValueError):
+        return "C"
+    if v >= 78:
+        return "S"
+    if v >= 62:
+        return "A"
+    if v >= 48:
+        return "B"
+    if v >= 34:
+        return "C"
+    return "D"
+
+
+def build_compact_bullets(card: dict, limit: int = 4) -> list[str]:
+    """詳細根拠をユーザー向けの短い箇条書きへ圧縮。"""
+    bullets: list[str] = []
+
+    def add(msg: str):
+        msg = str(msg or "").strip()
+        if msg and msg not in bullets:
+            bullets.append(msg)
+
+    plus = card.get("プラス材料一覧") or _split_materials(card.get("プラス材料") or "")
+    why = card.get("判断根拠") or []
+    why_map = {str(x.get("項目")): x for x in why if isinstance(x, dict)}
+
+    # 優先マッピング（短く・分かりやすく）
+    last3 = why_map.get("上がり順位") or {}
+    if str(last3.get("評価", "")).endswith("位") or "高" in str(last3.get("説明", "")):
+        add("上がり3F上位")
+    elif any("上がり" in str(p) for p in plus):
+        add("上がり3F上位")
+
+    dist = str((why_map.get("距離適性") or {}).get("評価") or card.get("距離適性") or "")
+    course = str((why_map.get("コース適性") or {}).get("評価") or card.get("コース適性") or "")
+    surface = str((why_map.get("馬場適性") or {}).get("評価") or card.get("馬場適性") or "")
+    if dist == "○" and course == "○":
+        add("同条件成績◎")
+    elif dist == "○" or course == "○" or surface == "○":
+        add("同条件成績○")
+
+    pace = why_map.get("展開との相性") or {}
+    if str(pace.get("評価")) == "好相性" or "好相性" in str(card.get("展開相性") or ""):
+        add("展開が向く")
+    elif "不利" in str(pace.get("評価") or card.get("展開相性") or ""):
+        add("展開はやや不利")
+
+    trouble = why_map.get("前走不利補正") or {}
+    if "補正" in str(trouble.get("評価") or "") or any("前走不利" in str(p) for p in plus):
+        add("前走不利補正")
+
+    if any("複勝" in str(p) for p in plus):
+        add("複勝圏が厚い")
+    if any("割安" in str(p) for p in plus):
+        add("オッズ妙味あり")
+    if any("指数" in str(p) for p in plus):
+        add("近走指数上位")
+    if any("騎手" in str(p) for p in plus):
+        add("騎手相性◎")
+    if any("地方" in str(p) for p in plus) or "補正済" in str((why_map.get("地方→中央補正") or {}).get("評価") or ""):
+        add("地方→中央補正済")
+
+    # 足りなければプラス材料を短文化
+    shorten = {
+        "上がり評価高": "上がり3F上位",
+        "複勝圏安定": "複勝圏が厚い",
+        "市場より割安": "オッズ妙味あり",
+        "距離適性が合う": "距離適性◎",
+        "コース適性が合う": "コース適性◎",
+        "馬場適性が合う": "馬場適性◎",
+        "想定展開との相性が良い": "展開が向く",
+        "前走不利の可能性": "前走不利補正",
+        "騎手補正+": "騎手相性◎",
+        "近走指数1位の上位評価": "近走指数上位",
+        "上がり性能が高い": "上がり3F上位",
+        "人気薄でもシミュレーション上位": "穴妙味あり",
+        "総合指数とシミュレーションのバランスが良い": "総合評価上位",
+        "条件面の大きな欠点が見当たらない": "欠点が少ない",
+        "相手関係を踏まえても残せる内容": "相手関係でも残せる",
+    }
+    for p in plus:
+        if len(bullets) >= limit:
+            break
+        key = str(p)
+        if key in shorten:
+            add(shorten[key])
+        elif len(key) <= 10:
+            add(key)
+
+    while len(bullets) < min(3, limit):
+        filler = ["総合評価上位", "欠点が少ない", "相手関係でも残せる"][len(bullets)]
+        add(filler)
+    return bullets[:limit]
+
+
+def build_display_picks(record: dict) -> list[dict]:
+    """画面表示用: ◎本命 / ○対抗 / ☆注目馬 の3頭のみ。"""
+    cards = [c for c in (record.get("ピックカード一覧") or []) if isinstance(c, dict)]
+    by_role = {str(c.get("役割")): c for c in cards}
+    ordered: list[tuple[str, str, dict | None]] = [
+        ("本命", "◎", by_role.get("本命")),
+        ("対抗", "○", by_role.get("対抗")),
+    ]
+    spotlight = by_role.get("注目馬")
+    if spotlight is None:
+        for c in cards:
+            if c.get("役割") == "穴馬":
+                spotlight = c
+                break
+    ordered.append(("注目馬", "☆", spotlight))
+
+    out = []
+    for role, mark, card in ordered:
+        if not card:
+            continue
+        try:
+            conf = float(card.get("AI信頼度スコア"))
+        except (TypeError, ValueError):
+            try:
+                conf = float(card.get("AI評価") or 50)
+            except (TypeError, ValueError):
+                conf = 50.0
+        grade = horse_grade(conf)
+        ban = str(card.get("馬番表示") or card.get("馬番") or "").strip()
+        name = str(card.get("馬名") or "").strip()
+        line = f"{mark}{ban} {name}".strip() if ban else f"{mark} {name}".strip()
+        out.append({
+            "役割": role,
+            "印": mark,
+            "馬番表示": ban,
+            "馬名": name,
+            "表示行": line,
+            "AI評価": grade,
+            "AI信頼度スコア": round(conf, 1),
+            "要点": build_compact_bullets(card, limit=4),
+            "カード": card,
+        })
+    return out[:3]
+
+
 def enrich_pick_card(card: dict, race: dict | None = None) -> dict:
     """既存CSVの薄いカードを表示用に充実（再予想なしでもUIを満たす）。"""
     if not isinstance(card, dict):
