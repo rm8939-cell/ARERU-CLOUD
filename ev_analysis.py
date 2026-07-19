@@ -138,6 +138,14 @@ def apply_expected_value(record: dict) -> dict:
     record['期待値ラベル'] = ev['期待値ラベル']
     record['期待値あり'] = ev['期待値あり']
     record['オッズ取得済'] = market is not None
+    if ev.get('期待値あり') and (ev.get('期待値') or 0) >= 1000:
+        import logging
+        logging.getLogger('areru').warning(
+            'EV_EXTREME_UI race_id=%s horse=%s market=%s fair=%s ev=%s%% win=%s reason=%s',
+            record.get('race_id'), record.get('本命'),
+            record.get('現在オッズ'), record.get('AI適正オッズ'), ev.get('期待値'),
+            record.get('シミュレーション勝率'), record.get('本命理由'),
+        )
     return record
 
 
