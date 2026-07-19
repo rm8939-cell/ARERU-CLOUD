@@ -494,7 +494,23 @@ def prep(records, ban_map=None):
             ban=ban_map.get(key, '')
         r['本命馬番']=ban
         r['本命馬番表示']=r.get('本命馬番表示') or (circle_ban(ban) if ban else '')
-        r['本命表示']=f'◎{ban}' if ban else (f"◎{r.get('本命','')}" if r.get('本命') else '◎—')
+        horse=str(r.get('本命') or '').strip()
+        if horse.lower() in ('nan','none','なし'):
+            horse=''
+        # 一覧・詳細共通: 馬番＋馬名
+        if ban and horse:
+            r['本命表示']=f'{ban}番 {horse}'
+        elif ban:
+            r['本命表示']=f'{ban}番'
+        elif horse:
+            r['本命表示']=horse
+        else:
+            r['本命表示']='—'
+        r['レース名表示']=(
+            f"{r.get('開催地','')} {int(float(r['レース'])):02d}R"
+            if str(r.get('レース','')).replace('.','',1).isdigit()
+            else str(r.get('開催地') or 'レース')
+        )
         # 投資判定のフォールバック
         if not r.get('投資判定'):
             try:
@@ -508,6 +524,20 @@ def prep(records, ban_map=None):
                 r['投資判定アイコン']=r.get('投資判定アイコン') or '⚪'
                 r['投資判定トーン']=r.get('投資判定トーン') or 'wait'
         apply_expected_value(r)
+        # ピックカードにも馬番＋馬名を付与
+        for c in r.get('ピックカード一覧') or []:
+            if not isinstance(c, dict):
+                continue
+            cb=str(c.get('馬番') or '').strip()
+            cn=str(c.get('馬名') or '').strip()
+            cban=c.get('馬番表示') or (circle_ban(cb) if cb else '')
+            c['表示名']=f"{cb}番 {cn}".strip() if cb and cn else (cn or cban or '—')
+            c['馬番表示']=cban or cb
+        danger=r.get('危険人気カード') or {}
+        if isinstance(danger, dict) and danger:
+            db=str(danger.get('馬番') or '').strip()
+            dn=str(danger.get('馬名') or '').strip()
+            danger['表示名']=f"{db}番 {dn}".strip() if db and dn else (dn or danger.get('馬番表示') or '—')
     return records
 
 def clean_horse(x):
