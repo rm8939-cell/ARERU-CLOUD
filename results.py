@@ -127,63 +127,208 @@ def resolve_target_dates(
     return prediction_dates()[:1]
 
 
-def fetch_date_results(client: NetkeibaClient, date_str: str, source: str = "jra") -> tuple[pd.DataFrame, pd.DataFrame]:
+def _race_label(client: NetkeibaClient, race_id: str, detail: dict | None = None) -> str:
+    """ログ用『函館 01R』ラベル。"""
+    meta = client.parse_race_id(race_id) if client else {}
+    venue = (detail or {}).get("venue") or meta.get("venue") or "?"
+    race_no = (detail or {}).get("race_no") or meta.get("race_no") or "?"
+    try:
+        rn = f"{int(float(race_no)):02d}R"
+    except Exception:
+        rn = f"{race_no}R"
+    return f"{venue} {rn}"
+
+
+def _detail_to_rows(detail: dict, date_str: str, source: str, race_id: str) -> tuple[list[dict], list[dict]]:
+    horse_rows, pay_rows = [], []
+    race_no = detail.get("race_no") or ""
+    venue = detail.get("venue") or ""
+    d = detail.get("date") or date_str
+    rid_s = _norm_race_id(race_id)
+    for h in detail.get("horses") or []:
+        horse_rows.append({
+            "race_id": rid_s,
+            "date": d,
+            "レース": race_no,
+            "開催地": venue,
+            "馬名": h.get("馬名", ""),
+            "馬番": h.get("馬番", ""),
+            "着順": h.get("着順", ""),
+            "人気": h.get("人気", ""),
+            "確定オッズ": h.get("確定オッズ", ""),
+            "source": source,
+        })
+    for p in detail.get("payouts") or []:
+        pay_rows.append({
+            "race_id": rid_s,
+            "date": d,
+            "レース": race_no,
+            "開催地": venue,
+            "bet_type": p.get("bet_type", ""),
+            "combination": p.get("combination", ""),
+            "payout": p.get("payout") if p.get("payout") is not None else "",
+            "ninki": p.get("ninki", ""),
+            "source": source,
+        })
+    return horse_rows, pay_rows
+
+
+def _persist_results(results: pd.DataFrame, payouts: pd.DataFrame) -> None:
+    """途中終了しても残るよう都度保存。"""
+    DATA.mkdir(parents=True, exist_ok=True)
+    out_r = results.copy()
+    out_p = payouts.copy()
+    if not out_r.empty and "race_id" in out_r.columns:
+        out_r["race_id"] = out_r["race_id"].map(_norm_race_id)
+    if not out_p.empty and "race_id" in out_p.columns:
+        out_p["race_id"] = out_p["race_id"].map(_norm_race_id)
+    out_r.to_csv(RESULTS_CSV, index=False, encoding="utf-8-sig")
+    out_p.to_csv(PAYOUTS_CSV, index=False, encoding="utf-8-sig")
+
+
+def _fetch_one_result(
+    client: NetkeibaClient,
+    rid: str,
+    date_str: str,
+    source: str,
+    index: int,
+    total: int,
+) -> tuple[str, list[dict], list[dict], str]:
+    """1レース取得。戻り値: status(ok|pending|fail), horse_rows, pay_rows, label。"""
+    label = _race_label(client, rid)
+    print(f"  → {label} 取得 [{index}/{total}] {rid}", flush=True)
+    try:
+        detail = client.fetch_result_detail(rid, source=source)
+    except Exception as e:
+        print(f"  ✗ {label} 失敗: {e}", flush=True)
+        return "fail", [], [], label
+    label = _race_label(client, rid, detail)
+    if not detail.get("horses"):
+        print(f"  … {label} 結果未確定", flush=True)
+        return "pending", [], [], label
+    h_rows, p_rows = _detail_to_rows(detail, date_str, source, rid)
+    print(
+        f"  ✓ {label} 取得完了（{len(detail['horses'])}頭 / 払戻 {len(detail.get('payouts') or [])}件）",
+        flush=True,
+    )
+    return "ok", h_rows, p_rows, label
+
+
+def fetch_date_results(
+    client: NetkeibaClient,
+    date_str: str,
+    source: str = "jra",
+    results_acc: pd.DataFrame | None = None,
+    payouts_acc: pd.DataFrame | None = None,
+    persist: bool = True,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """開催日の全レースを最後まで取得。1レース失敗でも次へ進み、最後に再試行。"""
     ymd = date_str.replace("-", "")
-    print(f"\n🏁 {source.upper()} {date_str} 結果取得")
+    results_acc = results_acc if results_acc is not None else pd.DataFrame(columns=RESULT_COLS)
+    payouts_acc = payouts_acc if payouts_acc is not None else pd.DataFrame(columns=PAYOUT_COLS)
+
+    print(f"\n========== 取得開始 ==========", flush=True)
+    print(f"🏁 {source.upper()} {date_str} 結果取得", flush=True)
     try:
         race_ids = client.list_race_ids(ymd, source=source)
     except Exception as e:
-        print(f"⚠️ レース一覧取得失敗: {e}")
+        print(f"⚠️ レース一覧取得失敗: {e}", flush=True)
+        print(f"========== 取得完了（一覧失敗） ==========", flush=True)
         return pd.DataFrame(columns=RESULT_COLS), pd.DataFrame(columns=PAYOUT_COLS)
 
     if not race_ids:
-        print("⚠️ レースなし")
+        print("⚠️ レースなし", flush=True)
+        print(f"========== 取得完了（0レース） ==========", flush=True)
         return pd.DataFrame(columns=RESULT_COLS), pd.DataFrame(columns=PAYOUT_COLS)
 
-    horse_rows = []
-    pay_rows = []
-    for i, rid in enumerate(race_ids, 1):
-        print(f"  [{i}/{len(race_ids)}] {rid}")
+    # 開催場→R 順でログが追いやすいように並べる
+    def _sort_key(rid: str):
+        meta = client.parse_race_id(rid)
         try:
-            detail = client.fetch_result_detail(rid, source=source)
-        except Exception as e:
-            print(f"    ⚠️ 取得失敗: {e}")
-            continue
-        if not detail.get("horses"):
-            print("    ⚠️ 結果未確定")
-            continue
-        race_no = detail.get("race_no") or ""
-        venue = detail.get("venue") or ""
-        d = detail.get("date") or date_str
-        rid_s = _norm_race_id(rid)
-        for h in detail["horses"]:
-            horse_rows.append({
-                "race_id": rid_s,
-                "date": d,
-                "レース": race_no,
-                "開催地": venue,
-                "馬名": h.get("馬名", ""),
-                "馬番": h.get("馬番", ""),
-                "着順": h.get("着順", ""),
-                "人気": h.get("人気", ""),
-                "確定オッズ": h.get("確定オッズ", ""),
-                "source": source,
-            })
-        for p in detail.get("payouts") or []:
-            pay_rows.append({
-                "race_id": rid_s,
-                "date": d,
-                "レース": race_no,
-                "開催地": venue,
-                "bet_type": p.get("bet_type", ""),
-                "combination": p.get("combination", ""),
-                "payout": p.get("payout") if p.get("payout") is not None else "",
-                "ninki": p.get("ninki", ""),
-                "source": source,
-            })
-        print(f"    ✅ {len(detail['horses'])}頭 / 払戻 {len(detail.get('payouts') or [])}件")
+            rn = int(float(meta.get("race_no") or 999))
+        except Exception:
+            rn = 999
+        return (str(meta.get("venue") or ""), rn, rid)
 
-    return pd.DataFrame(horse_rows, columns=RESULT_COLS), pd.DataFrame(pay_rows, columns=PAYOUT_COLS)
+    race_ids = sorted(race_ids, key=_sort_key)
+    total = len(race_ids)
+    print(f"📋 対象レース数: {total}", flush=True)
+
+    horse_rows: list[dict] = []
+    pay_rows: list[dict] = []
+    ok_ids: list[str] = []
+    fail_ids: list[str] = []
+    pending_ids: list[str] = []
+    current_venue = None
+
+    def _ingest(status: str, rid: str, h_rows: list[dict], p_rows: list[dict]):
+        nonlocal results_acc, payouts_acc
+        if status == "ok":
+            ok_ids.append(rid)
+            horse_rows.extend(h_rows)
+            pay_rows.extend(p_rows)
+            chunk_h = pd.DataFrame(h_rows, columns=RESULT_COLS)
+            chunk_p = pd.DataFrame(p_rows, columns=PAYOUT_COLS)
+            results_acc = _merge_by_race(results_acc, chunk_h)
+            payouts_acc = _merge_by_race(payouts_acc, chunk_p)
+            if persist:
+                _persist_results(results_acc, payouts_acc)
+        elif status == "pending":
+            pending_ids.append(rid)
+        else:
+            fail_ids.append(rid)
+
+    for i, rid in enumerate(race_ids, 1):
+        meta = client.parse_race_id(rid)
+        venue = meta.get("venue") or "?"
+        if venue != current_venue:
+            current_venue = venue
+            print(f"—— {venue} ——", flush=True)
+        status, h_rows, p_rows, _label = _fetch_one_result(
+            client, rid, date_str, source, i, total
+        )
+        _ingest(status, rid, h_rows, p_rows)
+
+    # 失敗レースを最後に再試行（未確定は1回だけ再確認）
+    retry_targets = list(dict.fromkeys(fail_ids + pending_ids))
+    if retry_targets:
+        print(f"\n🔁 再試行開始（{len(retry_targets)}レース: 失敗+未確定）", flush=True)
+        still_fail: list[str] = []
+        still_pending: list[str] = []
+        for j, rid in enumerate(retry_targets, 1):
+            status, h_rows, p_rows, _label = _fetch_one_result(
+                client, rid, date_str, source, j, len(retry_targets)
+            )
+            if status == "ok":
+                fail_ids = [x for x in fail_ids if x != rid]
+                pending_ids = [x for x in pending_ids if x != rid]
+                if rid not in ok_ids:
+                    _ingest("ok", rid, h_rows, p_rows)
+            elif status == "pending":
+                still_pending.append(rid)
+            else:
+                still_fail.append(rid)
+        fail_ids = still_fail
+        pending_ids = still_pending
+        print("🔁 再試行完了", flush=True)
+
+    print(f"\n========== 取得完了 ==========", flush=True)
+    print(
+        f"✅ {source.upper()} {date_str}: 成功 {len(ok_ids)} / "
+        f"未確定 {len(pending_ids)} / 失敗 {len(fail_ids)} / 全 {total}",
+        flush=True,
+    )
+    if fail_ids:
+        print(f"  失敗ID: {', '.join(fail_ids[:12])}{'...' if len(fail_ids) > 12 else ''}", flush=True)
+    if pending_ids:
+        print(
+            f"  未確定ID: {', '.join(pending_ids[:12])}{'...' if len(pending_ids) > 12 else ''}",
+            flush=True,
+        )
+
+    day_h = pd.DataFrame(horse_rows, columns=RESULT_COLS)
+    day_p = pd.DataFrame(pay_rows, columns=PAYOUT_COLS)
+    return day_h, day_p
 
 def _ban_map(results: pd.DataFrame, race_id: str) -> dict[str, str]:
     rid = _norm_race_id(race_id)
@@ -552,11 +697,20 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
     if not skip_fetch:
         for src in sources:
             src_dates = resolve_target_dates(client, dates, latest or not dates, source=src)
-            print(f"🎯 {src.upper()} 対象日: {src_dates}")
+            print(f"🎯 {src.upper()} 対象日: {src_dates}", flush=True)
             for d in src_dates:
-                h, p = fetch_date_results(client, d, source=src)
-                results = _merge_by_race(results, h)
-                payouts = _merge_by_race(payouts, p)
+                try:
+                    # 増分保存付き（タイムアウト途中でも確定分は残る）
+                    h, p = fetch_date_results(
+                        client, d, source=src,
+                        results_acc=results, payouts_acc=payouts, persist=True,
+                    )
+                    results = _merge_by_race(results, h)
+                    payouts = _merge_by_race(payouts, p)
+                    _persist_results(results, payouts)
+                except Exception as e:
+                    # 日付単位でも落とさず次の日へ
+                    print(f"⚠️ {src.upper()} {d} 日付処理エラー（継続）: {e}", flush=True)
             target_dates.extend(src_dates)
         target_dates = sorted(set(target_dates))
     else:
@@ -566,23 +720,26 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
         results["race_id"] = results["race_id"].map(_norm_race_id)
     if not payouts.empty and "race_id" in payouts.columns:
         payouts["race_id"] = payouts["race_id"].map(_norm_race_id)
-    # race_id を文字列のまま保存（Excel/pandas の float 化による照合ズレ防止）
-    results.to_csv(RESULTS_CSV, index=False, encoding="utf-8-sig")
-    payouts.to_csv(PAYOUTS_CSV, index=False, encoding="utf-8-sig")
-    print(f"\n💾 {RESULTS_CSV} ({len(results)}行)")
-    print(f"💾 {PAYOUTS_CSV} ({len(payouts)}行)")
+    _persist_results(results, payouts)
+    print(f"\n💾 {RESULTS_CSV} ({len(results)}行)", flush=True)
+    print(f"💾 {PAYOUTS_CSV} ({len(payouts)}行)", flush=True)
 
     # 予想がある開催日 × 結果がある開催日を照合
     result_dates = set(results["date"].astype(str).unique())
     analyze_dates = sorted(set(prediction_dates()) & result_dates)
     if not analyze_dates:
         analyze_dates = sorted(result_dates)
-    analysis = analyze_predictions(results, payouts, dates=analyze_dates)
+    try:
+        analysis = analyze_predictions(results, payouts, dates=analyze_dates)
+    except Exception as e:
+        print(f"⚠️ 照合エラー: {e}", flush=True)
+        analysis = pd.DataFrame(columns=ANALYSIS_COLS)
     if not analysis.empty and "race_id" in analysis.columns:
         analysis["race_id"] = analysis["race_id"].map(_norm_race_id)
     analysis.to_csv(ANALYSIS_CSV, index=False, encoding="utf-8-sig")
-    print(f"💾 {ANALYSIS_CSV} ({len(analysis)}行)")
+    print(f"💾 {ANALYSIS_CSV} ({len(analysis)}行)", flush=True)
     summarize(analysis)
+    print("🏁 results.py 全処理完了", flush=True)
 
 
 def main():

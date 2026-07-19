@@ -370,36 +370,124 @@ def _result_available_dates(meeting_dates, result_days, today_str=''):
     return sorted(set(meet) | set(res), reverse=True)
 
 
-def bootstrap_missing_results(source: str = 'jra') -> bool:
-    """予想があるのに結果未取込の直近日をバックグラウンド取得。"""
+def _prediction_race_ids(date_str: str, source: str = 'all') -> set[str]:
+    """predictions CSV からその日の race_id 集合。"""
+    path=ARCH/f'predictions_{date_str}.csv'
+    if not path.exists():
+        return set()
+    try:
+        pdf=pd.read_csv(path).fillna('')
+    except Exception:
+        return set()
+    if 'race_id' not in pdf.columns:
+        return set()
+    if source in ('jra','nar') and 'source' in pdf.columns:
+        pdf=pdf[pdf['source'].astype(str).str.lower()==source]
+    out=set()
+    for x in pdf['race_id'].tolist():
+        rid=_norm_race_id(x)
+        if rid.isdigit() and len(rid)==12:
+            out.add(rid)
+    return out
+
+
+def _result_race_ids(date_str: str, source: str = 'all') -> set[str]:
+    """results.csv に着順が入っている race_id 集合。"""
+    rp=DATA/'results.csv'
+    if not rp.exists():
+        return set()
+    try:
+        rdf=pd.read_csv(rp,encoding='utf-8-sig').fillna('')
+    except Exception:
+        return set()
+    if rdf.empty or 'race_id' not in rdf.columns:
+        return set()
+    if source in ('jra','nar') and 'source' in rdf.columns:
+        rdf=rdf[rdf['source'].astype(str).str.lower()==source]
+    if 'date' in rdf.columns:
+        rdf=rdf[rdf['date'].astype(str)==str(date_str)]
+    if '着順' in rdf.columns:
+        rdf=rdf[rdf['着順'].astype(str).str.match(r'^\d')]
+    out=set()
+    for x in rdf['race_id'].tolist():
+        rid=_norm_race_id(x)
+        if rid:
+            out.add(rid)
+    return out
+
+
+def date_needs_result_fetch(date_str: str, source: str = 'jra') -> bool:
+    """予想レースに対して結果が欠けていれば True（部分取得済み日も再取得）。"""
+    if not date_str:
+        return False
+    expected=_prediction_race_ids(date_str, source if source!='all' else 'all')
+    have=_result_race_ids(date_str, source if source!='all' else 'all')
+    if expected:
+        missing=expected-have
+        if missing:
+            print(
+                f'[bootstrap-results] incomplete {date_str}: '
+                f'have={len(have)}/{len(expected)} missing={len(missing)}'
+            )
+            return True
+        return False
+    # 予想が無い日は「結果日に一度も無い」場合のみ
+    return date_str not in set(dates_with_results(source))
+
+
+def bootstrap_missing_results(source: str = 'jra', prefer_dates: list | None = None) -> bool:
+    """結果未取込・途中止まりの開催日をバックグラウンド取得。
+
+    - 当日も含める（昼過ぎ以降の残りR更新のため）
+    - 1レースでも結果があると完了扱いにしない（欠けがあれば再取得）
+    """
     if source not in ('jra','nar','all'):
         return False
     today=_today_jst()
     meet=dates(source)
-    have=set(dates_with_results(source))
-    # 昨日以前で結果が無い開催日のみ（当日は未確定が多いので対象外・新しい順・最大2日）
-    missing=[d for d in meet if d<today and d not in have][:2]
+    candidates=[]
+    # 明示日（結果タブで開いている日）を最優先
+    for d in (prefer_dates or []):
+        d=str(d or '').strip()
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', d) and d<=today:
+            candidates.append(d)
+    for d in meet:
+        if d<=today:
+            candidates.append(d)
+    # 新しい順・重複除去
+    ordered=[]
+    seen=set()
+    for d in sorted(set(candidates), reverse=True):
+        if d in seen:
+            continue
+        seen.add(d)
+        ordered.append(d)
+    missing=[d for d in ordered if date_needs_result_fetch(d, source)][:3]
     if not missing:
         return False
     lock=DATA/f'.results_bootstrap_{source}.lock'
     if lock.exists():
         try:
             age=(__import__('time').time()-lock.stat().st_mtime)
-            if age < 900:
+            # 当日の途中更新は短めクールダウン
+            cooldown=300 if today in missing else 900
+            if age < cooldown:
                 return False
         except Exception:
             pass
-    print(f'[bootstrap-results] source={source} missing={missing}')
+    print(f'[bootstrap-results] source={source} missing={missing}', flush=True)
     try:
         lock.write_text(str(__import__('os').getpid()), encoding='utf-8')
         cmd=[sys.executable,'results.py','--source',source,'--dates',*missing]
-        subprocess.run(cmd,check=True,timeout=1800)
+        # タイムアウトしても results.py 側の増分保存分は残る
+        subprocess.run(cmd,check=False,timeout=1800)
     except Exception as e:
-        print(f'[bootstrap-results] fail: {e}')
+        print(f'[bootstrap-results] fail: {e}', flush=True)
         return False
     finally:
         try: lock.unlink(missing_ok=True)
         except Exception: pass
+    print(f'[bootstrap-results] done source={source} dates={missing}', flush=True)
     return True
 
 
@@ -810,9 +898,14 @@ def index():
             # デフォルトは最新の結果確定日。無ければ本日以前の最新開催日
             # ※直前の meeting_dates[0]（当日）へ寄った selected はここで上書きする
             selected=(result_days[0] if result_days else (av[0] if av else ''))
-        # 結果未取込の確定候補を裏で補完
+        # 結果未取込・途中止まり（表示中の日＋直近）を裏で補完
         try:
-            threading.Thread(target=bootstrap_missing_results, args=(source,), daemon=True).start()
+            prefer=[selected] if selected else []
+            threading.Thread(
+                target=bootstrap_missing_results,
+                kwargs={'source': source, 'prefer_dates': prefer},
+                daemon=True,
+            ).start()
         except Exception as e:
             print(f'[bootstrap-results] skip: {e}')
     # 本日開催では必ず開催場一覧からやり直す
@@ -1671,16 +1764,38 @@ def refresh_route():
     """最新開催日・オッズを取得して runners / predictions を更新。"""
     mode=request.args.get('mode','full')
     source=request.args.get('source','all')
+    date=str(request.args.get('date') or '').strip()
     if source not in ('jra','nar','all'):
         source='all'
     try:
         if mode=='odds':
             cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only','--source',source]
+            subprocess.run(cmd,check=True,timeout=1800)
         elif mode=='results':
-            cmd=[sys.executable,'results.py','--latest','--source',source]
+            # gunicorn 既定30秒で同期実行すると途中切断されるため必ずバックグラウンド
+            if date and re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
+                cmd=[sys.executable,'results.py','--source',source,'--dates',date]
+            else:
+                cmd=[sys.executable,'results.py','--latest','--source',source]
+            print(f'[refresh-results] start bg: {" ".join(cmd)}', flush=True)
+
+            def _run_results():
+                try:
+                    subprocess.run(cmd, check=False, timeout=1800)
+                    print('[refresh-results] finished', flush=True)
+                except Exception as e:
+                    print(f'[refresh-results] fail: {e}', flush=True)
+
+            threading.Thread(target=_run_results, daemon=True).start()
+            av=dates(source)
+            return {
+                'ok': True, 'started': True, 'background': True,
+                'dates': av, 'latest': av[0] if av else None,
+                'mode': mode, 'source': source, 'date': date or None,
+            }
         else:
             cmd=[sys.executable,'refresh_data.py','--latest-only','--source',source]
-        subprocess.run(cmd,check=True,timeout=1800)
+            subprocess.run(cmd,check=True,timeout=1800)
         av=dates(source)
         return {'ok':True,'dates':av,'latest':av[0] if av else None,'mode':mode,'source':source}
     except Exception as e:
