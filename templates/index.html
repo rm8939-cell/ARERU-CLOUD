@@ -185,11 +185,19 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .venue-back{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;padding:8px 0;color:var(--brand);font-size:13px;font-weight:800;text-decoration:none}
 .venue-back:active{opacity:.75}
 .race-list-panel>h2 .venue-tag{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:8px;background:var(--soft);color:var(--brand);font-size:12px;letter-spacing:0;text-transform:none}
-/* 予想分析: レース一覧アコーディオン（初期は一覧のみ・詳細は Lazy Load） */
-.predict-acc .race-acc-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px;font-weight:700;line-height:1.4}
-.predict-acc .race-acc-bet{font-variant-numeric:tabular-nums;color:#334}
-.predict-acc .race-acc-bet small{display:inline;margin-left:4px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.predict-acc .race-acc-honmei{font-weight:850;color:var(--text);letter-spacing:.02em}
+/* 予想分析: レース一覧アコーディオン（直感的な要約行） */
+.predict-acc .race-acc-toggle{padding:14px 12px}
+.predict-acc .list-race{font-size:17px;font-weight:900;letter-spacing:.02em;line-height:1.3}
+.predict-acc .list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap}
+.predict-acc .list-honmei{font-size:15px;font-weight:850;color:var(--text);line-height:1.35;flex:1;min-width:140px}
+.predict-acc .list-honmei small{display:block;margin-top:2px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em}
+.predict-acc .list-ev-block{text-align:right;flex-shrink:0}
+.predict-acc .list-ev{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.1}
+.predict-acc .list-ev-note{display:block;margin-top:2px;font-size:11px;font-weight:750;color:var(--muted)}
+.predict-acc .list-stars{margin-top:8px;font-size:14px;letter-spacing:.08em;color:#c9a227;font-weight:800}
+.predict-acc .list-stars small{margin-left:6px;font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.predict-acc .horse-line{font-size:22px;font-weight:900;line-height:1.25;margin:4px 0 10px;letter-spacing:.02em}
+.predict-acc .horse-line .ban{color:var(--brand);margin-right:6px}
 .predict-acc .race-acc-body{min-height:0}
 .predict-acc .race-acc-body .race{margin:10px 0 0;border-radius:12px}
 .predict-acc .race-acc-body .toplink{display:none}
@@ -754,36 +762,38 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <a class="venue-back" href="/?source={{source}}&mode=predict&date={{selected_date}}">← {{selected_date}} の開催場一覧</a>
 {% endif %}
 {% if races %}
-{% if targets %}<section class="targets" id="predict-targets"><h2>{% if selected_venue %}{{selected_venue}}｜{% endif %}買い候補｜S勝負・A買い</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}" data-open-race="race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t['勝負ランク']}}">{{t['勝負ランク']}}</span></div><div class="target-name">{% if selected_venue %}{{'%02d'|format(t['レース']|int)}}R{% else %}{{t['開催地']}} / {{'%02d'|format(t['レース']|int)}}R{% endif %}<small>{{t['BET判定']}} · 主戦 {{t['推奨券種']}}</small></div><div class="target-score">{{t['BET期待値']}}<small>買い期待度</small></div></a>{% endfor %}</section>{% endif %}
+{% if targets %}<section class="targets" id="predict-targets"><h2>{% if selected_venue %}{{selected_venue}}｜{% endif %}買い候補</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}" data-open-race="race-{{t['race_id']|urlencode}}"><div class="rank"><span class="invest-pill {{t.get('一覧判定トーン','wait')}}" style="padding:4px 8px;font-size:11px">{{t.get('一覧判定','—')}}</span></div><div class="target-name">{{t.get('レース名表示') or t.get('開催地')}}<small>{{t.get('本命表示','—')}} · {{t.get('AI信頼度','★★★☆☆')}}</small></div><div class="target-score {{t.get('期待値トーン','ev-none')}}">{% if t.get('期待値あり') %}{{t['期待値表示']}}{% else %}—{% endif %}<small>{{t.get('期待値コメント','期待値')}}</small></div></a>{% endfor %}</section>{% endif %}
 <section class="race-list-panel" id="predict-race-panel">
 <h2>予想分析｜レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
 <div class="race-acc-list" id="predict-acc-list">
 {% for r in races %}
 <article class="race-acc predict-acc" id="race-{{r['race_id']|urlencode}}" data-race-id="{{r.get('race_id','')}}">
 <button type="button" class="race-acc-toggle" aria-expanded="false">
-<div class="race-acc-line">
+<div class="list-race">
 <span class="race-acc-chevron" aria-hidden="true">▶</span>
-<span class="race-acc-title">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} {{'%02d'|format(r['レース']|int)}}R{% endif %}</span>
-<span class="race-acc-rank rank-pill {{r['勝負ランク']}}" style="min-width:26px;height:24px;font-size:12px">{{r['勝負ランク']}}</span>
+{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r.get('開催地')}}{% endif %}
 </div>
-<div class="race-acc-meta">
-<span class="race-acc-honmei">{{r.get('本命表示','◎—')}}</span>
-<span class="race-acc-bet">{{r['BET期待値']}}<small>買い期待度</small></span>
-</div>
+<div class="list-row">
+<span class="invest-pill {{r.get('一覧判定トーン','wait')}}">{{r.get('一覧判定','判定待ち')}}</span>
+<div class="list-ev-block">
 {% if r.get('期待値あり') %}
-<div class="race-acc-ev"><span class="ev-main {{r['期待値トーン']}}"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 {{r['期待値表示']}}</span></div>
-{% elif r.get('オッズ取得済') %}
-<div class="race-acc-ev"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span></div>
+<span class="list-ev {{r.get('期待値トーン','ev-none')}}">{{r['期待値表示']}}</span>
+<span class="list-ev-note">{{r.get('期待値コメント','期待値')}}</span>
 {% else %}
-<div class="race-acc-ev"><span class="ev-main ev-none"><span class="ev-fire" aria-hidden="true">🔥</span>期待値 —</span><small style="margin-left:6px;color:var(--muted);font-size:11px;font-weight:700">オッズ待ち</small></div>
+<span class="list-ev ev-none">—</span>
+<span class="list-ev-note">{% if r.get('オッズ取得済') %}期待値{% else %}オッズ待ち{% endif %}</span>
 {% endif %}
+</div>
+</div>
+<div class="list-honmei"><small>本命</small>{{r.get('本命表示','—')}}</div>
+<div class="list-stars">{{r.get('AI信頼度','★★★☆☆')}}<small>AI信頼度</small></div>
 </button>
 <div class="race-acc-body">
 <section class="race {{r['荒れクラス']}}">
-<div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r['開催地']}} / {{'%02d'|format(r['レース']|int)}}R{% endif %}<small>{{r.get('シミュレーション回数',100000)|int}}回 段階シミュレーション</small></div><div class="race-head-right"><span class="rank-pill {{r['勝負ランク']}}">{{r['勝負ランク']}}</span><div class="heat">{{r['荒れ度']}}<small>荒れ指数 · {{r['判定']}}</small></div></div></div>
+<div class="race-head"><div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r['開催地']}}{% endif %}<small>詳細予想</small></div><div class="race-head-right"><span class="invest-pill {{r.get('一覧判定トーン','wait')}}">{{r.get('一覧判定','判定待ち')}}</span></div></div>
 <div class="betbar">
-<span class="invest-pill {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定アイコン','⚪')}} {{r.get('投資判定','判定待ち')}}{% if r.get('レース期待回収率') and r['レース期待回収率']!='' %} · 期待回収率 {{r['レース期待回収率']}}%{% endif %}</span>
-<span>買い期待度 {{r['BET期待値']}}</span>
+<span class="{{r.get('期待値トーン','ev-none')}}" style="font-weight:900">期待値 {% if r.get('期待値あり') %}{{r['期待値表示']}} · {{r.get('期待値コメント','')}}{% else %}—{% endif %}</span>
+<span class="stars">{{r.get('AI信頼度','★★★☆☆')}}</span>
 </div>
 
 {% set cards = r.get('ピックカード一覧') or [] %}
@@ -792,14 +802,14 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="section" style="padding-top:12px;padding-bottom:4px">
 <div class="ai-card">
 <h3>{{c.get('役割')}}</h3>
-<div class="ban-xl">{{c.get('馬番表示') or c.get('馬番') or '－'}}</div>
+<div class="horse-line"><span class="ban">{{c.get('馬番表示') or c.get('馬番') or '－'}}</span>{{c.get('馬名') or ''}}</div>
 <div class="kv">
 <div>AI評価 <b>{{c.get('AI評価','—')}}</b></div>
 <div>指数順位 <b>{{c.get('近走指数順位','—')}}</b></div>
 <div>勝率 <b>{{c.get('勝率','—')}}%</b></div>
 <div>連対 <b>{{c.get('連対率','—')}}%</b></div>
 <div>複勝 <b>{{c.get('複勝率','—')}}%</b></div>
-<div>期待値 <b>{% if c.get('期待値') %}{{c.get('期待値')}}%{% else %}—{% endif %}</b></div>
+<div>期待値 <b>{% if c.get('期待値') is not none %}{% set cev = c.get('期待値')|int %}{% if cev > 180 %}180%+{% else %}{{ cev }}%{% endif %}{% else %}—{% endif %}</b></div>
 <div>距離 <b>{{c.get('距離適性','—')}}</b></div>
 <div>コース <b>{{c.get('コース適性','—')}}</b></div>
 <div>ラップ <b>{{c.get('ラップ適性','—')}}</b></div>
@@ -821,9 +831,9 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="section">
 <div class="ai-card">
 <h3 class="danger">危険人気馬</h3>
-{% if danger is mapping and danger.get('馬番表示') %}
-<div class="ban-xl">{{danger.get('馬番表示')}}</div>
-<div class="reason">{{danger.get('人気')}}人気 · AI{{danger.get('AI順位')}}位 · 期待値{{danger.get('期待値')}}%</div>
+{% if danger is mapping and (danger.get('馬番表示') or danger.get('馬名')) %}
+<div class="horse-line"><span class="ban">{{danger.get('馬番表示') or danger.get('馬番') or '－'}}</span>{{danger.get('馬名') or ''}}</div>
+<div class="reason">{{danger.get('人気')}}人気 · AI{{danger.get('AI順位')}}位 · 期待値{% if danger.get('期待値') is not none %}{% set dev = danger.get('期待値')|int %}{% if dev > 180 %}180%+{% else %}{{ dev }}%{% endif %}{% else %}—{% endif %}</div>
 <div class="reason">{{danger.get('危険理由','')}}</div>
 {% else %}
 <div class="reason">1〜5番人気で条件を満たす馬なし（人気薄は表示しません）</div>
