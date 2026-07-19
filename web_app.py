@@ -893,7 +893,11 @@ def index():
                         races=[]
                 else:
                     selected_venue=''
-                targets=sorted([r for r in races if r.get('勝負ランク') in ['S','A']],key=lambda x:float(x.get('BET期待値',0)),reverse=True)[:5]
+                targets=sorted(
+                [r for r in races if r.get('一覧判定')=='買い'],
+                key=lambda x: float(x.get('期待値') or 0) * 0.6 + float(x.get('AI信頼度スコア') or 0) * 0.4,
+                reverse=True,
+            )[:5]
                 if data_status=='updating':
                     message=f'{selected} / {label} / データ更新中（表示はキャッシュ）'
                 elif data_status=='generating':
