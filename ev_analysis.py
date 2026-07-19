@@ -389,40 +389,153 @@ def calc_confidence_adjusted_ev(record: dict) -> dict:
 
 
 def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds: bool) -> dict:
-    """期待値・信頼度・再現率の総合で買い／見送り。
+    """期待回収率で買い／見送りを決定（表示ランクと一致）。
 
-    表示期待値は既に信頼度込みのため、買い閾値と表示が食い違わないよう設計。
+    100%以上 → 買い / 100%未満 → 見送り
     """
     if not has_odds or ev is None:
         return {
             '一覧判定': '判定待ち', '一覧判定トーン': 'wait',
             '投資判定': '判定待ち', '投資判定アイコン': '⚪', '投資判定トーン': 'wait',
-            '投資判定表示': '⚪ 判定待ち',
+            '投資判定表示': '判定待ち',
         }
-    e, c, r = float(ev), float(confidence), float(repro)
-    composite = (e - 100) * 1.40 + (c - 50) * 0.55 + (r - 50) * 0.32
-
-    # 表示EVは信頼度込みのため、買い＝「EVも信頼も揃った」状態に限定
-    buy = (
-        (e >= 108 and c >= 58 and r >= 50)
-        or (e >= 106 and c >= 68 and r >= 58)
-        or (composite >= 16 and e >= 107 and c >= 60 and r >= 50)
-    )
-    # 安全弁: どれか不足なら見送り（高EV単独では買わない）
-    if e < 105 or c < 55 or r < 45:
-        buy = False
-
-    if buy:
+    e = float(ev)
+    if e >= 100:
         return {
             '一覧判定': '買い', '一覧判定トーン': 'buy',
-            '投資判定': '買いレース', '投資判定アイコン': '🟢', '投資判定トーン': 'buy',
-            '投資判定表示': '🟢 買いレース',
+            '投資判定': '買い', '投資判定アイコン': '🟢', '投資判定トーン': 'buy',
+            '投資判定表示': '買い',
         }
     return {
         '一覧判定': '見送り', '一覧判定トーン': 'skip',
         '投資判定': '見送り', '投資判定アイコン': '🔴', '投資判定トーン': 'skip',
-        '投資判定表示': '🔴 見送り',
+        '投資判定表示': '見送り',
     }
+
+
+def rank_from_expected_value(ev) -> str:
+    """期待回収率から S〜D / 見送り を決定。
+
+    S：120%以上 / A：115〜119 / B：110〜114 / C：105〜109 / D：100〜104
+    見送り：100%未満（空文字）
+    """
+    try:
+        if ev is None or ev == '' or str(ev).strip() in ('—', '-', 'なし', 'nan', 'None'):
+            return ''
+        e = float(str(ev).replace('%', '').strip())
+    except (TypeError, ValueError):
+        return ''
+    if e >= 120:
+        return 'S'
+    if e >= 115:
+        return 'A'
+    if e >= 110:
+        return 'B'
+    if e >= 105:
+        return 'C'
+    if e >= 100:
+        return 'D'
+    return ''
+
+
+def apply_ev_rank_and_labels(record: dict) -> dict:
+    """期待回収率にランク・買い判定・表示ラベルを揃える。"""
+    from areru_engine import RANK_LABELS, RANK_CLASSES
+
+    ev = record.get('期待値')
+    if ev is None:
+        raw = record.get('レース期待回収率') or record.get('期待値表示') or ''
+        try:
+            ev = float(str(raw).replace('%', '').strip()) if str(raw).strip() not in ('', '—', 'なし') else None
+        except (TypeError, ValueError):
+            ev = None
+    rk = rank_from_expected_value(ev)
+    record['勝負ランク'] = rk
+    if rk:
+        record['勝負ランク表示'] = f'{rk}'
+        record['BET判定'] = RANK_LABELS.get(rk, '')
+        record['BETクラス'] = RANK_CLASSES.get(rk, '')
+    else:
+        record['勝負ランク表示'] = '見送り'
+        record['BET判定'] = '見送り'
+        record['BETクラス'] = 'skip'
+
+    has_odds = bool(record.get('オッズ取得済'))
+    if ev is not None:
+        record['期待値あり'] = True
+        decision = decide_buy_skip(float(ev), float(record.get('AI信頼度スコア') or 50),
+                                   float(record.get('シミュレーション再現率') or 50), True)
+    else:
+        decision = decide_buy_skip(None, 50, 50, has_odds)
+    record.update(decision)
+
+    if ev is not None:
+        ev_i = int(round(float(ev)))
+        record['期待値'] = ev_i
+        record['期待値表示'] = f'{ev_i}%'
+        record['期待回収率表示'] = f'{ev_i}%'
+        record['期待回収率短'] = f'{ev_i}%'
+        record['期待値トーン'] = 'ev-buy' if ev_i >= 100 else 'ev-skip'
+        record['レース期待回収率'] = ev_i
+    else:
+        record['期待回収率表示'] = '—'
+        record['期待回収率短'] = '—'
+        record['期待値トーン'] = 'ev-none'
+    return record
+
+
+def build_ai_buy_reasons(record: dict, limit: int = 3) -> list[str]:
+    """詳細用の短い買い理由（最大3）。"""
+    reasons: list[str] = []
+
+    def add(msg: str):
+        msg = str(msg or '').strip()
+        if msg and msg not in reasons and len(reasons) < limit:
+            reasons.append(msg)
+
+    ev = record.get('期待値')
+    try:
+        edge = int(round(float(ev) - 100)) if ev is not None else None
+    except (TypeError, ValueError):
+        edge = None
+    if edge is not None and edge > 0:
+        add(f'単勝期待値＋{edge}%')
+    elif edge is not None and edge < 0:
+        add(f'単勝期待値{edge}%')
+
+    for pick in (record.get('予想馬') or [])[:1]:
+        for tip in (pick.get('要点') or [])[:2]:
+            add(str(tip))
+    if not reasons:
+        for c in (record.get('ピックカード一覧') or [])[:1]:
+            if not isinstance(c, dict):
+                continue
+            try:
+                idx = int(float(c.get('近走指数順位')))
+                if idx == 1:
+                    add('近走指数トップ')
+                elif idx <= 3:
+                    add(f'近走指数{idx}位')
+            except (TypeError, ValueError):
+                pass
+            mo = c.get('単勝オッズ')
+            fo = c.get('AI適正オッズ')
+            try:
+                if mo and fo and float(mo) > float(fo) * 1.15:
+                    add('人気との乖離が大きい')
+            except (TypeError, ValueError):
+                pass
+            for p in (c.get('プラス材料一覧') or []):
+                add(str(p))
+                if len(reasons) >= limit:
+                    break
+    while len(reasons) < min(2, limit) and record.get('投資判定') == '買い':
+        for filler in ('条件面のバランスが良い', '相手関係でも残せる', '再現性のある評価'):
+            add(filler)
+            if len(reasons) >= min(2, limit):
+                break
+        break
+    return reasons[:limit]
 
 
 def calc_expected_value(market_odds, fair_odds):
@@ -585,17 +698,6 @@ def apply_expected_value(record: dict) -> dict:
 
     # 一覧・詳細共通の簡潔表示パック
     from pick_rationale import build_display_picks
-    rank = str(record.get('勝負ランク') or '').upper()
-    if rank in ('S', 'A', 'B', 'C', 'D'):
-        record['勝負ランク表示'] = f'🏆 {rank}ランク'
-    else:
-        record['勝負ランク表示'] = '🏆 —'
-    if not record.get('投資判定表示'):
-        icon = record.get('投資判定アイコン') or '⚪'
-        label = record.get('投資判定') or '判定待ち'
-        if label == '見送りレース':
-            label = '見送り'
-        record['投資判定表示'] = f'{icon} {label}'.strip()
     record['予想馬'] = build_display_picks(record)
     if record['予想馬']:
         record['本命短表示'] = record['予想馬'][0].get('表示行') or record.get('本命表示') or '—'
@@ -603,30 +705,10 @@ def apply_expected_value(record: dict) -> dict:
         ban = record.get('本命馬番表示') or ''
         name = str(record.get('本命') or '').strip()
         record['本命短表示'] = f'◎{ban} {name}'.strip() if (ban or name) else '—'
-    if record.get('期待値あり'):
-        record['期待回収率表示'] = f"期待回収率{record.get('期待値')}%"
-    else:
-        record['期待回収率表示'] = '期待回収率 —'
 
-    # 最終整合: 見送りなのに買い帯の期待値を出さない / 買いなのに低EVを出さない
-    if record.get('一覧判定') == '見送り' and ev.get('期待値あり') and float(ev['期待値']) >= 110:
-        capped = min(int(ev['期待値']), 108)
-        record['期待値'] = capped
-        record['期待値表示'] = f'{capped}%'
-        record['期待値エッジ'] = capped - 100
-        record['期待値トーン'] = ev_tone(capped)
-        record['期待値ラベル'] = ev_label(ev_tone(capped))
-        record['期待値コメント'] = ev_plain_label(capped)
-        record['レース期待回収率'] = capped
-    if record.get('一覧判定') == '買い' and ev.get('期待値あり') and float(ev['期待値']) < 108:
-        boosted = 108
-        record['期待値'] = boosted
-        record['期待値表示'] = f'{boosted}%'
-        record['期待値エッジ'] = boosted - 100
-        record['期待値トーン'] = ev_tone(boosted)
-        record['期待値ラベル'] = ev_label(ev_tone(boosted))
-        record['期待値コメント'] = ev_plain_label(boosted)
-        record['レース期待回収率'] = boosted
+    # ランク＝期待回収率（矛盾表示をなくす）
+    apply_ev_rank_and_labels(record)
+    record['AI買い理由'] = build_ai_buy_reasons(record, limit=3)
 
     if ev.get('期待値あり') and (ev.get('期待値生') or 0) >= 160:
         import logging
