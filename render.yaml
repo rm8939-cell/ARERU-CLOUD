@@ -5,3 +5,5 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
+# 地方日次安定化: 外部cronから GET /cron/nar-daily?token=$CRON_TOKEN を推奨
+# （朝・昼・夕・夜など 4〜6時間おき）

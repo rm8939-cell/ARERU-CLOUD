@@ -131,6 +131,7 @@ def build_date_runners(
     source: str = "jra",
     include_results: bool = True,
     include_odds: bool = True,
+    persist_cb=None,
 ) -> pd.DataFrame:
     ymd = target.replace("-", "")
     race_ids = client.list_race_ids(ymd, source=source)
@@ -175,6 +176,7 @@ def build_date_runners(
                 except Exception as e:
                     print(f"  ⚠️ 券種保存スキップ {rid}: {e}")
             print(f"  ✓ {venue} {rn_label} 出走{len(entries)}頭 オッズ{odds_n}頭 結果{len(results)}頭")
+            race_rows = []
             for e in entries:
                 try:
                     hist = client.fetch_horse_history(e["horse_id"]) if e.get("horse_id") else []
@@ -183,7 +185,7 @@ def build_date_runners(
                     hist = []
                 score = client.past_five_for_score(hist, target)
                 finish = results.get(e["馬名"], "")
-                rows.append({
+                race_rows.append({
                     "race_id": rid,
                     "日付": e.get("日付") or target,
                     "レース": e.get("レース"),
@@ -200,15 +202,23 @@ def build_date_runners(
                     **{k: score[k] for k in score if k != "実着順"},
                 })
                 if finish:
-                    rows[-1]["実着順"] = finish
+                    race_rows[-1]["実着順"] = finish
+            rows.extend(race_rows)
             ok_n += 1
+            # タイムアウト耐性: 1レース完了ごとに増分保存
+            if persist_cb and race_rows:
+                try:
+                    persist_cb(_normalize_runners(pd.DataFrame(race_rows)))
+                    print(f"  💾 増分保存 {venue} {rn_label} ({ok_n}/{total})")
+                except Exception as e_save:
+                    print(f"  ⚠️ 増分保存失敗（継続）: {e_save}")
         except Exception as e:
             fail_n += 1
             print(f"  ✗ {venue} {rn_label} 失敗（次レースへ）: {e}")
             continue
     print(f"========== 取得完了 ==========")
     print(f"✅ {source.upper()} {target}: 成功 {ok_n} / 失敗 {fail_n} / 全 {total}")
-    return _normalize_runners(pd.DataFrame(rows))
+    return _normalize_runners(pd.DataFrame(rows)) if rows else pd.DataFrame(columns=RUNNER_COLS)
 
 
 def _race_sort_key(race_id: str) -> tuple:
@@ -363,8 +373,12 @@ def merge_runners(base: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
         skip_ids = set()
         for rid, n_new in new_n.items():
             n_old = int(base_n.get(rid, 0))
-            # 既存が2頭以上あるのに新規が1頭以下 → 壊れた取得とみなしてスキップ
-            if n_old >= 2 and n_new <= 1:
+            n_new_i = int(n_new)
+            # 既存が2頭以上あるのに新規が1頭以下 → 壊れた取得
+            if n_old >= 2 and n_new_i <= 1:
+                skip_ids.add(rid)
+            # 既存が4頭以上で新規が半分未満 → 部分スクレイプとみなす
+            elif n_old >= 4 and n_new_i < max(2, int(n_old * 0.5)):
                 skip_ids.add(rid)
             else:
                 safe_ids.add(rid)
@@ -468,10 +482,18 @@ def refresh(
             runners = refresh_odds_for_dates(client, runners, target_dates, source=src)
         else:
             for d in target_dates:
+                # 増分保存用の箱（タイムアウトでも途中まで残す）
+                state = {"df": runners}
+
+                def _persist(partial: pd.DataFrame, _state=state):
+                    _state["df"] = merge_runners(_state["df"], partial)
+                    save_runners(_state["df"])
+
                 built = build_date_runners(
-                    client, d, source=src, include_results=True, include_odds=include_odds
+                    client, d, source=src, include_results=True, include_odds=include_odds,
+                    persist_cb=_persist,
                 )
-                runners = merge_runners(runners, built)
+                runners = merge_runners(state["df"], built)
 
     save_runners(runners)
     all_target_dates = sorted(set(all_target_dates))

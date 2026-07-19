@@ -129,8 +129,9 @@ def resolve_target_dates(
 
 def _race_label(client: NetkeibaClient, race_id: str, detail: dict | None = None) -> str:
     """ログ用『函館 01R』ラベル。"""
+    from netkeiba_client import normalize_venue_name
     meta = client.parse_race_id(race_id) if client else {}
-    venue = (detail or {}).get("venue") or meta.get("venue") or "?"
+    venue = normalize_venue_name((detail or {}).get("venue") or meta.get("venue") or "?")
     race_no = (detail or {}).get("race_no") or meta.get("race_no") or "?"
     try:
         rn = f"{int(float(race_no)):02d}R"
@@ -140,9 +141,10 @@ def _race_label(client: NetkeibaClient, race_id: str, detail: dict | None = None
 
 
 def _detail_to_rows(detail: dict, date_str: str, source: str, race_id: str) -> tuple[list[dict], list[dict]]:
+    from netkeiba_client import normalize_venue_name
     horse_rows, pay_rows = [], []
     race_no = detail.get("race_no") or ""
-    venue = detail.get("venue") or ""
+    venue = normalize_venue_name(detail.get("venue") or "")
     d = detail.get("date") or date_str
     rid_s = _norm_race_id(race_id)
     for h in detail.get("horses") or []:

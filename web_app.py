@@ -303,11 +303,13 @@ def _filter_records_by_source(records, source):
 
 def _venue_meetings(records):
     """日付内の開催場一覧（レース数・S/A件数付き）。"""
+    from netkeiba_client import normalize_venue_name
     buckets={}
     for r in records or []:
-        venue=str(r.get('開催地') or '').strip()
+        venue=normalize_venue_name(str(r.get('開催地') or '').strip())
         if not venue:
             continue
+        r['開催地']=venue
         buckets.setdefault(venue, []).append(r)
     meetings=[]
     for venue, rows in sorted(buckets.items(), key=lambda x: x[0]):
@@ -435,6 +437,63 @@ def date_needs_result_fetch(date_str: str, source: str = 'jra') -> bool:
     return date_str not in set(dates_with_results(source))
 
 
+def _local_runner_race_ids(date_str: str, source: str = 'nar') -> set[str]:
+    """runners.csv から指定日・ソースの race_id 集合。"""
+    rp=_runner_path()
+    if rp is None or not date_str:
+        return set()
+    try:
+        rdf=pd.read_csv(rp,encoding='utf-8-sig')
+    except Exception:
+        return set()
+    if rdf.empty or 'race_id' not in rdf.columns or '日付' not in rdf.columns:
+        return set()
+    days=parse_date(rdf['日付']).dt.strftime('%Y-%m-%d')
+    rdf=rdf[days==str(date_str)]
+    if source in ('jra','nar'):
+        if 'source' in rdf.columns:
+            rdf=rdf[rdf['source'].astype(str).str.lower()==source]
+        else:
+            from areru_engine import source_from_race_id
+            rdf=rdf[rdf['race_id'].map(source_from_race_id)==source]
+    out=set()
+    for x in rdf['race_id'].tolist():
+        rid=_norm_race_id(x)
+        if rid.isdigit() and len(rid)==12:
+            out.add(rid)
+    return out
+
+
+def date_needs_runners_fetch(date_str: str, source: str = 'nar') -> bool:
+    """リモート開催レースとローカル runners を比較し、欠けがあれば True。"""
+    if not date_str or source not in ('jra','nar'):
+        return False
+    try:
+        from netkeiba_client import NetkeibaClient
+        remote=set(NetkeibaClient(sleep=0.08).list_race_ids(
+            date_str.replace('-',''), source=source
+        ))
+    except Exception as e:
+        print(f'[bootstrap] list_race_ids fail {date_str}: {e}', flush=True)
+        return False
+    if not remote:
+        return False
+    local=_local_runner_race_ids(date_str, source)
+    missing=remote-local
+    if missing:
+        print(
+            f'[bootstrap] incomplete card {source} {date_str}: '
+            f'local={len(local)}/{len(remote)} missing={len(missing)}',
+            flush=True,
+        )
+        return True
+    # 予想未生成も再取得トリガ（カードはあるが predictions なし）
+    pred=_prediction_race_ids(date_str, source)
+    if local and not pred:
+        print(f'[bootstrap] predictions missing {source} {date_str}', flush=True)
+        return True
+    return False
+
 def bootstrap_missing_results(source: str = 'jra', prefer_dates: list | None = None) -> bool:
     """結果未取込・途中止まりの開催日をバックグラウンド取得。
 
@@ -539,8 +598,29 @@ def _json_field(raw, default=None):
         return default
 
 
-def apply_display_ranks(races: list) -> list:
-    """表示用に開催日内の相対評価を S/A/B/C/D の5段階へ揃える。"""
+def apply_display_ranks(races: list, by_venue: bool = False) -> list:
+    """表示用に相対評価を S/A/B/C/D の5段階へ揃える。
+
+    by_venue=True（地方）のときは開催場ごとに相対評価し、1場にSが偏らないようにする。
+    """
+    if not races:
+        return races
+    if by_venue:
+        buckets: dict[str, list[int]] = {}
+        for i, r in enumerate(races):
+            v = str(r.get('開催地') or '').strip() or '_'
+            buckets.setdefault(v, []).append(i)
+        out = list(races)
+        for idxs in buckets.values():
+            subset = [races[i] for i in idxs]
+            ranked = _assign_display_ranks(subset)
+            for i, rr in zip(idxs, ranked):
+                out[i] = rr
+        return out
+    return _assign_display_ranks(races)
+
+
+def _assign_display_ranks(races: list) -> list:
     if not races:
         return races
     scored=[]
@@ -556,6 +636,12 @@ def apply_display_ranks(races: list) -> list:
     a_n=max(s_n,min(5,total))
     b_n=max(a_n,min(max(8,int(total*0.35)),total))
     c_n=max(b_n,min(max(12,int(total*0.70)),total))
+    # 場内レース数が少ないときは比率を緩める
+    if total <= 6:
+        s_n=1
+        a_n=min(2,total)
+        b_n=min(4,total)
+        c_n=min(5,total)
     rank_by_idx={}
     for order,(score,i) in enumerate(scored,1):
         if order<=s_n: rk='S'
@@ -845,7 +931,7 @@ def _source_latest_in_runners(source: str) -> str:
 
 
 def bootstrap_source(source: str) -> bool:
-    """地方タブでデータが古い/無い場合に最新開催を自動取得する。
+    """地方タブでデータが古い/無い/不完全な場合に最新開催を自動取得する。
 
     Returns: 更新を実行したら True
     """
@@ -856,43 +942,75 @@ def bootstrap_source(source: str) -> bool:
     try:
         from netkeiba_client import NetkeibaClient
         found=NetkeibaClient(sleep=0.12).discover_kaisai_dates(
-            lookback=4, lookahead=1, source='nar'
+            lookback=4, lookahead=2, source='nar'
         )
-        # 未来日ではなく「本日 or 直近過去」を鮮度比較の基準にする
         remote=_anchor_meeting_date(found, today)
     except Exception:
         remote=''
         found=[]
     local=_source_latest_in_runners('nar')
-    # 本日データが既にあれば bootstrap 不要
-    if today in dates('nar'):
+
+    # 再取得が必要な開催日を列挙（本日・アンカー・開催終了後の翌日のみ検査）
+    need_dates=[]
+    check_days=[]
+    if today in set(found):
+        check_days.append(today)
+    if remote and remote not in check_days:
+        check_days.append(remote)
+    future=[d for d in found if d > today]
+    if future:
+        nxt=min(future)
+        if nxt not in check_days:
+            check_days.append(nxt)
+    for d in check_days:
+        if date_needs_runners_fetch(d, 'nar'):
+            need_dates.append(d)
+    # 本日が開催日なのにローカルに無い
+    if today in set(found) and today not in dates('nar'):
+        need_dates.append(today)
+
+    need_dates=sorted(set(need_dates), reverse=True)
+    stale = bool(remote and local and local < remote)
+    if not need_dates and not stale:
         return False
-    if remote and local and local>=remote:
-        return False
-    if not remote and local:
-        return False
+    if not need_dates and stale:
+        need_dates=[remote] if remote else []
+
     lock=DATA/'.nar_bootstrap.lock'
     if lock.exists():
         try:
             age=(__import__('time').time()-lock.stat().st_mtime)
-            if age < 1800:
+            # 不完全カードは短めクールダウンで再試行
+            cooldown=300 if need_dates else 1800
+            if age < cooldown:
                 print('[bootstrap] already running, skip')
                 return False
         except Exception:
             pass
-    print(f'[bootstrap] source=nar local={local or "-"} remote={remote or "-"} found={found[:5]}')
+    print(
+        f'[bootstrap] source=nar local={local or "-"} remote={remote or "-"} '
+        f'need={need_dates[:5]} found={found[:5]}',
+        flush=True,
+    )
     try:
         lock.write_text(str(__import__('os').getpid()), encoding='utf-8')
-        # 本日〜直近を確実に取る（lookaheadはカード先行用に残すが、refresh側で本日優先）
-        subprocess.run(
-            [sys.executable,'refresh_data.py','--latest-only','--source','nar','--lookback','5','--lookahead','1'],
-            check=True,timeout=1800,
-        )
+        # 欠落日を明示指定。無ければ latest-only
+        if need_dates:
+            cmd=[
+                sys.executable,'refresh_data.py',
+                '--dates',*need_dates[:3],
+                '--source','nar','--no-discover',
+            ]
+        else:
+            cmd=[
+                sys.executable,'refresh_data.py',
+                '--latest-only','--source','nar','--lookback','5','--lookahead','2',
+            ]
+        subprocess.run(cmd,check=False,timeout=1800)
     finally:
         try: lock.unlink(missing_ok=True)
         except Exception: pass
     return True
-
 
 @app.route('/')
 def index():
@@ -1001,7 +1119,7 @@ def index():
                         df=df.drop(columns=drop_cols, errors='ignore')
                 races=prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
                 races=_filter_records_by_source(races, source)
-                races=apply_display_ranks(races)
+                races=apply_display_ranks(races, by_venue=(source=='nar'))
                 for row in races:
                     if not _race_date(row):
                         row['日付']=selected
@@ -1805,9 +1923,34 @@ def ledger_data(source='all', verification=None):
     }
 
 
+@app.route('/cron/nar-daily', methods=['POST','GET'])
+def cron_nar_daily():
+    """外部cron向け: 地方の開催場→レース→結果をバックグラウンドで安定更新。"""
+    token=str(request.args.get('token') or request.headers.get('X-Cron-Token') or '').strip()
+    expected=str(os.environ.get('CRON_TOKEN') or '').strip()
+    if expected and token != expected:
+        return {'ok': False, 'error': 'unauthorized'}, 401
+
+    def _run():
+        try:
+            print('[cron-nar] bootstrap venues/races', flush=True)
+            bootstrap_source('nar')
+            print('[cron-nar] bootstrap results', flush=True)
+            bootstrap_missing_results('nar')
+            print('[cron-nar] done', flush=True)
+        except Exception as e:
+            print(f'[cron-nar] fail: {e}', flush=True)
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {'ok': True, 'started': True, 'source': 'nar'}
+
+
 @app.route('/refresh', methods=['POST','GET'])
 def refresh_route():
-    """最新開催日・オッズを取得して runners / predictions を更新。"""
+    """最新開催日・オッズ・結果を取得して runners / predictions を更新。
+
+    full / odds / results いずれも gunicorn タイムアウト回避のためバックグラウンド実行。
+    """
     mode=request.args.get('mode','full')
     source=request.args.get('source','all')
     date=str(request.args.get('date') or '').strip()
@@ -1816,36 +1959,31 @@ def refresh_route():
     try:
         if mode=='odds':
             cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only','--source',source]
-            subprocess.run(cmd,check=True,timeout=1800)
         elif mode=='results':
-            # gunicorn 既定30秒で同期実行すると途中切断されるため必ずバックグラウンド
             if date and re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
                 cmd=[sys.executable,'results.py','--source',source,'--dates',date]
             else:
                 cmd=[sys.executable,'results.py','--latest','--source',source]
-            print(f'[refresh-results] start bg: {" ".join(cmd)}', flush=True)
-
-            def _run_results():
-                try:
-                    subprocess.run(cmd, check=False, timeout=1800)
-                    print('[refresh-results] finished', flush=True)
-                except Exception as e:
-                    print(f'[refresh-results] fail: {e}', flush=True)
-
-            threading.Thread(target=_run_results, daemon=True).start()
-            av=dates(source)
-            return {
-                'ok': True, 'started': True, 'background': True,
-                'dates': av, 'latest': av[0] if av else None,
-                'mode': mode, 'source': source, 'date': date or None,
-            }
         else:
             cmd=[sys.executable,'refresh_data.py','--latest-only','--source',source]
-            subprocess.run(cmd,check=True,timeout=1800)
+
+        print(f'[refresh] start bg mode={mode}: {" ".join(cmd)}', flush=True)
+
+        def _run_refresh(_cmd=cmd, _mode=mode):
+            try:
+                subprocess.run(_cmd, check=False, timeout=1800)
+                print(f'[refresh] finished mode={_mode}', flush=True)
+            except Exception as e:
+                print(f'[refresh] fail mode={_mode}: {e}', flush=True)
+
+        threading.Thread(target=_run_refresh, daemon=True).start()
         av=dates(source)
-        return {'ok':True,'dates':av,'latest':av[0] if av else None,'mode':mode,'source':source}
+        return {
+            'ok': True, 'started': True, 'background': True,
+            'dates': av, 'latest': av[0] if av else None,
+            'mode': mode, 'source': source, 'date': date or None,
+        }
     except Exception as e:
         return {'ok':False,'error':str(e)}, 500
-
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=int(os.environ.get('PORT','5001')),debug=False)
