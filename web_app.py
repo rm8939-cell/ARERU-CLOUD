@@ -599,65 +599,69 @@ def _json_field(raw, default=None):
 
 
 def apply_display_ranks(races: list, by_venue: bool = False) -> list:
-    """表示用に相対評価を S/A/B/C/D の5段階へ揃える。
+    """表示用ランクを期待回収率から決定（相対順位は使わない）。
 
-    by_venue=True（地方）のときは開催場ごとに相対評価し、1場にSが偏らないようにする。
+    S≥120 / A≥115 / B≥110 / C≥105 / D≥100 / 見送り<100
+    by_venue は互換のため残すが、閾値は絶対値のため場内相対は行わない。
     """
-    if not races:
-        return races
-    if by_venue:
-        buckets: dict[str, list[int]] = {}
-        for i, r in enumerate(races):
-            v = str(r.get('開催地') or '').strip() or '_'
-            buckets.setdefault(v, []).append(i)
-        out = list(races)
-        for idxs in buckets.values():
-            subset = [races[i] for i in idxs]
-            ranked = _assign_display_ranks(subset)
-            for i, rr in zip(idxs, ranked):
-                out[i] = rr
-        return out
-    return _assign_display_ranks(races)
-
-
-def _assign_display_ranks(races: list) -> list:
-    if not races:
-        return races
-    scored=[]
-    for i,r in enumerate(races):
-        try:
-            score=float(r.get('BET期待値') or r.get('期待値') or r.get('買い期待度基礎値') or 0)
-        except (TypeError,ValueError):
-            score=0.0
-        scored.append((score,i))
-    scored.sort(key=lambda x: (-x[0], x[1]))
-    total=len(scored)
-    s_n=max(1,min(2,total))
-    a_n=max(s_n,min(5,total))
-    b_n=max(a_n,min(max(8,int(total*0.35)),total))
-    c_n=max(b_n,min(max(12,int(total*0.70)),total))
-    # 場内レース数が少ないときは比率を緩める
-    if total <= 6:
-        s_n=1
-        a_n=min(2,total)
-        b_n=min(4,total)
-        c_n=min(5,total)
-    rank_by_idx={}
-    for order,(score,i) in enumerate(scored,1):
-        if order<=s_n: rk='S'
-        elif order<=a_n: rk='A'
-        elif order<=b_n: rk='B'
-        elif order<=c_n: rk='C'
-        else: rk='D'
-        rank_by_idx[i]=rk
-    from areru_engine import RANK_LABELS, RANK_CLASSES
-    for i,r in enumerate(races):
-        rk=rank_by_idx.get(i,'C')
-        r['勝負ランク']=rk
-        r['勝負ランク表示']=f'🏆 {rk}ランク'
-        r['BET判定']=RANK_LABELS.get(rk,'')
-        r['BETクラス']=RANK_CLASSES.get(rk,'')
+    from ev_analysis import apply_ev_rank_and_labels, build_ai_buy_reasons
+    for r in races or []:
+        apply_ev_rank_and_labels(r)
+        if not r.get('AI買い理由'):
+            r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
     return races
+
+
+def build_buy_candidates(races: list, limit: int = 12) -> list:
+    """期待回収率100%以上を期待値順（本日の買い候補）。"""
+    scored = []
+    for r in races or []:
+        try:
+            ev = float(r.get('期待値') if r.get('期待値') is not None else str(r.get('レース期待回収率') or '').replace('%', '') or 0)
+        except (TypeError, ValueError):
+            continue
+        if ev < 100:
+            continue
+        scored.append((ev, r))
+    scored.sort(key=lambda x: (-x[0], str(x[1].get('開催地') or ''), int(float(x[1].get('レース') or 0) or 0)))
+    return [r for _, r in scored[:limit]]
+
+
+def build_today_ai_board(races: list, verification: dict | None = None) -> dict:
+    """ヘッダー直下の本日AI成績カード。"""
+    races = races or []
+    total = len(races)
+    buys = 0
+    for r in races:
+        try:
+            ev = float(r.get('期待値') if r.get('期待値') is not None else 0)
+        except (TypeError, ValueError):
+            ev = 0
+        if ev >= 100 or str(r.get('投資判定') or '').startswith('買い'):
+            buys += 1
+    verification = verification or {}
+    recovery = verification.get('recovery') if verification.get('has_data') else None
+    hit = verification.get('hit_rate') if verification.get('has_data') else None
+    if verification.get('scope') != 'day' and verification.get('has_data'):
+        day = str(verification.get('selected_date') or '')
+        for row in verification.get('daily') or []:
+            if str(row.get('date')) == day:
+                recovery = row.get('recovery')
+                hit = row.get('hit_rate', hit)
+                break
+    return {
+        'has_data': total > 0,
+        '回収率': recovery,
+        '回収率表示': f'{float(recovery):.0f}%' if recovery is not None else '—',
+        '的中率': hit,
+        '的中率表示': f'{float(hit):.0f}%' if hit is not None else '—',
+        '買いレース': f'{buys}/{total}' if total else '0/0',
+        '買い数': buys,
+        '総数': total,
+        'tone': 'roi-good' if (recovery is not None and float(recovery) >= 100) else (
+            'roi-mid' if recovery is not None else 'roi-bad'
+        ),
+    }
 
 
 def prep(records, ban_map=None):
@@ -720,14 +724,14 @@ def prep(records, ban_map=None):
             if str(r.get('レース','')).replace('.','',1).isdigit()
             else str(r.get('開催地') or 'レース')
         )
-        # 投資判定のフォールバック
+        # 投資判定のフォールバック（apply_expected_value 後に EV ランクで上書き）
         if not r.get('投資判定'):
             try:
                 ev=float(str(r.get('レース期待回収率') or '').replace('%',''))
-                if ev>=110:
-                    r['投資判定']='買いレース'; r['投資判定アイコン']='🟢'; r['投資判定トーン']='buy'
+                if ev>=100:
+                    r['投資判定']='買い'; r['投資判定アイコン']='🟢'; r['投資判定トーン']='buy'
                 else:
-                    r['投資判定']='見送りレース'; r['投資判定アイコン']='🔴'; r['投資判定トーン']='skip'
+                    r['投資判定']='見送り'; r['投資判定アイコン']='🔴'; r['投資判定トーン']='skip'
             except Exception:
                 r['投資判定']=r.get('投資判定') or '判定待ち'
                 r['投資判定アイコン']=r.get('投資判定アイコン') or '⚪'
@@ -743,15 +747,10 @@ def prep(records, ban_map=None):
             c['表示名']=f"{cb}番 {cn}".strip() if cb and cn else (cn or cban or '—')
             c['馬番表示']=cban or cb
         # 一覧・詳細の共通ラベルを保証
-        rank=str(r.get('勝負ランク') or '').upper()
-        if rank in ('S','A','B','C','D'):
-            r['勝負ランク']=rank
-            r['勝負ランク表示']=r.get('勝負ランク表示') or f'🏆 {rank}ランク'
-        if r.get('投資判定')=='見送りレース':
-            r['投資判定']='見送り'
-            r['投資判定表示']='🔴 見送り'
+        if r.get('投資判定') in ('見送りレース','買いレース'):
+            r['投資判定']='見送り' if '見送' in str(r.get('投資判定')) else '買い'
         if not r.get('投資判定表示'):
-            r['投資判定表示']=f"{r.get('投資判定アイコン') or '⚪'} {r.get('投資判定') or '判定待ち'}"
+            r['投資判定表示']=r.get('投資判定') or '判定待ち'
         if not r.get('予想馬'):
             from pick_rationale import build_display_picks
             r['予想馬']=build_display_picks(r)
@@ -1076,6 +1075,8 @@ def index():
     races=[]; targets=[]; message='予想データがありません'; has_results=False
     venues=[]; show_venue_picker=False
     data_status='ready'
+    buy_candidates=[]; today_ai_board={'has_data':False,'回収率表示':'—','的中率表示':'—','買いレース':'0/0','tone':'roi-bad'}
+    data_updated_at=''
     label={'jra':'JRA中央','nar':'地方競馬','all':'全開催'}.get(source, source)
 
     # モード別に重い集計をスキップ（予想タブでは検証CSVを読まない）
@@ -1095,7 +1096,8 @@ def index():
             verification=verification,ledger=ledger_data(source=source, verification=verification),
             venues=[],selected_venue='',show_venue_picker=False,
             today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
-            day_stats=None,data_status='ready')
+            day_stats=None,data_status='ready',
+            buy_candidates=[],today_ai_board=today_ai_board,data_updated_at='')
 
     if selected in av:
         try:
@@ -1139,6 +1141,7 @@ def index():
                 venues=_venue_meetings(races)
                 venue_names={v['name'] for v in venues}
                 # 地方: 日付→開催場一覧→レース一覧。開催場未選択なら場一覧を出す
+                races_for_board=list(races)
                 if source=='nar' and mode in ('predict','result'):
                     show_venue_picker=True
                     if selected_venue and selected_venue not in venue_names:
@@ -1146,19 +1149,29 @@ def index():
                     if selected_venue:
                         races=[r for r in races if str(r.get('開催地') or '').strip()==selected_venue]
                         show_venue_picker=False
+                        races_for_board=list(races)
                     else:
                         races=[]
                 else:
                     selected_venue=''
-                targets=sorted(
-                [r for r in races if r.get('一覧判定')=='買い'],
-                key=lambda x: float(x.get('期待値') or 0) * 0.6 + float(x.get('AI信頼度スコア') or 0) * 0.4,
-                reverse=True,
-            )[:5]
+                buy_candidates=build_buy_candidates(races_for_board)
+                # 予想タブは重い verification を避け、結果がある日だけ軽く成績を載せる
+                board_verify=verification if mode in ('result','analysis') else dict(_EMPTY_VERIFY)
+                today_ai_board=build_today_ai_board(races_for_board, board_verify)
+                data_updated_at=''
+                try:
+                    if pred_path and Path(pred_path).exists():
+                        from datetime import datetime as _dt
+                        data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                except Exception:
+                    data_updated_at=''
+                targets=buy_candidates[:8]
                 if data_status=='updating':
                     message=f'{selected} / {label} / データ更新中（表示はキャッシュ）'
+                    if data_updated_at:
+                        message+=f' · 最終更新 {data_updated_at}'
                 elif data_status=='generating':
-                    message='データ取得中です。完了後に再読み込みしてください。'
+                    message='地方データ取得中' if source=='nar' else 'データ取得中です。完了後に再読み込みしてください。'
                 elif source=='nar' and show_venue_picker:
                     if venues:
                         if want_today and selected==today:
@@ -1168,7 +1181,14 @@ def index():
                         else:
                             message=f'{selected} / {label} / 開催場 {len(venues)}場'
                     else:
-                        message=f'{selected} / {label} の開催場がありません'
+                        if data_status=='error':
+                            message='地方データ取得失敗'
+                        elif want_today and selected!=today:
+                            message='本日は地方競馬の開催はありません'
+                        elif data_status=='generating':
+                            message='地方データ取得中'
+                        else:
+                            message='本日は地方競馬の開催はありません' if want_today else f'{selected} の地方開催データがありません'
                 elif not races:
                     message=f'{selected} / {label} のレースがありません'
                 elif mode=='result':
@@ -1177,12 +1197,12 @@ def index():
                     else:
                         message=f'{selected} / {label} / 結果検証モード'
                 elif mode=='analysis':
-                    message=f'{selected} / {label} / AI仮想レース分析 β版'
+                    message=f'{selected} / {label} / AI期待値分析'
                 else:
                     if selected_venue:
                         message=f'{selected} / {selected_venue} / 予想分析'
                     else:
-                        message=f'{selected} / {label} / AI仮想レース分析 β版'
+                        message=f'{selected} / {label} / AI期待値分析'
         except FileNotFoundError as e:
             data_status='generating'
             message=str(e) or 'データ取得中です。完了後に再読み込みしてください。'
@@ -1194,7 +1214,7 @@ def index():
         message=f'{selected} は保存データにありません'
     elif source=='nar':
         data_status='generating'
-        message='地方開催データがありません。取得を開始しています…'
+        message='地方データ取得中'
         try:
             threading.Thread(target=bootstrap_source, args=('nar',), daemon=True).start()
         except Exception:
@@ -1202,6 +1222,7 @@ def index():
     day_stats=None
     if mode=='result' and races and not show_venue_picker:
         day_stats=day_performance(races, verification, safe_pct=_safe_pct)
+        today_ai_board=build_today_ai_board(races, verification)
     ledger=ledger_data(source=source, verification=verification) if mode in ('analysis','ledger') else {
         'has_data':False,'investment':0,'payout':0,'recovery':0.0,'profit':0,
         'by_type':[],'monthly':[],'tone':'roi-bad',
@@ -1212,7 +1233,8 @@ def index():
         ledger=ledger,
         venues=venues,selected_venue=selected_venue,show_venue_picker=show_venue_picker,
         today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
-        day_stats=day_stats,data_status=data_status)
+        day_stats=day_stats,data_status=data_status,
+        buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at)
 
 
 def attach_results(records, selected_date=''):

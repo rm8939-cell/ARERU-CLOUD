@@ -2,23 +2,44 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ARERU.EXE</title>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--line:#e1e7eb;--text:#17212b;--muted:#6f7b87;--red:#e53935;--gold:#9a6b00;--green:#176b45;--yellow:#d9a600;--orange:#ef8b25;--brand:#176b45;--soft:#e9f5ef}
+:root{--bg:#f3f5f7;--card:#fff;--line:#e6ebf0;--text:#121820;--muted:#6a7682;--red:#d64545;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a7f4b;--soft:#eaf6f0;--purple:#6b4eff;--blue:#2f6fed;--radius:16px}
 body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
 body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
-*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;color-scheme:only light}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow-x:hidden;min-height:100vh}
-.wrap{max-width:760px;width:100%;margin:auto;padding:0 14px}.header{padding:34px 0 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,var(--brand),#0c4f32);color:#fff}
-.header .eyebrow,.header .sub{color:rgba(255,255,255,.82)}.header .logo{color:#fff}.header .logo b{color:#ffd7d4}
-.eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:30px;font-weight:800;letter-spacing:.06em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:5px;font-size:13px}
-.toolbar{display:flex;gap:8px;padding:16px 0;flex-wrap:wrap;align-items:stretch}.toolbar-date{display:flex;gap:8px;flex:1;min-width:0;align-items:stretch}.toolbar-today{display:flex;align-items:stretch}.toolbar select,.toolbar button,.toolbar .today-btn{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px}.toolbar select{flex:1;min-width:140px}.toolbar button{font-weight:700;cursor:pointer}.toolbar .today-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:800;font-size:13px;white-space:nowrap;background:var(--soft);border-color:var(--brand);color:var(--brand)}.toolbar .today-btn:active{opacity:.85}.message{color:var(--muted);font-size:12px;margin-bottom:12px}
-.targets{border:1px solid var(--line);background:#fff;border-radius:16px;overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--muted)}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;color-scheme:only light}body{margin:0;background:var(--bg);color:var(--text);font-family:"Avenir Next","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow-x:hidden;min-height:100vh}
+.wrap{max-width:760px;width:100%;margin:auto;padding:0 16px}.header{padding:28px 0 18px;border-bottom:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,#12352a 0%,var(--brand) 55%,#0d4a32 100%);color:#fff}
+.header .eyebrow,.header .sub{color:rgba(255,255,255,.78)}.header .logo{color:#fff}.header .logo b{color:#ffd4d0}
+.eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:28px;font-weight:800;letter-spacing:.05em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:4px;font-size:12px}
+/* 本日AI成績 */
+.ai-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 6px}
+.ai-board .ab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 12px;text-align:center;box-shadow:0 1px 0 rgba(18,24,32,.03)}
+.ai-board .ab b{display:block;font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15}
+.ai-board .ab small{display:block;margin-top:6px;color:var(--muted);font-size:10px;letter-spacing:.1em;font-weight:800;text-transform:uppercase}
+.ai-board-title{margin:12px 0 0;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+/* 本日の買い候補（スティッキー） */
+.buy-board{position:sticky;top:0;z-index:20;margin:12px 0 18px;border:1px solid var(--line);background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-radius:var(--radius);overflow:hidden;box-shadow:0 8px 24px rgba(18,24,32,.06)}
+.buy-board>h2{margin:0;padding:14px 16px 10px;font-size:15px;font-weight:900;letter-spacing:.04em;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#f7faf8)}
+.buy-board>h2 .fire{margin-right:4px}
+.buy-list{display:grid;gap:0;max-height:min(42vh,320px);overflow:auto}
+.buy-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-decoration:none;color:inherit;padding:14px 16px;border-bottom:1px solid var(--line)}
+.buy-row:last-child{border-bottom:0}.buy-row:active{background:var(--soft)}
+.buy-row .br-venue{font-size:16px;font-weight:900;line-height:1.25}
+.buy-row .br-main{margin-top:4px;font-size:14px;font-weight:800;color:#24303a}
+.buy-row .br-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.buy-row .br-ev{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--green);line-height:1}
+.buy-row .br-ev.low{color:var(--red)}
+.buy-row .br-flag{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:850}
+.buy-row .br-flag.buy{background:#e8f6ee;color:var(--green)}.buy-row .br-flag.skip{background:#fdeceb;color:var(--red)}
+.buy-empty{padding:18px 16px;color:var(--muted);font-size:13px;line-height:1.6}
+.toolbar{display:flex;gap:8px;padding:14px 0;flex-wrap:wrap;align-items:stretch}.toolbar-date{display:flex;gap:8px;flex:1;min-width:0;align-items:stretch}.toolbar-today{display:flex;align-items:stretch}.toolbar select,.toolbar button,.toolbar .today-btn{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 12px}.toolbar select{flex:1;min-width:140px}.toolbar button{font-weight:700;cursor:pointer}.toolbar .today-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:800;font-size:13px;white-space:nowrap;background:var(--soft);border-color:var(--brand);color:var(--brand)}.toolbar .today-btn:active{opacity:.85}.message{color:var(--muted);font-size:12px;margin-bottom:10px;line-height:1.55}
+.targets{border:1px solid var(--line);background:#fff;border-radius:var(--radius);overflow:hidden;margin:10px 0 20px}.targets h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--muted)}
 .target-row{display:grid;grid-template-columns:38px 1fr 72px;align-items:center;text-decoration:none;color:var(--text);padding:13px 14px;border-bottom:1px solid var(--line)}.target-row:last-child{border-bottom:0}.rank{font-weight:800;color:var(--red)}.target-name{font-weight:750}.target-name small{display:block;color:var(--muted);font-weight:400;margin-top:4px}.target-score{text-align:right;font-size:20px;font-weight:800}.target-score small{display:block;font-weight:400}
-.race{scroll-margin-top:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:16px;margin:0 0 18px;overflow:hidden}.race.caution{border-left-color:var(--yellow)}.race.wave{border-left-color:var(--orange)}.race.storm{border-left-color:var(--red)}
-.race-head{display:flex;justify-content:space-between;align-items:flex-start;padding:17px 17px 12px}.venue{font-size:19px;font-weight:800}.venue small{display:block;margin-top:5px}.heat{text-align:right;font-size:25px;font-weight:850}.heat small{display:block}.betbar{display:flex;justify-content:space-between;padding:10px 17px;background:var(--soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-weight:750;font-size:13px}
-.box,.section{padding:16px 17px;border-bottom:1px solid var(--line)}.horse{font-size:20px;font-weight:800;margin:7px 0 12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.metric{background:#f8fafb;border:1px solid #20242a;border-radius:10px;padding:10px}.metric b{display:block;font-size:18px}.metric small{color:var(--muted);font-size:9px}.reason{color:#b7bcc5;font-size:12px;line-height:1.6;margin-top:10px}
+.race{scroll-margin-top:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:var(--radius);margin:0 0 18px;overflow:hidden}.race.caution{border-left-color:var(--yellow)}.race.wave{border-left-color:var(--orange)}.race.storm{border-left-color:var(--red)}
+.race-head{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 18px 12px}.venue{font-size:18px;font-weight:800}.venue small{display:block;margin-top:5px}.heat{text-align:right;font-size:25px;font-weight:850}.heat small{display:block}.betbar{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:12px 18px;background:var(--soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-weight:750;font-size:13px}
+.box,.section{padding:16px 18px;border-bottom:1px solid var(--line)}.horse{font-size:20px;font-weight:800;margin:7px 0 12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.metric{background:#f8fafb;border:1px solid var(--line);border-radius:12px;padding:10px}.metric b{display:block;font-size:18px}.metric small{color:var(--muted);font-size:9px}.reason{color:#6a7682;font-size:12px;line-height:1.6;margin-top:10px}
 .section-title{font-weight:800;margin-bottom:12px}.gold{color:var(--gold)}.marks{display:grid;gap:8px}.mark{display:flex;gap:10px;align-items:flex-start}.mark b{width:22px}.mark span{font-weight:700}.mark small{display:block;color:var(--muted);font-weight:400;margin-top:3px}
-.strategy{background:var(--soft);border:1px solid #2b3037;border-radius:12px;padding:13px;margin-bottom:12px}.strategy strong{font-size:18px;color:var(--gold)}.strategy p{color:#b7bcc5;font-size:12px;line-height:1.65;margin:7px 0 0}
-.betplan{display:grid;gap:10px}.ticket{background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:12px}.ticket-head{display:flex;justify-content:space-between;font-weight:800}.ticket-score{color:var(--gold)}.ticket ul{padding:0;margin:10px 0 0;list-style:none}.ticket li{padding:7px 0;border-top:1px solid #1e2228;font-size:13px;line-height:1.5}.ticket .compress{color:var(--muted);font-size:11px;margin-top:8px}.odds-wait,.odds-ready{margin-top:12px;border:1px dashed #4a4140;border-radius:10px;padding:11px;color:#c7b7a9;font-size:12px;line-height:1.6}.odds-ready{border-style:solid;border-color:#2d6a4f;color:#1b4332;background:#e9f5ef}
-.danger{color:#ff8090}.beta{padding:13px 17px;color:#747b86;font-size:10px;line-height:1.6}.toplink{text-align:right;padding:0 17px 16px}.toplink a{color:#b7bcc5;font-size:12px;text-decoration:none}
+.strategy{background:var(--soft);border:1px solid #cfe3d8;border-radius:12px;padding:13px;margin-bottom:12px}.strategy strong{font-size:18px;color:var(--brand)}.strategy p{color:#55616c;font-size:12px;line-height:1.65;margin:7px 0 0}
+.betplan{display:grid;gap:10px}.ticket{background:#f8fafb;border:1px solid var(--line);border-radius:12px;padding:12px}.ticket-head{display:flex;justify-content:space-between;font-weight:800}.ticket-score{color:var(--gold)}.ticket ul{padding:0;margin:10px 0 0;list-style:none}.ticket li{padding:7px 0;border-top:1px solid #eef2f5;font-size:13px;line-height:1.5}.ticket .compress{color:var(--muted);font-size:11px;margin-top:8px}.odds-wait,.odds-ready{margin-top:12px;border:1px dashed #c5ced6;border-radius:10px;padding:11px;color:#55616c;font-size:12px;line-height:1.6}.odds-ready{border-style:solid;border-color:#2d6a4f;color:#1b4332;background:#e9f5ef}
+.danger{color:#ff8090}.beta{padding:13px 17px;color:#747b86;font-size:10px;line-height:1.6}.toplink{text-align:right;padding:0 17px 16px}.toplink a{color:#6a7682;font-size:12px;text-decoration:none}
 /* V7 cards */
 .ai-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 10px}
 .ai-card h3{margin:0 0 10px;font-size:13px;letter-spacing:.1em;color:var(--muted)}.ai-card .ban-xl{font-size:34px;font-weight:900;letter-spacing:.04em;line-height:1.1;margin:4px 0 8px}
@@ -43,19 +64,20 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .status-banner{border-radius:12px;padding:12px 14px;margin:0 0 12px;font-size:13px;line-height:1.55;font-weight:700}
 .status-banner.warn{background:#fff8e6;border:1px solid #f0d48a;color:#7a5a00}
 .status-banner.error{background:#fdecea;border:1px solid #f5c2c0;color:#8a1f1a}
+.status-banner.info{background:#eef5ff;border:1px solid #c5d8f7;color:#1e4b8c}
 .status-banner a{color:inherit;text-decoration:underline}
-@media (max-width:560px){.ai-card .ban-xl{font-size:30px}.ticket-ban{font-size:26px}.pace-grid{grid-template-columns:1fr 1fr}.ledger-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.ai-card .ban-xl{font-size:30px}.ticket-ban{font-size:26px}.pace-grid{grid-template-columns:1fr 1fr}.ledger-grid{grid-template-columns:1fr 1fr}.ai-board{gap:8px}.ai-board .ab{padding:12px 8px}.ai-board .ab b{font-size:20px}.buy-row .br-ev{font-size:20px}}
 
 .source-tabs,.mode-tabs{display:flex;gap:8px}.source-tabs{padding:16px 0 8px}.mode-tabs{padding:0 0 4px}
 .source-tabs a,.mode-tabs a{flex:1;text-align:center;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 8px;font-weight:800;font-size:13px}
 .source-tabs a.active{color:#fff;border-color:var(--brand);background:var(--brand);box-shadow:none}
-.mode-tabs a{padding:9px;font-size:12px}.mode-tabs a.active{color:var(--gold);border-color:#4b4030;background:var(--soft)}
-.empty-state,.result-summary{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:20px;margin:12px 0 20px}
+.mode-tabs a{padding:9px;font-size:12px}.mode-tabs a.active{color:var(--brand);border-color:#b7dbc8;background:var(--soft)}
+.empty-state,.result-summary{border:1px solid var(--line);background:var(--card);border-radius:var(--radius);padding:20px;margin:12px 0 20px}
 .empty-state h2,.result-summary h2{font-size:17px;margin:7px 0}.empty-state p,.result-summary p{color:var(--muted);font-size:12px;line-height:1.7}
 .empty-kicker{letter-spacing:.15em;color:var(--red);font-size:10px;font-weight:800}
-.result-grid{display:grid;gap:8px}.result-row{display:grid;grid-template-columns:30px 1fr 70px;align-items:center;background:#f8fafb;border:1px solid #20242a;border-radius:10px;padding:11px}
+.result-grid{display:grid;gap:8px}.result-row{display:grid;grid-template-columns:30px 1fr 70px;align-items:center;background:#f8fafb;border:1px solid var(--line);border-radius:10px;padding:11px}
 .result-row b{color:var(--red)}.result-row span{font-weight:700}.result-row strong{text-align:right;color:var(--gold)}
-.review{color:#c4c8cf;font-size:13px;line-height:1.8;background:#f8fafb;border:1px solid #252a31;border-radius:12px;padding:13px}
+.review{color:#55616c;font-size:13px;line-height:1.8;background:#f8fafb;border:1px solid var(--line);border-radius:12px;padding:13px}
 .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:15px}.kpi b{display:block;font-size:22px;font-weight:850}.kpi small{color:var(--muted);font-size:10px;letter-spacing:.1em}
 .bar-row{display:grid;grid-template-columns:72px 1fr 64px;gap:8px;align-items:center;padding:8px 15px;border-bottom:1px solid var(--line)}.bar-row:last-child{border-bottom:0}
 .bar-track{height:10px;background:#e8eef1;border-radius:999px;overflow:hidden}.bar-fill{height:100%;border-radius:999px}
@@ -71,7 +93,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .filter-chip{appearance:none;border:1px solid var(--line);background:#f8fafb;color:var(--muted);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;line-height:1.2}
 .filter-chip.active{background:var(--soft);border-color:var(--brand);color:var(--brand)}
 .verify-list{display:grid;gap:12px;padding:0 12px 16px}
-.verify-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px;overflow:hidden;min-width:0}
+.verify-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 12px;overflow:hidden;min-width:0}
 .verify-card.hit-card{border-left:4px solid var(--brand)}.verify-card.miss-card{border-left:4px solid #c62828}
 .vc-date{font-size:12px;color:var(--muted);letter-spacing:.04em}.vc-race{font-size:18px;font-weight:850;margin:4px 0 8px;word-break:keep-all}
 .vc-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
@@ -94,15 +116,15 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .vc-money b{display:block;font-size:13px;font-weight:800;word-break:break-all}.vc-money small{color:var(--muted);font-size:9px;letter-spacing:.08em}
 .vc-comment{margin-top:10px;font-size:12px;line-height:1.65;color:#55616c;background:#f8fafb;border:1px dashed #d7dee4;border-radius:10px;padding:10px}
 .filter-empty{display:none;padding:18px 15px;color:var(--muted);font-size:13px;text-align:center}
-/* PO-5/PO-6 AI rank — purchase-level verification */
+/* Rank colors: S紫 A青 B緑 C黄 D灰 見送り赤 */
 .rank-badge{display:inline-flex;align-items:center;gap:6px;font-weight:850}
-.rank-pill{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border-radius:8px;font-size:14px;font-weight:900;letter-spacing:.04em;color:#fff}
-/* S=金 / A=緑 / B=青 / C=グレー */
-.rank-pill.S,.vc-pill.rank-S,.filter-chip.rank-s.active{background:linear-gradient(145deg,#d4a017,#b8860b);border-color:#9a6b00;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
-.rank-pill.A,.vc-pill.rank-A,.filter-chip.rank-a.active{background:#176b45;border-color:#0f5a38;color:#fff}
-.rank-pill.B,.vc-pill.rank-B,.filter-chip.rank-b.active{background:#176db0;border-color:#125a94;color:#fff}
-.rank-pill.C,.vc-pill.rank-C,.filter-chip.rank-c.active{background:#90a4ae;border-color:#78909c;color:#fff}
-.rank-pill.D,.vc-pill.rank-D,.filter-chip.rank-d.active{background:#cfd8dc;border-color:#b0bec5;color:#455a64}
+.rank-pill{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border-radius:8px;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff}
+.rank-pill.S,.vc-pill.rank-S,.filter-chip.rank-s.active,.venue-chip.s{background:var(--purple);border-color:#5538d4;color:#fff;box-shadow:none}
+.rank-pill.A,.vc-pill.rank-A,.filter-chip.rank-a.active,.venue-chip.a{background:var(--blue);border-color:#2458c4;color:#fff}
+.rank-pill.B,.vc-pill.rank-B,.filter-chip.rank-b.active{background:var(--green);border-color:#14663c;color:#fff}
+.rank-pill.C,.vc-pill.rank-C,.filter-chip.rank-c.active{background:var(--yellow);border-color:#b8860b;color:#fff}
+.rank-pill.D,.vc-pill.rank-D,.filter-chip.rank-d.active{background:#90a4ae;border-color:#78909c;color:#fff}
+.rank-pill.skip,.rank-pill.SKIP{background:var(--red);border-color:#b23b3b;color:#fff}
 .rank-name{font-size:12px;font-weight:700;color:var(--muted)}
 .rank-kpi{display:grid;gap:0}
 .rank-kpi-row{display:grid;grid-template-columns:56px 1fr;gap:8px;align-items:center;width:100%;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
@@ -145,13 +167,13 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .race-head-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .race-head .rank-pill{min-width:32px;height:32px;font-size:15px}
 /* 結果検証: スマホ向けレース一覧アコーディオン */
-.race-list-panel{border:1px solid var(--line);background:var(--card);border-radius:16px;margin:10px 0 16px;overflow:hidden}
+.race-list-panel{border:1px solid var(--line);background:var(--card);border-radius:var(--radius);margin:10px 0 16px;overflow:hidden}
 .race-list-panel>h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 14px 0;color:var(--muted)}
 .race-list-filters{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px}
 .race-acc-list{display:grid;gap:0}
 .race-acc{border-bottom:1px solid var(--line);background:#fff}
 .race-acc:last-child{border-bottom:0}
-.race-acc-toggle{width:100%;appearance:none;border:0;background:transparent;padding:12px 12px 10px;text-align:left;cursor:pointer;font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+.race-acc-toggle{width:100%;appearance:none;border:0;background:transparent;padding:16px 14px;text-align:left;cursor:pointer;font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .race-acc-toggle:active{background:#f3f7f5}
 .race-acc.open .race-acc-toggle{background:var(--soft)}
 .race-acc-line{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:16px;font-weight:850;line-height:1.35}
@@ -161,9 +183,9 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .race-acc-rank{font-weight:900}
 .race-acc-score{font-variant-numeric:tabular-nums;color:#334}
 .race-acc-marks{margin-top:6px;font-size:14px;font-weight:750;letter-spacing:.06em;color:#1f2a33;line-height:1.45;word-break:keep-all}
-.race-acc-body{display:none;padding:0 12px 12px;border-top:1px dashed #e4eaee}
+.race-acc-body{display:none;padding:0 14px 16px;border-top:1px dashed #e4eaee}
 .race-acc.open .race-acc-body{display:block}
-.race-acc-body .section{padding:12px 0;border-bottom:1px solid var(--line)}
+.race-acc-body .section{padding:14px 0;border-bottom:1px solid var(--line)}
 .race-acc-body .section:last-child{border-bottom:0;padding-bottom:0}
 .race-acc-body .section-title{margin-bottom:8px}
 .race-acc-body .result-row{grid-template-columns:28px 1fr 52px;padding:9px 10px;border-color:#e4eaee;background:#f8fafb}
@@ -174,42 +196,47 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .race-ticket .rt-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px}
 .race-ticket .rt-name{font-weight:850}
 .race-ticket .rt-detail{color:#445;word-break:break-word}
-.stats-drawer{margin:8px 0 20px;border:1px solid var(--line);background:var(--card);border-radius:16px;overflow:hidden}
+.stats-drawer{margin:8px 0 20px;border:1px solid var(--line);background:var(--card);border-radius:var(--radius);overflow:hidden}
 .stats-drawer>summary{padding:14px 16px;font-size:13px;font-weight:800;letter-spacing:.08em;cursor:pointer;list-style:none;color:var(--muted);background:#fafbfc}
 .stats-drawer>summary::-webkit-details-marker{display:none}
 .stats-drawer[open]>summary{border-bottom:1px solid var(--line);color:var(--text)}
 .stats-drawer .targets{border:0;border-radius:0;margin:0}
 .filter-empty.race-empty{padding:24px 16px}
 /* 地方: 開催場一覧 */
-.venue-panel{border:1px solid var(--line);background:var(--card);border-radius:16px;margin:10px 0 16px;overflow:hidden}
+.venue-panel{border:1px solid var(--line);background:var(--card);border-radius:var(--radius);margin:10px 0 16px;overflow:hidden}
 .venue-panel>h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 14px 8px;color:var(--muted)}
 .venue-panel>p{margin:0;padding:0 14px 12px;color:var(--muted);font-size:12px;line-height:1.6}
 .venue-list{display:grid;gap:0}
-.venue-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-decoration:none;color:inherit;padding:14px;border-top:1px solid var(--line);-webkit-tap-highlight-color:transparent}
+.venue-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-decoration:none;color:inherit;padding:16px 14px;border-top:1px solid var(--line);-webkit-tap-highlight-color:transparent}
 .venue-row:active{background:var(--soft)}
 .venue-row-name{font-size:18px;font-weight:850;line-height:1.25}
 .venue-row-name small{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
 .venue-row-meta{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
 .venue-chip{display:inline-flex;align-items:center;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:750;background:#f3f6f8;border:1px solid #e4eaee;color:var(--text)}
-.venue-chip.s{background:linear-gradient(145deg,#d4a017,#b8860b);border-color:#9a6b00;color:#fff}
-.venue-chip.a{background:#176b45;border-color:#0f5a38;color:#fff}
 .venue-back{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;padding:8px 0;color:var(--brand);font-size:13px;font-weight:800;text-decoration:none}
 .venue-back:active{opacity:.75}
 .race-list-panel>h2 .venue-tag{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:8px;background:var(--soft);color:var(--brand);font-size:12px;letter-spacing:0;text-transform:none}
-/* 予想分析: レース一覧アコーディオン（直感的な要約行） */
-.predict-acc .race-acc-toggle{padding:14px 12px}
-.predict-acc .list-race,.result-card .list-race{font-size:17px;font-weight:900;letter-spacing:.02em;line-height:1.3;display:flex;align-items:center;gap:8px}
-.simple-summary{display:grid;gap:4px;margin-top:8px;text-align:left}
-.simple-summary .ss-rank{font-size:15px;font-weight:900}
-.simple-summary .ss-invest{font-size:14px;font-weight:850}
-.simple-summary .ss-ev{font-size:14px;font-weight:800;color:var(--text)}
-.simple-summary .ss-main{font-size:15px;font-weight:900;margin-top:2px}
+/* 予想カード: 期待回収率最優先 */
+.predict-acc .race-acc-toggle{padding:16px 14px}
+.predict-acc .list-race,.result-card .list-race{font-size:15px;font-weight:800;letter-spacing:.02em;line-height:1.3;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted)}
+.predict-acc .list-race .race-name{color:var(--text);font-size:16px;font-weight:900}
+.simple-summary{display:grid;gap:8px;margin-top:10px;text-align:left}
+.simple-summary .ss-ev{font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.02em}
+.simple-summary .ss-ev.hi{color:var(--green)}.simple-summary .ss-ev.lo{color:var(--red)}.simple-summary .ss-ev.na{color:var(--muted)}
+.simple-summary .ss-ev small{font-size:11px;font-weight:700;margin-left:4px;letter-spacing:.06em}
+.simple-summary .ss-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.simple-summary .ss-invest{font-size:13px;font-weight:850}
+.simple-summary .ss-invest.buy{color:var(--green)}.simple-summary .ss-invest.skip{color:var(--red)}
+.simple-summary .ss-main{font-size:15px;font-weight:900;color:#1f2a33}
+.simple-summary .ss-rank{font-size:11px;font-weight:800;color:var(--muted)}
 .pick-simple{padding:12px 0;border-bottom:1px solid #eef2f5}
 .pick-simple:last-child{border-bottom:0}
 .pick-simple .ps-line{font-size:18px;font-weight:900;margin:0 0 4px}
 .pick-simple .ps-grade{font-size:13px;font-weight:800;color:var(--muted);margin-bottom:6px}
 .pick-simple .ps-grade b{color:var(--brand);font-size:16px;margin-left:4px}
 .pick-simple ul{margin:0;padding-left:1.1em;font-size:13px;line-height:1.65;color:var(--text);font-weight:600}
+.buy-reasons{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.buy-reasons li{padding:10px 12px;background:#f7faf8;border:1px solid #dcebdf;border-radius:12px;font-size:13px;font-weight:750;line-height:1.45;color:#1f2a33}
 .predict-acc .horse-line{font-size:22px;font-weight:900;line-height:1.25;margin:4px 0 10px;letter-spacing:.02em}
 .predict-acc .horse-line .ban{color:var(--brand);margin-right:6px}
 .predict-acc .race-acc-body{min-height:0}
@@ -232,7 +259,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .ev-hero .ev-tag.ev-consider{background:#fff8e6;border-color:#f0e0a8;color:#9a6b00}
 .ev-hero .ev-tag.ev-skip{background:#fdecea;border-color:#f5c2c0;color:#c62828}
 /* 本日成績ダッシュボード */
-.day-dash{border:1px solid var(--line);background:var(--card);border-radius:16px;margin:10px 0 14px;overflow:hidden}
+.day-dash{border:1px solid var(--line);background:var(--card);border-radius:var(--radius);margin:10px 0 14px;overflow:hidden}
 .day-dash>h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 14px 0;color:var(--muted)}
 .day-ranks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px 14px}
 .day-ranks .dr{background:#f8fafb;border:1px solid #e4eaee;border-radius:12px;padding:10px 6px;text-align:center}
@@ -255,7 +282,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .ai-improve li{position:relative;padding:8px 10px 8px 26px;background:#fff;border:1px solid #e4eaee;border-radius:10px;font-size:13px;line-height:1.5;color:#334}
 .ai-improve li:before{content:"・";position:absolute;left:10px;top:8px;color:var(--brand);font-weight:800}
 @media (max-width:420px){
-  .wrap{padding:0 10px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+  .wrap{padding:0 12px}.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
   .bar-row{grid-template-columns:56px 1fr 52px;padding:8px 12px;font-size:12px}
   .ai-grid{grid-template-columns:1fr 1fr}.vc-money{grid-template-columns:1fr 1fr 1fr}
   .verify-card{padding:12px}.vc-race{font-size:17px}.horse-chip{font-size:12px;padding:6px 8px}
@@ -266,9 +293,10 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   .rank-type-meta{grid-template-columns:repeat(2,1fr)}.rank-type-block{padding:12px 10px}
   .race-head{padding:14px 12px 10px}.heat{font-size:20px}
   .race-acc-line{font-size:15px;gap:6px}.race-acc-marks{font-size:13px;letter-spacing:.04em}
-  .race-acc-toggle{padding:11px 10px 9px}
+  .race-acc-toggle{padding:12px 10px}
   .predict-acc .race-acc-meta{font-size:12px;gap:6px}
   .predict-acc .race-acc-ev .ev-main{font-size:20px}
+  .simple-summary .ss-ev{font-size:26px}
   .ev-hero .ev-main{font-size:24px}
   .ev-detail{grid-template-columns:1fr 1fr 1fr;gap:6px}
   .day-ranks{gap:6px;padding:10px}.day-ranks .dr b{font-size:20px}
@@ -277,7 +305,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   .ai-score-pts{font-size:20px}.ai-score-stars{font-size:18px}
 }
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">RACE ANOMALY INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">EXPECTED VALUE INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
 <main class="wrap">
 <nav class="source-tabs">
 <a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
@@ -290,23 +318,31 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
 <a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={{selected_date}}">収支分析</a>
 </nav>
+{% if mode in ('predict','result') and (today_ai_board|default({})).get('has_data') %}
+<div class="ai-board-title">本日のAI成績</div>
+<section class="ai-board" aria-label="本日のAI成績">
+<div class="ab"><b class="{{today_ai_board.get('tone','roi-bad')}}">{{today_ai_board.get('回収率表示','—')}}</b><small>回収率</small></div>
+<div class="ab"><b>{{today_ai_board.get('的中率表示','—')}}</b><small>的中率</small></div>
+<div class="ab"><b>{{today_ai_board.get('買いレース','0/0')}}</b><small>買いレース</small></div>
+</section>
+{% endif %}
 <div class="toolbar">
 <form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
 {% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
-<div class="message">{{message}}</div>
+<div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source=='nar' %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
-<div class="status-banner warn">データ取得中です。予想の再計算が終わるまで数十秒かかることがあります。<br><a href="{{ request.url }}">再読み込み</a></div>
+<div class="status-banner warn">{% if source=='nar' %}地方データ取得中{% else %}データ取得中です{% endif %}。数十秒かかることがあります。<br><a href="{{ request.url }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
-<div class="status-banner warn">データ更新中です。表示は現在のキャッシュです。<a href="{{ request.url }}">再読み込み</a></div>
+<div class="status-banner warn">データ更新中です。表示は現在のキャッシュです{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。<a href="{{ request.url }}">再読み込み</a></div>
 {% elif _ds == 'error' %}
-<div class="status-banner error">通信エラーが発生しました。時間をおいて再読み込みしてください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/">トップへ</a></div>
+<div class="status-banner error">{% if source=='nar' %}地方データ取得失敗{% else %}通信エラーが発生しました{% endif %}。時間をおいて再読み込みしてください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/">トップへ</a></div>
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
-<h2>{{selected_date}}｜{% if mode=='result' %}結果検証｜{% elif mode=='predict' %}予想分析｜{% endif %}開催場一覧</h2>
-<p>{% if mode=='result' %}開催場を選ぶと、その競馬場の結果検証レース一覧を表示します。{% else %}開催場を選ぶと、その競馬場の予想分析を表示します。{% endif %}</p>
+<h2>{{selected_date}}｜開催場一覧</h2>
+<p>開催場を選ぶとレース一覧を表示します。</p>
 {% if venues %}
 <div class="venue-list">
 {% for v in venues %}
@@ -315,15 +351,21 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="venue-row-meta">
 {% if v.s %}<span class="venue-chip s">S {{v.s}}</span>{% endif %}
 {% if v.a %}<span class="venue-chip a">A {{v.a}}</span>{% endif %}
-{% if v.b %}<span class="venue-chip">B {{v.b}}</span>{% endif %}
-{% if v.c %}<span class="venue-chip">C {{v.c}}</span>{% endif %}
 <span class="venue-chip">開く ▶</span>
 </div>
 </a>
 {% endfor %}
 </div>
 {% else %}
-<div class="empty-state" style="border:0;margin:0;border-radius:0"><h2>開催場なし</h2><p>この日の地方開催データがありません。日付を変えるか、「本日開催」を押してください。</p></div>
+<div class="empty-state" style="border:0;margin:0;border-radius:0">
+{% if _ds == 'generating' %}
+<h2>地方データ取得中</h2><p>開催場データを取得しています。完了後に再読み込みしてください。</p>
+{% elif _ds == 'error' %}
+<h2>地方データ取得失敗</h2><p>通信に失敗しました。時間をおいて再読み込みしてください。</p>
+{% else %}
+<h2>本日は地方競馬の開催はありません</h2><p>日付を変えるか、「本日開催」を押して最新を確認してください。{% if data_updated_at|default('') %}<br>最終更新 {{data_updated_at}}{% endif %}</p>
+{% endif %}
+</div>
 {% endif %}
 </section>
 {% endif %}
@@ -415,14 +457,15 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   data-race-rank="{{r.get('勝負ランク','')}}">
 <button type="button" class="race-acc-toggle" aria-expanded="false">
 <div class="list-race">
-<span class="race-acc-chevron" aria-hidden="true">▶</span>
-{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r.get('開催地')}}{% endif %}
-<span class="rank-pill {{r.get('勝負ランク','')}}" style="min-width:26px;height:24px;font-size:12px">{{r.get('勝負ランク','—')}}</span>
+<span class="race-name">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r.get('開催地')}}{% endif %}</span>
+{% if r.get('勝負ランク') %}<span class="rank-pill {{r.get('勝負ランク','')}}">{{r.get('勝負ランク')}}</span>{% else %}<span class="rank-pill skip">見</span>{% endif %}
 </div>
 <div class="simple-summary">
-<div class="ss-rank">{{r.get('勝負ランク表示','🏆 —')}}</div>
-<div class="ss-invest">{{r.get('投資判定表示','⚪ 判定待ち')}}</div>
-<div class="ss-ev">{{r.get('期待回収率表示') or r.get('期待値表示') or '期待回収率 —'}}</div>
+<div class="ss-ev {% if r.get('期待値') is not none and (r.get('期待値')|float) >= 100 %}hi{% elif r.get('期待値') is not none %}lo{% else %}na{% endif %}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}<small>期待回収率</small></div>
+<div class="ss-row">
+<span class="ss-invest {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定表示') or r.get('投資判定') or '判定待ち'}}</span>
+<span class="ss-rank">{% if r.get('勝負ランク') %}{{r.get('勝負ランク')}}ランク{% else %}見送り{% endif %}</span>
+</div>
 <div class="ss-main">{{r.get('本命短表示') or r.get('本命表示') or '—'}}</div>
 </div>
 {% if r.get('印着順要約') %}
@@ -782,22 +825,44 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <a class="venue-back" href="/?source={{source}}&mode=predict&date={{selected_date}}">← {{selected_date}} の開催場一覧</a>
 {% endif %}
 {% if races %}
-{% if targets %}<section class="targets" id="predict-targets"><h2>{% if selected_venue %}{{selected_venue}}｜{% endif %}買い候補</h2>{% for t in targets %}<a class="target-row" href="#race-{{t['race_id']|urlencode}}" data-open-race="race-{{t['race_id']|urlencode}}"><div class="rank"><span class="rank-pill {{t.get('勝負ランク','')}}">{{t.get('勝負ランク','—')}}</span></div><div class="target-name">{{t.get('レース名表示') or t.get('開催地')}}<small>{{t.get('投資判定表示','')}} · {{t.get('本命短表示') or t.get('本命表示','—')}}</small></div><div class="target-score">{{t.get('期待値表示') or '—'}}<small>期待回収率</small></div></a>{% endfor %}</section>{% endif %}
+<section class="buy-board" id="predict-targets">
+<h2><span class="fire">🔥</span>本日の買い候補</h2>
+{% set _buys = buy_candidates if buy_candidates is defined and buy_candidates else targets %}
+{% if _buys %}
+<div class="buy-list">
+{% for t in _buys %}
+<a class="buy-row" href="#race-{{t['race_id']|urlencode}}" data-open-race="race-{{t['race_id']|urlencode}}">
+<div>
+<div class="br-venue">{% if selected_venue %}{{'%02d'|format(t['レース']|int)}}R{% else %}{{t.get('レース名表示') or t.get('開催地')}}{% endif %}</div>
+<div class="br-main">{{t.get('本命短表示') or t.get('本命表示') or '—'}}</div>
+</div>
+<div class="br-meta">
+<div class="br-ev {% if (t.get('期待値') or 0)|float < 100 %}low{% endif %}">{{t.get('期待回収率短') or t.get('期待値表示') or '—'}}</div>
+<span class="br-flag {{'buy' if t.get('投資判定トーン')=='buy' else 'skip'}}">{{t.get('投資判定表示') or t.get('投資判定') or '—'}}</span>
+</div>
+</a>
+{% endfor %}
+</div>
+{% else %}
+<div class="buy-empty">いま期待回収率100%以上のレースはありません。一覧から見送りを確認してください。</div>
+{% endif %}
+</section>
 <section class="race-list-panel" id="predict-race-panel">
-<h2>予想分析｜レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
+<h2>レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
 <div class="race-acc-list" id="predict-acc-list">
 {% for r in races %}
 <article class="race-acc predict-acc" id="race-{{r['race_id']|urlencode}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}">
 <button type="button" class="race-acc-toggle" aria-expanded="false">
 <div class="list-race">
-<span class="race-acc-chevron" aria-hidden="true">▶</span>
-{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r.get('開催地')}}{% endif %}
-<span class="rank-pill {{r.get('勝負ランク','')}}" style="min-width:26px;height:24px;font-size:12px">{{r.get('勝負ランク','—')}}</span>
+<span class="race-name">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r.get('開催地')}}{% endif %}</span>
+{% if r.get('勝負ランク') %}<span class="rank-pill {{r.get('勝負ランク','')}}">{{r.get('勝負ランク')}}</span>{% else %}<span class="rank-pill skip">見</span>{% endif %}
 </div>
 <div class="simple-summary">
-<div class="ss-rank">{{r.get('勝負ランク表示','🏆 —')}}</div>
-<div class="ss-invest">{{r.get('投資判定表示','⚪ 判定待ち')}}</div>
-<div class="ss-ev">{{r.get('期待回収率表示') or '期待回収率 —'}}</div>
+<div class="ss-ev {% if r.get('期待値') is not none and (r.get('期待値')|float) >= 100 %}hi{% elif r.get('期待値') is not none %}lo{% else %}na{% endif %}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}<small>期待回収率</small></div>
+<div class="ss-row">
+<span class="ss-invest {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定表示') or r.get('投資判定') or '判定待ち'}}</span>
+<span class="ss-rank">{% if r.get('勝負ランク') %}{{r.get('勝負ランク')}}ランク{% else %}見送り{% endif %}</span>
+</div>
 <div class="ss-main">{{r.get('本命短表示') or r.get('本命表示') or '—'}}</div>
 </div>
 </button>
@@ -805,16 +870,26 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <section class="race {{r['荒れクラス']}}">
 <div class="race-head">
 <div class="venue">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r['開催地']}}{% endif %}<small>詳細予想</small></div>
-<div class="race-head-right"><span class="rank-pill {{r.get('勝負ランク','')}}">{{r.get('勝負ランク','—')}}</span></div>
+<div class="race-head-right">{% if r.get('勝負ランク') %}<span class="rank-pill {{r.get('勝負ランク','')}}">{{r.get('勝負ランク','—')}}</span>{% else %}<span class="rank-pill skip">見</span>{% endif %}</div>
 </div>
 <div class="betbar">
-<span style="font-weight:900">{{r.get('勝負ランク表示','')}}</span>
-<span style="font-weight:850">{{r.get('投資判定表示','')}}</span>
-<span style="font-weight:800">{{r.get('期待回収率表示') or '期待回収率 —'}}</span>
+<span class="ev-main {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}<small>期待回収率</small></span>
+<span class="invest-pill {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定表示') or '—'}}</span>
 </div>
 
+{% if r.get('AI買い理由') %}
+<div class="section" style="padding-top:14px">
+<div class="section-title">AI買い理由</div>
+<ul class="buy-reasons">
+{% for tip in r.get('AI買い理由') %}
+<li>{{tip}}</li>
+{% endfor %}
+</ul>
+</div>
+{% endif %}
+
 <div class="section" style="padding-top:12px">
-<div class="section-title">予想馬</div>
+<div class="section-title">推奨馬</div>
 {% for p in (r.get('予想馬') or []) %}
 <div class="pick-simple">
 <div class="ps-line">{{p.get('表示行')}}</div>

@@ -17,17 +17,21 @@ NAR_TO_JRA_SCALE_C=0.45
 EV_EXTREME_PCT=1000
 
 # AIランク選別（PO-5/PO-6）。ラベルと閾値は将来ROI学習で自動調整可能な構造。
-RANK_LABELS={'S':'勝負','A':'買い','B':'様子見','C':'警戒','D':'見送り'}
+RANK_LABELS={'S':'S','A':'A','B':'B','C':'C','D':'D'}
 RANK_CLASSES={'S':'battle','A':'target','B':'watch','C':'caution','D':'skip'}
 DEFAULT_RANK_THRESHOLDS={
-    'mode':'percentile',  # percentile | absolute | hybrid
+    'mode':'ev',  # ev | percentile | absolute | hybrid
+    's_ev_min':120,
+    'a_ev_min':115,
+    'b_ev_min':110,
+    'c_ev_min':105,
+    'd_ev_min':100,
     's_top_n':2,
     'a_top_n':5,
     'b_percentile':0.35,
     'b_min_n':8,
-    'c_percentile':0.70,  # ここまでC、残りD
+    'c_percentile':0.70,
     'c_min_n':12,
-    # absolute / hybrid: 買い期待度基礎値の下限（学習で更新）
     's_min_score':0.0,
     'a_min_score':0.0,
     'b_min_score':0.0,
