@@ -140,48 +140,74 @@ def build_date_runners(
 
     rows = []
     race_ids = sorted(race_ids, key=_race_sort_key)
-    print(f"📥 {source.upper()} {target}: {len(race_ids)}レース取得中（開催場→R順）...")
+    total = len(race_ids)
+    print(f"========== 取得開始 ==========")
+    print(f"📥 {source.upper()} {target}: {total}レース取得中（開催場→R順）...")
     current_venue = None
+    ok_n = fail_n = 0
     for i, rid in enumerate(race_ids, 1):
         meta = client.parse_race_id(rid)
         venue = meta.get("venue") or "?"
         race_no = meta.get("race_no") or "?"
+        try:
+            rn_label = f"{int(float(race_no)):02d}R"
+        except Exception:
+            rn_label = f"{race_no}R"
         if venue != current_venue:
             current_venue = venue
             print(f"—— {venue} ——")
-        entries = client.fetch_entries(rid, source=source)
-        results = client.fetch_results(rid, source=source) if include_results else {}
-        win_odds = _fetch_win_odds_with_fallback(client, rid, source) if include_odds else {}
-        entries = _apply_win_odds(entries, win_odds)
-        odds_n = sum(1 for e in entries if e.get("単勝オッズ"))
-        if include_odds and odds_n:
-            try:
-                _save_ticket_odds(client, rid, source)
-            except Exception as e:
-                print(f"  ⚠️ 券種保存スキップ {rid}: {e}")
-        print(f"  [{i}/{len(race_ids)}] {venue}{race_no}R {rid} 出走{len(entries)}頭 オッズ{odds_n}頭")
-        for e in entries:
-            hist = client.fetch_horse_history(e["horse_id"]) if e.get("horse_id") else []
-            score = client.past_five_for_score(hist, target)
-            finish = results.get(e["馬名"], "")
-            rows.append({
-                "race_id": rid,
-                "日付": e.get("日付") or target,
-                "レース": e.get("レース"),
-                "馬名": e["馬名"],
-                "馬番": e.get("馬番", ""),
-                "枠": e.get("枠", ""),
-                "騎手": e.get("騎手", ""),
-                "斤量": e.get("斤量", ""),
-                "実着順": finish or score.get("実着順", ""),
-                "単勝オッズ": e.get("単勝オッズ", ""),
-                "人気": e.get("人気", ""),
-                "オッズ更新日時": e.get("オッズ更新日時", ""),
-                "source": source,
-                **{k: score[k] for k in score if k != "実着順"},
-            })
-            if finish:
-                rows[-1]["実着順"] = finish
+        print(f"  → {venue} {rn_label} 取得 [{i}/{total}] {rid}")
+        try:
+            entries = client.fetch_entries(rid, source=source)
+            results = {}
+            if include_results:
+                try:
+                    results = client.fetch_results(rid, source=source) or {}
+                except Exception as e:
+                    print(f"  ⚠️ {venue} {rn_label} 結果取得失敗（継続）: {e}")
+                    results = {}
+            win_odds = _fetch_win_odds_with_fallback(client, rid, source) if include_odds else {}
+            entries = _apply_win_odds(entries, win_odds)
+            odds_n = sum(1 for e in entries if e.get("単勝オッズ"))
+            if include_odds and odds_n:
+                try:
+                    _save_ticket_odds(client, rid, source)
+                except Exception as e:
+                    print(f"  ⚠️ 券種保存スキップ {rid}: {e}")
+            print(f"  ✓ {venue} {rn_label} 出走{len(entries)}頭 オッズ{odds_n}頭 結果{len(results)}頭")
+            for e in entries:
+                try:
+                    hist = client.fetch_horse_history(e["horse_id"]) if e.get("horse_id") else []
+                except Exception as e_hist:
+                    print(f"  ⚠️ 履歴失敗 {e.get('馬名')}: {e_hist}")
+                    hist = []
+                score = client.past_five_for_score(hist, target)
+                finish = results.get(e["馬名"], "")
+                rows.append({
+                    "race_id": rid,
+                    "日付": e.get("日付") or target,
+                    "レース": e.get("レース"),
+                    "馬名": e["馬名"],
+                    "馬番": e.get("馬番", ""),
+                    "枠": e.get("枠", ""),
+                    "騎手": e.get("騎手", ""),
+                    "斤量": e.get("斤量", ""),
+                    "実着順": finish or score.get("実着順", ""),
+                    "単勝オッズ": e.get("単勝オッズ", ""),
+                    "人気": e.get("人気", ""),
+                    "オッズ更新日時": e.get("オッズ更新日時", ""),
+                    "source": source,
+                    **{k: score[k] for k in score if k != "実着順"},
+                })
+                if finish:
+                    rows[-1]["実着順"] = finish
+            ok_n += 1
+        except Exception as e:
+            fail_n += 1
+            print(f"  ✗ {venue} {rn_label} 失敗（次レースへ）: {e}")
+            continue
+    print(f"========== 取得完了 ==========")
+    print(f"✅ {source.upper()} {target}: 成功 {ok_n} / 失敗 {fail_n} / 全 {total}")
     return _normalize_runners(pd.DataFrame(rows))
 
 
