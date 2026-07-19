@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from datetime import date, datetime, timezone, timedelta
@@ -135,16 +136,27 @@ def build_date_runners(
         return pd.DataFrame(columns=RUNNER_COLS)
 
     rows = []
-    print(f"📥 {source.upper()} {target}: {len(race_ids)}レース取得中...")
+    race_ids = sorted(race_ids, key=_race_sort_key)
+    print(f"📥 {source.upper()} {target}: {len(race_ids)}レース取得中（開催場→R順）...")
+    current_venue = None
     for i, rid in enumerate(race_ids, 1):
+        meta = client.parse_race_id(rid)
+        venue = meta.get("venue") or "?"
+        race_no = meta.get("race_no") or "?"
+        if venue != current_venue:
+            current_venue = venue
+            print(f"—— {venue} ——")
         entries = client.fetch_entries(rid, source=source)
         results = client.fetch_results(rid, source=source) if include_results else {}
-        win_odds = client.fetch_win_odds(rid, source=source) if include_odds else {}
+        win_odds = _fetch_win_odds_with_fallback(client, rid, source) if include_odds else {}
         entries = _apply_win_odds(entries, win_odds)
         odds_n = sum(1 for e in entries if e.get("単勝オッズ"))
         if include_odds and odds_n:
-            _save_ticket_odds(client, rid, source)
-        print(f"  [{i}/{len(race_ids)}] {rid} 出走{len(entries)}頭 オッズ{odds_n}頭")
+            try:
+                _save_ticket_odds(client, rid, source)
+            except Exception as e:
+                print(f"  ⚠️ 券種保存スキップ {rid}: {e}")
+        print(f"  [{i}/{len(race_ids)}] {venue}{race_no}R {rid} 出走{len(entries)}頭 オッズ{odds_n}頭")
         for e in entries:
             hist = client.fetch_horse_history(e["horse_id"]) if e.get("horse_id") else []
             score = client.past_five_for_score(hist, target)
@@ -170,13 +182,64 @@ def build_date_runners(
     return _normalize_runners(pd.DataFrame(rows))
 
 
+def _race_sort_key(race_id: str) -> tuple:
+    """開催場コード → レース番号の順（場ごとに全Rを順番取得するため）。"""
+    rid = str(race_id)
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})", rid)
+    if not m:
+        return ("zzz", 999, rid)
+    _year, venue, a, b, race_no = m.groups()
+    try:
+        rn = int(race_no)
+    except Exception:
+        rn = 999
+    return (venue, rn, rid)
+
+
+def _fetch_win_odds_with_fallback(client: NetkeibaClient, rid: str, src: str) -> dict:
+    """単勝オッズ取得。APIが空でも例外で止めず、出馬表スクレイピングへフォールバック。"""
+    win: dict = {}
+    try:
+        win = client.fetch_win_odds(rid, source=src) or {}
+    except Exception as e:
+        print(f"  ⚠️ APIオッズ失敗 {rid}: {e}")
+        win = {}
+    n = len({k: v for k, v in win.items() if len(str(k)) <= 2 and v.get("単勝オッズ")})
+    if n:
+        return win
+    # API未公開/空のとき出馬表の Popular 欄を使う（---.- は parser 側で空になる）
+    try:
+        entries = client.fetch_entries(rid, source=src) or []
+    except Exception as e:
+        print(f"  ⚠️ 出馬表フォールバック失敗 {rid}: {e}")
+        return win
+    for e in entries:
+        ban = str(e.get("馬番") or "").strip()
+        odds = str(e.get("単勝オッズ") or "").strip()
+        if not ban or not odds:
+            continue
+        info = {
+            "単勝オッズ": odds,
+            "人気": str(e.get("人気") or "").strip(),
+            "オッズ更新日時": "",
+            "オッズ状態": "shutuba",
+        }
+        win[ban] = info
+        if ban.isdigit():
+            win[ban.zfill(2)] = info
+    return win
+
+
 def refresh_odds_for_dates(
     client: NetkeibaClient,
     runners: pd.DataFrame,
     dates: list[str],
     source: str | None = None,
 ) -> pd.DataFrame:
-    """既存 runners の対象日だけオッズ列を更新（履歴再取得なし）。"""
+    """既存 runners の対象日だけオッズ列を更新（履歴再取得なし）。
+
+    開催場ごとにレース番号順で全Rを取得する。途中の空オッズでも処理を止めない。
+    """
     if runners.empty or not dates:
         return runners
     df = runners.copy()
@@ -188,21 +251,36 @@ def refresh_odds_for_dates(
         print(f"⚠️  オッズ更新対象なし: {dates} source={source}")
         return runners
 
-    race_ids = sorted(set(target["race_id"].astype(str)))
+    race_ids = sorted(set(target["race_id"].astype(str)), key=_race_sort_key)
     print(f"💰 オッズ更新: {len(race_ids)}レース / 日={dates} / source={source or 'all'}")
     odds_by_race: dict[str, dict] = {}
+    current_venue = None
+    ok_races = 0
+    empty_races = 0
     for i, rid in enumerate(race_ids, 1):
         # 旧JRA URL 行はスキップ
         if not str(rid).isdigit() or len(str(rid)) != 12:
             print(f"  [{i}/{len(race_ids)}] {rid}: skip (非netkeiba ID)")
             continue
         src = source if source in ("jra", "nar") else infer_source(rid)
-        win = client.fetch_win_odds(rid, source=src)
+        meta = client.parse_race_id(rid)
+        venue = meta.get("venue") or "?"
+        race_no = meta.get("race_no") or "?"
+        if venue != current_venue:
+            current_venue = venue
+            print(f"—— {venue} ——")
+        win = _fetch_win_odds_with_fallback(client, rid, src)
         odds_by_race[rid] = win
-        n = len({k: v for k, v in win.items() if len(k) <= 2 and v.get("単勝オッズ")})
+        n = len({k: v for k, v in win.items() if len(str(k)) <= 2 and v.get("単勝オッズ")})
         if n:
-            _save_ticket_odds(client, rid, src)
-        print(f"  [{i}/{len(race_ids)}] {rid}: オッズ{n}頭")
+            ok_races += 1
+            try:
+                _save_ticket_odds(client, rid, src)
+            except Exception as e:
+                print(f"  ⚠️ 券種保存スキップ {rid}: {e}")
+        else:
+            empty_races += 1
+        print(f"  [{i}/{len(race_ids)}] {venue}{race_no}R {rid}: オッズ{n}頭")
 
     updated = 0
     for idx in target.index:
@@ -217,7 +295,7 @@ def refresh_odds_for_dates(
         if info.get("オッズ更新日時"):
             df.at[idx, "オッズ更新日時"] = info["オッズ更新日時"]
         updated += 1
-    print(f"✅ オッズ反映: {updated}頭")
+    print(f"✅ オッズ反映: {updated}頭 / 取得成功{ok_races}R / 未公開{empty_races}R")
     return _normalize_runners(df)
 
 
