@@ -397,6 +397,7 @@ def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds:
         return {
             '一覧判定': '判定待ち', '一覧判定トーン': 'wait',
             '投資判定': '判定待ち', '投資判定アイコン': '⚪', '投資判定トーン': 'wait',
+            '投資判定表示': '⚪ 判定待ち',
         }
     e, c, r = float(ev), float(confidence), float(repro)
     composite = (e - 100) * 1.40 + (c - 50) * 0.55 + (r - 50) * 0.32
@@ -415,10 +416,12 @@ def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds:
         return {
             '一覧判定': '買い', '一覧判定トーン': 'buy',
             '投資判定': '買いレース', '投資判定アイコン': '🟢', '投資判定トーン': 'buy',
+            '投資判定表示': '🟢 買いレース',
         }
     return {
         '一覧判定': '見送り', '一覧判定トーン': 'skip',
-        '投資判定': '見送りレース', '投資判定アイコン': '🔴', '投資判定トーン': 'skip',
+        '投資判定': '見送り', '投資判定アイコン': '🔴', '投資判定トーン': 'skip',
+        '投資判定表示': '🔴 見送り',
     }
 
 
@@ -579,6 +582,31 @@ def apply_expected_value(record: dict) -> dict:
     # CSVの旧投資判定は上書き（一覧と詳細の矛盾をなくす）
     record.update(decision)
     record['レース期待回収率'] = ev['期待値'] if ev.get('期待値あり') else ''
+
+    # 一覧・詳細共通の簡潔表示パック
+    from pick_rationale import build_display_picks
+    rank = str(record.get('勝負ランク') or '').upper()
+    if rank in ('S', 'A', 'B', 'C', 'D'):
+        record['勝負ランク表示'] = f'🏆 {rank}ランク'
+    else:
+        record['勝負ランク表示'] = '🏆 —'
+    if not record.get('投資判定表示'):
+        icon = record.get('投資判定アイコン') or '⚪'
+        label = record.get('投資判定') or '判定待ち'
+        if label == '見送りレース':
+            label = '見送り'
+        record['投資判定表示'] = f'{icon} {label}'.strip()
+    record['予想馬'] = build_display_picks(record)
+    if record['予想馬']:
+        record['本命短表示'] = record['予想馬'][0].get('表示行') or record.get('本命表示') or '—'
+    else:
+        ban = record.get('本命馬番表示') or ''
+        name = str(record.get('本命') or '').strip()
+        record['本命短表示'] = f'◎{ban} {name}'.strip() if (ban or name) else '—'
+    if record.get('期待値あり'):
+        record['期待回収率表示'] = f"期待回収率{record.get('期待値')}%"
+    else:
+        record['期待回収率表示'] = '期待回収率 —'
 
     # 最終整合: 見送りなのに買い帯の期待値を出さない / 買いなのに低EVを出さない
     if record.get('一覧判定') == '見送り' and ev.get('期待値あり') and float(ev['期待値']) >= 110:
@@ -786,7 +814,7 @@ def day_performance(records, verification=None, safe_pct=None):
     if safe_pct is None:
         safe_pct = lambda num, den: round(float(num) / float(den) * 100, 1) if den else 0.0
 
-    ranks = {'S': 0, 'A': 0, 'B': 0, 'C': 0}
+    ranks = {'S': 0, 'A': 0, 'B': 0, 'C': 0, 'D': 0}
     verified = []
     ev_vals = []
     for r in records or []:
@@ -836,6 +864,7 @@ def day_performance(records, verification=None, safe_pct=None):
         'A': ranks['A'],
         'B': ranks['B'],
         'C': ranks['C'],
+        'D': ranks['D'],
         '件数': len(records or []),
         '検証数': len(verified),
         '本命勝率': safe_pct(main_wins, main_n) if main_n else None,

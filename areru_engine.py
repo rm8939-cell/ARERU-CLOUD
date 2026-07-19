@@ -17,18 +17,21 @@ NAR_TO_JRA_SCALE_C=0.45
 EV_EXTREME_PCT=1000
 
 # AIランク選別（PO-5/PO-6）。ラベルと閾値は将来ROI学習で自動調整可能な構造。
-RANK_LABELS={'S':'勝負','A':'買い','B':'様子見','C':'見送り'}
-RANK_CLASSES={'S':'battle','A':'target','B':'watch','C':'skip'}
+RANK_LABELS={'S':'勝負','A':'買い','B':'様子見','C':'警戒','D':'見送り'}
+RANK_CLASSES={'S':'battle','A':'target','B':'watch','C':'caution','D':'skip'}
 DEFAULT_RANK_THRESHOLDS={
     'mode':'percentile',  # percentile | absolute | hybrid
     's_top_n':2,
     'a_top_n':5,
     'b_percentile':0.35,
     'b_min_n':8,
+    'c_percentile':0.70,  # ここまでC、残りD
+    'c_min_n':12,
     # absolute / hybrid: 買い期待度基礎値の下限（学習で更新）
     's_min_score':0.0,
     'a_min_score':0.0,
     'b_min_score':0.0,
+    'c_min_score':0.0,
 }
 
 def clean_name(x): return re.sub(r'[\s\u3000]+','',str(x)).strip()
@@ -53,10 +56,10 @@ def load_rank_thresholds():
     cfg=_load_config()
     raw=cfg.get('rank_thresholds') or {}
     out={**DEFAULT_RANK_THRESHOLDS,**raw}
-    for k in ('s_top_n','a_top_n','b_min_n'):
+    for k in ('s_top_n','a_top_n','b_min_n','c_min_n'):
         try: out[k]=int(out[k])
         except (TypeError,ValueError): out[k]=DEFAULT_RANK_THRESHOLDS[k]
-    for k in ('b_percentile','s_min_score','a_min_score','b_min_score'):
+    for k in ('b_percentile','c_percentile','s_min_score','a_min_score','b_min_score','c_min_score'):
         try: out[k]=float(out[k])
         except (TypeError,ValueError): out[k]=DEFAULT_RANK_THRESHOLDS[k]
     mode=str(out.get('mode') or 'percentile').lower()
@@ -90,22 +93,26 @@ def assign_ai_ranks(result, thresholds=None):
     a_n=max(s_n,min(int(th['a_top_n']),total))
     b_cut=max(int(th['b_min_n']),int(total*float(th['b_percentile'])))
     b_n=max(a_n,min(b_cut,total))
+    c_cut=max(int(th.get('c_min_n') or 12),int(total*float(th.get('c_percentile') or 0.70)))
+    c_n=max(b_n,min(c_cut,total))
     mode=th.get('mode','percentile')
     s_min=float(th.get('s_min_score') or 0)
     a_min=float(th.get('a_min_score') or 0)
     b_min=float(th.get('b_min_score') or 0)
+    c_min=float(th.get('c_min_score') or 0)
 
     def grade(rank_i, score):
         # absolute: 基礎値のみ / hybrid: 相対順位かつ基礎値下限 / percentile: 相対のみ
+        # 5段階: S / A / B / C / D
         if mode=='absolute':
             if score>=s_min and s_min>0: return 'S'
             if score>=a_min and a_min>0: return 'A'
             if score>=b_min and b_min>0: return 'B'
-            if s_min<=0 and a_min<=0 and b_min<=0:
-                # 未学習時は相対フォールバック
+            if score>=c_min and c_min>0: return 'C'
+            if s_min<=0 and a_min<=0 and b_min<=0 and c_min<=0:
                 pass
             else:
-                return 'C'
+                return 'D'
         if rank_i<=s_n:
             if mode=='hybrid' and s_min>0 and score<s_min: return 'A' if rank_i<=a_n else 'B'
             return 'S'
@@ -115,7 +122,10 @@ def assign_ai_ranks(result, thresholds=None):
         if rank_i<=b_n:
             if mode=='hybrid' and b_min>0 and score<b_min: return 'C'
             return 'B'
-        return 'C'
+        if rank_i<=c_n:
+            if mode=='hybrid' and c_min>0 and score<c_min: return 'D'
+            return 'C'
+        return 'D'
 
     ranks=[grade(int(order.loc[i]), float(raw_bet.loc[i])) for i in result.index]
     result['勝負ランク']=ranks

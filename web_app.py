@@ -539,6 +539,41 @@ def _json_field(raw, default=None):
         return default
 
 
+def apply_display_ranks(races: list) -> list:
+    """表示用に開催日内の相対評価を S/A/B/C/D の5段階へ揃える。"""
+    if not races:
+        return races
+    scored=[]
+    for i,r in enumerate(races):
+        try:
+            score=float(r.get('BET期待値') or r.get('期待値') or r.get('買い期待度基礎値') or 0)
+        except (TypeError,ValueError):
+            score=0.0
+        scored.append((score,i))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    total=len(scored)
+    s_n=max(1,min(2,total))
+    a_n=max(s_n,min(5,total))
+    b_n=max(a_n,min(max(8,int(total*0.35)),total))
+    c_n=max(b_n,min(max(12,int(total*0.70)),total))
+    rank_by_idx={}
+    for order,(score,i) in enumerate(scored,1):
+        if order<=s_n: rk='S'
+        elif order<=a_n: rk='A'
+        elif order<=b_n: rk='B'
+        elif order<=c_n: rk='C'
+        else: rk='D'
+        rank_by_idx[i]=rk
+    from areru_engine import RANK_LABELS, RANK_CLASSES
+    for i,r in enumerate(races):
+        rk=rank_by_idx.get(i,'C')
+        r['勝負ランク']=rk
+        r['勝負ランク表示']=f'🏆 {rk}ランク'
+        r['BET判定']=RANK_LABELS.get(rk,'')
+        r['BETクラス']=RANK_CLASSES.get(rk,'')
+    return races
+
+
 def prep(records, ban_map=None):
     from areru_engine import RANK_LABELS, RANK_CLASSES
     from race_sim import circle_ban
@@ -612,7 +647,7 @@ def prep(records, ban_map=None):
                 r['投資判定アイコン']=r.get('投資判定アイコン') or '⚪'
                 r['投資判定トーン']=r.get('投資判定トーン') or 'wait'
         apply_expected_value(r)
-        # ピックカードにも馬番＋馬名を付与
+        # ピックカードにも馬番＋馬名を付与（詳細は予想馬3頭のみ表示）
         for c in r.get('ピックカード一覧') or []:
             if not isinstance(c, dict):
                 continue
@@ -621,11 +656,21 @@ def prep(records, ban_map=None):
             cban=c.get('馬番表示') or (circle_ban(cb) if cb else '')
             c['表示名']=f"{cb}番 {cn}".strip() if cb and cn else (cn or cban or '—')
             c['馬番表示']=cban or cb
-        danger=r.get('危険人気カード') or {}
-        if isinstance(danger, dict) and danger:
-            db=str(danger.get('馬番') or '').strip()
-            dn=str(danger.get('馬名') or '').strip()
-            danger['表示名']=f"{db}番 {dn}".strip() if db and dn else (dn or danger.get('馬番表示') or '—')
+        # 一覧・詳細の共通ラベルを保証
+        rank=str(r.get('勝負ランク') or '').upper()
+        if rank in ('S','A','B','C','D'):
+            r['勝負ランク']=rank
+            r['勝負ランク表示']=r.get('勝負ランク表示') or f'🏆 {rank}ランク'
+        if r.get('投資判定')=='見送りレース':
+            r['投資判定']='見送り'
+            r['投資判定表示']='🔴 見送り'
+        if not r.get('投資判定表示'):
+            r['投資判定表示']=f"{r.get('投資判定アイコン') or '⚪'} {r.get('投資判定') or '判定待ち'}"
+        if not r.get('予想馬'):
+            from pick_rationale import build_display_picks
+            r['予想馬']=build_display_picks(r)
+        if not r.get('本命短表示'):
+            r['本命短表示']=(r.get('予想馬') or [{}])[0].get('表示行') or r.get('本命表示') or '—'
     return records
 
 def clean_horse(x):
@@ -956,6 +1001,7 @@ def index():
                         df=df.drop(columns=drop_cols, errors='ignore')
                 races=prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
                 races=_filter_records_by_source(races, source)
+                races=apply_display_ranks(races)
                 for row in races:
                     if not _race_date(row):
                         row['日付']=selected
@@ -1218,7 +1264,7 @@ def analysis_data(records):
                       'verified':bool(r.get('結果確定')) or any(
                           str(x.get('着順','')) not in ('','結果待ち','取消') for x in r.get('結果一覧',[]))}
                      for r in records])
-    ranks=[{'label':x,'name':RANK_LABELS.get(x,x),'count':int((df['rank']==x).sum())} for x in ['S','A','B','C']]
+    ranks=[{'label':x,'name':RANK_LABELS.get(x,x),'count':int((df['rank']==x).sum())} for x in ['S','A','B','C','D']]
     venues=[{'label':str(k),'count':int(v)} for k,v in df['venue'].value_counts().items()]
     bands=[]
     for label,lo,hi in [('～69',0,70),('70～79',70,80),('80～89',80,90),('90～',90,101)]:
@@ -1456,7 +1502,7 @@ def _buy_reasons(pred):
         reasons.append('期待値プラス')
     if danger and danger not in ('なし','見送り',''):
         reasons.append('危険人気馬を除外')
-    if rank in ('S','A','B','C'):
+    if rank in ('S','A','B','C','D'):
         reasons.append(f'AI評価{rank}')
     if bet_judge and bet_judge not in ('なし','見送り',''):
         reasons.append(f'買い判定：{bet_judge}')
@@ -1654,7 +1700,7 @@ def verification_data(selected_date='', source='all'):
     # AIランク別KPI（購入対象の馬券単位・全期間）※レース単位ではない
     ranked=_attach_rank_column(purchase_all, pred_meta)
     by_rank=[]
-    for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','見送り')]:
+    for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','警戒'),('D','見送り')]:
         g=ranked[ranked['勝負ランク']==key] if not ranked.empty else ranked
         s=pack(g)
         by_rank.append({'key':key,'name':name,**s})
@@ -1663,7 +1709,7 @@ def verification_data(selected_date='', source='all'):
     if not typed.empty:
         typed['券種表示']=typed['bet_type'].map(_bet_type_label)
     by_rank_type=[]
-    for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','見送り')]:
+    for key, name in [('S','勝負'),('A','買い'),('B','様子見'),('C','警戒'),('D','見送り')]:
         g_rank=typed[typed['勝負ランク']==key] if not typed.empty else typed
         types=[]
         for label in RANK_TYPE_ORDER:
@@ -1684,7 +1730,7 @@ def verification_data(selected_date='', source='all'):
     for row in recent:
         rid=_norm_race_id(row.get('race_id',''))
         rk=str(row.get('rank','') or '').upper()
-        if not rid or rk not in ('S','A','B','C'):
+        if not rid or rk not in ('S','A','B','C','D'):
             continue
         purchase_ranks_by_race.setdefault(rid,set()).add(rk)
     purchase_ranks_by_race={k:sorted(v) for k,v in purchase_ranks_by_race.items()}
