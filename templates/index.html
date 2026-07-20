@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+{% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>ARERU.EXE</title>
 <style>
 :root{--bg:#f3f5f7;--card:#fff;--line:#e6ebf0;--text:#121820;--muted:#6a7682;--red:#d64545;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a7f4b;--soft:#eaf6f0;--purple:#6b4eff;--blue:#2f6fed;--radius:16px}
@@ -309,7 +310,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <main class="wrap">
 <nav class="source-tabs">
 <a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
-<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}{% if today_date %}&date={{today_date}}{% elif selected_date %}&date={{selected_date}}{% endif %}">地方</a>
+<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}">地方</a>
 <a class="{{'active' if source=='all' else ''}}" href="/?source=all&mode={{mode}}&date={{selected_date}}">全開催</a>
 </nav>
 <nav class="mode-tabs">
@@ -328,16 +329,16 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% endif %}
 <div class="toolbar">
 <form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
-{% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
+{% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><input type="hidden" name="force_refresh" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source=='nar' %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
-<div class="status-banner warn">{% if source=='nar' %}地方データ取得中{% else %}データ取得中です{% endif %}。数十秒かかることがあります。<br><a href="{{ request.url }}">再読み込み</a></div>
+<div class="status-banner warn">データ取得中。数十秒かかることがあります。自動で再読み込みします。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
 <div class="status-banner warn">データ更新中です。表示は現在のキャッシュです{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。<a href="{{ request.url }}">再読み込み</a></div>
 {% elif _ds == 'error' %}
-<div class="status-banner error">{% if source=='nar' %}地方データ取得失敗{% else %}通信エラーが発生しました{% endif %}。時間をおいて再読み込みしてください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/">トップへ</a></div>
+<div class="status-banner error">{% if source=='nar' %}取得失敗{% else %}通信エラーが発生しました{% endif %}。時間をおいて再読み込みするか、「本日開催」で再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
@@ -359,9 +360,9 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% else %}
 <div class="empty-state" style="border:0;margin:0;border-radius:0">
 {% if _ds == 'generating' %}
-<h2>地方データ取得中</h2><p>開催場データを取得しています。完了後に再読み込みしてください。</p>
+<h2>データ取得中</h2><p>開催場データを取得しています。完了後に自動で再読み込みします。</p>
 {% elif _ds == 'error' %}
-<h2>地方データ取得失敗</h2><p>通信に失敗しました。時間をおいて再読み込みしてください。</p>
+<h2>取得失敗</h2><p>通信に失敗しました。「本日開催」で再取得してください。</p>
 {% else %}
 <h2>本日は地方競馬の開催はありません</h2><p>日付を変えるか、「本日開催」を押して最新を確認してください。{% if data_updated_at|default('') %}<br>最終更新 {{data_updated_at}}{% endif %}</p>
 {% endif %}
@@ -560,7 +561,21 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="filter-empty race-empty" id="race-empty">該当条件に合うレースがありません</div>
 </section>
 {% elif not show_venue_picker %}
-<section class="empty-state"><h2>検証データなし</h2><p>この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。</p></section>
+<section class="empty-state">
+{% if _ds == 'generating' %}
+<h2>データ取得中</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースデータを取得しています。{% else %}レースデータを取得しています。{% endif %}完了後に自動で再読み込みします。</p>
+<p><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></p>
+{% elif _ds == 'error' %}
+<h2>取得失敗</h2>
+<p>データ取得に失敗しました。「本日開催」で再取得してください。</p>
+<p><a href="/?source=nar&mode=result&today=1&force_refresh=1">本日開催を再取得</a></p>
+{% else %}
+<h2>検証データなし</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースがありません。開催場一覧へ戻るか、「本日開催」で再取得してください。{% else %}この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。{% endif %}</p>
+{% if selected_venue %}<p><a href="/?source={{source}}&mode=result&date={{selected_date}}">← 開催場一覧へ</a></p>{% endif %}
+{% endif %}
+</section>
 {% endif %}
 
 {% if verification and verification.has_data and not show_venue_picker %}
@@ -1070,7 +1085,21 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 })();
 </script>
 {% else %}
-<section class="empty-state"><h2>予想データなし</h2><p>この日の予想レースがありません。日付を変えるか、データ更新後に再表示してください。</p></section>
+<section class="empty-state">
+{% if _ds == 'generating' %}
+<h2>データ取得中</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースデータを取得しています。{% else %}レースデータを取得しています。{% endif %}完了後に自動で再読み込みします。</p>
+<p><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></p>
+{% elif _ds == 'error' %}
+<h2>取得失敗</h2>
+<p>データ取得に失敗しました。「本日開催」で再取得してください。</p>
+<p><a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>
+{% else %}
+<h2>予想データなし</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースがありません。「本日開催」で再取得するか、開催場一覧へ戻ってください。{% else %}この日の予想レースがありません。日付を変えるか、データ更新後に再表示してください。{% endif %}</p>
+{% if selected_venue %}<p><a href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">← 開催場一覧へ</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>{% endif %}
+{% endif %}
+</section>
 {% endif %}
 {% endif %}
 {% endif %}
