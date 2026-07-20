@@ -1,0 +1,51 @@
+# 地方競馬は毎日開催。Render Free のスリープを起こし、当日パイプラインを起動する。
+# Secrets（任意）:
+#   RENDER_APP_URL  … 例 https://areru-cloud.onrender.com（未設定ならこのURL）
+#   CRON_TOKEN      … Render の CRON_TOKEN と同じ（未設定なら token なしで呼ぶ）
+name: NAR daily wake
+
+on:
+  schedule:
+    # JST 06:00 / 10:00 / 14:00 / 18:00 / 21:00
+    - cron: '0 21 * * *'
+    - cron: '0 1 * * *'
+    - cron: '0 5 * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  wake-and-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wake app and run NAR daily cron
+        env:
+          APP_URL: ${{ secrets.RENDER_APP_URL }}
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+        run: |
+          set -euo pipefail
+          BASE="${APP_URL:-https://areru-cloud.onrender.com}"
+          BASE="${BASE%/}"
+          echo "Waking ${BASE} ..."
+          # Free スリープ解除（失敗しても続行）
+          curl -fsS -o /dev/null -w "wake_http=%{http_code}\n" --max-time 90 \
+            "${BASE}/?source=nar&mode=predict" || true
+          sleep 8
+          if [ -n "${CRON_TOKEN:-}" ]; then
+            URL="${BASE}/cron/nar-daily?token=${CRON_TOKEN}"
+          else
+            URL="${BASE}/cron/nar-daily"
+          fi
+          echo "POST ${BASE}/cron/nar-daily ..."
+          # 長時間ジョブはサーバ側スレッド。応答はすぐ返る想定。
+          code=$(curl -sS -o /tmp/nar_cron.json -w "%{http_code}" --max-time 120 \
+            -X GET "$URL" || echo "000")
+          echo "cron_http=${code}"
+          head -c 400 /tmp/nar_cron.json || true
+          echo
+          # 200/401 以外は再試行（起動直後）
+          if [ "$code" != "200" ] && [ "$code" != "401" ]; then
+            sleep 20
+            curl -fsS --max-time 120 -X GET "$URL" || true
+          fi

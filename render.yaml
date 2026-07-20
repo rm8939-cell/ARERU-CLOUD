@@ -10,5 +10,6 @@ services:
     buildCommand: pip install -r requirements.txt
     # workers=1 必須（Free/Starter 512MB では複数 worker で OOM しやすい）
     startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1 --max-requests 200 --max-requests-jitter 50
-# 地方日次安定化: 外部cronから GET /cron/nar-daily?token=$CRON_TOKEN を推奨
-# （朝・昼・夕・夜など 4〜6時間おき）
+# 地方は毎日開催。日次安定化は GitHub Actions (.github/workflows/nar-daily.yml) が
+# 朝・昼・夕に /cron/nar-daily を叩く。Render 側に CRON_TOKEN を設定し、
+# GitHub Secrets に CRON_TOKEN / RENDER_APP_URL を入れる。

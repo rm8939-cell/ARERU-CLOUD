@@ -1,0 +1,66 @@
+# 地方競馬の当日カード＋予想を GitHub 上で生成し main にコミットする。
+# Render Free は取得中に OOM/スリープしやすいため、成果物をリポジトリに載せて毎日表示を安定させる。
+name: NAR daily data
+
+on:
+  schedule:
+    # JST 05:30 / 11:30 / 16:30
+    - cron: '30 20 * * *'
+    - cron: '30 2 * * *'
+    - cron: '30 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Refresh NAR today + predict
+        env:
+          TZ: Asia/Tokyo
+          ARERU_SKIP_NAR_BOOT: '1'
+        run: |
+          set -euo pipefail
+          TODAY=$(date +%F)
+          echo "NAR refresh date=${TODAY}"
+          python refresh_data.py --dates today --source nar
+          python replay_predict.py "${TODAY}"
+          test -s "data/predictions_by_date/predictions_${TODAY}.csv"
+          echo "predictions ok: $(wc -l < "data/predictions_by_date/predictions_${TODAY}.csv") lines"
+
+      - name: Commit and push data
+        env:
+          TZ: Asia/Tokyo
+        run: |
+          set -euo pipefail
+          TODAY=$(date +%F)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            data/runners.csv \
+            "data/predictions_by_date/predictions_${TODAY}.csv" \
+            "data/predictions_by_date/scores_${TODAY}.csv" \
+            data/odds_tickets || true
+          if git diff --staged --quiet; then
+            echo "No data changes for ${TODAY}"
+            exit 0
+          fi
+          git commit -m "chore: NAR daily data ${TODAY}"
+          git push

@@ -398,7 +398,9 @@ def _clear_runtime_caches():
 
 
 _NAR_JOB_STATUS=DATA/'.nar_job_status.json'
-_NAR_JOB_STALE_SEC=45*60  # 取得中のまま放置しない上限
+_NAR_JOB_STALE_SEC=20*60  # 取得中のまま放置しない上限（Free 再試行を早めに）
+_NAR_BOOT_SEEDED=False
+_NAR_BOOT_LOCK=threading.Lock()
 
 
 def _write_nar_job_status(
@@ -630,6 +632,88 @@ def _nar_pred_ready(date_str: str, source: str = 'nar') -> bool:
         return True
     except Exception:
         return False
+
+
+def _nar_venues_from_runners(date_str: str) -> list:
+    """予想CSV前でも runners から開催場一覧を出す（地方は毎日開催のため）。"""
+    if not date_str or not RUNNERS.exists():
+        return []
+    try:
+        from areru_engine import NAR_VENUE_CODES, source_from_race_id
+        from netkeiba_client import normalize_venue_name
+        rdf=pd.read_csv(
+            RUNNERS, encoding='utf-8-sig',
+            usecols=lambda c: c in ('race_id', '日付', 'source', '開催地', 'レース'),
+        )
+        if rdf.empty or '日付' not in rdf.columns or 'race_id' not in rdf.columns:
+            return []
+        day=rdf[rdf['日付'].astype(str).str[:10] == str(date_str)]
+        if day.empty:
+            return []
+        if 'source' in day.columns:
+            day=day[day['source'].astype(str).str.lower() == 'nar']
+        else:
+            day=day[day['race_id'].map(source_from_race_id) == 'nar']
+        if day.empty:
+            return []
+        seen=set()
+        records=[]
+        for _, row in day.iterrows():
+            rid=str(row.get('race_id') or '')
+            if not rid or rid in seen:
+                continue
+            seen.add(rid)
+            venue=''
+            if '開催地' in day.columns:
+                venue=normalize_venue_name(str(row.get('開催地') or '').strip())
+            if not venue:
+                code=rid[4:6] if len(rid) >= 6 else ''
+                venue=NAR_VENUE_CODES.get(code, '')
+            if not venue:
+                continue
+            race_no=row.get('レース') if 'レース' in day.columns else None
+            if race_no in (None, ''):
+                try:
+                    race_no=int(rid[-2:]) if len(rid) >= 2 else 0
+                except Exception:
+                    race_no=0
+            records.append({'開催地': venue, 'レース': race_no, '勝負ランク': ''})
+        return _venue_meetings(records)
+    except Exception as e:
+        print(f'[nar-venues] runners fallback fail: {e}', flush=True)
+        return []
+
+
+def _ensure_nar_today_seeded() -> None:
+    """起動時に当日地方が無ければ日次パイプラインを自動開始（毎日表示の土台）。"""
+    global _NAR_BOOT_SEEDED
+    with _NAR_BOOT_LOCK:
+        if _NAR_BOOT_SEEDED:
+            return
+        _NAR_BOOT_SEEDED=True
+    if str(os.environ.get('ARERU_SKIP_NAR_BOOT') or '').strip() == '1':
+        return
+    today=_today_jst()
+    if _nar_pred_ready(today, 'nar'):
+        print(f'[nar-boot] today ready date={today}', flush=True)
+        return
+
+    def _run():
+        import time
+        time.sleep(2)
+        try:
+            print(f'[nar-boot] seeding today pipeline date={today}', flush=True)
+            _write_nar_job_status(
+                'running', stage='boot', message='データ取得中', date_str=today,
+            )
+            run_nar_today_pipeline(force=True)
+        except Exception as e:
+            print(f'[nar-boot] fail: {e}', flush=True)
+
+    try:
+        threading.Thread(target=_run, daemon=True, name='nar-boot-seed').start()
+    except Exception as e:
+        print(f'[nar-boot] start fail: {e}', flush=True)
 
 
 def _nar_force_calendar_today(explicit_date: str, want_today: bool, mode: str, allow_past: bool) -> bool:
@@ -1963,12 +2047,17 @@ def index():
 
     if selected in av:
         try:
-            # 地方・当日で予想未準備なら前日ファイルを一切読まず取得中/失敗へ
+            # 地方・当日で予想未準備なら前日ファイルを一切読まず取得中へ
+            # runners があれば開催場一覧だけ先に出す（毎日開催の表示を維持）
             if block_stale_nar and not _nar_pred_ready(today, 'nar'):
                 pred_path, page_status = None, 'generating'
                 data_status='generating'
                 message='データ取得中'
-                races=[]; venues=[]; show_venue_picker=True
+                races=[]; show_venue_picker=True
+                venues=_nar_venues_from_runners(today)
+                if venues:
+                    data_status='updating'
+                    message=f'本日開催 {today} / {label} / 開催場 {len(venues)}場（予想生成中）'
                 races_for_board=[]; buy_candidates=[]; targets=[]
                 data_updated_at=''
             else:
@@ -2282,7 +2371,12 @@ def index():
         if (force_refresh or want_today or force_cal_today) and job_status=='ready' and not _nar_pred_ready(selected, 'nar'):
             data_status='generating'
             message='データ取得中'
-            venues=[]; races=[]; data_updated_at=''
+            races=[]; data_updated_at=''
+            if not venues:
+                venues=_nar_venues_from_runners(selected or today)
+            if venues:
+                data_status='updating'
+                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
         elif (force_refresh or want_today) and job_status=='ready' and _nar_pred_ready(selected, 'nar'):
             data_status='ready'
             if venues and show_venue_picker:
@@ -2306,14 +2400,24 @@ def index():
             data_status='generating'
             message=job_msg or 'データ取得中'
             if selected==today and not today_ok:
-                venues=[]; races=[]; data_updated_at=''
+                races=[]; data_updated_at=''
                 show_venue_picker=True
+                if not venues:
+                    venues=_nar_venues_from_runners(today)
+                if venues:
+                    # 開催場は出して meta refresh で消さない（updating）
+                    data_status='updating'
+                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
         elif job_status=='error':
             data_status='error'
             message=job_msg or '取得失敗'
             if selected==today and not has_content:
-                venues=[]; races=[]; data_updated_at=''
+                races=[]; data_updated_at=''
                 show_venue_picker=True
+                if not venues:
+                    venues=_nar_venues_from_runners(today)
+                if venues:
+                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（再取得待ち）'
         elif job_status=='ready':
             if data_status=='generating':
                 if venues or races or _nar_pred_ready(selected, 'nar'):
@@ -2324,8 +2428,16 @@ def index():
                             if venues else '取得完了'
                         )
                 else:
-                    data_status='ready'
-                    message='本日は地方競馬の開催はありません' if selected==today else message
+                    # ready なのに予想も開催場も無い → runners 再確認
+                    if selected==today:
+                        venues=_nar_venues_from_runners(today)
+                        show_venue_picker=True
+                    if venues:
+                        data_status='ready'
+                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                    else:
+                        data_status='ready'
+                        message='本日は地方競馬の開催はありません' if selected==today else message
             if data_updated_at and selected and not (ARCH/f'predictions_{selected}.csv').exists():
                 data_updated_at=''
         from urllib.parse import urlencode
@@ -3198,5 +3310,14 @@ def refresh_route():
         }
     except Exception as e:
         return {'ok':False,'error':str(e)}, 500
+
+
+# gunicorn / flask 起動時に当日地方を自動シード（リクエスト待ちで空のままにしない）
+try:
+    _ensure_nar_today_seeded()
+except Exception as _boot_e:
+    print(f'[nar-boot] init skip: {_boot_e}', flush=True)
+
+
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=int(os.environ.get('PORT','5001')),debug=False)
