@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import math
 import re
+from functools import lru_cache
+from pathlib import Path
 
 import pandas as pd
 
@@ -12,6 +14,11 @@ AI_FAIR_ODDS_MIN = 1.1
 # 表示期待値のハード上限（100%＝市場オッズと同値の勝率想定）
 EV_DISPLAY_MAX = 124
 EV_DISPLAY_MIN = 78
+
+# 買い厳選: 期待回収率の最低ライン（これ未満は候補に入れない）
+BUY_EV_FLOOR = 108
+# レース信頼度の最低ライン
+BUY_CONF_FLOOR = 58
 
 
 def parse_odds_value(v):
@@ -249,12 +256,261 @@ def calc_ai_confidence(record: dict, pick: dict | None = None, repro: float | No
         score -= 10
     if 'サンプル少' in reasons:
         score -= 8
+    # 結果検証に基づく軽い補正（自己学習ではなく固定テーブル）
+    score += _result_correction_delta(record)
     rank = str(record.get('勝負ランク') or '').upper()
     if rank == 'S':
         score += 4
     elif rank == 'C':
         score -= 4
     return round(_clamp(score, 5, 95), 1)
+
+
+@lru_cache(maxsize=1)
+def _load_result_correction_table() -> dict:
+    """analysis_result.csv から当たりやすい/外れやすい条件を集計。
+
+    自己学習ではなく、検証結果の単純な的中率差を ±補正値に落とすだけ。
+    """
+    path = Path(__file__).resolve().parent / 'data' / 'analysis_result.csv'
+    out = {
+        'venue': {},   # venue -> delta
+        'rank': {},    # S/A/B/C/D -> delta
+        'source': {},  # nar/jra -> delta
+        'global': 0.0,
+    }
+    if not path.exists() or path.stat().st_size < 64:
+        return out
+    try:
+        df = pd.read_csv(path, encoding='utf-8-sig', usecols=lambda c: c in (
+            'hit', '開催地', '勝負ランク', 'source', 'bet_type', '購入対象',
+        ))
+    except Exception:
+        return out
+    if df.empty or 'hit' not in df.columns:
+        return out
+    # 本命行を優先（券種ノイズを減らす）
+    if 'bet_type' in df.columns:
+        main = df[df['bet_type'].astype(str) == '本命']
+        if len(main) >= 30:
+            df = main
+    if '購入対象' in df.columns:
+        bought = df[df['購入対象'].astype(str).isin(('1', '1.0', 'True', 'true'))]
+        if len(bought) >= 20:
+            df = bought
+    try:
+        hits = pd.to_numeric(df['hit'], errors='coerce').fillna(0)
+        base = float(hits.mean()) if len(hits) else 0.0
+    except Exception:
+        return out
+    if base <= 0:
+        return out
+    out['global'] = round(base, 4)
+
+    def _delta(series_hit: pd.Series, min_n: int = 12) -> float:
+        if len(series_hit) < min_n:
+            return 0.0
+        rate = float(series_hit.mean())
+        # 全体比 ±0.15 → 補正 ±6 程度に圧縮
+        return round(_clamp((rate - base) * 40.0, -6.0, 6.0), 2)
+
+    if '開催地' in df.columns:
+        for venue, g in df.groupby(df['開催地'].astype(str)):
+            d = _delta(pd.to_numeric(g['hit'], errors='coerce').fillna(0))
+            if d:
+                out['venue'][str(venue)] = d
+    if '勝負ランク' in df.columns:
+        for rk, g in df.groupby(df['勝負ランク'].astype(str).str.upper()):
+            if rk not in ('S', 'A', 'B', 'C', 'D'):
+                continue
+            d = _delta(pd.to_numeric(g['hit'], errors='coerce').fillna(0), min_n=8)
+            if d:
+                out['rank'][rk] = d
+    if 'source' in df.columns:
+        for src, g in df.groupby(df['source'].astype(str).str.lower()):
+            if src not in ('nar', 'jra'):
+                continue
+            d = _delta(pd.to_numeric(g['hit'], errors='coerce').fillna(0), min_n=15)
+            if d:
+                out['source'][src] = d
+    return out
+
+
+def _result_correction_delta(record: dict) -> float:
+    """結果検証テーブルから小さな補正値を返す（±8以内）。"""
+    try:
+        table = _load_result_correction_table()
+    except Exception:
+        return 0.0
+    delta = 0.0
+    venue = str(record.get('開催地') or '').strip()
+    if venue and venue in table.get('venue', {}):
+        delta += float(table['venue'][venue])
+    src = str(record.get('source') or '').lower()
+    if not src:
+        try:
+            from areru_engine import source_from_race_id
+            src = source_from_race_id(record.get('race_id', ''))
+        except Exception:
+            src = ''
+    if src in table.get('source', {}):
+        delta += float(table['source'][src]) * 0.5
+    # 前段ランクがあれば参照（再計算前のヒント）
+    rk = str(record.get('勝負ランク') or '').upper()
+    if rk in table.get('rank', {}):
+        delta += float(table['rank'][rk]) * 0.35
+    return round(_clamp(delta, -8.0, 8.0), 2)
+
+
+def _ability_gap_score(record: dict) -> float:
+    """本命と対抗の能力差 0-100（差が大きいほど読みやすい）。"""
+    cards = [c for c in (record.get('ピックカード一覧') or []) if isinstance(c, dict)]
+    main = next((c for c in cards if c.get('役割') == '本命'), None)
+    rival = next((c for c in cards if c.get('役割') == '対抗'), None)
+    if not main:
+        return 45.0
+
+    def _idx(c):
+        for k in ('AI評価', 'AI信頼度スコア', '近走指数順位'):
+            try:
+                v = float(c.get(k))
+                if k == '近走指数順位':
+                    return max(0.0, 100.0 - (v - 1.0) * 12.0)
+                return v
+            except (TypeError, ValueError):
+                continue
+        return None
+
+    m = _idx(main)
+    if m is None:
+        return 45.0
+    if not rival:
+        return _clamp(50.0 + (m - 50.0) * 0.4)
+    r = _idx(rival)
+    if r is None:
+        return _clamp(50.0 + (m - 50.0) * 0.3)
+    gap = m - r
+    # 指数順位なら既にスケール済み。評価差 8〜25 が理想帯
+    if gap >= 18:
+        return 88.0
+    if gap >= 10:
+        return 75.0
+    if gap >= 5:
+        return 62.0
+    if gap >= 0:
+        return 48.0
+    return 32.0
+
+
+def _pace_clarity_score(record: dict) -> float:
+    """展開の読みやすさ 0-100。"""
+    pace = record.get('展開予想データ')
+    if not isinstance(pace, dict):
+        try:
+            import json
+            raw = record.get('展開予想')
+            if isinstance(raw, str) and raw.strip().startswith('{'):
+                pace = json.loads(raw.replace('NaN', 'null'))
+            else:
+                pace = {}
+        except Exception:
+            pace = {}
+    score = 50.0
+    try:
+        chaos = float(pace.get('荒れ指数')) if pace.get('荒れ指数') is not None else None
+    except (TypeError, ValueError):
+        chaos = None
+    if chaos is not None:
+        if chaos <= 35:
+            score += 22
+        elif chaos <= 55:
+            score += 10
+        elif chaos >= 80:
+            score -= 18
+        elif chaos >= 65:
+            score -= 10
+    pick = _main_pick_card(record)
+    phase = str(pick.get('展開相性') or '')
+    if '好相性' in phase or '有利' in phase:
+        score += 12
+    elif '不利' in phase:
+        score -= 14
+    summary = str(pace.get('AI総評') or '')
+    if '読みやすい' in summary or '先行有利' in summary or '明確' in summary:
+        score += 8
+    if '混戦' in summary or '不明' in summary:
+        score -= 8
+    return _clamp(score)
+
+
+def _venue_bias_match_score(record: dict) -> float:
+    """競馬場バイアス一致率 0-100（結果補正＋適性）。"""
+    base = 50.0
+    delta = _result_correction_delta(record)
+    # delta +6 → +18 程度
+    base += delta * 3.0
+    pick = _main_pick_card(record)
+    apt, detail = _aptitude_score(record, pick)
+    base += (apt - 50.0) * 0.35
+    course = float(detail.get('コース適性') or 50)
+    base += (course - 50.0) * 0.25
+    return _clamp(base)
+
+
+def calc_race_confidence(record: dict) -> dict:
+    """レース信頼度の総合評価。
+
+    AI信頼度・能力差・展開の読みやすさ・データ件数・
+    シミュレーション一致率・競馬場バイアス一致率を合成。
+    """
+    pick = _main_pick_card(record)
+    n = _count_past_races(record)
+    repro = float(record.get('シミュレーション再現率') or calc_simulation_reproducibility(record, pick))
+    conf = float(record.get('AI信頼度スコア') or calc_ai_confidence(record, pick, repro=repro))
+    ability = _ability_gap_score(record)
+    pace = _pace_clarity_score(record)
+    data_score = _clamp(n * 18.0 + 10.0)  # 0〜5件 → 〜100
+    bias = _venue_bias_match_score(record)
+    correction = _result_correction_delta(record)
+
+    score = (
+        conf * 0.28
+        + ability * 0.18
+        + pace * 0.15
+        + data_score * 0.12
+        + repro * 0.15
+        + bias * 0.12
+        + correction * 0.4
+    )
+    score = round(_clamp(score, 8, 96), 1)
+    return {
+        'レース信頼度スコア': score,
+        '能力差スコア': round(ability, 1),
+        '展開読みやすさ': round(pace, 1),
+        'データ件数スコア': round(data_score, 1),
+        'シミュレーション一致率': round(repro, 1),
+        '競馬場バイアス一致率': round(bias, 1),
+        '結果補正': correction,
+    }
+
+
+def rank_from_race_confidence(score) -> str:
+    """レース信頼度から S〜D を決定。"""
+    try:
+        if score is None or score == '' or str(score).strip() in ('—', '-', 'なし', 'nan', 'None'):
+            return 'D'
+        s = float(score)
+    except (TypeError, ValueError):
+        return 'D'
+    if s >= 78:
+        return 'S'
+    if s >= 68:
+        return 'A'
+    if s >= 58:
+        return 'B'
+    if s >= 48:
+        return 'C'
+    return 'D'
 
 
 def _edge_take_rate(conf: float, repro: float, n: int, apt: float, market: float, reasons: str) -> float:
@@ -388,10 +644,11 @@ def calc_confidence_adjusted_ev(record: dict) -> dict:
     return scored
 
 
-def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds: bool) -> dict:
-    """期待回収率で買い／見送りを決定（表示ランクと一致）。
+def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds: bool,
+                    race_conf: float | None = None) -> dict:
+    """買い／見送りの暫定判定（最終は tighten_buy_selection で厳選）。
 
-    100%以上 → 買い / 100%未満 → 見送り
+    期待回収率・信頼度が揃った候補のみ「買い」。足りなければ見送り。
     """
     if not has_odds or ev is None:
         return {
@@ -400,7 +657,10 @@ def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds:
             '投資判定表示': '判定待ち',
         }
     e = float(ev)
-    if e >= 100:
+    conf = float(confidence or 0)
+    rc = float(race_conf if race_conf is not None else conf)
+    # 厳選: EV・信頼度・レース信頼度の三重ゲート
+    if e >= BUY_EV_FLOOR and conf >= BUY_CONF_FLOOR and rc >= BUY_CONF_FLOOR and float(repro or 0) >= 42:
         return {
             '一覧判定': '買い', '一覧判定トーン': 'buy',
             '投資判定': '買い', '投資判定アイコン': '🟢', '投資判定トーン': 'buy',
@@ -414,11 +674,7 @@ def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds:
 
 
 def rank_from_expected_value(ev) -> str:
-    """期待回収率から S〜D / 見送り を決定。
-
-    S：120%以上 / A：115〜119 / B：110〜114 / C：105〜109 / D：100〜104
-    見送り：100%未満（空文字）
-    """
+    """互換用: 期待回収率からの仮ランク（表示はレース信頼度を優先）。"""
     try:
         if ev is None or ev == '' or str(ev).strip() in ('—', '-', 'なし', 'nan', 'None'):
             return ''
@@ -439,7 +695,7 @@ def rank_from_expected_value(ev) -> str:
 
 
 def apply_ev_rank_and_labels(record: dict) -> dict:
-    """期待回収率にランク・買い判定・表示ラベルを揃える。"""
+    """レース信頼度で S〜D を付け、期待回収率で買い判定を揃える。"""
     from areru_engine import RANK_LABELS, RANK_CLASSES
 
     ev = record.get('期待値')
@@ -449,7 +705,25 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
             ev = float(str(raw).replace('%', '').strip()) if str(raw).strip() not in ('', '—', 'なし') else None
         except (TypeError, ValueError):
             ev = None
-    rk = rank_from_expected_value(ev)
+
+    # レース信頼度を算出し、勝負ランクの主根拠にする
+    conf_pack = calc_race_confidence(record)
+    record.update(conf_pack)
+    rc = float(conf_pack.get('レース信頼度スコア') or 50)
+    rk = rank_from_race_confidence(rc)
+    # EVが極端に弱い（見送り帯）ならランクを1段落とす
+    if ev is not None:
+        try:
+            e = float(ev)
+            if e < 100 and rk in ('S', 'A'):
+                rk = 'B'
+            elif e < 95 and rk == 'B':
+                rk = 'C'
+            elif e < 90:
+                rk = 'D' if rk != 'S' else 'C'
+        except (TypeError, ValueError):
+            pass
+
     record['勝負ランク'] = rk
     if rk:
         record['勝負ランク表示'] = f'{rk}'
@@ -461,12 +735,13 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
         record['BETクラス'] = 'skip'
 
     has_odds = bool(record.get('オッズ取得済'))
+    ai_conf = float(record.get('AI信頼度スコア') or 50)
+    repro = float(record.get('シミュレーション再現率') or 50)
     if ev is not None:
         record['期待値あり'] = True
-        decision = decide_buy_skip(float(ev), float(record.get('AI信頼度スコア') or 50),
-                                   float(record.get('シミュレーション再現率') or 50), True)
+        decision = decide_buy_skip(float(ev), ai_conf, repro, True, race_conf=rc)
     else:
-        decision = decide_buy_skip(None, 50, 50, has_odds)
+        decision = decide_buy_skip(None, ai_conf, repro, has_odds, race_conf=rc)
     record.update(decision)
 
     if ev is not None:
@@ -475,13 +750,161 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
         record['期待値表示'] = f'{ev_i}%'
         record['期待回収率表示'] = f'{ev_i}%'
         record['期待回収率短'] = f'{ev_i}%'
-        record['期待値トーン'] = 'ev-buy' if ev_i >= 100 else 'ev-skip'
+        record['期待値トーン'] = 'ev-buy' if ev_i >= BUY_EV_FLOOR else 'ev-skip'
         record['レース期待回収率'] = ev_i
     else:
         record['期待回収率表示'] = '—'
         record['期待回収率短'] = '—'
         record['期待値トーン'] = 'ev-none'
     return record
+
+
+def _buy_score(record: dict) -> float:
+    """厳選時の並び用スコア。"""
+    try:
+        ev = float(record.get('期待値') if record.get('期待値') is not None else 0)
+    except (TypeError, ValueError):
+        ev = 0.0
+    try:
+        rc = float(record.get('レース信頼度スコア') or record.get('AI信頼度スコア') or 0)
+    except (TypeError, ValueError):
+        rc = 0.0
+    rank_bonus = {'S': 12, 'A': 8, 'B': 3, 'C': 0, 'D': -4}.get(
+        str(record.get('勝負ランク') or '').upper(), 0
+    )
+    return rc * 0.65 + max(0.0, ev - 100.0) * 1.8 + rank_bonus
+
+
+def _scope_key(record: dict, by_venue: bool) -> str:
+    if by_venue:
+        return str(record.get('開催地') or '不明')
+    return '_day_'
+
+
+def _rank_slots(n: int, by_venue: bool) -> tuple[int, int]:
+    """(S枠, A枠)。地方は開催場単位、JRAは日次全体。"""
+    if by_venue:
+        # 地方: 6R→S1/A1、10-12R→S1〜2/A2〜3
+        if n <= 6:
+            return 1, 1
+        if n <= 9:
+            return 1, 2
+        return 2, 3
+    # JRA: 開催全体で S1〜2 / A4〜6
+    if n <= 12:
+        return 1, 4
+    if n <= 24:
+        return 2, 5
+    return 2, 6
+
+
+def _buy_cap(n: int, by_venue: bool) -> int:
+    if by_venue:
+        if n <= 6:
+            return 2
+        if n <= 9:
+            return 3
+        return 4
+    # JRA: S+A の枠にほぼ合わせる
+    s, a = _rank_slots(n, by_venue=False)
+    return s + a
+
+
+def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
+    """開催単位で S/A 枠と買いレース数を厳選する（買わないAI）。
+
+    - 地方 (by_venue=True): 場ごとに S/A と買い数を制限
+    - JRA (by_venue=False): 日次で S1〜2 / A4〜6、買いはその上位のみ
+    """
+    races = list(races or [])
+    if not races:
+        return races
+
+    from areru_engine import RANK_LABELS, RANK_CLASSES
+    from collections import defaultdict
+
+    groups = defaultdict(list)
+    for i, r in enumerate(races):
+        groups[_scope_key(r, by_venue)].append((i, r))
+
+    for _key, items in groups.items():
+        n = len(items)
+        s_slots, a_slots = _rank_slots(n, by_venue)
+        buy_cap = _buy_cap(n, by_venue)
+
+        # 信頼度順で相対ランクを再割当（枠は埋める。買いは別ゲート）
+        ordered = sorted(items, key=lambda x: _buy_score(x[1]), reverse=True)
+        assigned = {}
+        s_left, a_left = s_slots, a_slots
+        for pos, (idx, r) in enumerate(ordered):
+            score = float(r.get('レース信頼度スコア') or r.get('AI信頼度スコア') or 50)
+            if s_left > 0 and (score >= 50 or pos == 0):
+                rk = 'S'
+                s_left -= 1
+            elif a_left > 0 and score >= 40:
+                rk = 'A'
+                a_left -= 1
+            elif score >= 48:
+                rk = 'B'
+            elif score >= 38:
+                rk = 'C'
+            else:
+                rk = 'D'
+            # 下位帯は S/A にしない
+            if pos >= s_slots + a_slots + max(2, n // 3) and rk in ('S', 'A', 'B'):
+                rk = 'C' if score >= 38 else 'D'
+            assigned[idx] = rk
+
+        for idx, r in items:
+            rk = assigned.get(idx, 'D')
+            r['勝負ランク'] = rk
+            r['勝負ランク表示'] = rk
+            r['BET判定'] = RANK_LABELS.get(rk, '')
+            r['BETクラス'] = RANK_CLASSES.get(rk, '')
+
+        # 買い候補: S/A かつ EV・信頼度ゲート通過
+        candidates = []
+        for idx, r in items:
+            rk = str(r.get('勝負ランク') or '')
+            try:
+                ev = float(r.get('期待値')) if r.get('期待値') is not None else None
+            except (TypeError, ValueError):
+                ev = None
+            try:
+                conf = float(r.get('AI信頼度スコア') or 0)
+                rc = float(r.get('レース信頼度スコア') or conf)
+                repro = float(r.get('シミュレーション再現率') or 0)
+            except (TypeError, ValueError):
+                conf, rc, repro = 0.0, 0.0, 0.0
+            has_odds = bool(r.get('オッズ取得済')) or ev is not None
+            if rk not in ('S', 'A'):
+                continue
+            if not has_odds or ev is None:
+                continue
+            if ev < BUY_EV_FLOOR or conf < BUY_CONF_FLOOR or rc < BUY_CONF_FLOOR or repro < 40:
+                continue
+            candidates.append((idx, r))
+
+        candidates.sort(key=lambda x: _buy_score(x[1]), reverse=True)
+        buy_ids = {idx for idx, _ in candidates[:buy_cap]}
+
+        skip = {
+            '一覧判定': '見送り', '一覧判定トーン': 'skip',
+            '投資判定': '見送り', '投資判定アイコン': '🔴', '投資判定トーン': 'skip',
+            '投資判定表示': '見送り',
+        }
+        buy = {
+            '一覧判定': '買い', '一覧判定トーン': 'buy',
+            '投資判定': '買い', '投資判定アイコン': '🟢', '投資判定トーン': 'buy',
+            '投資判定表示': '買い',
+        }
+        for idx, r in items:
+            if idx in buy_ids:
+                r.update(buy)
+            else:
+                r.update(skip)
+
+    return races
 
 
 def build_ai_buy_reasons(record: dict, limit: int = 3) -> list[str]:
@@ -706,7 +1129,7 @@ def apply_expected_value(record: dict) -> dict:
         name = str(record.get('本命') or '').strip()
         record['本命短表示'] = f'◎{ban} {name}'.strip() if (ban or name) else '—'
 
-    # ランク＝期待回収率（矛盾表示をなくす）
+    # ランク＝レース信頼度、買い＝厳選前の暫定（一覧は apply_display_ranks で最終確定）
     apply_ev_rank_and_labels(record)
     record['AI買い理由'] = build_ai_buy_reasons(record, limit=3)
 

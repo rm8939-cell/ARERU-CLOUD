@@ -620,9 +620,13 @@ def horse_grade(score) -> str:
     return "D"
 
 
-def build_compact_bullets(card: dict, limit: int = 4) -> list[str]:
-    """詳細根拠をユーザー向けの短い箇条書きへ圧縮。"""
+def build_compact_bullets(card: dict, limit: int = 4, role: str = '') -> list[str]:
+    """詳細根拠をユーザー向けの短い箇条書きへ圧縮。
+
+    本命は「一目で分かる」短フレーズを優先（例: 能力指数1位 / 展開有利）。
+    """
     bullets: list[str] = []
+    role = str(role or card.get('役割') or '')
 
     def add(msg: str):
         msg = str(msg or "").strip()
@@ -633,26 +637,40 @@ def build_compact_bullets(card: dict, limit: int = 4) -> list[str]:
     why = card.get("判断根拠") or []
     why_map = {str(x.get("項目")): x for x in why if isinstance(x, dict)}
 
-    # 優先マッピング（短く・分かりやすく）
-    last3 = why_map.get("上がり順位") or {}
-    if str(last3.get("評価", "")).endswith("位") or "高" in str(last3.get("説明", "")):
-        add("上がり3F上位")
-    elif any("上がり" in str(p) for p in plus):
-        add("上がり3F上位")
+    # --- 本命向け: 最優先の短フレーズ ---
+    try:
+        idx = int(float(card.get("近走指数順位")))
+    except (TypeError, ValueError):
+        idx = None
+    if idx == 1:
+        add("能力指数1位")
+    elif idx is not None and idx <= 3:
+        add(f"能力指数{idx}位")
 
     dist = str((why_map.get("距離適性") or {}).get("評価") or card.get("距離適性") or "")
     course = str((why_map.get("コース適性") or {}).get("評価") or card.get("コース適性") or "")
     surface = str((why_map.get("馬場適性") or {}).get("評価") or card.get("馬場適性") or "")
-    if dist == "○" and course == "○":
-        add("同条件成績◎")
-    elif dist == "○" or course == "○" or surface == "○":
-        add("同条件成績○")
+    if surface == "○" or any("馬場" in str(p) for p in plus):
+        add("今日の馬場傾向一致")
+    if dist == "○":
+        add("距離適性◎")
+    elif course == "○":
+        add("コース適性◎")
 
     pace = why_map.get("展開との相性") or {}
-    if str(pace.get("評価")) == "好相性" or "好相性" in str(card.get("展開相性") or ""):
-        add("展開が向く")
-    elif "不利" in str(pace.get("評価") or card.get("展開相性") or ""):
+    pace_eval = str(pace.get("評価") or card.get("展開相性") or "")
+    if pace_eval == "好相性" or "好相性" in pace_eval or "有利" in pace_eval:
+        add("展開有利")
+    elif "不利" in pace_eval:
         add("展開はやや不利")
+
+    last3 = why_map.get("上がり順位") or {}
+    if str(last3.get("評価", "")).endswith("1位") or str(last3.get("評価", "")).startswith("1"):
+        add("上がり最上位")
+    elif str(last3.get("評価", "")).endswith("位") or "高" in str(last3.get("説明", "")):
+        add("上がり上位")
+    elif any("上がり" in str(p) for p in plus):
+        add("上がり上位")
 
     trouble = why_map.get("前走不利補正") or {}
     if "補正" in str(trouble.get("評価") or "") or any("前走不利" in str(p) for p in plus):
@@ -662,26 +680,24 @@ def build_compact_bullets(card: dict, limit: int = 4) -> list[str]:
         add("複勝圏が厚い")
     if any("割安" in str(p) for p in plus):
         add("オッズ妙味あり")
-    if any("指数" in str(p) for p in plus):
-        add("近走指数上位")
     if any("騎手" in str(p) for p in plus):
         add("騎手相性◎")
-    if any("地方" in str(p) for p in plus) or "補正済" in str((why_map.get("地方→中央補正") or {}).get("評価") or ""):
-        add("地方→中央補正済")
 
     # 足りなければプラス材料を短文化
     shorten = {
-        "上がり評価高": "上がり3F上位",
+        "上がり評価高": "上がり上位",
         "複勝圏安定": "複勝圏が厚い",
+        "複勝圏の厚みがある": "複勝圏が厚い",
         "市場より割安": "オッズ妙味あり",
         "距離適性が合う": "距離適性◎",
         "コース適性が合う": "コース適性◎",
-        "馬場適性が合う": "馬場適性◎",
-        "想定展開との相性が良い": "展開が向く",
+        "馬場適性が合う": "今日の馬場傾向一致",
+        "想定展開との相性が良い": "展開有利",
         "前走不利の可能性": "前走不利補正",
         "騎手補正+": "騎手相性◎",
-        "近走指数1位の上位評価": "近走指数上位",
-        "上がり性能が高い": "上がり3F上位",
+        "近走指数1位の上位評価": "能力指数1位",
+        "近走指数2位の上位評価": "能力指数2位",
+        "上がり性能が高い": "上がり上位",
         "人気薄でもシミュレーション上位": "穴妙味あり",
         "総合指数とシミュレーションのバランスが良い": "総合評価上位",
         "条件面の大きな欠点が見当たらない": "欠点が少ない",
@@ -696,7 +712,15 @@ def build_compact_bullets(card: dict, limit: int = 4) -> list[str]:
         elif len(key) <= 10:
             add(key)
 
-    # 足りなければ定型で埋める（重複で add が空振りしても無限ループしない）
+    # 本命は定型埋めを最小限（中身のある根拠を優先）
+    if role == "本命":
+        if len(bullets) < 3:
+            for filler in ("総合評価上位", "欠点が少ない"):
+                if len(bullets) >= min(3, limit):
+                    break
+                add(filler)
+        return bullets[:limit]
+
     for filler in ("総合評価上位", "欠点が少ない", "相手関係でも残せる"):
         if len(bullets) >= min(3, limit):
             break
@@ -735,6 +759,7 @@ def build_display_picks(record: dict) -> list[dict]:
         ban = str(card.get("馬番表示") or card.get("馬番") or "").strip()
         name = str(card.get("馬名") or "").strip()
         line = f"{mark}{ban} {name}".strip() if ban else f"{mark} {name}".strip()
+        tip_limit = 4 if role == "本命" else 3
         out.append({
             "役割": role,
             "印": mark,
@@ -743,7 +768,7 @@ def build_display_picks(record: dict) -> list[dict]:
             "表示行": line,
             "AI評価": grade,
             "AI信頼度スコア": round(conf, 1),
-            "要点": build_compact_bullets(card, limit=4),
+            "要点": build_compact_bullets(card, limit=tip_limit, role=role),
             "カード": card,
         })
     return out[:3]
