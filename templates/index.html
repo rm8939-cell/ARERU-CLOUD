@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+{% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>ARERU.EXE</title>
 <style>
 :root{--bg:#f3f5f7;--card:#fff;--line:#e6ebf0;--text:#121820;--muted:#6a7682;--red:#d64545;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a7f4b;--soft:#eaf6f0;--purple:#6b4eff;--blue:#2f6fed;--radius:16px}
@@ -184,7 +185,23 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .race-acc-score{font-variant-numeric:tabular-nums;color:#334}
 .race-acc-marks{margin-top:6px;font-size:14px;font-weight:750;letter-spacing:.06em;color:#1f2a33;line-height:1.45;word-break:keep-all}
 .race-acc-body{display:none;padding:0 14px 16px;border-top:1px dashed #e4eaee}
-.race-acc.open .race-acc-body{display:block}
+.race-acc.open .race-acc-body,
+details.race-acc[open]>.race-acc-body{display:block}
+.race-acc>summary.race-acc-toggle{list-style:none}
+.race-acc>summary.race-acc-toggle::-webkit-details-marker{display:none}
+.pick-simple{background:#f8fafb;border:1px solid #e4eaee;border-radius:12px;padding:12px;margin:0 0 10px}
+.pick-simple .ps-role{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.pick-simple .ps-line{font-size:17px;font-weight:900;line-height:1.35;margin:0 0 6px}
+.pick-simple .ps-grade{font-size:13px;font-weight:700;margin:0 0 8px}
+.pick-simple .ps-grade b{color:var(--brand);font-size:16px}
+.pick-simple ul{margin:0;padding:0 0 0 1.1em;color:#334;font-size:13px;line-height:1.7}
+.pick-simple li{margin:0 0 2px}
+.nar-tickets{display:grid;gap:8px;margin-top:8px}
+.nar-ticket{background:#fff;border:1px solid #e4eaee;border-radius:12px;padding:12px}
+.nar-ticket .nt-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.nar-ticket .nt-kind{font-size:13px;font-weight:900;letter-spacing:.06em}
+.nar-ticket .nt-ban{font-size:18px;font-weight:900;line-height:1.3;margin:0 0 4px}
+.nar-ticket .nt-desc{font-size:12px;color:#556;line-height:1.55}
 .race-acc-body .section{padding:14px 0;border-bottom:1px solid var(--line)}
 .race-acc-body .section:last-child{border-bottom:0;padding-bottom:0}
 .race-acc-body .section-title{margin-bottom:8px}
@@ -207,12 +224,13 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .venue-panel>h2{font-size:13px;letter-spacing:.12em;margin:0;padding:14px 14px 8px;color:var(--muted)}
 .venue-panel>p{margin:0;padding:0 14px 12px;color:var(--muted);font-size:12px;line-height:1.6}
 .venue-list{display:grid;gap:0}
-.venue-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-decoration:none;color:inherit;padding:16px 14px;border-top:1px solid var(--line);-webkit-tap-highlight-color:transparent}
+.venue-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-decoration:none;color:inherit;padding:16px 14px;border-top:1px solid var(--line);-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer;position:relative;z-index:1}
 .venue-row:active{background:var(--soft)}
-.venue-row-name{font-size:18px;font-weight:850;line-height:1.25}
+.venue-row-name{font-size:18px;font-weight:850;line-height:1.25;pointer-events:none}
 .venue-row-name small{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
-.venue-row-meta{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.venue-row-meta{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;pointer-events:none}
 .venue-chip{display:inline-flex;align-items:center;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:750;background:#f3f6f8;border:1px solid #e4eaee;color:var(--text)}
+.venue-chip.open-chip{background:var(--soft);border-color:var(--brand);color:var(--brand);font-weight:850}
 .venue-back{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;padding:8px 0;color:var(--brand);font-size:13px;font-weight:800;text-decoration:none}
 .venue-back:active{opacity:.75}
 .race-list-panel>h2 .venue-tag{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:8px;background:var(--soft);color:var(--brand);font-size:12px;letter-spacing:0;text-transform:none}
@@ -309,14 +327,14 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <main class="wrap">
 <nav class="source-tabs">
 <a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
-<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}{% if today_date %}&date={{today_date}}{% elif selected_date %}&date={{selected_date}}{% endif %}">地方</a>
+<a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}">地方</a>
 <a class="{{'active' if source=='all' else ''}}" href="/?source=all&mode={{mode}}&date={{selected_date}}">全開催</a>
 </nav>
 <nav class="mode-tabs">
-<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">予想分析</a>
-<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果検証</a>
-<a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
-<a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={{selected_date}}">収支分析</a>
+<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">予想分析</a>
+<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">結果検証</a>
+<a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">分析</a>
+<a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">収支分析</a>
 </nav>
 {% if mode in ('predict','result') and (today_ai_board|default({})).get('has_data') %}
 <div class="ai-board-title">本日のAI成績</div>
@@ -327,17 +345,17 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </section>
 {% endif %}
 <div class="toolbar">
-<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
-{% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
+<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}">{% if source=='nar' and selected_date and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}<select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
+{% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><input type="hidden" name="force_refresh" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source=='nar' %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
-<div class="status-banner warn">{% if source=='nar' %}地方データ取得中{% else %}データ取得中です{% endif %}。数十秒かかることがあります。<br><a href="{{ request.url }}">再読み込み</a></div>
+<div class="status-banner warn">データ取得中。数十秒かかることがあります。自動で再読み込みします。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
 <div class="status-banner warn">データ更新中です。表示は現在のキャッシュです{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。<a href="{{ request.url }}">再読み込み</a></div>
 {% elif _ds == 'error' %}
-<div class="status-banner error">{% if source=='nar' %}地方データ取得失敗{% else %}通信エラーが発生しました{% endif %}。時間をおいて再読み込みしてください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/">トップへ</a></div>
+<div class="status-banner error">{% if source=='nar' %}取得失敗{% else %}通信エラーが発生しました{% endif %}。時間をおいて再読み込みするか、「本日開催」で再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
@@ -346,12 +364,12 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% if venues %}
 <div class="venue-list">
 {% for v in venues %}
-<a class="venue-row" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}&venue={{v.name|urlencode}}">
+<a class="venue-row" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}&venue={{v.name|urlencode}}" data-venue="{{v.name}}">
 <div class="venue-row-name">{{v.name}}<small>{{v.race_label}} · {{v.count}}レース</small></div>
 <div class="venue-row-meta">
 {% if v.s %}<span class="venue-chip s">S {{v.s}}</span>{% endif %}
 {% if v.a %}<span class="venue-chip a">A {{v.a}}</span>{% endif %}
-<span class="venue-chip">開く ▶</span>
+<span class="venue-chip open-chip">開く ▶</span>
 </div>
 </a>
 {% endfor %}
@@ -359,9 +377,9 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% else %}
 <div class="empty-state" style="border:0;margin:0;border-radius:0">
 {% if _ds == 'generating' %}
-<h2>地方データ取得中</h2><p>開催場データを取得しています。完了後に再読み込みしてください。</p>
+<h2>データ取得中</h2><p>開催場データを取得しています。完了後に自動で再読み込みします。</p>
 {% elif _ds == 'error' %}
-<h2>地方データ取得失敗</h2><p>通信に失敗しました。時間をおいて再読み込みしてください。</p>
+<h2>取得失敗</h2><p>通信に失敗しました。「本日開催」で再取得してください。</p>
 {% else %}
 <h2>本日は地方競馬の開催はありません</h2><p>日付を変えるか、「本日開催」を押して最新を確認してください。{% if data_updated_at|default('') %}<br>最終更新 {{data_updated_at}}{% endif %}</p>
 {% endif %}
@@ -560,7 +578,21 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="filter-empty race-empty" id="race-empty">該当条件に合うレースがありません</div>
 </section>
 {% elif not show_venue_picker %}
-<section class="empty-state"><h2>検証データなし</h2><p>この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。</p></section>
+<section class="empty-state">
+{% if _ds == 'generating' %}
+<h2>データ取得中</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースデータを取得しています。{% else %}レースデータを取得しています。{% endif %}完了後に自動で再読み込みします。</p>
+<p><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></p>
+{% elif _ds == 'error' %}
+<h2>取得失敗</h2>
+<p>データ取得に失敗しました。「本日開催」で再取得してください。</p>
+<p><a href="/?source=nar&mode=result&today=1&force_refresh=1">本日開催を再取得</a></p>
+{% else %}
+<h2>検証データなし</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースがありません。開催場一覧へ戻るか、「本日開催」で再取得してください。{% else %}この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。{% endif %}</p>
+{% if selected_venue %}<p><a href="/?source={{source}}&mode=result&date={{selected_date}}">← 開催場一覧へ</a></p>{% endif %}
+{% endif %}
+</section>
 {% endif %}
 
 {% if verification and verification.has_data and not show_venue_picker %}
@@ -831,7 +863,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% if _buys %}
 <div class="buy-list">
 {% for t in _buys %}
-<a class="buy-row" href="#race-{{t['race_id']|urlencode}}" data-open-race="race-{{t['race_id']|urlencode}}">
+<a class="buy-row" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
 <div>
 <div class="br-venue">{% if selected_venue %}{{'%02d'|format(t['レース']|int)}}R{% else %}{{t.get('レース名表示') or t.get('開催地')}}{% endif %}</div>
 <div class="br-main">{{t.get('本命短表示') or t.get('本命表示') or '—'}}</div>
@@ -851,8 +883,8 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <h2>レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
 <div class="race-acc-list" id="predict-acc-list">
 {% for r in races %}
-<article class="race-acc predict-acc" id="race-{{r['race_id']|urlencode}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}">
-<button type="button" class="race-acc-toggle" aria-expanded="false">
+<details class="race-acc predict-acc" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}">
+<summary class="race-acc-toggle">
 <div class="list-race">
 <span class="race-name">{% if selected_venue %}{{'%02d'|format(r['レース']|int)}}R{% else %}{{r.get('レース名表示') or r.get('開催地')}}{% endif %}</span>
 {% if r.get('勝負ランク') %}<span class="rank-pill {{r.get('勝負ランク','')}}">{{r.get('勝負ランク')}}</span>{% else %}<span class="rank-pill skip">見</span>{% endif %}
@@ -865,7 +897,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </div>
 <div class="ss-main">{{r.get('本命短表示') or r.get('本命表示') or '—'}}</div>
 </div>
-</button>
+</summary>
 <div class="race-acc-body">
 <section class="race {{r['荒れクラス']}}">
 <div class="race-head">
@@ -892,12 +924,20 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <div class="section-title">推奨馬</div>
 {% for p in (r.get('予想馬') or []) %}
 <div class="pick-simple">
-<div class="ps-line">{{p.get('表示行')}}</div>
+<div class="ps-role">{% if p.get('役割')=='本命' %}◎ 本命{% elif p.get('役割')=='対抗' %}○ 対抗{% else %}☆ 注目馬{% endif %}</div>
+<div class="ps-line">{{p.get('表示行') or (p.get('印','') ~ ' ' ~ (p.get('馬番表示') or '') ~ ' ' ~ (p.get('馬名') or ''))}}</div>
 <div class="ps-grade">AI評価：<b>{{p.get('AI評価','—')}}</b></div>
 <ul>
-{% for tip in (p.get('要点') or []) %}
+{% set tips = p.get('要点') or [] %}
+{% if tips %}
+{% for tip in tips[:4] %}
 <li>{{tip}}</li>
 {% endfor %}
+{% else %}
+<li>総合評価とシミュレーションから選定</li>
+<li>条件面の大きな欠点は少ない</li>
+<li>相手関係を踏まえても残せる内容</li>
+{% endif %}
 </ul>
 </div>
 {% else %}
@@ -920,14 +960,32 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% endif %}
 
 <div class="section">
-<div class="section-title gold">AI推奨馬券</div>
-<div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '—'}}</strong><p>{{r.get('馬券戦略理由') or ''}}</p></div>
+<div class="section-title gold">推奨馬券</div>
+<div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '単勝'}}</strong><p>{{r.get('馬券戦略理由') or '地方は単勝・馬連・ワイドのシンプル買いを優先'}}</p></div>
+{% set tickets = r.get('推奨馬券一覧') or [] %}
+{% if source=='nar' %}
+<div class="nar-tickets">
+{% set ns = namespace(n=0) %}
+{% for t in tickets %}
+{% if t is mapping and t.get('券種') in ('単勝','馬連','ワイド') %}
+{% set ns.n = ns.n + 1 %}
+<div class="nar-ticket">
+<div class="nt-head"><span class="nt-kind">{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
+<div class="nt-ban">{{t.get('馬番表示') or '—'}}</div>
+{% if t.get('説明') %}<div class="nt-desc">{{t.get('説明')}}</div>{% endif %}
+</div>
+{% endif %}
+{% endfor %}
+{% if ns.n == 0 %}
+<div class="reason">推奨馬券を準備中です</div>
+{% endif %}
+</div>
+{% else %}
 <div class="fund-box" data-fund-box>
 <label class="label">軍資金（円）</label>
 <input type="number" min="100" step="100" value="10000" data-fund-input inputmode="numeric">
 <div data-fund-alloc></div>
 </div>
-{% set tickets = r.get('推奨馬券一覧') or [] %}
 {% if tickets %}
 <div class="betplan" data-fund-tickets>
 {% for t in tickets[:8] %}
@@ -956,11 +1014,12 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 {% else %}
 <div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r.get(kind+'判定','—')}}</span><span class="ticket-score">適性 {{r.get(kind+'評価','—')}}</span></div><ul>{% for x in r.get(kind+'買い目一覧', []) %}<li>{{x}}</li>{% endfor %}</ul></div>{% endfor %}</div>
 {% endif %}
+{% endif %}
 </div>
-<div class="beta">段階シミュレーション · 印非依存の期待値買い目 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div>
+<div class="beta">地方は単勝・馬連・ワイド中心 · 買い期待度は回収率ではありません</div><div class="toplink"><a href="#top">↑ 買い候補TOPへ戻る</a></div>
 </section>
 </div>
-</article>
+</details>
 {% endfor %}
 </div>
 </section>
@@ -970,40 +1029,26 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
   var list=document.getElementById('predict-acc-list');
   if(!list) return;
 
-  function setChevron(btn, open){
-    var chev=btn && btn.querySelector('.race-acc-chevron');
-    if(chev) chev.textContent=open?'▼':'▶';
-    if(btn) btn.setAttribute('aria-expanded', open?'true':'false');
-  }
-
-  function closeCard(card){
-    if(!card || !card.classList.contains('open')) return;
-    card.classList.remove('open');
-    setChevron(card.querySelector('.race-acc-toggle'), false);
-  }
-
   function openCard(card, scroll){
     if(!card) return;
-    [].forEach.call(list.querySelectorAll('.race-acc.open'), function(other){
-      if(other!==card) closeCard(other);
+    [].forEach.call(list.querySelectorAll('details.race-acc[open]'), function(other){
+      if(other!==card) other.open=false;
     });
-    card.classList.add('open');
-    setChevron(card.querySelector('.race-acc-toggle'), true);
+    card.open=true;
     if(scroll){
       try{ card.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){ card.scrollIntoView(true); }
     }
   }
 
-  function toggleCard(card){
-    if(!card) return;
-    if(card.classList.contains('open')) closeCard(card);
-    else openCard(card, false);
-  }
-
-  list.addEventListener('click', function(e){
-    var btn=e.target.closest('.race-acc-toggle');
-    if(!btn || !list.contains(btn)) return;
-    toggleCard(btn.closest('.race-acc'));
+  // details/summary は JS なしでも開く。ここでは「1枚だけ開く」補助のみ
+  list.addEventListener('toggle', function(e){
+    var card=e.target;
+    if(!card || !card.classList || !card.classList.contains('race-acc')) return;
+    if(card.open){
+      [].forEach.call(list.querySelectorAll('details.race-acc[open]'), function(other){
+        if(other!==card) other.open=false;
+      });
+    }
   });
 
   document.addEventListener('click', function(e){
@@ -1070,7 +1115,21 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 })();
 </script>
 {% else %}
-<section class="empty-state"><h2>予想データなし</h2><p>この日の予想レースがありません。日付を変えるか、データ更新後に再表示してください。</p></section>
+<section class="empty-state">
+{% if _ds == 'generating' %}
+<h2>データ取得中</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースデータを取得しています。{% else %}レースデータを取得しています。{% endif %}完了後に自動で再読み込みします。</p>
+<p><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></p>
+{% elif _ds == 'error' %}
+<h2>取得失敗</h2>
+<p>データ取得に失敗しました。「本日開催」で再取得してください。</p>
+<p><a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>
+{% else %}
+<h2>予想データなし</h2>
+<p>{% if selected_venue %}{{selected_venue}} のレースがありません。「本日開催」で再取得するか、開催場一覧へ戻ってください。{% else %}この日の予想レースがありません。日付を変えるか、データ更新後に再表示してください。{% endif %}</p>
+{% if selected_venue %}<p><a href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">← 開催場一覧へ</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>{% endif %}
+{% endif %}
+</section>
 {% endif %}
 {% endif %}
 {% endif %}

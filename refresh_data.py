@@ -45,6 +45,35 @@ RUNNER_COLS = [
 ]
 
 
+def _rss_mb() -> float:
+    """自プロセス RSS (MB)。ログ用。失敗時は -1。"""
+    try:
+        import resource
+        ru = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # macOS: bytes / Linux: KB
+        if sys.platform == "darwin":
+            return float(ru) / (1024 * 1024)
+        return float(ru) / 1024
+    except Exception:
+        pass
+    try:
+        with open("/proc/self/status", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return float(line.split()[1]) / 1024
+    except Exception:
+        pass
+    return -1.0
+
+
+def _log_mem(tag: str) -> None:
+    mb = _rss_mb()
+    if mb >= 0:
+        print(f"  📊 MEM {mb:.1f} MB | {tag}", flush=True)
+    else:
+        print(f"  📊 MEM ? | {tag}", flush=True)
+
+
 def _normalize_runners(df: pd.DataFrame) -> pd.DataFrame:
     for c in RUNNER_COLS:
         if c not in df.columns:
@@ -125,6 +154,23 @@ def _save_ticket_odds(client: NetkeibaClient, race_id: str, source: str) -> None
         print(f"  ⚠️ 券種オッズ保存失敗 {rid}: {e}")
 
 
+def _count_odds_tickets_for_date(target: str, race_ids: list[str] | None = None) -> int:
+    """指定日の odds_tickets JSON 保存件数。"""
+    if race_ids is None:
+        # race_id: YYYY + venue(2) + MMDD + RR
+        ymd = target.replace("-", "")
+        mmdd = ymd[4:]
+        year = ymd[:4]
+        n = 0
+        if ODDS_TICKETS.exists():
+            for p in ODDS_TICKETS.glob("*.json"):
+                name = p.stem
+                if len(name) == 12 and name.startswith(year) and name[6:10] == mmdd:
+                    n += 1
+        return n
+    return sum(1 for rid in race_ids if (ODDS_TICKETS / f"{rid}.json").exists())
+
+
 def build_date_runners(
     client: NetkeibaClient,
     target: str,
@@ -132,12 +178,49 @@ def build_date_runners(
     include_results: bool = True,
     include_odds: bool = True,
     persist_cb=None,
+    venues: list[str] | None = None,
 ) -> pd.DataFrame:
     ymd = target.replace("-", "")
     race_ids = client.list_race_ids(ymd, source=source)
     if not race_ids:
         print(f"⚠️  {source.upper()} {target}: レースなし")
+        print(
+            f"[pipeline] 開催取得 失敗 date={target} source={source} "
+            f"開催場数=0 レース数=0 保存件数=0",
+            flush=True,
+        )
         return pd.DataFrame(columns=RUNNER_COLS)
+
+    venue_names = sorted(
+        {
+            (client.parse_race_id(rid).get("venue") or "?")
+            for rid in race_ids
+        }
+    )
+    print(
+        f"[pipeline] 開催取得 成功 date={target} source={source} "
+        f"開催場数={len(venue_names)} レース数={len(race_ids)} "
+        f"保存件数={len(race_ids)} 場={venue_names}",
+        flush=True,
+    )
+
+    if venues:
+        from netkeiba_client import normalize_venue_name
+        want = {normalize_venue_name(v) for v in venues if str(v).strip()}
+        filtered = []
+        for rid in race_ids:
+            meta = client.parse_race_id(rid)
+            v = normalize_venue_name(meta.get("venue") or "")
+            if v in want:
+                filtered.append(rid)
+        print(
+            f"🎯 開催場フィルタ: {sorted(want)} → {len(filtered)}/{len(race_ids)}レース",
+            flush=True,
+        )
+        race_ids = filtered
+        if not race_ids:
+            print(f"⚠️  {source.upper()} {target}: 指定開催場のレースなし")
+            return pd.DataFrame(columns=RUNNER_COLS)
 
     rows = []
     race_ids = sorted(race_ids, key=_race_sort_key)
@@ -218,6 +301,19 @@ def build_date_runners(
             continue
     print(f"========== 取得完了 ==========")
     print(f"✅ {source.upper()} {target}: 成功 {ok_n} / 失敗 {fail_n} / 全 {total}")
+    odds_n = _count_odds_tickets_for_date(target, race_ids)
+    print(
+        f"[pipeline] レース取得 "
+        f"{'成功' if ok_n > 0 else '失敗'} date={target} source={source} "
+        f"成功={ok_n} 失敗={fail_n} 保存件数={ok_n} odds_json={odds_n}",
+        flush=True,
+    )
+    print(
+        f"[pipeline] 保存 "
+        f"{'成功' if ok_n > 0 else '失敗'} date={target} source={source} "
+        f"runners_races={ok_n} odds_json={odds_n} 保存件数={ok_n}",
+        flush=True,
+    )
     return _normalize_runners(pd.DataFrame(rows)) if rows else pd.DataFrame(columns=RUNNER_COLS)
 
 
@@ -431,6 +527,7 @@ def refresh(
     odds_only: bool = False,
     include_odds: bool = True,
     source: str = "all",
+    venues: list[str] | None = None,
 ) -> list[str]:
     runners = load_existing_runners()
     if migrate_only:
@@ -442,6 +539,7 @@ def refresh(
     client = NetkeibaClient()
     sources = _sources_list(source)
     all_target_dates: list[str] = []
+    venue_list = [str(v).strip() for v in (venues or []) if str(v).strip()] or None
 
     for src in sources:
         target_dates: list[str] = []
@@ -456,10 +554,19 @@ def refresh(
                 print(f"⚠️  {src.upper()} 開催日なし")
                 continue
             if latest_only:
-                # 未来カードではなく「本日 or 直近過去」を中心に ±2 日を取る（JST）
+                # 未来カードではなく「本日優先・無ければ直近過去」を中心に ±2 日を取る（JST）
                 today_str = datetime.now(JST).date().isoformat()
                 past_or_today = [d for d in found if d <= today_str]
-                anchor = max(past_or_today) if past_or_today else found[0]
+                if today_str in found:
+                    anchor = today_str
+                else:
+                    anchor = max(past_or_today) if past_or_today else found[0]
+                    print(
+                        f"[pipeline] 開催取得 警告 date={anchor} source={src} "
+                        f"reason=today_missing_in_discover today={today_str} "
+                        f"found={found[:8]} 保存件数=0",
+                        flush=True,
+                    )
                 target_dates = [anchor]
                 for d in found:
                     if d == anchor:
@@ -468,6 +575,11 @@ def refresh(
                     if delta <= 2:
                         target_dates.append(d)
                 target_dates = sorted(set(target_dates))
+                print(
+                    f"[pipeline] 開催取得 成功 date={anchor} source={src} "
+                    f"anchor={anchor} targets={target_dates} 保存件数={len(target_dates)}",
+                    flush=True,
+                )
             else:
                 existing = set(available_dates(runners, source=src))
                 recent = found[:4]
@@ -492,6 +604,7 @@ def refresh(
                 built = build_date_runners(
                     client, d, source=src, include_results=True, include_odds=include_odds,
                     persist_cb=_persist,
+                    venues=venue_list,
                 )
                 runners = merge_runners(state["df"], built)
 
@@ -499,13 +612,21 @@ def refresh(
     all_target_dates = sorted(set(all_target_dates))
 
     av = available_dates(runners)
+    to_gen: list[str] = []
     if not skip_predict:
         missing = [d for d in av if not (PRED_DIR / f"predictions_{d}.csv").exists()]
         to_gen = sorted(set(all_target_dates) | set(missing))
-        if to_gen:
-            generate_predictions(to_gen)
-        elif all_target_dates:
-            generate_predictions(all_target_dates)
+        if not to_gen and all_target_dates:
+            to_gen = list(all_target_dates)
+    # 予想子プロセス起動前に大きな DataFrame を解放（RAM 二重化を緩和）
+    try:
+        del runners
+    except Exception:
+        pass
+    import gc
+    gc.collect()
+    if to_gen:
+        generate_predictions(to_gen)
     return av
 
 
@@ -521,6 +642,7 @@ def main():
     ap.add_argument("--odds-only", action="store_true", help="オッズ列だけ再取得して再予想")
     ap.add_argument("--no-odds", action="store_true", help="オッズ取得をスキップ")
     ap.add_argument("--source", choices=["jra", "nar", "all"], default="all")
+    ap.add_argument("--venue", nargs="*", help="開催場名で絞り込み（例: 帯広 盛岡）")
     ap.add_argument("--lookback", type=int, default=28)
     ap.add_argument("--lookahead", type=int, default=14)
     ap.add_argument("--list", action="store_true", help="検出開催日を表示して終了")
@@ -546,6 +668,7 @@ def main():
         odds_only=args.odds_only,
         include_odds=not args.no_odds,
         source=args.source,
+        venues=args.venue,
     )
     print()
     print("=" * 50)

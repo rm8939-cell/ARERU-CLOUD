@@ -2,8 +2,13 @@ services:
   - type: web
     name: areru-cloud
     runtime: python
+    # メモリ実測: ページ表示 ~150MB / 取得+予想の同時起動で ~300MB+
+    # Free・Starter は RAM 512MB 同じ。Free は 0.1CPU + スリープで日次取得が不安定。
+    # 推奨: Standard（2GB / 1CPU）。最低でも Starter（CPU改善・スリープなし）。
+    # プラン変更は Render ダッシュボードでも可（ここを変えても課金確認が必要）。
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
+    # workers=1 必須（Free/Starter 512MB では複数 worker で OOM しやすい）
+    startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1 --max-requests 200 --max-requests-jitter 50
 # 地方日次安定化: 外部cronから GET /cron/nar-daily?token=$CRON_TOKEN を推奨
 # （朝・昼・夕・夜など 4〜6時間おき）
