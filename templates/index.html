@@ -314,10 +314,10 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 <a class="{{'active' if source=='all' else ''}}" href="/?source=all&mode={{mode}}&date={{selected_date}}">全開催</a>
 </nav>
 <nav class="mode-tabs">
-<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">予想分析</a>
-<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果検証</a>
-<a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={{selected_date}}">分析</a>
-<a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={{selected_date}}">収支分析</a>
+<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">予想分析</a>
+<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">結果検証</a>
+<a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">分析</a>
+<a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">収支分析</a>
 </nav>
 {% if mode in ('predict','result') and (today_ai_board|default({})).get('has_data') %}
 <div class="ai-board-title">本日のAI成績</div>
@@ -328,7 +328,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 </section>
 {% endif %}
 <div class="toolbar">
-<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
+<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}">{% if source=='nar' %}<input type="hidden" name="history" value="1">{% endif %}<select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
 {% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><input type="hidden" name="force_refresh" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source=='nar' %} · 最終更新 {{data_updated_at}}{% endif %}</div>
