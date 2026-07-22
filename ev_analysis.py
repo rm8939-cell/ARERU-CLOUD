@@ -20,6 +20,15 @@ BUY_EV_FLOOR = 108
 # レース信頼度の最低ライン
 BUY_CONF_FLOOR = 58
 
+# Sランク厳格条件（すべて満たした場合のみ S。不足は A へ降格）
+S_MIN_AI_CONF = 72.0       # AI信頼度が非常に高い
+S_MIN_ABILITY_GAP = 70.0   # 能力差が明確
+S_MIN_PACE_STABLE = 65.0   # 展開予測が安定
+S_MIN_DATA_N = 3           # データ件数が十分
+S_MIN_REPRO = 62.0         # 予測の再現性が高い
+
+RANK_PERF_PATH = Path(__file__).resolve().parent / 'data' / 'rank_performance.json'
+
 
 def parse_odds_value(v):
     """オッズ文字列/数値を float へ。欠損は None。"""
@@ -495,7 +504,10 @@ def calc_race_confidence(record: dict) -> dict:
 
 
 def rank_from_race_confidence(score) -> str:
-    """レース信頼度から S〜D を決定。"""
+    """レース信頼度から暫定 S〜D。
+
+    注意: S は qualify_s_rank() を通さないと確定しない（不足時は A へ降格）。
+    """
     try:
         if score is None or score == '' or str(score).strip() in ('—', '-', 'なし', 'nan', 'None'):
             return 'D'
@@ -503,7 +515,7 @@ def rank_from_race_confidence(score) -> str:
     except (TypeError, ValueError):
         return 'D'
     if s >= 78:
-        return 'S'
+        return 'S'  # 暫定。後段で厳格条件チェック
     if s >= 68:
         return 'A'
     if s >= 58:
@@ -511,6 +523,97 @@ def rank_from_race_confidence(score) -> str:
     if s >= 48:
         return 'C'
     return 'D'
+
+
+def qualify_s_rank(record: dict) -> tuple[bool, dict]:
+    """Sランク厳格判定。5条件すべて満たしたときだけ True。
+
+    ・AI信頼度が非常に高い
+    ・能力差が明確
+    ・展開予測が安定
+    ・データ件数が十分
+    ・予測の再現性が高い
+    """
+    # 信頼度パックが未計算なら補完
+    if record.get('能力差スコア') is None or record.get('展開読みやすさ') is None:
+        pack = calc_race_confidence(record)
+        for k, v in pack.items():
+            record.setdefault(k, v)
+
+    try:
+        conf = float(record.get('AI信頼度スコア') or 0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    try:
+        ability = float(record.get('能力差スコア') or 0)
+    except (TypeError, ValueError):
+        ability = 0.0
+    try:
+        pace = float(record.get('展開読みやすさ') or 0)
+    except (TypeError, ValueError):
+        pace = 0.0
+    try:
+        n = int(float(record.get('データ件数') or _count_past_races(record) or 0))
+    except (TypeError, ValueError):
+        n = 0
+    try:
+        repro = float(
+            record.get('シミュレーション再現率')
+            or record.get('シミュレーション一致率')
+            or 0
+        )
+    except (TypeError, ValueError):
+        repro = 0.0
+
+    checks = {
+        'AI信頼度': conf >= S_MIN_AI_CONF,
+        '能力差': ability >= S_MIN_ABILITY_GAP,
+        '展開安定': pace >= S_MIN_PACE_STABLE,
+        'データ件数': n >= S_MIN_DATA_N,
+        '再現性': repro >= S_MIN_REPRO,
+    }
+    detail = {
+        '合格': all(checks.values()),
+        '条件': checks,
+        '値': {
+            'AI信頼度': round(conf, 1),
+            '能力差': round(ability, 1),
+            '展開安定': round(pace, 1),
+            'データ件数': n,
+            '再現性': round(repro, 1),
+        },
+        '閾値': {
+            'AI信頼度': S_MIN_AI_CONF,
+            '能力差': S_MIN_ABILITY_GAP,
+            '展開安定': S_MIN_PACE_STABLE,
+            'データ件数': S_MIN_DATA_N,
+            '再現性': S_MIN_REPRO,
+        },
+    }
+    if not detail['合格']:
+        failed = [k for k, ok in checks.items() if not ok]
+        detail['降格理由'] = ' / '.join(failed) if failed else '条件不足'
+    return bool(detail['合格']), detail
+
+
+def finalize_race_rank(record: dict, provisional: str | None = None) -> str:
+    """暫定ランクを確定。S条件不足は必ず A へ降格。"""
+    rk = str(provisional or record.get('勝負ランク') or '').upper()
+    if rk == 'S':
+        ok, detail = qualify_s_rank(record)
+        record['S判定'] = detail
+        if not ok:
+            record['S降格'] = True
+            record['S降格理由'] = detail.get('降格理由') or '条件不足'
+            return 'A'
+        record['S降格'] = False
+        return 'S'
+    # S以外でも判定内訳を残す（改善用）
+    if 'S判定' not in record:
+        _, detail = qualify_s_rank(record)
+        record['S判定'] = detail
+        record['S降格'] = False
+    return rk if rk in ('S', 'A', 'B', 'C', 'D') else 'D'
 
 
 def _edge_take_rate(conf: float, repro: float, n: int, apt: float, market: float, reasons: str) -> float:
@@ -724,6 +827,9 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
         except (TypeError, ValueError):
             pass
 
+    # S は厳格条件を満たす場合のみ。不足は A へ降格
+    rk = finalize_race_rank(record, rk)
+
     record['勝負ランク'] = rk
     if rk:
         record['勝負ランク表示'] = f'{rk}'
@@ -832,27 +938,45 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
         s_slots, a_slots = _rank_slots(n, by_venue)
         buy_cap = _buy_cap(n, by_venue)
 
-        # 信頼度順で相対ランクを再割当（枠は埋める。買いは別ゲート）
+        # 信頼度順で相対ランクを再割当。
+        # S は枠があっても厳格条件を満たすレースだけ（満たさなければ A へ）。
         ordered = sorted(items, key=lambda x: _buy_score(x[1]), reverse=True)
         assigned = {}
         s_left, a_left = s_slots, a_slots
         for pos, (idx, r) in enumerate(ordered):
             score = float(r.get('レース信頼度スコア') or r.get('AI信頼度スコア') or 50)
-            if s_left > 0 and (score >= 50 or pos == 0):
+            ok_s, s_detail = qualify_s_rank(r)
+            r['S判定'] = s_detail
+            if s_left > 0 and ok_s and score >= 66:
                 rk = 'S'
                 s_left -= 1
+                r['S降格'] = False
             elif a_left > 0 and score >= 40:
                 rk = 'A'
                 a_left -= 1
+                # S枠候補だったが条件不足 → 明示的に A 降格
+                if not ok_s and score >= 66:
+                    r['S降格'] = True
+                    r['S降格理由'] = s_detail.get('降格理由') or '条件不足'
+                else:
+                    r['S降格'] = False
             elif score >= 48:
                 rk = 'B'
+                r['S降格'] = False
             elif score >= 38:
                 rk = 'C'
+                r['S降格'] = False
             else:
                 rk = 'D'
+                r['S降格'] = False
             # 下位帯は S/A にしない
             if pos >= s_slots + a_slots + max(2, n // 3) and rk in ('S', 'A', 'B'):
                 rk = 'C' if score >= 38 else 'D'
+            # 最終ガード: S は必ず qualify 通過
+            if rk == 'S' and not ok_s:
+                rk = 'A'
+                r['S降格'] = True
+                r['S降格理由'] = s_detail.get('降格理由') or '条件不足'
             assigned[idx] = rk
 
         for idx, r in items:
@@ -905,6 +1029,109 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
                 r.update(skip)
 
     return races
+
+
+def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
+    """S/A/B ごとの的中率・回収率を集計して data/rank_performance.json に記録。
+
+    自己学習ではなく、結果検証に基づく判定基準改善用のログ。
+    """
+    import json
+    from datetime import datetime, timezone, timedelta
+
+    src = Path(analysis_csv) if analysis_csv else (
+        Path(__file__).resolve().parent / 'data' / 'analysis_result.csv'
+    )
+    jst = timezone(timedelta(hours=9))
+    out = {
+        'updated_at': datetime.now(jst).isoformat(timespec='seconds'),
+        'source': str(src.name),
+        'note': 'S/A/Bの的中率・回収率。今後のS判定閾値改善に利用する（自動学習ではない）。',
+        'by_rank': {},
+        'thresholds_s': {
+            'AI信頼度': S_MIN_AI_CONF,
+            '能力差': S_MIN_ABILITY_GAP,
+            '展開安定': S_MIN_PACE_STABLE,
+            'データ件数': S_MIN_DATA_N,
+            '再現性': S_MIN_REPRO,
+        },
+    }
+    empty_rank = {
+        'bets': 0, 'hits': 0, 'hit_rate': None,
+        'investment': 0, 'payout': 0, 'recovery': None, 'profit': 0,
+    }
+    for rk in ('S', 'A', 'B'):
+        out['by_rank'][rk] = dict(empty_rank)
+
+    if not src.exists() or src.stat().st_size < 64:
+        _write_rank_perf(out)
+        return out
+
+    try:
+        df = pd.read_csv(src, encoding='utf-8-sig')
+    except Exception as e:
+        out['error'] = str(e)[:200]
+        _write_rank_perf(out)
+        return out
+
+    if df.empty or '勝負ランク' not in df.columns:
+        _write_rank_perf(out)
+        return out
+
+    # 購入対象がある場合は購入分のみ（無い場合は全行）
+    base = df
+    if '購入対象' in df.columns:
+        bought = df[pd.to_numeric(df['購入対象'], errors='coerce').fillna(0).astype(int) == 1]
+        if len(bought) >= 10:
+            base = bought
+
+    for rk in ('S', 'A', 'B'):
+        g = base[base['勝負ランク'].astype(str).str.upper() == rk]
+        if g.empty:
+            continue
+        hits = pd.to_numeric(g.get('hit'), errors='coerce').fillna(0)
+        inv = float(pd.to_numeric(g.get('investment'), errors='coerce').fillna(0).sum())
+        pay = float(pd.to_numeric(g.get('payout'), errors='coerce').fillna(0).sum())
+        hit_n = int(hits.sum())
+        bets = int(len(g))
+        out['by_rank'][rk] = {
+            'bets': bets,
+            'hits': hit_n,
+            'hit_rate': round(hit_n / bets * 100.0, 1) if bets else None,
+            'investment': int(inv),
+            'payout': int(pay),
+            'recovery': round(pay / inv * 100.0, 1) if inv else None,
+            'profit': int(pay - inv),
+        }
+
+    # 直近スナップショットを最大30件保持
+    prev = {}
+    try:
+        if RANK_PERF_PATH.exists():
+            prev = json.loads(RANK_PERF_PATH.read_text(encoding='utf-8'))
+    except Exception:
+        prev = {}
+    history = list(prev.get('history') or [])
+    history.append({
+        'updated_at': out['updated_at'],
+        'by_rank': out['by_rank'],
+    })
+    out['history'] = history[-30:]
+    _write_rank_perf(out)
+    return out
+
+
+def _write_rank_perf(payload: dict) -> None:
+    import json
+    try:
+        RANK_PERF_PATH.parent.mkdir(parents=True, exist_ok=True)
+        RANK_PERF_PATH.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding='utf-8',
+        )
+        print(f'[rank-perf] wrote {RANK_PERF_PATH.name}', flush=True)
+    except Exception as e:
+        print(f'[rank-perf] write fail: {e}', flush=True)
 
 
 def build_ai_buy_reasons(record: dict, limit: int = 3) -> list[str]:

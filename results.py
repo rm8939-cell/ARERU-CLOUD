@@ -741,6 +741,21 @@ def run(dates: list[str] | None, source: str, latest: bool, skip_fetch: bool) ->
     analysis.to_csv(ANALYSIS_CSV, index=False, encoding="utf-8-sig")
     print(f"💾 {ANALYSIS_CSV} ({len(analysis)}行)", flush=True)
     summarize(analysis)
+    try:
+        from ev_analysis import refresh_rank_performance_log
+        perf = refresh_rank_performance_log(ANALYSIS_CSV)
+        print("📈 ランク別成績ログを更新:", flush=True)
+        for rk in ("S", "A", "B"):
+            row = (perf.get("by_rank") or {}).get(rk) or {}
+            hr = row.get("hit_rate")
+            rr = row.get("recovery")
+            print(
+                f"  {rk}: 的中率{hr if hr is not None else '—'}% / "
+                f"回収率{rr if rr is not None else '—'}% / 購入{row.get('bets', 0)}",
+                flush=True,
+            )
+    except Exception as e:
+        print(f"⚠️ ランク成績ログ更新スキップ: {e}", flush=True)
     print("🏁 results.py 全処理完了", flush=True)
 
 

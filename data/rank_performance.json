@@ -1,0 +1,107 @@
+{
+  "updated_at": "2026-07-23T01:02:53+09:00",
+  "source": "analysis_result.csv",
+  "note": "S/A/Bの的中率・回収率。今後のS判定閾値改善に利用する（自動学習ではない）。",
+  "by_rank": {
+    "S": {
+      "bets": 50,
+      "hits": 6,
+      "hit_rate": 12.0,
+      "investment": 12200,
+      "payout": 1680,
+      "recovery": 13.8,
+      "profit": -10520
+    },
+    "A": {
+      "bets": 61,
+      "hits": 14,
+      "hit_rate": 23.0,
+      "investment": 14300,
+      "payout": 4490,
+      "recovery": 31.4,
+      "profit": -9810
+    },
+    "B": {
+      "bets": 161,
+      "hits": 22,
+      "hit_rate": 13.7,
+      "investment": 42100,
+      "payout": 13480,
+      "recovery": 32.0,
+      "profit": -28620
+    }
+  },
+  "thresholds_s": {
+    "AI信頼度": 72.0,
+    "能力差": 70.0,
+    "展開安定": 65.0,
+    "データ件数": 3,
+    "再現性": 62.0
+  },
+  "history": [
+    {
+      "updated_at": "2026-07-23T01:02:44+09:00",
+      "by_rank": {
+        "S": {
+          "bets": 50,
+          "hits": 6,
+          "hit_rate": 12.0,
+          "investment": 12200,
+          "payout": 1680,
+          "recovery": 13.8,
+          "profit": -10520
+        },
+        "A": {
+          "bets": 61,
+          "hits": 14,
+          "hit_rate": 23.0,
+          "investment": 14300,
+          "payout": 4490,
+          "recovery": 31.4,
+          "profit": -9810
+        },
+        "B": {
+          "bets": 161,
+          "hits": 22,
+          "hit_rate": 13.7,
+          "investment": 42100,
+          "payout": 13480,
+          "recovery": 32.0,
+          "profit": -28620
+        }
+      }
+    },
+    {
+      "updated_at": "2026-07-23T01:02:53+09:00",
+      "by_rank": {
+        "S": {
+          "bets": 50,
+          "hits": 6,
+          "hit_rate": 12.0,
+          "investment": 12200,
+          "payout": 1680,
+          "recovery": 13.8,
+          "profit": -10520
+        },
+        "A": {
+          "bets": 61,
+          "hits": 14,
+          "hit_rate": 23.0,
+          "investment": 14300,
+          "payout": 4490,
+          "recovery": 31.4,
+          "profit": -9810
+        },
+        "B": {
+          "bets": 161,
+          "hits": 22,
+          "hit_rate": 13.7,
+          "investment": 42100,
+          "payout": 13480,
+          "recovery": 32.0,
+          "profit": -28620
+        }
+      }
+    }
+  ]
+}
