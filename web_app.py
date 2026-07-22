@@ -674,18 +674,12 @@ def resolve_nar_fetch_status(selected_date: str = '', *, force_refresh: bool = F
         return 'error', '取得失敗'
 
     if state=='running':
-        # 当日予想が既にあるなら、裏で再取得中でも詳細画面は ready 扱いにする
-        # （generating + meta refresh で venue が落ちてモバイルで「開く」が効かないのを防ぐ）
+        # 裏で再取得中でも、呼び出し側が既存表示を維持できるように generating を返す
+        # （index 側で has_content なら updating に落とし、画面は消さない）
         if selected_date == today and _nar_pred_ready(today, 'nar'):
-            # ステータスが running のまま固まっている場合は success に直す
-            if age > 120:
-                _write_nar_job_status(
-                    'success', stage='done', message='取得完了',
-                    date_str=today,
-                )
-            return 'ready', (msg or '取得完了')
+            return 'generating', (msg or 'データ更新中')
         if selected_date and selected_date != today and _nar_pred_ready(selected_date, 'nar'):
-            return 'ready', (msg or '取得完了')
+            return 'generating', (msg or 'データ更新中')
         return 'generating', (msg or 'データ取得中')
 
     if state=='error':
@@ -2498,85 +2492,99 @@ def index():
         'by_type':[],'monthly':[],'tone':'roi-bad',
     }
 
-    # 地方: ジョブ状態で「取得中」を確定解除（成功→ready / 失敗→error）。永久取得中を禁止。
+    # 地方: ジョブ状態で「取得中」を確定解除。
+    # 重要: 表示中データは消さない。裏更新中は updating で維持し、成功後の再読込でのみ切替。
     status_refresh_url=''
+    data_file_mtime=''
     if source=='nar':
         job_status, job_msg = resolve_nar_fetch_status(selected, force_refresh=False)
-        # 既に会場詳細・レースがあるなら generating に落とさない（meta refresh で詳細が消えるのを防ぐ）
         has_content=bool(races) or (bool(venues) and show_venue_picker)
-        today_ok=_nar_pred_ready(today, 'nar')
-        if (force_refresh or want_today or force_cal_today) and job_status=='ready' and not _nar_pred_ready(selected, 'nar'):
+        selected_ok=_nar_pred_ready(selected, 'nar') if selected else False
+        bg_running=(job_status == 'generating') or force_refresh
+
+        # 既存表示があるときは絶対にクリアしない（チラつき防止）
+        if has_content and bg_running:
+            data_status='updating'
+            if selected_venue and races:
+                message=f'{selected} / {selected_venue} / 予想分析（更新中）'
+            elif venues and show_venue_picker:
+                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（更新中）'
+            else:
+                message=job_msg or 'データ更新中（表示は維持）'
+        elif (force_refresh or want_today or force_cal_today) and not selected_ok and not has_content:
+            # 初回のみ: まだ何も無いときだけ generating
             data_status='generating'
-            message='データ取得中'
-            races=[]; data_updated_at=''
+            message=job_msg or 'データ取得中'
+            show_venue_picker=True
             if not venues:
                 venues=_nar_venues_from_runners(selected or today)
             if venues:
                 data_status='updating'
                 message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
-        elif (force_refresh or want_today) and job_status=='ready' and _nar_pred_ready(selected, 'nar'):
-            data_status='ready'
-            if venues and show_venue_picker:
-                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-            elif races and selected_venue:
-                message=f'{selected} / {selected_venue} / 予想分析' if mode=='predict' else message
-        elif (force_refresh or want_today) and job_status=='ready':
-            data_status='generating'
-            message='データ取得中'
-        elif job_status=='generating' and today_ok and has_content:
-            # 裏更新中でも詳細は表示。自動再読込はしない（updating）
-            data_status='updating'
-            if not message or message in ('データ取得中', '取得中'):
-                if selected_venue and races:
-                    message=f'{selected} / {selected_venue} / 予想分析'
-                elif venues:
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                else:
-                    message=job_msg or 'データ更新中'
-        elif job_status=='generating':
+        elif job_status=='generating' and not has_content:
             data_status='generating'
             message=job_msg or 'データ取得中'
-            if selected==today and not today_ok:
-                races=[]; data_updated_at=''
-                show_venue_picker=True
-                if not venues:
-                    venues=_nar_venues_from_runners(today)
-                if venues:
-                    # 開催場は出して meta refresh で消さない（updating）
-                    data_status='updating'
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
+            show_venue_picker=True
+            if selected==today and not venues:
+                venues=_nar_venues_from_runners(today)
+            if venues:
+                data_status='updating'
+                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
         elif job_status=='error':
-            data_status='error'
-            message=job_msg or '取得失敗'
-            if selected==today and not has_content:
-                races=[]; data_updated_at=''
-                show_venue_picker=True
-                if not venues:
-                    venues=_nar_venues_from_runners(today)
-                if venues:
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（再取得待ち）'
-        elif job_status=='ready':
-            if data_status=='generating':
-                if venues or races or _nar_pred_ready(selected, 'nar'):
-                    data_status='ready'
-                    if not message or message in ('データ取得中', '取得中'):
-                        message=job_msg or (
-                            f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                            if venues else '取得完了'
-                        )
-                else:
-                    # ready なのに予想も開催場も無い → runners 再確認
-                    if selected==today:
-                        venues=_nar_venues_from_runners(today)
-                        show_venue_picker=True
-                    if venues:
-                        data_status='ready'
+            # 失敗時は表示中データを維持（クリアしない）
+            if has_content:
+                data_status='ready'
+                if not message or message in ('データ取得中', '取得中', '取得失敗'):
+                    if selected_venue and races:
+                        message=f'{selected} / {selected_venue} / 予想分析'
+                    elif venues:
                         message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
                     else:
-                        data_status='ready'
-                        message='本日は地方競馬の開催はありません' if selected==today else message
+                        message='取得失敗（表示は前回データを維持）'
+            else:
+                data_status='error'
+                message=job_msg or '取得失敗'
+                show_venue_picker=True
+                if selected==today and not venues:
+                    venues=_nar_venues_from_runners(today)
+                if venues:
+                    data_status='updating'
+                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（再取得待ち）'
+        elif job_status=='ready':
+            if data_status in ('generating', 'updating') and has_content:
+                data_status='ready'
+                if not message or message in ('データ取得中', '取得中', 'データ更新中（表示は維持）'):
+                    message=job_msg or (
+                        f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                        if venues and show_venue_picker else '取得完了'
+                    )
+            elif data_status=='generating' and not has_content:
+                if selected==today:
+                    venues=_nar_venues_from_runners(today)
+                    show_venue_picker=True
+                if venues or races or selected_ok:
+                    data_status='ready'
+                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場' if venues else '取得完了'
+                else:
+                    data_status='ready'
+                    message='本日は地方競馬の開催はありません' if selected==today else message
             if data_updated_at and selected and not (ARCH/f'predictions_{selected}.csv').exists():
                 data_updated_at=''
+
+        # 最終ガード: 中身があるのに generating なら updating へ（画面を消さない）
+        has_content=bool(races) or (bool(venues) and show_venue_picker)
+        if has_content and data_status=='generating':
+            data_status='updating'
+            if not message or message == 'データ取得中':
+                message='データ更新中（表示は維持）'
+
+        try:
+            pf=ARCH/f'predictions_{selected}.csv' if selected else None
+            if pf and pf.exists():
+                data_file_mtime=str(int(pf.stat().st_mtime))
+        except Exception:
+            data_file_mtime=''
+
         from urllib.parse import urlencode
         q={'source':'nar','mode':mode}
         if allow_past and selected and selected < today:
@@ -2626,7 +2634,7 @@ def index():
         today_date=today if source=='nar' else today,
         day_stats=day_stats,data_status=data_status,
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
-        status_refresh_url=status_refresh_url)
+        status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime)
 
 
 def attach_results(records, selected_date=''):
@@ -3334,6 +3342,38 @@ def ledger_data(source='all', verification=None):
         'by_type':v.get('by_type') or [],
         'monthly':monthly,
         'daily':v.get('daily') or [],
+    }
+
+
+@app.route('/api/nar-refresh-status', methods=['GET'])
+def api_nar_refresh_status():
+    """バックグラウンド更新の完了監視用（画面は消さず、成功後にだけ再読込する）。"""
+    today=_today_jst()
+    date_str=str(request.args.get('date') or today).strip() or today
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_str):
+        date_str=today
+    st=_read_nar_job_status()
+    state=str(st.get('state') or 'idle')
+    age=_nar_job_age_sec(st)
+    ready=_nar_pred_ready(date_str, 'nar')
+    mtime=''
+    try:
+        pf=ARCH/f'predictions_{date_str}.csv'
+        if pf.exists():
+            mtime=str(int(pf.stat().st_mtime))
+    except Exception:
+        mtime=''
+    if state=='running' and age > _NAR_JOB_STALE_SEC:
+        state='error'
+    finished=state != 'running' and ready
+    return {
+        'ok': True,
+        'date': date_str,
+        'state': state,
+        'ready': ready,
+        'finished': finished,
+        'mtime': mtime,
+        'message': str(st.get('message') or st.get('error') or ''),
     }
 
 

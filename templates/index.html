@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+{# 中身が無い初回取得中のみフルリロード。表示維持中(updating)は JS で静かに監視する #}
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>ARERU.EXE</title>
 <style>
@@ -351,11 +352,11 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source=='nar' %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
-<div class="status-banner warn">データ取得中。数十秒かかることがあります。自動で再読み込みします。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
+<div class="status-banner warn">初回データ取得中です。取得でき次第、自動で表示します。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
-<div class="status-banner warn">データ更新中です。表示は現在のキャッシュです{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。<a href="{{ request.url }}">再読み込み</a></div>
+<div class="status-banner info">バックグラウンドで更新中です。表示中のデータはそのまま維持し、成功後に切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
 {% elif _ds == 'error' %}
-<div class="status-banner error">{% if source=='nar' %}取得失敗{% else %}通信エラーが発生しました{% endif %}。時間をおいて再読み込みするか、「本日開催」で再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
+<div class="status-banner error">{% if source=='nar' %}取得失敗{% else %}通信エラーが発生しました{% endif %}。表示中のデータは維持しています。時間をおいて再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
@@ -1133,4 +1134,44 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endif %}
 {% endif %}
 {% endif %}
-</main></body></html>
+</main>
+{% if source=='nar' and (data_status|default('ready')) == 'updating' %}
+<script>
+(function(){
+  try{
+    var refreshUrl = {{ (status_refresh_url or '/')|tojson }};
+    var dateStr = {{ (selected_date or today or '')|tojson }};
+    var baseMtime = {{ (data_file_mtime or '')|tojson }};
+    var tries = 0;
+    var maxTries = 40;
+    var sawRunning = false;
+    function poll(){
+      tries += 1;
+      if (tries > maxTries) return;
+      var q = '/api/nar-refresh-status?date=' + encodeURIComponent(dateStr || '');
+      fetch(q, {credentials:'same-origin', cache:'no-store'})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          if (!j || !j.ok) { setTimeout(poll, 8000); return; }
+          if (j.state === 'running') sawRunning = true;
+          var newer = j.mtime && baseMtime && String(j.mtime) !== String(baseMtime);
+          if (j.state === 'error') {
+            if (sawRunning || tries >= 2) {
+              window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
+            }
+            return;
+          }
+          if (newer || (sawRunning && j.finished) || (tries >= 3 && j.finished && j.ready)) {
+            window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
+            return;
+          }
+          setTimeout(poll, 8000);
+        })
+        .catch(function(){ setTimeout(poll, 10000); });
+    }
+    setTimeout(poll, 6000);
+  }catch(e){}
+})();
+</script>
+{% endif %}
+</body></html>
