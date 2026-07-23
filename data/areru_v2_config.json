@@ -17,8 +17,8 @@
     "s_min_score": 0.0,
     "a_min_score": 0.0,
     "b_min_score": 0.0,
-    "note": "AIランク選別の基準。rank_optimizer.py が各ランクROIを見て自動調整できる。"
+    "note": "相対順位の暫定枠のみ。最終勝負ランク/投資判定は ev_analysis.finalize_predictions_df（厳格S条件＋買い厳選）がCSVへ焼き込む。"
   },
   "status": "baseline_ready_for_optimize_v2",
-  "note": "実着順は評価専用。指数入力には未使用。"
+  "note": "実着順は評価専用。指数入力には未使用。表示ランクはコード内のS_MIN_* / BUY_* が正。"
 }

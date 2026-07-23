@@ -1031,6 +1031,127 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
     return races
 
 
+# CSVへ永続化する表示確定カラム（相対ランク上書きを防ぐ）
+_FINALIZE_PERSIST_COLS = (
+    '相対ランク',
+    '勝負ランク', '勝負ランク表示', 'BET判定', 'BETクラス',
+    '投資判定', '投資判定アイコン', '投資判定トーン', '投資判定表示',
+    '一覧判定', '一覧判定トーン',
+    '期待値', '期待値表示', '期待値トーン', '期待値あり', 'レース期待回収率',
+    'AI信頼度スコア', 'シミュレーション再現率', 'データ件数',
+    'レース信頼度スコア', '能力差スコア', '展開読みやすさ',
+    'データ件数スコア', 'シミュレーション一致率', '競馬場バイアス一致率',
+    'S降格', 'S降格理由',
+)
+
+
+def _hydrate_record_for_finalize(record: dict) -> None:
+    """CSV行から厳格ランク判定に必要な JSON 列を復元する。"""
+    import json
+
+    if not record.get('ピックカード一覧'):
+        raw = record.get('ピックカード')
+        cards = []
+        if isinstance(raw, list):
+            cards = raw
+        elif isinstance(raw, str) and raw.strip().startswith('['):
+            try:
+                cards = json.loads(raw.replace('NaN', 'null'))
+            except Exception:
+                cards = []
+        record['ピックカード一覧'] = [c for c in (cards or []) if isinstance(c, dict)][:6]
+
+    if not isinstance(record.get('展開予想データ'), dict):
+        pace = {}
+        raw = record.get('展開予想')
+        if isinstance(raw, dict):
+            pace = raw
+        elif isinstance(raw, str) and raw.strip().startswith('{'):
+            try:
+                pace = json.loads(raw.replace('NaN', 'null'))
+            except Exception:
+                pace = {}
+        record['展開予想データ'] = pace if isinstance(pace, dict) else {}
+
+
+def finalize_prediction_records(records: list, *, group_by_source: bool = True) -> list:
+    """厳格S判定＋買い厳選をレコードへ適用（表示・CSV書き込み共通）。
+
+    NAR は開催場単位、JRA は日次単位。source混在日は source ごとに分割する。
+    """
+    records = list(records or [])
+    if not records:
+        return records
+
+    cleaned = []
+    for r in records:
+        row = dict(r)
+        for k, v in list(row.items()):
+            try:
+                if v is not None and not isinstance(v, (str, list, dict, bool, int, float)) and pd.isna(v):
+                    row[k] = None
+                elif isinstance(v, float) and pd.isna(v):
+                    row[k] = None
+            except (TypeError, ValueError):
+                pass
+        # 相対ランクを残し、最終勝負ランクは後段で確定
+        if not row.get('相対ランク') and row.get('勝負ランク'):
+            row['相対ランク'] = str(row.get('勝負ランク') or '').upper()
+        _hydrate_record_for_finalize(row)
+        apply_expected_value(row)
+        cleaned.append(row)
+
+    if not group_by_source:
+        return tighten_buy_selection(cleaned, by_venue=False)
+
+    from collections import defaultdict
+    buckets = defaultdict(list)
+    for i, r in enumerate(cleaned):
+        src = str(r.get('source') or '').lower()
+        if not src:
+            try:
+                from areru_engine import source_from_race_id
+                src = source_from_race_id(r.get('race_id', '')) or 'all'
+            except Exception:
+                src = 'all'
+        buckets[src or 'all'].append((i, r))
+
+    out = list(cleaned)
+    for src, items in buckets.items():
+        idxs = [i for i, _ in items]
+        subset = [r for _, r in items]
+        by_venue = (src == 'nar')
+        tightened = tighten_buy_selection(subset, by_venue=by_venue)
+        for i, r in zip(idxs, tightened):
+            out[i] = r
+    return out
+
+
+def finalize_predictions_df(df: pd.DataFrame) -> pd.DataFrame:
+    """build_predictions / replay_predict 直後に厳格ランク・買い判定をCSVへ焼き込む。"""
+    if df is None or len(df) == 0:
+        return df
+    records = finalize_prediction_records(df.to_dict('records'), group_by_source=True)
+    out = df.copy()
+    if '相対ランク' not in out.columns and '勝負ランク' in out.columns:
+        out['相対ランク'] = out['勝負ランク']
+    import json
+    for col in _FINALIZE_PERSIST_COLS:
+        vals = []
+        for r in records:
+            v = r.get(col)
+            if isinstance(v, (dict, list)):
+                try:
+                    v = json.dumps(v, ensure_ascii=False)
+                except Exception:
+                    v = str(v)
+            elif v is None:
+                v = ''
+            vals.append(v)
+        out[col] = vals
+    return out
+
+
 def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
     """S/A/B ごとの的中率・回収率を集計して data/rank_performance.json に記録。
 

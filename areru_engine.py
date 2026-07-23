@@ -4,7 +4,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-DATA_DIR=Path('data'); CONFIG_FILE=DATA_DIR/'areru_v2_config.json'
+DATA_DIR=Path(__file__).resolve().parent / 'data'
+CONFIG_FILE=DATA_DIR/'areru_v2_config.json'
 HORSE_CACHE_DIR=DATA_DIR/'cache'/'horse_results'
 DEFAULT_WEIGHTS={'performance':0.28,'upset':0.24,'consistency':0.12,'trend':0.12,'value':0.14,'context':0.10}
 RECENCY=np.array([1.0,.82,.65,.48,.34])
@@ -132,6 +133,8 @@ def assign_ai_ranks(result, thresholds=None):
         return 'D'
 
     ranks=[grade(int(order.loc[i]), float(raw_bet.loc[i])) for i in result.index]
+    # 相対ランクは暫定。最終の勝負ランク/投資判定は finalize_predictions_df で確定する。
+    result['相対ランク']=ranks
     result['勝負ランク']=ranks
     result['BET判定']=result['勝負ランク'].map(RANK_LABELS)
     result['BETクラス']=result['勝負ランク'].map(RANK_CLASSES)
@@ -1211,7 +1214,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           'データ頭数':n})
 
     result=pd.DataFrame(out).sort_values(['開催地','レース']).reset_index(drop=True)
-    # source 別に相対順位で S/A/B/C を付与（JRA/NAR混在日でもプールを分けて評価）
+    # source 別に相対順位で暫定 S/A/B/C を付与（JRA/NAR混在日でもプールを分けて評価）
     ranked_parts=[]
     if 'source' in result.columns and result['source'].nunique()>1:
         for _,g in result.groupby('source',sort=False):
@@ -1219,5 +1222,8 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         result=pd.concat(ranked_parts,ignore_index=True).sort_values(['開催地','レース']).reset_index(drop=True)
     else:
         result=assign_ai_ranks(result)
+    # 厳格S条件・買い厳選をCSVへ永続化（日次更新後も同じ基準を維持）
+    from ev_analysis import finalize_predictions_df
+    result=finalize_predictions_df(result)
     return result,sd
 

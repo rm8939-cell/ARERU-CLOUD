@@ -3,7 +3,9 @@ from pathlib import Path
 import pandas as pd
 from areru_engine import build_predictions, parse_date
 
-DATA=Path('data'); OUT=DATA/'predictions_by_date'; OUT.mkdir(parents=True,exist_ok=True)
+_BASE=Path(__file__).resolve().parent
+DATA=_BASE/'data'
+OUT=DATA/'predictions_by_date'; OUT.mkdir(parents=True,exist_ok=True)
 RUNNERS=DATA/'runners.csv'
 LEGACY=DATA/'score_test_data.csv'
 

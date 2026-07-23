@@ -39,20 +39,25 @@ _EMPTY_VERIFY={
 }
 
 # 地方の開催場一覧だけなら巨大JSON列を読まない
+# ※S/買い厳選に必要な信頼度・オッズ・展開列は含める（相対ランクのまま表示しない）
 _NAR_VENUE_PICKER_COLS=(
-    'race_id','source','開催地','レース','勝負ランク','期待値','投資判定',
+    'race_id','source','開催地','レース','勝負ランク','相対ランク','期待値','投資判定',
     '本命','日付','荒れクラス',
+    '本命オッズ','AI適正オッズ','シミュレーション勝率','シミュレーション連対率',
+    '本命データ件数','データ件数','ピックカード','展開予想','レース期待回収率',
+    'AI信頼度スコア','レース信頼度スコア',
 )
 
 # 開催場詳細で使う列（全列読まずメモリを抑える）
 # ※期待値再計算に必要な勝率・適正オッズ・データ件数は必ず含める
 _NAR_VENUE_DETAIL_COLS=(
-    'race_id','source','開催地','レース','日付','勝負ランク','期待値','投資判定',
+    'race_id','source','開催地','レース','日付','勝負ランク','相対ランク','期待値','投資判定',
     '本命','本命馬番','本命馬番表示','本命理由','本命詳細','本命オッズ','本命人気',
     'AI適正オッズ','シミュレーション勝率','シミュレーション連対率','シミュレーション3着内率',
     '本命データ件数','データ件数','ピックカード','推奨馬券','推奨券種','馬券戦略理由',
     '展開予想','印データ','AI買い理由','荒れクラス','ワイド判定','馬連判定',
     'ワイド買い目','馬連買い目','ワイド評価','馬連評価','レース期待回収率','期待回収率',
+    'AI信頼度スコア','レース信頼度スコア','S降格','S降格理由',
 )
 
 
@@ -94,10 +99,13 @@ def _fs_sig(*paths):
             parts.append(f'{st.st_mtime_ns}:{st.st_size}')
         except Exception:
             parts.append('0')
-    # predictions ディレクトリの件数変化も拾う
+    # predictions の件数・個別mtimeも拾う（CSV再生成で相対→厳格ランクが変わったとき用）
     try:
-        parts.append(str(sum(1 for _ in ARCH.glob('predictions_*.csv'))))
+        pred_files=sorted(ARCH.glob('predictions_*.csv'))
+        parts.append(str(len(pred_files)))
         parts.append(str(int(ARCH.stat().st_mtime_ns)))
+        # 上位ファイルの mtime 合計（ディレクトリmtimeが更新されないFS対策）
+        parts.append(str(sum(int(f.stat().st_mtime_ns) for f in pred_files[-14:])))
     except Exception:
         parts.append('0')
     return '|'.join(parts)
@@ -1346,6 +1354,8 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
     """レース信頼度で S〜D を付け、開催単位で買いを厳選する。
 
     by_venue=True: 地方（開催場ごと） / False: JRA（日次全体）
+    CSV には build_predictions 時点で同じ基準が焼き込まれているが、
+    表示時にも再適用して古いCSVやキャッシュ漏れを防ぐ。
     """
     from ev_analysis import apply_ev_rank_and_labels, build_ai_buy_reasons, tighten_buy_selection
     for r in races or []:
@@ -2896,8 +2906,9 @@ def _load_prediction_meta():
         return _PRED_META_CACHE['data']
     meta={}
     # メタに必要な列だけ読む
-    want={'race_id','開催地','レース','日付','勝負ランク','推奨券種','本命','本命馬番',
-          'ワイド判定','馬連判定','三連複判定','印データ','BET判定','BET期待値','source'}
+    want={'race_id','開催地','レース','日付','勝負ランク','相対ランク','推奨券種','本命','本命馬番',
+          'ワイド判定','馬連判定','三連複判定','印データ','BET判定','BET期待値','source',
+          '投資判定','期待値','S降格'}
     for f in ARCH.glob('predictions_*.csv'):
         try:
             cols=pd.read_csv(f,encoding='utf-8-sig',nrows=0).columns.tolist()
