@@ -332,10 +332,10 @@ details.race-acc[open]>.race-acc-body{display:block}
 <a class="{{'active' if source=='all' else ''}}" href="/?source=all&mode={{mode}}&date={{selected_date}}">全開催</a>
 </nav>
 <nav class="mode-tabs">
-<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">予想分析</a>
-<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">結果検証</a>
-<a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">分析</a>
-<a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={% if source=='nar' %}{{today}}{% else %}{{selected_date}}{% endif %}">収支分析</a>
+<a class="{{'active' if mode=='predict' else ''}}" href="/?source={{source}}&mode=predict&date={% if source in ['nar','jra'] %}{{today}}{% else %}{{selected_date}}{% endif %}">予想分析</a>
+<a class="{{'active' if mode=='result' else ''}}" href="/?source={{source}}&mode=result&date={% if source in ['nar','jra'] %}{{today}}{% else %}{{selected_date}}{% endif %}">結果検証</a>
+<a class="{{'active' if mode=='analysis' else ''}}" href="/?source={{source}}&mode=analysis&date={% if source in ['nar','jra'] %}{{today}}{% else %}{{selected_date}}{% endif %}">分析</a>
+<a class="{{'active' if mode=='ledger' else ''}}" href="/?source={{source}}&mode=ledger&date={% if source in ['nar','jra'] %}{{today}}{% else %}{{selected_date}}{% endif %}">収支分析</a>
 </nav>
 {% if mode in ('predict','result') and (today_ai_board|default({})).get('has_data') %}
 <div class="ai-board-title">本日のAI成績</div>
@@ -346,17 +346,17 @@ details.race-acc[open]>.race-acc-body{display:block}
 </section>
 {% endif %}
 <div class="toolbar">
-<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}">{% if source=='nar' and selected_date and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}<select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
-{% if source=='nar' %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="nar"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><input type="hidden" name="force_refresh" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
+<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}">{% if source in ['nar','jra'] and selected_date and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}<select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
+{% if source in ['nar','jra'] %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><input type="hidden" name="force_refresh" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
-<div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source=='nar' %} · 最終更新 {{data_updated_at}}{% endif %}</div>
+<div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source in ['nar','jra'] %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
 <div class="status-banner warn">初回データ取得中です。取得でき次第、自動で表示します。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
 <div class="status-banner info">バックグラウンドで更新中です。表示中のデータはそのまま維持し、成功後に切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
 {% elif _ds == 'error' %}
-<div class="status-banner error">{% if source=='nar' %}取得失敗{% else %}通信エラーが発生しました{% endif %}。表示中のデータは維持しています。時間をおいて再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
+<div class="status-banner error">取得失敗。表示中のデータは維持しています。時間をおいて再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source={{source}}&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
@@ -587,7 +587,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% elif _ds == 'error' %}
 <h2>取得失敗</h2>
 <p>データ取得に失敗しました。「本日開催」で再取得してください。</p>
-<p><a href="/?source=nar&mode=result&today=1&force_refresh=1">本日開催を再取得</a></p>
+<p><a href="/?source={{source}}&mode=result&today=1&force_refresh=1">本日開催を再取得</a></p>
 {% else %}
 <h2>検証データなし</h2>
 <p>{% if selected_venue %}{{selected_venue}} のレースがありません。開催場一覧へ戻るか、「本日開催」で再取得してください。{% else %}この日の予想レースがありません。日付を変えるか、<code>python3 results.py</code> で結果取得後に再表示してください。{% endif %}</p>
@@ -1124,23 +1124,24 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% elif _ds == 'error' %}
 <h2>取得失敗</h2>
 <p>データ取得に失敗しました。「本日開催」で再取得してください。</p>
-<p><a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>
+<p><a href="/?source={{source}}&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>
 {% else %}
 <h2>予想データなし</h2>
 <p>{% if selected_venue %}{{selected_venue}} のレースがありません。「本日開催」で再取得するか、開催場一覧へ戻ってください。{% else %}この日の予想レースがありません。日付を変えるか、データ更新後に再表示してください。{% endif %}</p>
-{% if selected_venue %}<p><a href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">← 開催場一覧へ</a> · <a href="/?source=nar&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>{% endif %}
+{% if selected_venue %}<p><a href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">← 開催場一覧へ</a> · <a href="/?source={{source}}&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a></p>{% endif %}
 {% endif %}
 </section>
 {% endif %}
 {% endif %}
 {% endif %}
 </main>
-{% if source=='nar' and (data_status|default('ready')) == 'updating' %}
+{% if source in ['nar','jra'] and (data_status|default('ready')) == 'updating' %}
 <script>
 (function(){
   try{
     var refreshUrl = {{ (status_refresh_url or '/')|tojson }};
     var dateStr = {{ (selected_date or today or '')|tojson }};
+    var sourceStr = {{ (source or 'nar')|tojson }};
     var baseMtime = {{ (data_file_mtime or '')|tojson }};
     var tries = 0;
     var maxTries = 40;
@@ -1148,7 +1149,8 @@ details.race-acc[open]>.race-acc-body{display:block}
     function poll(){
       tries += 1;
       if (tries > maxTries) return;
-      var q = '/api/nar-refresh-status?date=' + encodeURIComponent(dateStr || '');
+      var q = '/api/refresh-status?date=' + encodeURIComponent(dateStr || '')
+        + '&source=' + encodeURIComponent(sourceStr || 'nar');
       fetch(q, {credentials:'same-origin', cache:'no-store'})
         .then(function(r){ return r.json(); })
         .then(function(j){

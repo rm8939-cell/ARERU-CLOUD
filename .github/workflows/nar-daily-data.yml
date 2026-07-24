@@ -1,10 +1,8 @@
-# 地方競馬の当日カード＋予想を GitHub 上で生成し main にコミットする。
-# Render Free は取得中に OOM/スリープしやすいため、成果物をリポジトリに載せて毎日表示を安定させる。
+# 互換: 旧 NAR daily data → racing-daily-data と同等（NAR+JRA）
 name: NAR daily data
 
 on:
   schedule:
-    # JST 05:30 / 11:30 / 16:30
     - cron: '30 20 * * *'
     - cron: '30 2 * * *'
     - cron: '30 7 * * *'
@@ -16,7 +14,7 @@ permissions:
 jobs:
   refresh-and-commit:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 180
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,19 +30,19 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
 
-      - name: Refresh NAR today + predict
+      - name: Refresh NAR + JRA today and predict
         env:
           TZ: Asia/Tokyo
           ARERU_SKIP_NAR_BOOT: '1'
+          ARERU_SKIP_BOOT: '1'
         run: |
           set -euo pipefail
           TODAY=$(date +%F)
-          echo "NAR refresh date=${TODAY}"
-          python refresh_data.py --dates today --source nar
+          echo "Racing refresh date=${TODAY}"
+          python refresh_data.py --dates today --source nar || echo "NAR refresh soft-fail"
+          python refresh_data.py --dates today --source jra || echo "JRA refresh soft-fail"
           python replay_predict.py "${TODAY}"
           test -s "data/predictions_by_date/predictions_${TODAY}.csv"
-          echo "predictions ok: $(wc -l < "data/predictions_by_date/predictions_${TODAY}.csv") lines"
-          # 厳格S/買い判定が焼き込まれていることを必須化（相対ランク戻し防止）
           RANK_CHECK_DATE="${TODAY}" python - <<'PY'
           import os
           from pathlib import Path
@@ -54,10 +52,10 @@ jobs:
           p = Path(f"data/predictions_by_date/predictions_{day}.csv")
           df = pd.read_csv(p, encoding="utf-8-sig")
           assert_predictions_finalized(df, label=p.name)
-          assert "相対ランク" in df.columns, "相対ランク列がありません"
+          assert "相対ランク" in df.columns
           pending = df["投資判定"].astype(str).str.contains("判定待", na=False).mean()
-          assert pending < 0.2, f"投資判定が未確定のまま: pending={pending:.2%}"
-          print("rank finalize ok:", predictions_are_finalized(df), "S=", int((df["勝負ランク"].astype(str).str.upper()=="S").sum()))
+          assert pending < 0.2, f"pending={pending:.2%}"
+          print("rank finalize ok:", predictions_are_finalized(df))
           PY
 
       - name: Commit and push data
@@ -77,5 +75,5 @@ jobs:
             echo "No data changes for ${TODAY}"
             exit 0
           fi
-          git commit -m "chore: NAR daily data ${TODAY}"
+          git commit -m "chore: racing daily data ${TODAY}"
           git push
