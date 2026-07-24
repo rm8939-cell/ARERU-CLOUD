@@ -228,6 +228,19 @@ def _need_regen(d, source='all') -> bool:
     return False
 
 
+def _ensure_pred_file_finalized(path) -> None:
+    """読み込み前に未確定CSVを厳格確定へ昇格（日次後の相対ランク戻し防止）。"""
+    if not path:
+        return
+    try:
+        from ev_analysis import ensure_predictions_file_finalized
+        if ensure_predictions_file_finalized(path):
+            _clear_runtime_caches()
+            print(f'[rank] finalized stale predictions: {Path(path).name}', flush=True)
+    except Exception as e:
+        print(f'[rank] finalize skip {path}: {e}', flush=True)
+
+
 def _run_predict_job(d, source='all'):
     """refresh + replay_predict を直列実行（同時多重を避ける）。"""
     key=f'{d}:{source}'
@@ -277,6 +290,7 @@ def _start_predict_job(d, source='all'):
 
 def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
     """開催場一覧用の軽量読み込み（巨大JSON列をスキップ）。"""
+    _ensure_pred_file_finalized(pred_path)
     try:
         cols=pd.read_csv(pred_path, encoding='utf-8-sig', nrows=0).columns.tolist()
         use=[c for c in _NAR_VENUE_PICKER_COLS if c in cols]
@@ -294,6 +308,7 @@ def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
 
 def _read_predictions_for_venue_detail(pred_path, source: str, venue: str) -> list:
     """開催場詳細用。会場で絞り込んでから dict 化（Render のメモリ・タイムアウト対策）。"""
+    _ensure_pred_file_finalized(pred_path)
     from netkeiba_client import normalize_venue_name
     venue=normalize_venue_name(str(venue or '').strip())
     if not venue:
@@ -1007,6 +1022,9 @@ def ensure_for_page(d, source='all'):
     """
     f=ARCH/f'predictions_{d}.csv'
     try:
+        # 旧相対ランクCSVは読み込み前にその場で厳格確定（表示のブレ防止）
+        if f.exists():
+            _ensure_pred_file_finalized(f)
         if f.exists() and not _need_regen(d, source):
             return f, 'ready'
         if _need_regen(d, source):
@@ -2901,6 +2919,12 @@ def parse_prediction_combos(prediction):
 
 def _load_prediction_meta():
     """race_id / date+会場+R → 予想時メタデータ。旧JRA URL 形式にも対応。"""
+    # 読み込み前に未確定CSVを昇格（検証画面の相対S漏洩を防ぐ）
+    try:
+        for f in ARCH.glob('predictions_*.csv'):
+            _ensure_pred_file_finalized(f)
+    except Exception:
+        pass
     sig=_fs_sig(ANALYSIS_CSV)
     if _PRED_META_CACHE.get('sig')==sig and _PRED_META_CACHE.get('data') is not None:
         return _PRED_META_CACHE['data']

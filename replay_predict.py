@@ -24,10 +24,16 @@ def available_dates(runners):
     return sorted(d)
 
 def run_date(target,runners,history):
+    from ev_analysis import assert_predictions_finalized, ensure_predictions_file_finalized
     result,scores=build_predictions(target,runners,history)
-    result.to_csv(OUT/f'predictions_{target}.csv',index=False,encoding='utf-8-sig')
+    assert_predictions_finalized(result, label=target)
+    out_path=OUT/f'predictions_{target}.csv'
+    result.to_csv(out_path,index=False,encoding='utf-8-sig')
     scores.to_csv(OUT/f'scores_{target}.csv',index=False,encoding='utf-8-sig')
-    print(f'✅ {target}: {len(result)}レース → {OUT/f"predictions_{target}.csv"}')
+    # 書き込み後も未確定ならその場で確定（途中失敗・旧ロジック混入の保険）
+    if ensure_predictions_file_finalized(out_path):
+        print(f'⚠ {target}: 未確定ランクを検出したため再確定して保存')
+    print(f'✅ {target}: {len(result)}レース → {out_path}')
     return result
 
 def main():

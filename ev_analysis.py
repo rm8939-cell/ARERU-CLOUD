@@ -1149,7 +1149,62 @@ def finalize_predictions_df(df: pd.DataFrame) -> pd.DataFrame:
                 v = ''
             vals.append(v)
         out[col] = vals
+    out.attrs['areru_rank_finalized'] = True
     return out
+
+
+def predictions_are_finalized(df: pd.DataFrame) -> bool:
+    """厳格S/買い判定がCSVへ焼き込まれているか。
+
+    相対percentileだけの旧CSV（相対ランク列なし・投資判定=判定待ち）を検出する。
+    """
+    if df is None or len(df) == 0:
+        return True
+    if '相対ランク' not in df.columns:
+        return False
+    if '投資判定' not in df.columns or '勝負ランク' not in df.columns:
+        return False
+    inv = df['投資判定'].astype(str).str.strip()
+    pending = inv.isin(['', 'nan', 'None', '判定待ち']) | inv.str.startswith('判定待')
+    # 半数超が未判定なら未確定（日次生成直後の相対ランク漏洩パターン）
+    if float(pending.mean()) > 0.5:
+        return False
+    decided = inv.str.startswith('買い') | inv.str.contains('見送', na=False)
+    return bool(decided.any())
+
+
+def assert_predictions_finalized(df: pd.DataFrame, *, label: str = '') -> None:
+    """未確定のまま保存させない。日次ジョブの失敗検知用。"""
+    if predictions_are_finalized(df):
+        return
+    tag = f' ({label})' if label else ''
+    raise RuntimeError(
+        f'予想ランクが未確定のままです{tag}。'
+        'finalize_predictions_df を通していないか、相対ランクCSVのままです。'
+    )
+
+
+def ensure_predictions_file_finalized(path: Path | str) -> bool:
+    """未確定の predictions_*.csv をその場で厳格確定して書き戻す。
+
+    Returns:
+        True ならファイルを更新した / False なら既に確定済み
+    """
+    p = Path(path)
+    if not p.exists():
+        return False
+    try:
+        df = pd.read_csv(p, encoding='utf-8-sig')
+    except Exception:
+        return False
+    if predictions_are_finalized(df):
+        return False
+    finalized = finalize_predictions_df(df)
+    assert_predictions_finalized(finalized, label=p.name)
+    tmp = p.with_suffix(p.suffix + '.tmp')
+    finalized.to_csv(tmp, index=False, encoding='utf-8-sig')
+    tmp.replace(p)
+    return True
 
 
 def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:

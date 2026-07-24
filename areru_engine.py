@@ -1223,7 +1223,8 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
     else:
         result=assign_ai_ranks(result)
     # 厳格S条件・買い厳選をCSVへ永続化（日次更新後も同じ基準を維持）
-    from ev_analysis import finalize_predictions_df
+    from ev_analysis import finalize_predictions_df, assert_predictions_finalized
     result=finalize_predictions_df(result)
+    assert_predictions_finalized(result, label='build_predictions')
     return result,sd
 

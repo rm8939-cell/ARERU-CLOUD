@@ -44,6 +44,21 @@ jobs:
           python replay_predict.py "${TODAY}"
           test -s "data/predictions_by_date/predictions_${TODAY}.csv"
           echo "predictions ok: $(wc -l < "data/predictions_by_date/predictions_${TODAY}.csv") lines"
+          # 厳格S/買い判定が焼き込まれていることを必須化（相対ランク戻し防止）
+          RANK_CHECK_DATE="${TODAY}" python - <<'PY'
+          import os
+          from pathlib import Path
+          import pandas as pd
+          from ev_analysis import assert_predictions_finalized, predictions_are_finalized
+          day = os.environ["RANK_CHECK_DATE"]
+          p = Path(f"data/predictions_by_date/predictions_{day}.csv")
+          df = pd.read_csv(p, encoding="utf-8-sig")
+          assert_predictions_finalized(df, label=p.name)
+          assert "相対ランク" in df.columns, "相対ランク列がありません"
+          pending = df["投資判定"].astype(str).str.contains("判定待", na=False).mean()
+          assert pending < 0.2, f"投資判定が未確定のまま: pending={pending:.2%}"
+          print("rank finalize ok:", predictions_are_finalized(df), "S=", int((df["勝負ランク"].astype(str).str.upper()=="S").sum()))
+          PY
 
       - name: Commit and push data
         env:
