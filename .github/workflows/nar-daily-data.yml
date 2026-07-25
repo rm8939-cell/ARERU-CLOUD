@@ -39,8 +39,25 @@ jobs:
           set -euo pipefail
           TODAY=$(date +%F)
           echo "Racing refresh date=${TODAY}"
-          python refresh_data.py --dates today --source nar || echo "NAR refresh soft-fail"
-          python refresh_data.py --dates today --source jra || echo "JRA refresh soft-fail"
+          # 地方 → 中央（開催なしでも失敗にしない）
+          python refresh_data.py --dates "${TODAY}" --source nar --skip-predict || echo "NAR refresh soft-fail"
+          python refresh_data.py --dates "${TODAY}" --source jra --skip-predict || echo "JRA refresh soft-fail"
+          # 出走がある日だけ予想生成
+          if ! python - <<PY
+          import pandas as pd
+          from pathlib import Path
+          from areru_engine import parse_date
+          day = "${TODAY}"
+          p = Path("data/runners.csv")
+          if not p.exists():
+              raise SystemExit(1)
+          days = parse_date(pd.read_csv(p, encoding="utf-8-sig", usecols=["日付"])["日付"]).dt.strftime("%Y-%m-%d")
+          raise SystemExit(0 if days.eq(day).any() else 1)
+          PY
+          then
+            echo "No runners for ${TODAY}; skip predict (休催日)"
+            exit 0
+          fi
           python replay_predict.py "${TODAY}"
           test -s "data/predictions_by_date/predictions_${TODAY}.csv"
           RANK_CHECK_DATE="${TODAY}" python - <<'PY'

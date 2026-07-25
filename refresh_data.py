@@ -34,6 +34,36 @@ ODDS_TICKETS = DATA / "odds_tickets"
 PRED_DIR.mkdir(parents=True, exist_ok=True)
 ODDS_TICKETS.mkdir(parents=True, exist_ok=True)
 
+
+def resolve_date_token(token: str) -> str:
+    """today / yesterday / tomorrow を JST の YYYY-MM-DD に展開する。"""
+    s = str(token or "").strip()
+    if not s:
+        return s
+    key = s.lower()
+    today = datetime.now(JST).date()
+    if key in ("today", "本日"):
+        return today.isoformat()
+    if key in ("yesterday", "昨日"):
+        return (today - timedelta(days=1)).isoformat()
+    if key in ("tomorrow", "明日"):
+        return (today + timedelta(days=1)).isoformat()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return s
+    return s
+
+
+def resolve_date_tokens(dates: list[str] | None) -> list[str] | None:
+    if not dates:
+        return dates
+    out = []
+    for d in dates:
+        r = resolve_date_token(d)
+        if r and r not in out:
+            out.append(r)
+    return out
+
+
 RUNNER_COLS = [
     "race_id", "日付", "レース", "馬名", "馬番", "枠", "騎手", "斤量", "実着順",
     "着順1", "人気1", "場1", "レース名1",
@@ -502,7 +532,13 @@ def save_runners(df: pd.DataFrame) -> None:
 
 def generate_predictions(dates: list[str] | None = None) -> None:
     if dates:
+        runners = load_existing_runners()
+        avail = set(available_dates(runners)) if runners is not None and not runners.empty else set()
         for d in dates:
+            d = resolve_date_token(d)
+            if d not in avail:
+                print(f"⏭ predictions スキップ（出走なし）: {d}")
+                continue
             print(f"🔮 predictions 生成: {d}")
             subprocess.run([sys.executable, "replay_predict.py", d], check=True, timeout=600)
     else:
@@ -540,6 +576,7 @@ def refresh(
     sources = _sources_list(source)
     all_target_dates: list[str] = []
     venue_list = [str(v).strip() for v in (venues or []) if str(v).strip()] or None
+    dates = resolve_date_tokens(dates)
 
     for src in sources:
         target_dates: list[str] = []
@@ -634,7 +671,7 @@ def main():
     ap = argparse.ArgumentParser(
         description="ARERU PO-3/PO-7: JRA・NAR 開催日・オッズ取得 & runners/predictions 更新"
     )
-    ap.add_argument("--dates", nargs="*", help="YYYY-MM-DD を明示指定")
+    ap.add_argument("--dates", nargs="*", help="YYYY-MM-DD / today / yesterday / tomorrow")
     ap.add_argument("--latest-only", action="store_true", help="最新開催週末だけ更新")
     ap.add_argument("--no-discover", action="store_true", help="開催日自動検出をしない")
     ap.add_argument("--skip-predict", action="store_true", help="predictions 生成をスキップ")
