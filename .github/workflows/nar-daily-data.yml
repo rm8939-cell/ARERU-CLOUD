@@ -1,12 +1,22 @@
-# 互換: 旧 NAR daily data → racing-daily-data と同等（NAR+JRA）
+# GitHub 上で本日の runners/predictions を取得して commit
+# 目標: 毎朝 08:00 JST までに predictions を完成させる
 name: NAR daily data
 
 on:
   schedule:
-    - cron: '30 20 * * *'
-    - cron: '30 2 * * *'
-    - cron: '30 7 * * *'
+    # 朝の本生成（JST）: 05:00 / 06:00 / 07:00 / 07:40
+    - cron: '0 20 * * *'    # 05:00 JST
+    - cron: '0 21 * * *'    # 06:00 JST
+    - cron: '0 22 * * *'    # 07:00 JST
+    - cron: '40 22 * * *'   # 07:40 JST
+    # 締切後: オッズ・取消のみ（12:00 JST）
+    - cron: '0 3 * * *'     # 12:00 JST
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'morning | odds | auto'
+        required: false
+        default: 'auto'
 
 permissions:
   contents: write
@@ -30,19 +40,84 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
 
-      - name: Refresh NAR + JRA today and predict
+      - name: Refresh NAR + JRA (morning full / post-8 odds)
         env:
           TZ: Asia/Tokyo
           ARERU_SKIP_NAR_BOOT: '1'
           ARERU_SKIP_BOOT: '1'
+          MODE_INPUT: ${{ github.event.inputs.mode }}
         run: |
           set -euo pipefail
           TODAY=$(date +%F)
-          echo "Racing refresh date=${TODAY}"
-          # 地方 → 中央（開催なしでも失敗にしない）
+          HOUR=$(date +%H)
+          if [ -n "${MODE_INPUT:-}" ] && [ "${MODE_INPUT}" != "auto" ]; then
+            MODE="${MODE_INPUT}"
+          elif [ "${HOUR}" -lt 8 ]; then
+            MODE="morning"
+          else
+            MODE="odds"
+          fi
+          echo "Racing refresh date=${TODAY} mode=${MODE} hour=${HOUR}"
+
+          TODAY="${TODAY}" python - <<'PY'
+          import os
+          from daily_ops import jra_is_race_day, nar_is_race_day
+          day = os.environ["TODAY"]
+          print(f"race_day nar={nar_is_race_day(day)} jra={jra_is_race_day(day)}")
+          PY
+
+          if [ "${MODE}" = "odds" ]; then
+            python refresh_data.py --dates "${TODAY}" --source nar --odds-only --skip-predict || echo "NAR odds soft-fail"
+            python refresh_data.py --dates "${TODAY}" --source jra --odds-only --skip-predict || echo "JRA odds soft-fail"
+            # ランク再計算はしない（封印維持）。オッズパッチのみ
+            python - <<PY
+          from pathlib import Path
+          import pandas as pd
+          from areru_engine import parse_date
+
+          day = "${TODAY}"
+          arch = Path("data/predictions_by_date") / f"predictions_{day}.csv"
+          rp = Path("data/runners.csv")
+          if not arch.exists() or not rp.exists():
+              raise SystemExit(0)
+          runners = pd.read_csv(rp, encoding="utf-8-sig")
+          pred = pd.read_csv(arch, encoding="utf-8-sig")
+          runners["日付"] = parse_date(runners["日付"]).dt.strftime("%Y-%m-%d")
+          day_r = runners[runners["日付"] == day]
+          odds = {}
+          for _, row in day_r.iterrows():
+              rid = str(row.get("race_id") or "").strip()
+              ban = str(row.get("馬番") or "").strip()
+              try:
+                  win = float(row.get("単勝オッズ") or 0)
+              except Exception:
+                  win = 0.0
+              if rid and ban and win > 0:
+                  odds[(rid, ban)] = (win, row.get("人気"))
+                  odds[(rid, ban.zfill(2))] = (win, row.get("人気"))
+          n = 0
+          for idx in pred.index:
+              rid = str(pred.at[idx, "race_id"] or "").strip()
+              ban = str(pred.at[idx, "本命馬番"] or "").strip()
+              info = odds.get((rid, ban)) or odds.get((rid, ban.zfill(2) if ban.isdigit() else ban))
+              if not info:
+                  continue
+              pred.at[idx, "本命オッズ"] = info[0]
+              if info[1] not in (None, "") and "本命人気" in pred.columns:
+                  pred.at[idx, "本命人気"] = info[1]
+              n += 1
+          if n:
+              pred.to_csv(arch, index=False, encoding="utf-8-sig")
+          print(f"odds patch n={n}")
+          from daily_ops import write_seal
+          write_seal(day, sources=["nar", "jra"], note="gha_odds", mode="odds")
+          PY
+            exit 0
+          fi
+
+          # morning: 開催取得 → 予想本生成
           python refresh_data.py --dates "${TODAY}" --source nar --skip-predict || echo "NAR refresh soft-fail"
           python refresh_data.py --dates "${TODAY}" --source jra --skip-predict || echo "JRA refresh soft-fail"
-          # 出走がある日だけ予想生成
           if ! python - <<PY
           import pandas as pd
           from pathlib import Path
@@ -65,6 +140,7 @@ jobs:
           from pathlib import Path
           import pandas as pd
           from ev_analysis import assert_predictions_finalized, predictions_are_finalized
+          from daily_ops import write_seal
           day = os.environ["RANK_CHECK_DATE"]
           p = Path(f"data/predictions_by_date/predictions_{day}.csv")
           df = pd.read_csv(p, encoding="utf-8-sig")
@@ -73,6 +149,9 @@ jobs:
           pending = df["投資判定"].astype(str).str.contains("判定待", na=False).mean()
           assert pending < 0.2, f"pending={pending:.2%}"
           print("rank finalize ok:", predictions_are_finalized(df))
+          srcs = sorted({str(s).lower() for s in df.get("source", pd.Series(dtype=str)).dropna().unique() if str(s).lower() in ("jra", "nar")}) or ["nar", "jra"]
+          write_seal(day, sources=srcs, note="gha_morning", mode="morning")
+          print("sealed sources=", srcs)
           PY
 
       - name: Commit and push data
@@ -87,7 +166,8 @@ jobs:
             data/runners.csv \
             "data/predictions_by_date/predictions_${TODAY}.csv" \
             "data/predictions_by_date/scores_${TODAY}.csv" \
-            data/odds_tickets || true
+            data/odds_tickets \
+            data/predict_seals || true
           if git diff --staged --quiet; then
             echo "No data changes for ${TODAY}"
             exit 0

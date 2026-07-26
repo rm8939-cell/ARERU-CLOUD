@@ -1,14 +1,24 @@
-# 互換: 旧 NAR daily wake → 新 racing-daily.yml と同等（NAR+JRA）
+# Render 起動 + 日次 cron（NAR+JRA）
+# 目標: 毎朝 08:00 JST までに予想完成。以降は odds 更新のみ。
 name: NAR daily wake
 
 on:
   schedule:
-    - cron: '0 21 * * *'
-    - cron: '0 1 * * *'
-    - cron: '0 5 * * *'
-    - cron: '0 9 * * *'
-    - cron: '0 12 * * *'
+    # --- 朝の本生成（JST）: 05:15 / 06:15 / 07:15 / 07:45 ---
+    - cron: '15 20 * * *'   # 05:15 JST
+    - cron: '15 21 * * *'   # 06:15 JST
+    - cron: '15 22 * * *'   # 07:15 JST
+    - cron: '45 22 * * *'   # 07:45 JST
+    # --- 締切後 odds のみ（JST）: 09:00 / 12:00 / 15:00 ---
+    - cron: '0 0 * * *'     # 09:00 JST
+    - cron: '0 3 * * *'     # 12:00 JST
+    - cron: '0 6 * * *'     # 15:00 JST
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'morning | odds | auto'
+        required: false
+        default: 'auto'
 
 jobs:
   wake-and-refresh:
@@ -19,10 +29,22 @@ jobs:
         env:
           APP_URL: ${{ secrets.RENDER_APP_URL }}
           CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+          MODE_INPUT: ${{ github.event.inputs.mode }}
         run: |
           set -euo pipefail
           BASE="${APP_URL:-https://areru-cloud.onrender.com}"
           BASE="${BASE%/}"
+          # UTC hour → mode（20–22 UTC = 05–07 JST は morning）
+          HOUR_UTC=$(date -u +%H)
+          MIN_UTC=$(date -u +%M)
+          if [ -n "${MODE_INPUT:-}" ] && [ "${MODE_INPUT}" != "auto" ]; then
+            MODE="${MODE_INPUT}"
+          elif [ "${HOUR_UTC}" = "20" ] || [ "${HOUR_UTC}" = "21" ] || [ "${HOUR_UTC}" = "22" ]; then
+            MODE="morning"
+          else
+            MODE="odds"
+          fi
+          echo "mode=${MODE} utc=${HOUR_UTC}:${MIN_UTC}"
           echo "Waking ${BASE} ..."
           curl -fsS -o /dev/null -w "wake_nar=%{http_code}\n" --max-time 90 \
             "${BASE}/?source=nar&mode=predict" || true
@@ -30,9 +52,9 @@ jobs:
             "${BASE}/?source=jra&mode=predict" || true
           sleep 8
           if [ -n "${CRON_TOKEN:-}" ]; then
-            Q="?token=${CRON_TOKEN}"
+            Q="?token=${CRON_TOKEN}&mode=${MODE}"
           else
-            Q=""
+            Q="?mode=${MODE}"
           fi
           for SRC in nar jra; do
             URL="${BASE}/cron/${SRC}-daily${Q}"

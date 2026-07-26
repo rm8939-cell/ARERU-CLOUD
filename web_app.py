@@ -11,6 +11,16 @@ from ev_analysis import (
     day_performance,
     load_score_odds,
 )
+from daily_ops import (
+    PREDICT_READY_HOUR,
+    past_predict_deadline,
+    is_sealed,
+    write_seal,
+    auto_seal_if_ready,
+    should_full_predict,
+    should_odds_only_update,
+    source_is_race_day,
+)
 
 app=Flask(__name__)
 BASE=Path(__file__).resolve().parent
@@ -713,7 +723,10 @@ def resolve_fetch_status(
     source: str = 'nar',
     force_refresh: bool = False,
 ) -> tuple:
-    """UI用: (data_status, message)。地方・JRA共通。"""
+    """UI用: (data_status, message)。地方・JRA共通。
+
+    朝8時以降・完成済みは通常 ready。generating は初回生成失敗（未完成）時のみ。
+    """
     src = source if source in ('jra', 'nar') else 'nar'
     _clear_stale_source_locks(src)
     st = _read_job_status(src)
@@ -724,6 +737,11 @@ def resolve_fetch_status(
     job_date = str(st.get('date') or '')
     today = _today_jst()
     selected_date = str(selected_date or '')
+    today_ready = _nar_pred_ready(today, src)
+    selected_ready = (
+        _nar_pred_ready(selected_date, src) if selected_date else False
+    )
+    after_deadline = past_predict_deadline()
 
     if state == 'running' and age > _JOB_STALE_SEC:
         _write_job_status(
@@ -731,28 +749,55 @@ def resolve_fetch_status(
             date_str=job_date or today, error='取得がタイムアウトしました',
         )
         _clear_stale_source_locks(src)
+        # 完成済みならエラーでも表示は ready（裏失敗を画面に出さない）
+        if selected_date == today and today_ready:
+            return 'ready', '取得完了'
+        if selected_ready:
+            return 'ready', ''
         return 'error', '取得失敗'
 
     if state == 'running':
-        if selected_date == today and _nar_pred_ready(today, src):
-            return 'generating', (msg or 'データ更新中')
-        if selected_date and selected_date != today and _nar_pred_ready(selected_date, src):
-            return 'generating', (msg or 'データ更新中')
+        # 完成済みの裏更新（オッズ等）→ UI は updating 扱い（呼び出し側で変換）
+        if selected_date == today and today_ready:
+            return 'updating', (msg or 'データ更新中')
+        if selected_date and selected_date != today and selected_ready:
+            return 'updating', (msg or 'データ更新中')
+        # 締切後の未完成のみ「データ取得中」（初回失敗の復旧）
+        if after_deadline and selected_date == today and not today_ready:
+            return 'generating', (msg or 'データ取得中')
+        if not after_deadline and selected_date == today and not today_ready:
+            return 'generating', (msg or 'データ取得中')
         return 'generating', (msg or 'データ取得中')
 
     if state == 'error':
+        if selected_date == today and today_ready:
+            return 'ready', '取得完了'
+        if selected_ready:
+            return 'ready', ''
         if force_refresh and age < 5:
+            return 'generating', 'データ取得中'
+        # 締切後未完成 = 初回生成失敗として generating（復旧導線）
+        if after_deadline and selected_date == today and not today_ready:
             return 'generating', 'データ取得中'
         return 'error', '取得失敗' + (f'（{err}）' if err and len(err) < 80 else '')
 
     if state == 'success':
         if selected_date and job_date and selected_date != job_date:
             if selected_date == today and job_date < today:
-                if _nar_pred_ready(today, src):
+                if today_ready:
+                    auto_seal_if_ready(today, src, True)
                     return 'ready', '取得完了'
+                # 締切前は朝の生成待ち。締切後は復旧表示
                 return 'generating', 'データ取得中'
             return 'ready', ''
-        if selected_date and not _nar_pred_ready(selected_date, src):
+        if selected_date == today and today_ready:
+            auto_seal_if_ready(today, src, True)
+            return 'ready', msg or '取得完了'
+        if selected_date and not selected_ready:
+            if after_deadline and selected_date == today:
+                return 'generating', 'データ取得中'
+            if selected_date == today:
+                return 'generating', 'データ取得中'
             return 'error', '取得失敗'
         return 'ready', msg or '取得完了'
 
@@ -762,16 +807,21 @@ def resolve_fetch_status(
             try:
                 age_lock = __import__('time').time() - lp.stat().st_mtime
                 if age_lock < _JOB_STALE_SEC:
-                    if selected_date == today and _nar_pred_ready(today, src):
-                        continue
-                    if selected_date and selected_date != today and _nar_pred_ready(selected_date, src):
-                        continue
+                    if selected_date == today and today_ready:
+                        return 'updating', 'データ更新中'
+                    if selected_date and selected_date != today and selected_ready:
+                        return 'updating', 'データ更新中'
                     return 'generating', 'データ取得中'
             except Exception:
                 pass
 
-    if selected_date == today and not _nar_pred_ready(today, src):
+    if selected_date == today and not today_ready:
+        # 開催なしは generating にしない
+        if after_deadline and not source_is_race_day(src, today):
+            return 'ready', '本日は開催なし'
         return 'generating', 'データ取得中'
+    if selected_date == today and today_ready:
+        auto_seal_if_ready(today, src, True)
     return 'ready', ''
 
 
@@ -848,7 +898,7 @@ def _nar_venues_from_runners(date_str: str) -> list:
 
 
 def _ensure_source_today_seeded(source: str = 'nar') -> None:
-    """起動時に当日データが無ければ日次パイプラインを自動開始。"""
+    """起動時シード。完成済みなら触らない。未完成のみ朝の本生成/復旧。"""
     global _NAR_BOOT_SEEDED, _JRA_BOOT_SEEDED
     src = source if source in ('jra', 'nar') else 'nar'
     lock = _NAR_BOOT_LOCK if src == 'nar' else _JRA_BOOT_LOCK
@@ -867,7 +917,13 @@ def _ensure_source_today_seeded(source: str = 'nar') -> None:
         return
     today = _today_jst()
     if _nar_pred_ready(today, src):
-        print(f'[{src}-boot] today ready date={today}', flush=True)
+        auto_seal_if_ready(today, src, True)
+        print(f'[{src}-boot] today ready date={today} sealed={is_sealed(today, src)}', flush=True)
+        return
+    if past_predict_deadline() and not source_is_race_day(src, today):
+        _write_job_status(
+            src, state='success', stage='done', message='本日は開催なし', date_str=today,
+        )
         return
 
     def _run():
@@ -878,7 +934,8 @@ def _ensure_source_today_seeded(source: str = 'nar') -> None:
             _write_job_status(
                 src, state='running', stage='boot', message='データ取得中', date_str=today,
             )
-            run_today_pipeline(src, force=True)
+            # 締切前=本生成、締切後未完成=復旧本生成
+            run_today_pipeline(src, force=True, force_full=True)
         except Exception as e:
             print(f'[{src}-boot] fail: {e}', flush=True)
 
@@ -1089,15 +1146,29 @@ def ensure_for_page(d, source='all'):
     """ページ表示用。同期再生成はしない。 (path|None, status)
 
     status: ready | updating | generating | error
+    締切後・完成済みは本生成ジョブを起こさない。
     """
     f=ARCH/f'predictions_{d}.csv'
     try:
         # 旧相対ランクCSVは読み込み前にその場で厳格確定（表示のブレ防止）
         if f.exists():
             _ensure_pred_file_finalized(f)
+        src = source if source in ('jra', 'nar') else 'all'
+        today = _today_jst()
+        frozen = (
+            str(d) == today
+            and src in ('jra', 'nar')
+            and _nar_pred_ready(str(d), src)
+            and (past_predict_deadline() or is_sealed(str(d), src))
+        )
         if f.exists() and not _need_regen(d, source):
+            if frozen:
+                auto_seal_if_ready(str(d), src, True)
             return f, 'ready'
         if _need_regen(d, source):
+            # 凍結後は不足ソースがあってもフル再予想しない（完成表示を優先）
+            if frozen:
+                return f, 'ready'
             _start_predict_job(d, source)
             if f.exists():
                 # 既存ファイルがあれば表示しつつ更新中
@@ -1857,10 +1928,142 @@ def bootstrap_venue(date_str: str, venue: str, source: str = 'nar') -> bool:
         return False
 
 
-def run_today_pipeline(source: str = 'nar', force: bool = False) -> bool:
-    """本日開催パイプライン: 開催取得 → レース取得 → AI予想生成（直列）。地方・JRA共通。"""
+def _patch_predictions_odds_from_runners(date_str: str, source: str) -> int:
+    """runners の最新オッズを predictions へ反映（勝負ランク・投資判定は触らない）。"""
+    src = source if source in ('jra', 'nar') else 'nar'
+    day = str(date_str or '')
+    pred_path = ARCH / f'predictions_{day}.csv'
+    rp = _runner_path()
+    if not day or not pred_path.exists() or rp is None:
+        return 0
+    try:
+        runners = pd.read_csv(rp, encoding='utf-8-sig')
+        pred = pd.read_csv(pred_path, encoding='utf-8-sig')
+        if runners.empty or pred.empty:
+            return 0
+        runners['日付'] = parse_date(runners['日付']).dt.strftime('%Y-%m-%d')
+        day_r = runners[runners['日付'] == day].copy()
+        if 'source' in day_r.columns:
+            day_r = day_r[day_r['source'].astype(str).str.lower() == src]
+        if day_r.empty:
+            return 0
+        # race_id + 本命馬番 → 単勝
+        odds_map = {}
+        for _, row in day_r.iterrows():
+            rid = str(row.get('race_id') or '').strip()
+            ban = str(row.get('馬番') or '').strip()
+            if not rid or not ban:
+                continue
+            try:
+                win = float(row.get('単勝オッズ') or 0)
+            except (TypeError, ValueError):
+                win = 0.0
+            if win <= 0:
+                continue
+            pop = row.get('人気')
+            odds_map[(rid, ban)] = (win, pop)
+            odds_map[(rid, ban.zfill(2))] = (win, pop)
+        if not odds_map:
+            return 0
+        n = 0
+        for idx in pred.index:
+            if 'source' in pred.columns:
+                if str(pred.at[idx, 'source'] or '').strip().lower() != src:
+                    continue
+            rid = str(pred.at[idx, 'race_id'] or '').strip()
+            ban = str(pred.at[idx, '本命馬番'] or '').strip()
+            info = odds_map.get((rid, ban)) or odds_map.get((rid, ban.zfill(2) if ban.isdigit() else ban))
+            if not info:
+                continue
+            win, pop = info
+            pred.at[idx, '本命オッズ'] = win
+            if pop not in (None, '', 'なし') and '本命人気' in pred.columns:
+                pred.at[idx, '本命人気'] = pop
+            n += 1
+        if n:
+            pred.to_csv(pred_path, index=False, encoding='utf-8-sig')
+            _clear_runtime_caches()
+            print(f'[{src}-odds] patched predictions odds n={n} date={day}', flush=True)
+        return n
+    except Exception as e:
+        print(f'[{src}-odds] patch fail: {e}', flush=True)
+        return 0
+
+
+def _run_odds_only_update(source: str, date_str: str) -> bool:
+    """締切後の最小更新: 出走・オッズのみ。ランク/買い判定は再計算しない。"""
+    src = source if source in ('jra', 'nar') else 'nar'
+    day = date_str or _today_jst()
+    try:
+        _write_job_status(
+            src, state='running', stage='odds', message='オッズ更新中',
+            date_str=day,
+        )
+        cmd = [
+            sys.executable, 'refresh_data.py',
+            '--dates', day, '--source', src,
+            '--odds-only', '--skip-predict',
+        ]
+        print(f'[{src}-odds] {" ".join(cmd)}', flush=True)
+        rc = subprocess.run(cmd, check=False, timeout=1800)
+        _clear_runtime_caches()
+        if rc.returncode != 0:
+            _write_job_status(
+                src, state='error', stage='odds_failed', message='オッズ更新失敗',
+                date_str=day, error=f'rc={rc.returncode}',
+            )
+            return False
+        _patch_predictions_odds_from_runners(day, src)
+        _write_job_status(
+            src, state='success', stage='odds_done', message='オッズ更新完了',
+            date_str=day,
+        )
+        # 封印を維持（sources に追記）
+        if _nar_pred_ready(day, src):
+            write_seal(day, sources=[src], note='post_deadline_odds', mode='odds')
+        return True
+    except Exception as e:
+        _write_job_status(
+            src, state='error', stage='odds_failed', message='オッズ更新失敗',
+            date_str=day, error=str(e)[:200],
+        )
+        return False
+
+
+def run_today_pipeline(
+    source: str = 'nar',
+    force: bool = False,
+    *,
+    force_full: bool = False,
+) -> bool:
+    """本日パイプライン。
+
+    - 朝8時前 / 未完成: 開催取得→AI予想（本生成）
+    - 朝8時以降かつ完成済み: オッズ・取消のみ（ロジック固定）
+    - JRA は開催日のみ本生成
+    """
     src = source if source in ('jra', 'nar') else 'nar'
     today = _today_jst()
+    ready = _nar_pred_ready(today, src)
+    do_full = should_full_predict(
+        src, date_str=today, ready=ready, force_full=force_full,
+    )
+    # 締切後の通常更新・本日ボタンは odds-only
+    if not do_full and should_odds_only_update(src, date_str=today, ready=ready):
+        print(f'[{src}-today] post-{PREDICT_READY_HOUR}:00 odds-only date={today}', flush=True)
+        return _run_odds_only_update(src, today)
+    if not do_full and not ready and past_predict_deadline():
+        # 朝の生成に失敗 → 復旧として本生成を許可
+        do_full = True
+        print(f'[{src}-today] recovery full predict (not ready after deadline)', flush=True)
+    if not do_full and not source_is_race_day(src, today):
+        _write_job_status(
+            src, state='success', stage='done', message='本日は開催なし',
+            date_str=today,
+        )
+        print(f'[{src}-today] no meeting date={today}', flush=True)
+        return True
+
     lock = DATA / f'.{src}_today_pipeline.lock'
     if lock.exists():
         try:
@@ -1886,11 +2089,17 @@ def run_today_pipeline(source: str = 'nar', force: bool = False) -> bool:
     def _body():
         lock.write_text(str(os.getpid()), encoding='utf-8')
         try:
-            print(f'[{src}-today] pipeline start force={force} date={today}', flush=True)
+            print(
+                f'[{src}-today] FULL pipeline start force={force} '
+                f'force_full={force_full} date={today}',
+                flush=True,
+            )
             ok = _refresh_then_predict([today], src)
             if not ok:
                 raise RuntimeError(f'{src} 本日開催パイプライン失敗')
-            print(f'[{src}-today] pipeline done', flush=True)
+            if _nar_pred_ready(today, src):
+                auto_seal_if_ready(today, src, True)
+            print(f'[{src}-today] pipeline done (sealed={is_sealed(today, src)})', flush=True)
         finally:
             try:
                 lock.unlink(missing_ok=True)
@@ -2113,18 +2322,51 @@ def index():
                 force_cal_today or want_today or force_refresh
                 or not explicit_date or explicit_date >= today or not allow_past
             )
-            # 当日未準備 or 本日ボタン → 当日パイプラインのみ。
-            if force_refresh or want_today or (viewing_today and not today_ready) or not today_ready:
+            after_deadline=past_predict_deadline()
+            # 完成済み（特に8時以降）: 本生成しない。本日ボタン/更新時のみ odds-only。
+            if today_ready and (after_deadline or is_sealed(today, source)):
+                auto_seal_if_ready(today, source, True)
+                if force_refresh or want_today:
+                    _pipeline_log(
+                        '表示', '取得起動', today,
+                        source=source,
+                        reason='post_deadline_odds',
+                        today_ready=1,
+                    )
+                    threading.Thread(
+                        target=run_today_pipeline,
+                        args=(source,),
+                        kwargs={'force': True, 'force_full': False},
+                        daemon=True,
+                    ).start()
+                else:
+                    _pipeline_log(
+                        '表示', '成功', today,
+                        source=source,
+                        reason='sealed_ready_show_cache', 保存件数='-',
+                    )
+            elif (not today_ready) and viewing_today:
+                # 未完成: 朝の本生成 or 締切後の復旧のみ（通常は朝cronで完成済み）
                 _pipeline_log(
                     '表示', '取得起動', today,
                     source=source,
-                    reason='force' if (force_refresh or want_today) else 'today_missing',
-                    today_ready=int(today_ready),
+                    reason='recovery' if after_deadline else 'morning_missing',
+                    today_ready=0,
                 )
                 threading.Thread(
                     target=run_today_pipeline,
                     args=(source,),
-                    kwargs={'force': bool(force_refresh or want_today)},
+                    kwargs={
+                        'force': bool(force_refresh or want_today or after_deadline),
+                        'force_full': True,
+                    },
+                    daemon=True,
+                ).start()
+            elif force_refresh or want_today:
+                threading.Thread(
+                    target=run_today_pipeline,
+                    args=(source,),
+                    kwargs={'force': True, 'force_full': not after_deadline},
                     daemon=True,
                 ).start()
             else:
@@ -2578,31 +2820,45 @@ def index():
             message=f'通信エラー: {e}'
     elif selected:
         if source in ('nar', 'jra') and selected==today:
-            data_status='generating'
-            message='データ取得中'
-            if today not in av:
-                av=sorted(set(av)|{today}, reverse=True)
-            try:
-                threading.Thread(
-                    target=run_today_pipeline, args=(source,),
-                    kwargs={'force': force_refresh or want_today},
-                    daemon=True,
-                ).start()
-            except Exception:
-                pass
+            if _nar_pred_ready(today, source):
+                # 日付一覧未更新でも完成予想があれば読み込み側へ寄せる
+                data_status='ready'
+                message=f'{selected} / {label}'
+                if today not in av:
+                    av=sorted(set(av)|{today}, reverse=True)
+            else:
+                data_status='generating'
+                message='データ取得中'
+                if today not in av:
+                    av=sorted(set(av)|{today}, reverse=True)
+                try:
+                    threading.Thread(
+                        target=run_today_pipeline, args=(source,),
+                        kwargs={
+                            'force': True,
+                            'force_full': True,
+                        },
+                        daemon=True,
+                    ).start()
+                except Exception:
+                    pass
         else:
             data_status='error'
             message=f'{selected} は保存データにありません'
     elif source in ('nar', 'jra'):
-        data_status='generating'
-        message='データ取得中'
-        try:
-            threading.Thread(
-                target=run_today_pipeline, args=(source,),
-                kwargs={'force': True}, daemon=True,
-            ).start()
-        except Exception:
-            pass
+        if _nar_pred_ready(today, source):
+            data_status='ready'
+            message=f'{today} / {label}'
+        else:
+            data_status='generating'
+            message='データ取得中'
+            try:
+                threading.Thread(
+                    target=run_today_pipeline, args=(source,),
+                    kwargs={'force': True, 'force_full': True}, daemon=True,
+                ).start()
+            except Exception:
+                pass
     day_stats=None
     if mode=='result' and races and not show_venue_picker:
         day_stats=day_performance(races, verification, safe_pct=_safe_pct)
@@ -2614,20 +2870,45 @@ def index():
 
     # 地方・中央: ジョブ状態で「取得中」を確定解除。
     # 重要: 表示中データは消さない。裏更新中は updating で維持し、成功後の再読込でのみ切替。
+    # 朝8時以降・完成済みは必ず ready（generating は初回失敗時のみ）。
     status_refresh_url=''
     data_file_mtime=''
     if source in ('nar', 'jra'):
         job_status, job_msg = resolve_fetch_status(selected, source=source, force_refresh=False)
         has_content=bool(races) or (bool(venues) and show_venue_picker)
         selected_ok=_nar_pred_ready(selected, source) if selected else False
-        bg_running=(job_status == 'generating') or force_refresh
+        sealed_ready=(
+            selected == today
+            and selected_ok
+            and (past_predict_deadline() or is_sealed(today, source))
+        )
+        bg_running=(job_status in ('generating', 'updating')) or force_refresh
         no_meet_label=(
             '本日は地方競馬の開催はありません' if source=='nar'
             else '本日はJRAの開催はありません'
         )
 
+        # 完成済み封印: 常に完成予想を表示（裏オッズ更新でも画面は消さない）
+        if sealed_ready:
+            if job_status == 'updating' or (has_content and bg_running and force_refresh):
+                data_status='updating'
+                if selected_venue and races:
+                    message=f'{selected} / {selected_venue} / 予想分析（オッズ更新中）'
+                elif venues and show_venue_picker:
+                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                else:
+                    message=job_msg or f'{selected} / {label} / AI期待値分析'
+            else:
+                data_status='ready'
+                if not message or message in ('データ取得中', '取得中', '取得失敗'):
+                    if selected_venue and races:
+                        message=f'{selected} / {selected_venue} / 予想分析'
+                    elif venues and show_venue_picker:
+                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                    else:
+                        message=job_msg or f'{selected} / {label} / AI期待値分析'
         # 既存表示があるときは絶対にクリアしない（チラつき防止）
-        if has_content and bg_running:
+        elif has_content and bg_running:
             data_status='updating'
             if selected_venue and races:
                 message=f'{selected} / {selected_venue} / 予想分析（更新中）'
@@ -2636,6 +2917,7 @@ def index():
             else:
                 message=job_msg or 'データ更新中（表示は維持）'
         elif (force_refresh or want_today or force_cal_today) and not selected_ok and not has_content:
+            # 初回未完成（朝生成失敗の復旧含む）のみ generating
             data_status='generating'
             message=job_msg or 'データ取得中'
             if source=='nar':
@@ -2675,8 +2957,12 @@ def index():
                     if venues:
                         data_status='updating'
                         message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（再取得待ち）'
-        elif job_status=='ready':
-            if data_status in ('generating', 'updating') and has_content:
+        elif job_status in ('ready', 'updating'):
+            if job_status == 'updating' and has_content:
+                data_status='updating'
+                if not message or message in ('データ取得中', '取得中'):
+                    message=job_msg or 'データ更新中（表示は維持）'
+            elif data_status in ('generating', 'updating') and has_content:
                 data_status='ready'
                 if not message or message in ('データ取得中', '取得中', 'データ更新中（表示は維持）'):
                     message=job_msg or (
@@ -2697,8 +2983,11 @@ def index():
                 data_updated_at=''
 
         # 最終ガード: 中身があるのに generating なら updating へ（画面を消さない）
+        # 封印済み完成予想は generating に落とさない
         has_content=bool(races) or (bool(venues) and show_venue_picker)
-        if has_content and data_status=='generating':
+        if sealed_ready and data_status=='generating':
+            data_status='ready'
+        elif has_content and data_status=='generating':
             data_status='updating'
             if not message or message == 'データ取得中':
                 message='データ更新中（表示は維持）'
@@ -3512,66 +3801,94 @@ def _cron_token_ok() -> bool:
     return True
 
 
+def _cron_pipeline_mode() -> str:
+    """cron クエリ mode=morning|odds|auto。未指定は時刻で自動。"""
+    mode = str(request.args.get('mode') or '').strip().lower()
+    if mode in ('morning', 'full'):
+        return 'morning'
+    if mode == 'odds':
+        return 'odds'
+    # auto / 未指定
+    return 'odds' if past_predict_deadline() else 'morning'
+
+
+def _run_cron_source(src: str, mode: str) -> None:
+    today = _today_jst()
+    force_full = mode == 'morning'
+    print(
+        f'[cron-{src}] mode={mode} force_full={force_full} '
+        f'deadline_passed={past_predict_deadline()} date={today}',
+        flush=True,
+    )
+    if mode == 'morning' and not source_is_race_day(src, today):
+        _write_job_status(
+            src, state='success', stage='done', message='本日は開催なし', date_str=today,
+        )
+        print(f'[cron-{src}] skip: no meeting', flush=True)
+        return
+    run_today_pipeline(src, force=True, force_full=force_full)
+    if mode == 'morning':
+        # 朝の本生成後のみカード補完。締切後 odds では触らない
+        print(f'[cron-{src}] bootstrap incomplete cards', flush=True)
+        bootstrap_source(src)
+    print(f'[cron-{src}] bootstrap results', flush=True)
+    bootstrap_missing_results(src, prefer_dates=[today])
+    ready = _nar_pred_ready(today, src)
+    if ready:
+        auto_seal_if_ready(today, src, True)
+    c = _nar_day_counts(today, src)
+    ok = ready or (src == 'jra' and c['runners_races'] == 0) or (
+        mode == 'morning' and not source_is_race_day(src, today)
+    )
+    _pipeline_log(
+        '全体', '成功' if ok else '失敗',
+        today,
+        source=src,
+        mode=mode,
+        runners=c['runners_races'], predictions=c['pred_races'],
+        保存件数=c['pred_races'],
+        sealed=int(is_sealed(today, src)),
+    )
+    print(f'[cron-{src}] done ready={int(ready)} sealed={int(is_sealed(today, src))}', flush=True)
+
+
 @app.route('/cron/nar-daily', methods=['POST','GET'])
 def cron_nar_daily():
-    """外部cron向け: 地方の開催場→レース→結果をバックグラウンドで安定更新。"""
+    """外部cron向け: 地方の開催場→レース→結果をバックグラウンドで安定更新。
+
+    mode=morning … 朝の本生成（8時まで）
+    mode=odds … 締切後のオッズ・取消のみ
+    mode=auto … 時刻で自動切替
+    """
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
+    mode = _cron_pipeline_mode()
 
     def _run():
         try:
-            today=_today_jst()
-            print(f'[cron-nar] today pipeline (venues→races→predict) date={today}', flush=True)
-            run_today_pipeline('nar', force=True)
-            print('[cron-nar] bootstrap incomplete cards (today/future only)', flush=True)
-            bootstrap_source('nar')
-            print('[cron-nar] bootstrap results', flush=True)
-            bootstrap_missing_results('nar', prefer_dates=[today])
-            print('[cron-nar] done', flush=True)
-            c=_nar_day_counts(today, 'nar')
-            _pipeline_log(
-                '全体', '成功' if _nar_pred_ready(today, 'nar') else '失敗',
-                today,
-                source='nar',
-                runners=c['runners_races'], predictions=c['pred_races'],
-                保存件数=c['pred_races'],
-            )
+            _run_cron_source('nar', mode)
         except Exception as e:
             print(f'[cron-nar] fail: {e}', flush=True)
 
     threading.Thread(target=_run, daemon=True).start()
-    return {'ok': True, 'started': True, 'source': 'nar'}
+    return {'ok': True, 'started': True, 'source': 'nar', 'mode': mode}
 
 
 @app.route('/cron/jra-daily', methods=['POST','GET'])
 def cron_jra_daily():
-    """外部cron向け: JRAの開催→レース→予想をバックグラウンドで安定更新。"""
+    """外部cron向け: JRAの開催→レース→予想。開催日のみ本生成。"""
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
+    mode = _cron_pipeline_mode()
 
     def _run():
         try:
-            today=_today_jst()
-            print(f'[cron-jra] today pipeline date={today}', flush=True)
-            run_today_pipeline('jra', force=True)
-            print('[cron-jra] bootstrap incomplete cards', flush=True)
-            bootstrap_source('jra')
-            print('[cron-jra] bootstrap results', flush=True)
-            bootstrap_missing_results('jra', prefer_dates=[today])
-            print('[cron-jra] done', flush=True)
-            c=_nar_day_counts(today, 'jra')
-            _pipeline_log(
-                '全体', '成功' if (_nar_pred_ready(today, 'jra') or c['runners_races']==0) else '失敗',
-                today,
-                source='jra',
-                runners=c['runners_races'], predictions=c['pred_races'],
-                保存件数=c['pred_races'],
-            )
+            _run_cron_source('jra', mode)
         except Exception as e:
             print(f'[cron-jra] fail: {e}', flush=True)
 
     threading.Thread(target=_run, daemon=True).start()
-    return {'ok': True, 'started': True, 'source': 'jra'}
+    return {'ok': True, 'started': True, 'source': 'jra', 'mode': mode}
 
 
 @app.route('/cron/daily', methods=['POST','GET'])
@@ -3579,21 +3896,17 @@ def cron_daily_both():
     """外部cron向け: 地方→JRA の順で日次更新（直列）。"""
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
+    mode = _cron_pipeline_mode()
 
     def _run():
         for src in ('nar', 'jra'):
             try:
-                today=_today_jst()
-                print(f'[cron-daily] {src} pipeline date={today}', flush=True)
-                run_today_pipeline(src, force=True)
-                bootstrap_source(src)
-                bootstrap_missing_results(src, prefer_dates=[today])
-                print(f'[cron-daily] {src} done', flush=True)
+                _run_cron_source(src, mode)
             except Exception as e:
                 print(f'[cron-daily] {src} fail: {e}', flush=True)
 
     threading.Thread(target=_run, daemon=True).start()
-    return {'ok': True, 'started': True, 'source': 'all'}
+    return {'ok': True, 'started': True, 'source': 'all', 'mode': mode}
 
 
 @app.route('/refresh', methods=['POST','GET'])
@@ -3613,11 +3926,19 @@ def refresh_route():
             def _body():
                 try:
                     if _mode=='odds':
-                        cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only','--source',_source,'--skip-predict']
-                        subprocess.run(cmd, check=False, timeout=1800)
-                        # odds-only 後は直近日を再予想
                         today=_today_jst()
-                        subprocess.run([sys.executable,'replay_predict.py',today], check=False, timeout=600)
+                        # 締切後はランク再計算しない（パッチのみ）
+                        if past_predict_deadline():
+                            srcs = (
+                                [_source] if _source in ('jra', 'nar')
+                                else ['nar', 'jra']
+                            )
+                            for s in srcs:
+                                _run_odds_only_update(s, today)
+                        else:
+                            cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only','--source',_source,'--skip-predict']
+                            subprocess.run(cmd, check=False, timeout=1800)
+                            subprocess.run([sys.executable,'replay_predict.py',today], check=False, timeout=600)
                     elif _mode=='results':
                         if _date and re.fullmatch(r'\d{4}-\d{2}-\d{2}', _date):
                             cmd=[sys.executable,'results.py','--source',_source,'--dates',_date]
