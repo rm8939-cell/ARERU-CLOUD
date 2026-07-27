@@ -238,6 +238,10 @@ def build_date_runners(
     budget_sec = float(os.environ.get("ARERU_FETCH_BUDGET_SEC") or (240 if fast else 1500))
     if fast:
         include_results = False  # 結果ページ取得を省略して時間短縮
+        try:
+            client.sleep = min(float(getattr(client, "sleep", 0.25) or 0.25), 0.05)
+        except Exception:
+            pass
     _stage_log(
         "START",
         f"source={source} date={target}",
