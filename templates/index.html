@@ -1144,34 +1144,34 @@ details.race-acc[open]>.race-acc-body{display:block}
     var sourceStr = {{ (source or 'nar')|tojson }};
     var baseMtime = {{ (data_file_mtime or '')|tojson }};
     var tries = 0;
-    var maxTries = 40;
+    var maxTries = 90; /* ~12分: 10分タイムアウト後に必ず再読込 */
     var sawRunning = false;
     function poll(){
       tries += 1;
-      if (tries > maxTries) return;
+      if (tries > maxTries) {
+        window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
+        return;
+      }
       var q = '/api/refresh-status?date=' + encodeURIComponent(dateStr || '')
         + '&source=' + encodeURIComponent(sourceStr || 'nar');
       fetch(q, {credentials:'same-origin', cache:'no-store'})
         .then(function(r){ return r.json(); })
         .then(function(j){
           if (!j || !j.ok) { setTimeout(poll, 8000); return; }
-          if (j.state === 'running') sawRunning = true;
+          if (j.state === 'running' || j.updating) sawRunning = true;
           var newer = j.mtime && baseMtime && String(j.mtime) !== String(baseMtime);
-          if (j.state === 'error') {
-            if (sawRunning || tries >= 2) {
+          /* success/error どちらでも updating を解除するため再読込 */
+          if (j.state === 'error' || j.state === 'success' || j.finished) {
+            if (newer || sawRunning || tries >= 2 || j.ready || j.state === 'error' || j.state === 'success') {
               window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
+              return;
             }
-            return;
-          }
-          if (newer || (sawRunning && j.finished) || (tries >= 3 && j.finished && j.ready)) {
-            window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
-            return;
           }
           setTimeout(poll, 8000);
         })
         .catch(function(){ setTimeout(poll, 10000); });
     }
-    setTimeout(poll, 6000);
+    setTimeout(poll, 4000);
   }catch(e){}
 })();
 </script>

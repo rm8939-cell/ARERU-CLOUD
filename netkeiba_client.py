@@ -109,8 +109,12 @@ class NetkeibaClient:
         self.sleep = sleep
 
     def _get(self, url: str, encoding: Optional[str] = None) -> BeautifulSoup:
-        r = self.session.get(url, timeout=40)
-        r.raise_for_status()
+        try:
+            r = self.session.get(url, timeout=40)
+            r.raise_for_status()
+        except Exception as e:
+            print(f"[netkeiba-api] GET失敗 url={url} err={type(e).__name__}: {e}", flush=True)
+            raise
         if encoding:
             r.encoding = encoding
         else:
@@ -125,13 +129,26 @@ class NetkeibaClient:
     def list_race_ids(self, yyyymmdd: str, source: str = "jra") -> list[str]:
         base = base_url(source)
         url = f"{base}/top/race_list_sub.html?kaisai_date={yyyymmdd}"
-        soup = self._get(url)
+        try:
+            soup = self._get(url)
+        except Exception as e:
+            print(
+                f"[netkeiba-api] {source.upper()} 開催一覧取得失敗 date={yyyymmdd} "
+                f"url={url} err={type(e).__name__}: {e}",
+                flush=True,
+            )
+            raise
         # NAR も基本12桁。幅を持たせて拾う
         pat = r"race_id=(\d{12})" if source == "jra" else r"race_id=(\d{8,12})"
         ids = sorted(set(re.findall(pat, str(soup))))
         if source == "nar":
             # 12桁以外は除外（万一のゴミ対策）
             ids = [x for x in ids if len(x) == 12 and infer_source(x) == "nar"]
+        if source == "nar" and not ids:
+            print(
+                f"[netkeiba-api] NAR 開催一覧0件 date={yyyymmdd} url={url}",
+                flush=True,
+            )
         return ids
 
     def discover_kaisai_dates(
@@ -197,7 +214,15 @@ class NetkeibaClient:
         src = source or infer_source(race_id)
         base = base_url(src)
         url = f"{base}/race/shutuba.html?race_id={race_id}&rf=race_list"
-        soup = self._get(url)
+        try:
+            soup = self._get(url)
+        except Exception as e:
+            print(
+                f"[netkeiba-api] {src.upper()} 出馬表取得失敗 race_id={race_id} "
+                f"url={url} err={type(e).__name__}: {e}",
+                flush=True,
+            )
+            raise
         meta = self.parse_race_id(race_id)
         # タイトルから日付を拾う / 開催地は race_id を正とする
         title = soup.title.get_text(" ", strip=True) if soup.title else ""
@@ -282,7 +307,14 @@ class NetkeibaClient:
         uniq = {}
         for r in rows:
             uniq[r["馬名"]] = r
-        return list(uniq.values())
+        out = list(uniq.values())
+        if not out:
+            print(
+                f"[netkeiba-api] {src.upper()} 出馬表0頭 race_id={race_id} "
+                f"venue={venue} title={title[:80]!r}",
+                flush=True,
+            )
+        return out
 
     def fetch_odds_api(self, race_id: str, odds_type: int = 1, source: Optional[str] = None) -> dict:
         """オッズ取得。JRAは公式API、NARはHTMLスクレイピング。

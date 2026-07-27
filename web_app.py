@@ -540,7 +540,7 @@ def _clear_runtime_caches():
 
 
 _NAR_JOB_STATUS=DATA/'.nar_job_status.json'  # 互換: 地方は従来パス
-_JOB_STALE_SEC=20*60  # 取得中のまま放置しない上限（Free 再試行を早めに）
+_JOB_STALE_SEC=10*60  # 10分超の running は自動失敗（updating 解除）
 _NAR_JOB_STALE_SEC=_JOB_STALE_SEC
 _NAR_BOOT_SEEDED=False
 _JRA_BOOT_SEEDED=False
@@ -575,6 +575,15 @@ def _write_job_status(
         )
         date_str = today
         message = message or '取得完了'
+    now_iso = datetime.now(JST).isoformat(timespec='seconds')
+    prev = _read_job_status(src)
+    started_at = str(prev.get('started_at') or '')
+    if state == 'running':
+        # 進捗書き込みでタイマーをリセットしない（開始時刻を維持）
+        if str(prev.get('state') or '') != 'running' or not started_at:
+            started_at = now_iso
+    else:
+        started_at = ''
     payload = {
         'state': state,  # running | success | error | idle
         'stage': stage,
@@ -582,7 +591,8 @@ def _write_job_status(
         'date': date_str or '',
         'source': src,
         'error': error or '',
-        'updated_at': datetime.now(JST).isoformat(timespec='seconds'),
+        'updated_at': now_iso,
+        'started_at': started_at,
         'pid': os.getpid(),
     }
     path = _job_status_path(src)
@@ -688,16 +698,91 @@ def _read_nar_job_status() -> dict:
 
 
 def _nar_job_age_sec(st: dict) -> float:
-    raw=str(st.get('updated_at') or '')
+    """running 中は started_at 基準（進捗更新でタイマーが延びない）。"""
+    state = str((st or {}).get('state') or '')
+    if state == 'running':
+        raw = str((st or {}).get('started_at') or (st or {}).get('updated_at') or '')
+    else:
+        raw = str((st or {}).get('updated_at') or (st or {}).get('started_at') or '')
     if not raw:
         return 1e9
     try:
-        ts=datetime.fromisoformat(raw)
+        ts = datetime.fromisoformat(raw)
         if ts.tzinfo is None:
-            ts=ts.replace(tzinfo=JST)
-        return max(0.0, (datetime.now(JST)-ts).total_seconds())
+            ts = ts.replace(tzinfo=JST)
+        return max(0.0, (datetime.now(JST) - ts).total_seconds())
     except Exception:
         return 1e9
+
+
+def _expire_stale_job(source: str = 'nar') -> dict:
+    """10分超の running を確定終了し、updating を必ず解除する。"""
+    src = source if source in ('jra', 'nar') else 'nar'
+    st = _read_job_status(src)
+    if str(st.get('state') or '') != 'running':
+        return st
+    age = _nar_job_age_sec(st)
+    if age <= _JOB_STALE_SEC:
+        return st
+    date_str = str(st.get('date') or _today_jst())
+    ready = _nar_pred_ready(date_str, src)
+    _clear_stale_source_locks(src)
+    mins = max(1, int(_JOB_STALE_SEC // 60))
+    if ready:
+        _write_job_status(
+            src, state='success', stage='timeout_ready',
+            message='更新タイムアウト（表示データは維持）',
+            date_str=date_str,
+            error=f'running>{_JOB_STALE_SEC}s',
+        )
+    else:
+        _write_job_status(
+            src, state='error', stage='timeout',
+            message='取得タイムアウト',
+            date_str=date_str,
+            error=f'{mins}分以内に完了しませんでした（Render切断の可能性）',
+        )
+    print(
+        f'[{src}-job] AUTO-EXPIRE age={age:.0f}s ready={int(ready)} date={date_str}',
+        flush=True,
+    )
+    return _read_job_status(src)
+
+
+def _job_is_active(source: str = 'nar') -> bool:
+    """有効な更新ジョブが走っているか（期限切れは先に解除）。"""
+    st = _expire_stale_job(source)
+    return (
+        str(st.get('state') or '') == 'running'
+        and _nar_job_age_sec(st) < _JOB_STALE_SEC
+    )
+
+
+def _finalize_job_if_running(
+    source: str,
+    *,
+    ok: bool,
+    date_str: str = '',
+    message: str = '',
+    error: str = '',
+) -> None:
+    """例外・途中切断でも running を残さない（finally 用）。"""
+    src = source if source in ('jra', 'nar') else 'nar'
+    st = _read_job_status(src)
+    if str(st.get('state') or '') != 'running':
+        return
+    day = date_str or str(st.get('date') or _today_jst())
+    if ok:
+        _write_job_status(
+            src, state='success', stage='done',
+            message=message or '取得完了', date_str=day,
+        )
+    else:
+        _write_job_status(
+            src, state='error', stage='failed',
+            message=message or '取得失敗', date_str=day,
+            error=error or 'ジョブが running のまま終了',
+        )
 
 
 def _clear_stale_source_locks(source: str = 'nar') -> None:
@@ -705,7 +790,7 @@ def _clear_stale_source_locks(source: str = 'nar') -> None:
     src = source if source in ('jra', 'nar') else 'nar'
     for p in DATA.glob(f'.{src}_*.lock'):
         try:
-            age=__import__('time').time()-p.stat().st_mtime
+            age = __import__('time').time() - p.stat().st_mtime
             if age > _JOB_STALE_SEC:
                 p.unlink(missing_ok=True)
                 print(f'[{src}-job] stale lock removed: {p.name}', flush=True)
@@ -729,7 +814,7 @@ def resolve_fetch_status(
     """
     src = source if source in ('jra', 'nar') else 'nar'
     _clear_stale_source_locks(src)
-    st = _read_job_status(src)
+    st = _expire_stale_job(src)
     state = str(st.get('state') or 'idle')
     age = _nar_job_age_sec(st)
     msg = str(st.get('message') or '')
@@ -742,19 +827,6 @@ def resolve_fetch_status(
         _nar_pred_ready(selected_date, src) if selected_date else False
     )
     after_deadline = past_predict_deadline()
-
-    if state == 'running' and age > _JOB_STALE_SEC:
-        _write_job_status(
-            src, state='error', stage='timeout', message='取得タイムアウト',
-            date_str=job_date or today, error='取得がタイムアウトしました',
-        )
-        _clear_stale_source_locks(src)
-        # 完成済みならエラーでも表示は ready（裏失敗を画面に出さない）
-        if selected_date == today and today_ready:
-            return 'ready', '取得完了'
-        if selected_ready:
-            return 'ready', ''
-        return 'error', '取得失敗'
 
     if state == 'running':
         # 完成済みの裏更新（オッズ等）→ UI は updating 扱い（呼び出し側で変換）
@@ -1012,6 +1084,7 @@ def _refresh_then_predict(
     today=_today_jst()
     # 当日を含む場合は当日を primary にし、status が前日へ寄らないようにする
     primary=today if today in days else days[0]
+    terminal=False
     try:
         # 1) 取得開始
         _write_job_status(
@@ -1030,7 +1103,11 @@ def _refresh_then_predict(
         if extra_args:
             cmd.extend(extra_args)
         print(f'[{status_src}-job] 開催・レース取得開始: {" ".join(cmd)}', flush=True)
-        rc=subprocess.run(cmd, check=False, timeout=1800)
+        try:
+            rc=subprocess.run(cmd, check=False, timeout=1800)
+        except subprocess.TimeoutExpired as e:
+            print(f'[{status_src}-job] refresh_data TIMEOUT: {e}', flush=True)
+            raise RuntimeError('refresh_data がタイムアウトしました（Render制限の可能性）') from e
         if rc.returncode != 0:
             _pipeline_log('開催取得', '失敗', primary, 保存件数=0, error=f'refresh_data rc={rc.returncode}')
             _pipeline_log('レース取得', '失敗', primary, 保存件数=0)
@@ -1048,6 +1125,7 @@ def _refresh_then_predict(
                         status_src, state='success', stage='done',
                         message='本日は開催なし', date_str=d,
                     )
+                    terminal=True
                     return True
                 _pipeline_log('開催取得', '失敗', d, 開催場数=0, レース数=0, 保存件数=0)
                 _pipeline_log('レース取得', '失敗', d, 保存件数=0)
@@ -1076,7 +1154,11 @@ def _refresh_then_predict(
                 date_str=d,
             )
             _pipeline_log('AI予想生成', '開始', d)
-            pr=subprocess.run([sys.executable,'replay_predict.py',d], check=False, timeout=600)
+            try:
+                pr=subprocess.run([sys.executable,'replay_predict.py',d], check=False, timeout=600)
+            except subprocess.TimeoutExpired as e:
+                print(f'[{status_src}-job] replay_predict TIMEOUT date={d}: {e}', flush=True)
+                raise RuntimeError(f'replay_predict タイムアウト ({d})') from e
             if pr.returncode != 0:
                 _pipeline_log('AI予想生成', '失敗', d, 保存件数=0, error=f'rc={pr.returncode}')
                 raise RuntimeError(f'replay_predict 終了コード {pr.returncode} ({d})')
@@ -1092,6 +1174,7 @@ def _refresh_then_predict(
                         status_src, state='success', stage='done',
                         message='本日は開催なし', date_str=d,
                     )
+                    terminal=True
                     return True
                 _pipeline_log('AI予想生成', '失敗', d, 保存件数=0, error='予想0件')
                 raise RuntimeError(f'{d}: 予想が0件です')
@@ -1130,6 +1213,7 @@ def _refresh_then_predict(
             date_str=primary_ok,
         )
         _pipeline_log('全体', '成功', primary_ok, ok_days=','.join(ok_days), 保存件数=len(ok_days))
+        terminal=True
         return True
     except Exception as e:
         _clear_runtime_caches()
@@ -1138,7 +1222,15 @@ def _refresh_then_predict(
             date_str=primary, error=str(e)[:200],
         )
         _pipeline_log('全体', '失敗', primary, 保存件数=0, error=str(e)[:200])
+        terminal=True
         return False
+    finally:
+        # Render SIGKILL 以外では running を残さない
+        if not terminal:
+            _finalize_job_if_running(
+                status_src, ok=False, date_str=primary,
+                message='取得失敗', error='パイプラインが予期せず終了',
+            )
 
 
 
@@ -1994,6 +2086,7 @@ def _run_odds_only_update(source: str, date_str: str) -> bool:
     """締切後の最小更新: 出走・オッズのみ。ランク/買い判定は再計算しない。"""
     src = source if source in ('jra', 'nar') else 'nar'
     day = date_str or _today_jst()
+    terminal = False
     try:
         _write_job_status(
             src, state='running', stage='odds', message='オッズ更新中',
@@ -2005,13 +2098,23 @@ def _run_odds_only_update(source: str, date_str: str) -> bool:
             '--odds-only', '--skip-predict',
         ]
         print(f'[{src}-odds] {" ".join(cmd)}', flush=True)
-        rc = subprocess.run(cmd, check=False, timeout=1800)
+        try:
+            rc = subprocess.run(cmd, check=False, timeout=900)
+        except subprocess.TimeoutExpired as e:
+            print(f'[{src}-odds] TIMEOUT: {e}', flush=True)
+            _write_job_status(
+                src, state='error', stage='odds_timeout', message='オッズ更新タイムアウト',
+                date_str=day, error='odds refresh timeout',
+            )
+            terminal = True
+            return False
         _clear_runtime_caches()
         if rc.returncode != 0:
             _write_job_status(
                 src, state='error', stage='odds_failed', message='オッズ更新失敗',
                 date_str=day, error=f'rc={rc.returncode}',
             )
+            terminal = True
             return False
         _patch_predictions_odds_from_runners(day, src)
         _write_job_status(
@@ -2021,13 +2124,21 @@ def _run_odds_only_update(source: str, date_str: str) -> bool:
         # 封印を維持（sources に追記）
         if _nar_pred_ready(day, src):
             write_seal(day, sources=[src], note='post_deadline_odds', mode='odds')
+        terminal = True
         return True
     except Exception as e:
         _write_job_status(
             src, state='error', stage='odds_failed', message='オッズ更新失敗',
             date_str=day, error=str(e)[:200],
         )
+        terminal = True
         return False
+    finally:
+        if not terminal:
+            _finalize_job_if_running(
+                src, ok=False, date_str=day,
+                message='オッズ更新失敗', error='odds job ended while running',
+            )
 
 
 def run_today_pipeline(
@@ -2044,6 +2155,8 @@ def run_today_pipeline(
     """
     src = source if source in ('jra', 'nar') else 'nar'
     today = _today_jst()
+    # 前回ジョブが running のまま残っていたら先に解除
+    _expire_stale_job(src)
     ready = _nar_pred_ready(today, src)
     do_full = should_full_predict(
         src, date_str=today, ready=ready, force_full=force_full,
@@ -2088,6 +2201,7 @@ def run_today_pipeline(
 
     def _body():
         lock.write_text(str(os.getpid()), encoding='utf-8')
+        terminal = False
         try:
             print(
                 f'[{src}-today] FULL pipeline start force={force} '
@@ -2100,11 +2214,24 @@ def run_today_pipeline(
             if _nar_pred_ready(today, src):
                 auto_seal_if_ready(today, src, True)
             print(f'[{src}-today] pipeline done (sealed={is_sealed(today, src)})', flush=True)
+            terminal = True
+        except Exception as e:
+            _finalize_job_if_running(
+                src, ok=False, date_str=today,
+                message='取得失敗', error=str(e)[:200],
+            )
+            terminal = True
+            raise
         finally:
             try:
                 lock.unlink(missing_ok=True)
             except Exception:
                 pass
+            if not terminal:
+                _finalize_job_if_running(
+                    src, ok=False, date_str=today,
+                    message='取得失敗', error='today pipeline ended while running',
+                )
 
     try:
         started = _run_serialized_heavy(f'{src}-today:{today}', _body, wait=bool(force))
@@ -2317,28 +2444,39 @@ def index():
     )
     try:
         if source in ('nar', 'jra'):
+            _expire_stale_job(source)
             today_ready=_nar_pred_ready(today, source)
             viewing_today=(
                 force_cal_today or want_today or force_refresh
                 or not explicit_date or explicit_date >= today or not allow_past
             )
             after_deadline=past_predict_deadline()
+            job_active=_job_is_active(source)
+
+            def _start_today(reason: str, *, force_full: bool = False, force: bool = False):
+                if job_active:
+                    _pipeline_log(
+                        '表示', 'スキップ', today,
+                        source=source, reason='job_already_running', 保存件数='-',
+                    )
+                    return
+                _pipeline_log(
+                    '表示', '取得起動', today,
+                    source=source, reason=reason,
+                    today_ready=int(today_ready),
+                )
+                threading.Thread(
+                    target=run_today_pipeline,
+                    args=(source,),
+                    kwargs={'force': force, 'force_full': force_full},
+                    daemon=True,
+                ).start()
+
             # 完成済み（特に8時以降）: 本生成しない。本日ボタン/更新時のみ odds-only。
             if today_ready and (after_deadline or is_sealed(today, source)):
                 auto_seal_if_ready(today, source, True)
                 if force_refresh or want_today:
-                    _pipeline_log(
-                        '表示', '取得起動', today,
-                        source=source,
-                        reason='post_deadline_odds',
-                        today_ready=1,
-                    )
-                    threading.Thread(
-                        target=run_today_pipeline,
-                        args=(source,),
-                        kwargs={'force': True, 'force_full': False},
-                        daemon=True,
-                    ).start()
+                    _start_today('post_deadline_odds', force_full=False, force=True)
                 else:
                     _pipeline_log(
                         '表示', '成功', today,
@@ -2346,29 +2484,18 @@ def index():
                         reason='sealed_ready_show_cache', 保存件数='-',
                     )
             elif (not today_ready) and viewing_today:
-                # 未完成: 朝の本生成 or 締切後の復旧のみ（通常は朝cronで完成済み）
-                _pipeline_log(
-                    '表示', '取得起動', today,
-                    source=source,
-                    reason='recovery' if after_deadline else 'morning_missing',
-                    today_ready=0,
+                # 未完成: 朝の本生成 or 締切後の復旧のみ（重複起動しない）
+                _start_today(
+                    'recovery' if after_deadline else 'morning_missing',
+                    force_full=True,
+                    force=bool(force_refresh or want_today or after_deadline),
                 )
-                threading.Thread(
-                    target=run_today_pipeline,
-                    args=(source,),
-                    kwargs={
-                        'force': bool(force_refresh or want_today or after_deadline),
-                        'force_full': True,
-                    },
-                    daemon=True,
-                ).start()
             elif force_refresh or want_today:
-                threading.Thread(
-                    target=run_today_pipeline,
-                    args=(source,),
-                    kwargs={'force': True, 'force_full': not after_deadline},
-                    daemon=True,
-                ).start()
+                _start_today(
+                    'force_today',
+                    force_full=not after_deadline,
+                    force=True,
+                )
             else:
                 _pipeline_log(
                     '表示', '成功', today,
@@ -2832,14 +2959,15 @@ def index():
                 if today not in av:
                     av=sorted(set(av)|{today}, reverse=True)
                 try:
-                    threading.Thread(
-                        target=run_today_pipeline, args=(source,),
-                        kwargs={
-                            'force': True,
-                            'force_full': True,
-                        },
-                        daemon=True,
-                    ).start()
+                    if not _job_is_active(source):
+                        threading.Thread(
+                            target=run_today_pipeline, args=(source,),
+                            kwargs={
+                                'force': True,
+                                'force_full': True,
+                            },
+                            daemon=True,
+                        ).start()
                 except Exception:
                     pass
         else:
@@ -2853,10 +2981,11 @@ def index():
             data_status='generating'
             message='データ取得中'
             try:
-                threading.Thread(
-                    target=run_today_pipeline, args=(source,),
-                    kwargs={'force': True, 'force_full': True}, daemon=True,
-                ).start()
+                if not _job_is_active(source):
+                    threading.Thread(
+                        target=run_today_pipeline, args=(source,),
+                        kwargs={'force': True, 'force_full': True}, daemon=True,
+                    ).start()
             except Exception:
                 pass
     day_stats=None
@@ -3765,7 +3894,8 @@ def api_refresh_status():
         source='nar'
     if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_str):
         date_str=today
-    st=_read_job_status(source)
+    # 10分超 running はここで必ず解除（updating 永久化を防ぐ）
+    st=_expire_stale_job(source)
     state=str(st.get('state') or 'idle')
     age=_nar_job_age_sec(st)
     ready=_nar_pred_ready(date_str, source)
@@ -3776,11 +3906,11 @@ def api_refresh_status():
             mtime=str(int(pf.stat().st_mtime))
     except Exception:
         mtime=''
-    if state=='running' and age > _JOB_STALE_SEC:
-        state='error'
     # 開催なし完了も finished
     no_meet = str(st.get('message') or '') == '本日は開催なし' and state == 'success'
-    finished = (state != 'running' and ready) or no_meet
+    # success/error/idle は finished。running だけ継続。ready でも running 中は未完了。
+    finished = (state != 'running') or no_meet
+    updating = state == 'running'
     return {
         'ok': True,
         'date': date_str,
@@ -3788,8 +3918,12 @@ def api_refresh_status():
         'state': state,
         'ready': ready or no_meet,
         'finished': finished,
+        'updating': updating,
+        'age_sec': int(age) if age < 1e8 else None,
+        'stale_sec': _JOB_STALE_SEC,
         'mtime': mtime,
         'message': str(st.get('message') or st.get('error') or ''),
+        'error': str(st.get('error') or ''),
     }
 
 

@@ -327,10 +327,24 @@ def build_date_runners(
                     print(f"  ⚠️ 増分保存失敗（継続）: {e_save}")
         except Exception as e:
             fail_n += 1
-            print(f"  ✗ {venue} {rn_label} 失敗（次レースへ）: {e}")
+            print(
+                f"  ✗ {venue} {rn_label} 失敗（次レースへ）: {type(e).__name__}: {e}",
+                flush=True,
+            )
+            if source == "nar":
+                print(
+                    f"[netkeiba-api] NAR レース取得エラー race_id={rid} "
+                    f"venue={venue} race={rn_label} err={type(e).__name__}: {e}",
+                    flush=True,
+                )
             continue
     print(f"========== 取得完了 ==========")
     print(f"✅ {source.upper()} {target}: 成功 {ok_n} / 失敗 {fail_n} / 全 {total}")
+    if source == "nar" and fail_n:
+        print(
+            f"[netkeiba-api] NAR 取得サマリ date={target} ok={ok_n} fail={fail_n} total={total}",
+            flush=True,
+        )
     odds_n = _count_odds_tickets_for_date(target, race_ids)
     print(
         f"[pipeline] レース取得 "
