@@ -755,6 +755,15 @@ def _expire_stale_job(source: str = 'nar') -> dict:
     return _read_job_status(src)
 
 
+def _job_in_failure_cooldown(source: str = 'nar', sec: float = 180.0) -> bool:
+    """失敗直後の連続再起動を防ぐ（Render Free の無限ループ対策）。"""
+    st = _read_job_status(source)
+    if str(st.get('state') or '') != 'error':
+        return False
+    age = _nar_job_age_sec(st)
+    return age < sec
+
+
 def _job_is_active(source: str = 'nar') -> bool:
     """有効な更新ジョブが走っているか（期限切れは先に解除）。"""
     st = _expire_stale_job(source)
@@ -1122,26 +1131,42 @@ def _refresh_then_predict(
             or str(env.get('ARERU_FAST_NAR') or '') in ('1', 'true', 'yes')
         ):
             env['ARERU_FAST_NAR']='1'
-            env.setdefault('ARERU_FETCH_BUDGET_SEC', '420')
+            env.setdefault('ARERU_FETCH_BUDGET_SEC', '240')
+            env.setdefault('ARERU_REFRESH_TIMEOUT_SEC', '360')
             print('[Local Update] FAST_NAR=1 (Render予算内完了)', flush=True)
         print(f'[{status_src}-job] 開催・レース取得開始: {" ".join(cmd)}', flush=True)
         t_fetch=_time.perf_counter()
+        fetch_timeout=int(env.get('ARERU_REFRESH_TIMEOUT_SEC') or (360 if status_src=='nar' else 480))
         try:
-            # Render Free: サブプロセスも 8分で打ち切り → finally で failed
-            fetch_timeout=int(env.get('ARERU_REFRESH_TIMEOUT_SEC') or 480)
+            # Render Free: サブプロセスを短めに打ち切り、部分 runners があれば予想へ進む
             rc=subprocess.run(cmd, check=False, timeout=fetch_timeout, env=env)
+            fetch_sec=_time.perf_counter()-t_fetch
+            print(f'[Local Update] 開催・レース取得 subprocess終了 sec={fetch_sec:.1f} rc={rc.returncode}', flush=True)
+            if rc.returncode != 0:
+                _pipeline_log('開催取得', '失敗', primary, 保存件数=0, error=f'refresh_data rc={rc.returncode}')
+                # 部分保存があれば予想へ（会場スキップ後の途中成果を活かす）
+                partial = any(_nar_day_counts(d, count_src)['runners_races'] > 0 for d in days)
+                if not partial:
+                    _pipeline_log('レース取得', '失敗', primary, 保存件数=0)
+                    raise RuntimeError(f'refresh_data 終了コード {rc.returncode}')
+                print('[Local Update] refresh_data非0だが runners あり → 予想へ継続', flush=True)
         except subprocess.TimeoutExpired as e:
             fetch_sec=_time.perf_counter()-t_fetch
             print(f'[Local Update] 取得TIMEOUT sec={fetch_sec:.1f}: {e}', flush=True)
-            raise RuntimeError(
-                f'refresh_data タイムアウト({fetch_timeout}s / Render制限の可能性)'
-            ) from e
-        fetch_sec=_time.perf_counter()-t_fetch
-        print(f'[Local Update] 開催・レース取得 subprocess終了 sec={fetch_sec:.1f} rc={rc.returncode}', flush=True)
-        if rc.returncode != 0:
-            _pipeline_log('開催取得', '失敗', primary, 保存件数=0, error=f'refresh_data rc={rc.returncode}')
-            _pipeline_log('レース取得', '失敗', primary, 保存件数=0)
-            raise RuntimeError(f'refresh_data 終了コード {rc.returncode}')
+            _clear_runtime_caches()
+            partial = any(_nar_day_counts(d, count_src)['runners_races'] > 0 for d in days)
+            if not partial:
+                raise RuntimeError(
+                    f'refresh_data タイムアウト({fetch_timeout}s / Render制限の可能性)'
+                ) from e
+            print(
+                f'[Local Update] TIMEOUTだが runners 部分あり → AI予想へ継続',
+                flush=True,
+            )
+            _write_job_status(
+                status_src, state='running', stage='races_partial',
+                message='レース部分取得（タイムアウト継続）', date_str=primary,
+            )
 
         # 2) 開催取得 / レース取得 — runners 件数で検証
         _clear_runtime_caches()
@@ -2519,6 +2544,13 @@ def index():
                     _pipeline_log(
                         '表示', 'スキップ', today,
                         source=source, reason='job_already_running', 保存件数='-',
+                    )
+                    return
+                # 強制再取得以外は失敗直後の再起動を抑止
+                if (not force) and _job_in_failure_cooldown(source):
+                    _pipeline_log(
+                        '表示', 'スキップ', today,
+                        source=source, reason='failure_cooldown', 保存件数='-',
                     )
                     return
                 _pipeline_log(

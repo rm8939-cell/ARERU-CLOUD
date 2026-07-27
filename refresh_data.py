@@ -235,12 +235,19 @@ def build_date_runners(
     t0 = time.perf_counter()
     fast = _fast_nar_mode() and source == "nar"
     # Render Free: 全体予算（秒）。超えたら残会場はスキップして保存へ進む
-    budget_sec = float(os.environ.get("ARERU_FETCH_BUDGET_SEC") or (420 if fast else 1500))
+    budget_sec = float(os.environ.get("ARERU_FETCH_BUDGET_SEC") or (240 if fast else 1500))
     _stage_log(
         "START",
         f"source={source} date={target}",
         fast=int(fast), budget_sec=int(budget_sec),
     )
+
+    # FAST: 通信間隔を短縮
+    if fast:
+        try:
+            client.sleep = min(float(getattr(client, "sleep", 0.25) or 0.25), 0.05)
+        except Exception:
+            pass
 
     ymd = target.replace("-", "")
     t_list = time.perf_counter()
@@ -381,10 +388,11 @@ def build_date_runners(
                             print(f"  ⚠️ {venue} {rn_label} 結果取得失敗（継続）: {e}", flush=True)
                             results = {}
                     t_odds = time.perf_counter()
-                    win_odds = (
-                        _fetch_win_odds_with_fallback(client, rid, source)
-                        if include_odds else {}
-                    )
+                    # FAST: 出馬表の単勝表示を使い、別途オッズAPIは叩かない（時間短縮）
+                    if include_odds and not fast:
+                        win_odds = _fetch_win_odds_with_fallback(client, rid, source)
+                    else:
+                        win_odds = {}
                     odds_sec_total += time.perf_counter() - t_odds
                     entries = _apply_win_odds(entries, win_odds)
                     odds_n = sum(1 for e in entries if e.get("単勝オッズ"))
