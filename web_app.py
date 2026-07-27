@@ -725,7 +725,21 @@ def _expire_stale_job(source: str = 'nar') -> dict:
     """10分超の running を確定終了し、updating を必ず解除する。"""
     src = source if source in ('jra', 'nar') else 'nar'
     st = _read_job_status(src)
-    if str(st.get('state') or '') != 'running':
+    state = str(st.get('state') or '')
+    date_str = str(st.get('date') or _today_jst())
+    ready = _nar_pred_ready(date_str, src) or _nar_pred_ready(_today_jst(), src)
+
+    # 予想が完成しているのに error のまま → success に修復（表示と整合）
+    if state == 'error' and ready:
+        day = _today_jst() if _nar_pred_ready(_today_jst(), src) else date_str
+        _write_job_status(
+            src, state='success', stage='done',
+            message='更新成功', date_str=day,
+        )
+        print(f'[{src}-job] HEAL error→success (predictions ready)', flush=True)
+        return _read_job_status(src)
+
+    if state != 'running':
         return st
     age = _nar_job_age_sec(st)
     if age <= _JOB_STALE_SEC:
@@ -744,7 +758,7 @@ def _expire_stale_job(source: str = 'nar') -> dict:
     else:
         _write_job_status(
             src, state='error', stage='timeout',
-            message='取得タイムアウト',
+            message='更新タイムアウト',
             date_str=date_str,
             error=f'{mins}分以内に完了しませんでした（Render切断の可能性）',
         )
