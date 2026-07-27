@@ -111,9 +111,24 @@ class NetkeibaClient:
     def _get(self, url: str, encoding: Optional[str] = None) -> BeautifulSoup:
         try:
             r = self.session.get(url, timeout=40)
-            r.raise_for_status()
         except Exception as e:
             print(f"[netkeiba-api] GET失敗 url={url} err={type(e).__name__}: {e}", flush=True)
+            raise
+        code = int(getattr(r, "status_code", 0) or 0)
+        if code == 404:
+            print(f"[netkeiba-api] 404 Not Found url={url}", flush=True)
+            r.raise_for_status()
+        if code >= 500:
+            print(f"[netkeiba-api] {code} ServerError url={url} body={r.text[:180]!r}", flush=True)
+            r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except Exception as e:
+            print(
+                f"[netkeiba-api] HTTP失敗 status={code} url={url} "
+                f"err={type(e).__name__}: {e}",
+                flush=True,
+            )
             raise
         if encoding:
             r.encoding = encoding
@@ -123,8 +138,16 @@ class NetkeibaClient:
                 r.encoding = r.apparent_encoding or "euc-jp"
             else:
                 r.encoding = r.apparent_encoding or "utf-8"
+        # HTML変更っぽい応答を検知
+        body = r.text or ""
+        if len(body) < 80 or ("<html" not in body.lower() and "race_id" not in body):
+            print(
+                f"[netkeiba-api] 応答異常(HTML変更の可能性) status={code} "
+                f"url={url} len={len(body)} head={body[:120]!r}",
+                flush=True,
+            )
         time.sleep(self.sleep)
-        return BeautifulSoup(r.text, "lxml")
+        return BeautifulSoup(body, "lxml")
 
     def list_race_ids(self, yyyymmdd: str, source: str = "jra") -> list[str]:
         base = base_url(source)
@@ -665,13 +688,21 @@ class NetkeibaClient:
             "payouts": payouts,
         }
 
-    def fetch_horse_history(self, horse_id: str, use_cache: bool = True) -> list[dict]:
+    def fetch_horse_history(
+        self,
+        horse_id: str,
+        use_cache: bool = True,
+        cache_only: bool = False,
+    ) -> list[dict]:
         cache_path = CACHE / f"{horse_id}.json"
         if use_cache and cache_path.exists():
             try:
                 return json.loads(cache_path.read_text(encoding="utf-8"))
             except Exception:
                 pass
+        if cache_only:
+            # Render Free 等: ネット履歴取得を省略（空履歴でスコア継続）
+            return []
         url = f"{DB}/horse/result/{horse_id}/"
         soup = self._get(url, encoding="euc-jp")
         table = soup.select_one("table.db_h_race_results") or soup.select_one("table")

@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import time
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 
@@ -33,6 +35,25 @@ PRED_DIR = DATA / "predictions_by_date"
 ODDS_TICKETS = DATA / "odds_tickets"
 PRED_DIR.mkdir(parents=True, exist_ok=True)
 ODDS_TICKETS.mkdir(parents=True, exist_ok=True)
+
+# Render Free 向け: 履歴ネット取得を抑えて時間内に完了させる
+def _fast_nar_mode() -> bool:
+    if str(os.environ.get("ARERU_FAST_NAR") or "").strip() in ("1", "true", "yes"):
+        return True
+    if str(os.environ.get("RENDER") or "").strip().lower() in ("true", "1"):
+        return True
+    return False
+
+
+def _stage_log(stage: str, msg: str = "", **kv) -> None:
+    bits = [f"[Local Update] {stage}"]
+    if msg:
+        bits.append(msg)
+    for k, v in kv.items():
+        if v is None or v == "":
+            continue
+        bits.append(f"{k}={v}")
+    print(" ".join(bits), flush=True)
 
 
 def resolve_date_token(token: str) -> str:
@@ -210,10 +231,41 @@ def build_date_runners(
     persist_cb=None,
     venues: list[str] | None = None,
 ) -> pd.DataFrame:
+    """開催日の出走を取得。開催場単位で失敗しても他場は継続する。"""
+    t0 = time.perf_counter()
+    fast = _fast_nar_mode() and source == "nar"
+    # Render Free: 全体予算（秒）。超えたら残会場はスキップして保存へ進む
+    budget_sec = float(os.environ.get("ARERU_FETCH_BUDGET_SEC") or (420 if fast else 1500))
+    _stage_log(
+        "START",
+        f"source={source} date={target}",
+        fast=int(fast), budget_sec=int(budget_sec),
+    )
+
     ymd = target.replace("-", "")
-    race_ids = client.list_race_ids(ymd, source=source)
+    t_list = time.perf_counter()
+    try:
+        race_ids = client.list_race_ids(ymd, source=source)
+    except Exception as e:
+        _stage_log(
+            "開催取得",
+            "ERROR",
+            date=target, source=source, err=f"{type(e).__name__}: {e}",
+            sec=f"{time.perf_counter()-t_list:.1f}",
+        )
+        print(
+            f"[pipeline] 開催取得 失敗 date={target} source={source} "
+            f"開催場数=0 レース数=0 保存件数=0 error={e}",
+            flush=True,
+        )
+        return pd.DataFrame(columns=RUNNER_COLS)
+
+    list_sec = time.perf_counter() - t_list
     if not race_ids:
-        print(f"⚠️  {source.upper()} {target}: レースなし")
+        _stage_log(
+            "開催取得", "0件", date=target, source=source,
+            sec=f"{list_sec:.1f}",
+        )
         print(
             f"[pipeline] 開催取得 失敗 date={target} source={source} "
             f"開催場数=0 レース数=0 保存件数=0",
@@ -227,10 +279,17 @@ def build_date_runners(
             for rid in race_ids
         }
     )
+    _stage_log(
+        "開催取得完了",
+        date=target, source=source,
+        開催場数=len(venue_names), レース数=len(race_ids),
+        場=",".join(venue_names),
+        sec=f"{list_sec:.1f}",
+    )
     print(
         f"[pipeline] 開催取得 成功 date={target} source={source} "
         f"開催場数={len(venue_names)} レース数={len(race_ids)} "
-        f"保存件数={len(race_ids)} 場={venue_names}",
+        f"保存件数={len(race_ids)} 場={venue_names} sec={list_sec:.1f}",
         flush=True,
     )
 
@@ -252,104 +311,220 @@ def build_date_runners(
             print(f"⚠️  {source.upper()} {target}: 指定開催場のレースなし")
             return pd.DataFrame(columns=RUNNER_COLS)
 
-    rows = []
-    race_ids = sorted(race_ids, key=_race_sort_key)
-    total = len(race_ids)
-    print(f"========== 取得開始 ==========")
-    print(f"📥 {source.upper()} {target}: {total}レース取得中（開催場→R順）...")
-    current_venue = None
+    # 開催場ごとにグループ化（1場失敗でも他場続行）
+    by_venue: dict[str, list[str]] = {}
+    for rid in sorted(race_ids, key=_race_sort_key):
+        venue = client.parse_race_id(rid).get("venue") or "?"
+        by_venue.setdefault(venue, []).append(rid)
+
+    rows: list[dict] = []
     ok_n = fail_n = 0
-    for i, rid in enumerate(race_ids, 1):
-        meta = client.parse_race_id(rid)
-        venue = meta.get("venue") or "?"
-        race_no = meta.get("race_no") or "?"
+    skipped_venues: list[str] = []
+    ok_venues: list[str] = []
+    t_races = time.perf_counter()
+    odds_sec_total = 0.0
+    hist_sec_total = 0.0
+
+    print(f"========== 取得開始 ==========")
+    print(
+        f"📥 {source.upper()} {target}: {len(race_ids)}レース / "
+        f"{len(by_venue)}開催場（場単位・失敗スキップ）"
+        f"{' [FAST]' if fast else ''}...",
+        flush=True,
+    )
+
+    for venue, v_rids in by_venue.items():
+        elapsed = time.perf_counter() - t0
+        if elapsed > budget_sec:
+            skipped_venues.append(venue)
+            _stage_log(
+                "レース取得",
+                f"BUDGET_SKIP venue={venue}",
+                reason="time_budget",
+                elapsed=f"{elapsed:.1f}",
+                budget=int(budget_sec),
+            )
+            continue
+
+        print(f"—— {venue} ——", flush=True)
+        _stage_log("レース取得開始", venue=venue, races=len(v_rids))
+        t_venue = time.perf_counter()
+        venue_ok = 0
+        venue_fail = 0
+        venue_rows: list[dict] = []
+
         try:
-            rn_label = f"{int(float(race_no)):02d}R"
-        except Exception:
-            rn_label = f"{race_no}R"
-        if venue != current_venue:
-            current_venue = venue
-            print(f"—— {venue} ——")
-        print(f"  → {venue} {rn_label} 取得 [{i}/{total}] {rid}")
-        try:
-            entries = client.fetch_entries(rid, source=source)
-            results = {}
-            if include_results:
+            for i, rid in enumerate(v_rids, 1):
+                if time.perf_counter() - t0 > budget_sec:
+                    _stage_log(
+                        "レース取得",
+                        f"BUDGET_STOP mid-venue={venue}",
+                        done=f"{i-1}/{len(v_rids)}",
+                    )
+                    break
+                meta = client.parse_race_id(rid)
+                race_no = meta.get("race_no") or "?"
                 try:
-                    results = client.fetch_results(rid, source=source) or {}
-                except Exception as e:
-                    print(f"  ⚠️ {venue} {rn_label} 結果取得失敗（継続）: {e}")
+                    rn_label = f"{int(float(race_no)):02d}R"
+                except Exception:
+                    rn_label = f"{race_no}R"
+                print(f"  → {venue} {rn_label} 取得 [{i}/{len(v_rids)}] {rid}", flush=True)
+                try:
+                    entries = client.fetch_entries(rid, source=source)
+                    if not entries:
+                        raise RuntimeError("出馬表0頭（HTML変更/取消の可能性）")
                     results = {}
-            win_odds = _fetch_win_odds_with_fallback(client, rid, source) if include_odds else {}
-            entries = _apply_win_odds(entries, win_odds)
-            odds_n = sum(1 for e in entries if e.get("単勝オッズ"))
-            if include_odds and odds_n:
-                try:
-                    _save_ticket_odds(client, rid, source)
+                    if include_results:
+                        try:
+                            results = client.fetch_results(rid, source=source) or {}
+                        except Exception as e:
+                            print(f"  ⚠️ {venue} {rn_label} 結果取得失敗（継続）: {e}", flush=True)
+                            results = {}
+                    t_odds = time.perf_counter()
+                    win_odds = (
+                        _fetch_win_odds_with_fallback(client, rid, source)
+                        if include_odds else {}
+                    )
+                    odds_sec_total += time.perf_counter() - t_odds
+                    entries = _apply_win_odds(entries, win_odds)
+                    odds_n = sum(1 for e in entries if e.get("単勝オッズ"))
+                    # FAST: 券種HTMLは重いのでスキップ（単勝のみ）
+                    if include_odds and odds_n and not fast:
+                        try:
+                            _save_ticket_odds(client, rid, source)
+                        except Exception as e:
+                            print(f"  ⚠️ 券種保存スキップ {rid}: {e}", flush=True)
+                    print(
+                        f"  ✓ {venue} {rn_label} 出走{len(entries)}頭 "
+                        f"オッズ{odds_n}頭 結果{len(results)}頭",
+                        flush=True,
+                    )
+                    race_rows = []
+                    for e in entries:
+                        t_hist = time.perf_counter()
+                        try:
+                            # FAST: キャッシュのみ（ネット取得しない）→ Render時間内完了
+                            hist = (
+                                client.fetch_horse_history(
+                                    e["horse_id"],
+                                    use_cache=True,
+                                    cache_only=fast,
+                                )
+                                if e.get("horse_id") else []
+                            )
+                        except Exception as e_hist:
+                            print(f"  ⚠️ 履歴失敗 {e.get('馬名')}: {e_hist}", flush=True)
+                            hist = []
+                        hist_sec_total += time.perf_counter() - t_hist
+                        score = client.past_five_for_score(hist, target)
+                        finish = results.get(e["馬名"], "")
+                        race_rows.append({
+                            "race_id": rid,
+                            "日付": e.get("日付") or target,
+                            "レース": e.get("レース"),
+                            "馬名": e["馬名"],
+                            "馬番": e.get("馬番", ""),
+                            "枠": e.get("枠", ""),
+                            "騎手": e.get("騎手", ""),
+                            "斤量": e.get("斤量", ""),
+                            "実着順": finish or score.get("実着順", ""),
+                            "単勝オッズ": e.get("単勝オッズ", ""),
+                            "人気": e.get("人気", ""),
+                            "オッズ更新日時": e.get("オッズ更新日時", ""),
+                            "source": source,
+                            **{k: score[k] for k in score if k != "実着順"},
+                        })
+                        if finish:
+                            race_rows[-1]["実着順"] = finish
+                    venue_rows.extend(race_rows)
+                    venue_ok += 1
+                    ok_n += 1
+                    if persist_cb and race_rows:
+                        try:
+                            persist_cb(_normalize_runners(pd.DataFrame(race_rows)))
+                            print(f"  💾 増分保存 {venue} {rn_label}", flush=True)
+                        except Exception as e_save:
+                            print(f"  ⚠️ 増分保存失敗（継続）: {e_save}", flush=True)
                 except Exception as e:
-                    print(f"  ⚠️ 券種保存スキップ {rid}: {e}")
-            print(f"  ✓ {venue} {rn_label} 出走{len(entries)}頭 オッズ{odds_n}頭 結果{len(results)}頭")
-            race_rows = []
-            for e in entries:
-                try:
-                    hist = client.fetch_horse_history(e["horse_id"]) if e.get("horse_id") else []
-                except Exception as e_hist:
-                    print(f"  ⚠️ 履歴失敗 {e.get('馬名')}: {e_hist}")
-                    hist = []
-                score = client.past_five_for_score(hist, target)
-                finish = results.get(e["馬名"], "")
-                race_rows.append({
-                    "race_id": rid,
-                    "日付": e.get("日付") or target,
-                    "レース": e.get("レース"),
-                    "馬名": e["馬名"],
-                    "馬番": e.get("馬番", ""),
-                    "枠": e.get("枠", ""),
-                    "騎手": e.get("騎手", ""),
-                    "斤量": e.get("斤量", ""),
-                    "実着順": finish or score.get("実着順", ""),
-                    "単勝オッズ": e.get("単勝オッズ", ""),
-                    "人気": e.get("人気", ""),
-                    "オッズ更新日時": e.get("オッズ更新日時", ""),
-                    "source": source,
-                    **{k: score[k] for k in score if k != "実着順"},
-                })
-                if finish:
-                    race_rows[-1]["実着順"] = finish
-            rows.extend(race_rows)
-            ok_n += 1
-            # タイムアウト耐性: 1レース完了ごとに増分保存
-            if persist_cb and race_rows:
-                try:
-                    persist_cb(_normalize_runners(pd.DataFrame(race_rows)))
-                    print(f"  💾 増分保存 {venue} {rn_label} ({ok_n}/{total})")
-                except Exception as e_save:
-                    print(f"  ⚠️ 増分保存失敗（継続）: {e_save}")
+                    venue_fail += 1
+                    fail_n += 1
+                    print(
+                        f"  ✗ {venue} {rn_label} 失敗（次レースへ）: "
+                        f"{type(e).__name__}: {e}",
+                        flush=True,
+                    )
+                    if source == "nar":
+                        print(
+                            f"[netkeiba-api] NAR レース取得エラー race_id={rid} "
+                            f"venue={venue} race={rn_label} "
+                            f"err={type(e).__name__}: {e}",
+                            flush=True,
+                        )
+                    continue
+
+            # 開催場として1Rも取れなければスキップ扱い
+            if venue_ok == 0 and venue_fail > 0:
+                skipped_venues.append(venue)
+                _stage_log(
+                    "レース取得",
+                    f"VENUE_SKIP {venue}",
+                    ok=0, fail=venue_fail,
+                    sec=f"{time.perf_counter()-t_venue:.1f}",
+                )
+            else:
+                ok_venues.append(venue)
+                rows.extend(venue_rows)
+                _stage_log(
+                    "レース取得",
+                    f"VENUE_OK {venue}",
+                    ok=venue_ok, fail=venue_fail,
+                    sec=f"{time.perf_counter()-t_venue:.1f}",
+                )
         except Exception as e:
-            fail_n += 1
+            # 開催場ごと丸ごと失敗 → スキップして次の場へ
+            skipped_venues.append(venue)
+            fail_n += max(1, len(v_rids) - venue_ok)
             print(
-                f"  ✗ {venue} {rn_label} 失敗（次レースへ）: {type(e).__name__}: {e}",
+                f"  ✗ {venue} 開催場ごとスキップ: {type(e).__name__}: {e}",
                 flush=True,
             )
-            if source == "nar":
-                print(
-                    f"[netkeiba-api] NAR レース取得エラー race_id={rid} "
-                    f"venue={venue} race={rn_label} err={type(e).__name__}: {e}",
-                    flush=True,
-                )
+            _stage_log(
+                "レース取得",
+                f"VENUE_ERROR_SKIP {venue}",
+                err=f"{type(e).__name__}: {e}",
+                sec=f"{time.perf_counter()-t_venue:.1f}",
+            )
             continue
+
+    races_sec = time.perf_counter() - t_races
+    _stage_log(
+        "レース取得完了",
+        date=target, source=source,
+        ok_venues=",".join(ok_venues) or "-",
+        skipped_venues=",".join(skipped_venues) or "-",
+        ok_races=ok_n, fail_races=fail_n,
+        sec=f"{races_sec:.1f}",
+        odds_sec=f"{odds_sec_total:.1f}",
+        hist_sec=f"{hist_sec_total:.1f}",
+    )
     print(f"========== 取得完了 ==========")
-    print(f"✅ {source.upper()} {target}: 成功 {ok_n} / 失敗 {fail_n} / 全 {total}")
-    if source == "nar" and fail_n:
+    print(
+        f"✅ {source.upper()} {target}: 成功 {ok_n} / 失敗 {fail_n} / "
+        f"場OK={ok_venues} 場SKIP={skipped_venues}",
+        flush=True,
+    )
+    if source == "nar" and (fail_n or skipped_venues):
         print(
-            f"[netkeiba-api] NAR 取得サマリ date={target} ok={ok_n} fail={fail_n} total={total}",
+            f"[netkeiba-api] NAR 取得サマリ date={target} ok={ok_n} fail={fail_n} "
+            f"skip_venues={skipped_venues}",
             flush=True,
         )
     odds_n = _count_odds_tickets_for_date(target, race_ids)
     print(
         f"[pipeline] レース取得 "
         f"{'成功' if ok_n > 0 else '失敗'} date={target} source={source} "
-        f"成功={ok_n} 失敗={fail_n} 保存件数={ok_n} odds_json={odds_n}",
+        f"成功={ok_n} 失敗={fail_n} 保存件数={ok_n} odds_json={odds_n} "
+        f"sec={races_sec:.1f}",
         flush=True,
     )
     print(
@@ -357,6 +532,12 @@ def build_date_runners(
         f"{'成功' if ok_n > 0 else '失敗'} date={target} source={source} "
         f"runners_races={ok_n} odds_json={odds_n} 保存件数={ok_n}",
         flush=True,
+    )
+    _stage_log(
+        "DB保存",
+        "runners増分完了",
+        rows=len(rows), races=ok_n,
+        total_sec=f"{time.perf_counter()-t0:.1f}",
     )
     return _normalize_runners(pd.DataFrame(rows)) if rows else pd.DataFrame(columns=RUNNER_COLS)
 

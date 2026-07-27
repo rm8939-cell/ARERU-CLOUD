@@ -594,6 +594,12 @@ def _write_job_status(
         'updated_at': now_iso,
         'started_at': started_at,
         'pid': os.getpid(),
+        # UI用: updating | success | failed | timeout
+        'outcome': (
+            'updating' if state == 'running'
+            else ('timeout' if stage in ('timeout', 'timeout_ready') or 'タイムアウト' in (message or '')
+                  else ('success' if state == 'success' else ('failed' if state == 'error' else 'idle')))
+        ),
     }
     path = _job_status_path(src)
     try:
@@ -848,10 +854,13 @@ def resolve_fetch_status(
             return 'ready', ''
         if force_refresh and age < 5:
             return 'generating', 'データ取得中'
+        stage = str(st.get('stage') or '')
+        if stage in ('timeout', 'timeout_ready') or 'タイムアウト' in msg:
+            return 'timeout', msg or '更新タイムアウト'
         # 締切後未完成 = 初回生成失敗として generating（復旧導線）
         if after_deadline and selected_date == today and not today_ready:
             return 'generating', 'データ取得中'
-        return 'error', '取得失敗' + (f'（{err}）' if err and len(err) < 80 else '')
+        return 'error', '更新失敗' + (f'（{err}）' if err and len(err) < 80 else '')
 
     if state == 'success':
         if selected_date and job_date and selected_date != job_date:
@@ -1072,11 +1081,12 @@ def _refresh_then_predict(
 
     Returns: 成功なら True
     """
+    import time as _time
     days=[d for d in dates if d and re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(d))]
     if not days:
         _pipeline_log('開始', '失敗', error='対象日なし')
         status_src=source if source in ('jra','nar') else 'nar'
-        _write_job_status(status_src, state='error', stage='start', message='取得失敗', error='対象日なし')
+        _write_job_status(status_src, state='error', stage='failed', message='取得失敗', error='対象日なし')
         return False
     src=source if source in ('jra','nar','all') else 'all'
     count_src=src if src in ('jra','nar') else 'nar'
@@ -1085,6 +1095,8 @@ def _refresh_then_predict(
     # 当日を含む場合は当日を primary にし、status が前日へ寄らないようにする
     primary=today if today in days else days[0]
     terminal=False
+    t_all=_time.perf_counter()
+    print(f'[Local Update] START source={status_src} dates={days}', flush=True)
     try:
         # 1) 取得開始
         _write_job_status(
@@ -1092,6 +1104,7 @@ def _refresh_then_predict(
             date_str=primary,
         )
         _pipeline_log('開始', '成功', primary, dates=','.join(days), source=src)
+        print('[Local Update] 取得開始', flush=True)
 
         cmd=[
             sys.executable,'refresh_data.py',
@@ -1102,12 +1115,29 @@ def _refresh_then_predict(
         ]
         if extra_args:
             cmd.extend(extra_args)
+        env=os.environ.copy()
+        # Render Free: NAR は高速モード（履歴ネット取得抑制）
+        if status_src == 'nar' and (
+            str(env.get('RENDER') or '').lower() in ('true', '1')
+            or str(env.get('ARERU_FAST_NAR') or '') in ('1', 'true', 'yes')
+        ):
+            env['ARERU_FAST_NAR']='1'
+            env.setdefault('ARERU_FETCH_BUDGET_SEC', '420')
+            print('[Local Update] FAST_NAR=1 (Render予算内完了)', flush=True)
         print(f'[{status_src}-job] 開催・レース取得開始: {" ".join(cmd)}', flush=True)
+        t_fetch=_time.perf_counter()
         try:
-            rc=subprocess.run(cmd, check=False, timeout=1800)
+            # Render Free: サブプロセスも 8分で打ち切り → finally で failed
+            fetch_timeout=int(env.get('ARERU_REFRESH_TIMEOUT_SEC') or 480)
+            rc=subprocess.run(cmd, check=False, timeout=fetch_timeout, env=env)
         except subprocess.TimeoutExpired as e:
-            print(f'[{status_src}-job] refresh_data TIMEOUT: {e}', flush=True)
-            raise RuntimeError('refresh_data がタイムアウトしました（Render制限の可能性）') from e
+            fetch_sec=_time.perf_counter()-t_fetch
+            print(f'[Local Update] 取得TIMEOUT sec={fetch_sec:.1f}: {e}', flush=True)
+            raise RuntimeError(
+                f'refresh_data タイムアウト({fetch_timeout}s / Render制限の可能性)'
+            ) from e
+        fetch_sec=_time.perf_counter()-t_fetch
+        print(f'[Local Update] 開催・レース取得 subprocess終了 sec={fetch_sec:.1f} rc={rc.returncode}', flush=True)
         if rc.returncode != 0:
             _pipeline_log('開催取得', '失敗', primary, 保存件数=0, error=f'refresh_data rc={rc.returncode}')
             _pipeline_log('レース取得', '失敗', primary, 保存件数=0)
@@ -1125,6 +1155,7 @@ def _refresh_then_predict(
                         status_src, state='success', stage='done',
                         message='本日は開催なし', date_str=d,
                     )
+                    print('[Local Update] END no_meeting', flush=True)
                     terminal=True
                     return True
                 _pipeline_log('開催取得', '失敗', d, 開催場数=0, レース数=0, 保存件数=0)
@@ -1137,6 +1168,11 @@ def _refresh_then_predict(
             _pipeline_log(
                 'レース取得', '成功', d,
                 レース数=c['runners_races'], 出走頭数=c['runners_rows'], 保存件数=c['runners_races'],
+            )
+            print(
+                f'[Local Update] 開催場取得完了 venues={c["runners_venues"]} '
+                f'レース取得完了 races={c["runners_races"]}',
+                flush=True,
             )
         _write_job_status(
             status_src, state='running', stage='venues_done', message='開催取得完了',
@@ -1154,11 +1190,18 @@ def _refresh_then_predict(
                 date_str=d,
             )
             _pipeline_log('AI予想生成', '開始', d)
+            print(f'[Local Update] AI予想生成開始 date={d}', flush=True)
+            t_pred=_time.perf_counter()
             try:
-                pr=subprocess.run([sys.executable,'replay_predict.py',d], check=False, timeout=600)
+                pr=subprocess.run(
+                    [sys.executable,'replay_predict.py',d],
+                    check=False, timeout=360, env=env,
+                )
             except subprocess.TimeoutExpired as e:
-                print(f'[{status_src}-job] replay_predict TIMEOUT date={d}: {e}', flush=True)
+                print(f'[Local Update] AI予想TIMEOUT date={d}: {e}', flush=True)
                 raise RuntimeError(f'replay_predict タイムアウト ({d})') from e
+            pred_sec=_time.perf_counter()-t_pred
+            print(f'[Local Update] AI予想生成終了 date={d} sec={pred_sec:.1f} rc={pr.returncode}', flush=True)
             if pr.returncode != 0:
                 _pipeline_log('AI予想生成', '失敗', d, 保存件数=0, error=f'rc={pr.returncode}')
                 raise RuntimeError(f'replay_predict 終了コード {pr.returncode} ({d})')
@@ -1182,6 +1225,11 @@ def _refresh_then_predict(
                 'AI予想生成', '成功', d,
                 レース数=c['pred_races'], 開催場数=c['pred_venues'], 保存件数=c['pred_races'],
                 開催場=','.join(c['venues'][:12]),
+            )
+            print(
+                f'[Local Update] DB保存完了 predictions={c["pred_races"]} '
+                f'venues={c["pred_venues"]}',
+                flush=True,
             )
             _write_job_status(
                 status_src, state='running', stage='predict_done', message='AI予想完了',
@@ -1209,19 +1257,31 @@ def _refresh_then_predict(
                 odds_json=c['odds_json'], 保存件数=c['pred_races'],
             )
         _write_job_status(
-            status_src, state='success', stage='done', message='取得完了',
+            status_src, state='success', stage='done', message='更新成功',
             date_str=primary_ok,
         )
+        total_sec=_time.perf_counter()-t_all
         _pipeline_log('全体', '成功', primary_ok, ok_days=','.join(ok_days), 保存件数=len(ok_days))
+        print(f'[Local Update] END success total_sec={total_sec:.1f}', flush=True)
         terminal=True
         return True
     except Exception as e:
         _clear_runtime_caches()
+        err=str(e)[:200]
+        is_timeout=('タイムアウト' in err) or ('Timeout' in err) or ('timeout' in err.lower())
         _write_job_status(
-            status_src, state='error', stage='failed', message='取得失敗',
-            date_str=primary, error=str(e)[:200],
+            status_src,
+            state='error',
+            stage='timeout' if is_timeout else 'failed',
+            message='更新タイムアウト' if is_timeout else '更新失敗',
+            date_str=primary, error=err,
         )
-        _pipeline_log('全体', '失敗', primary, 保存件数=0, error=str(e)[:200])
+        _pipeline_log('全体', '失敗', primary, 保存件数=0, error=err)
+        print(
+            f'[Local Update] END {"timeout" if is_timeout else "failed"} '
+            f'total_sec={_time.perf_counter()-t_all:.1f} err={err}',
+            flush=True,
+        )
         terminal=True
         return False
     finally:
@@ -1229,8 +1289,9 @@ def _refresh_then_predict(
         if not terminal:
             _finalize_job_if_running(
                 status_src, ok=False, date_str=primary,
-                message='取得失敗', error='パイプラインが予期せず終了',
+                message='更新失敗', error='パイプラインが予期せず終了',
             )
+            print('[Local Update] END unexpected (finally cleared running)', flush=True)
 
 
 
@@ -3066,19 +3127,30 @@ def index():
                 if venues:
                     data_status='updating'
                     message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
+        elif job_status=='timeout':
+            if has_content or selected_ok:
+                data_status='timeout'
+                message=job_msg or '更新タイムアウト（表示データは維持）'
+            else:
+                data_status='timeout'
+                message=job_msg or '更新タイムアウト'
+                if source=='nar':
+                    show_venue_picker=True
+                    if selected==today and not venues:
+                        venues=_nar_venues_from_runners(today)
         elif job_status=='error':
             if has_content:
                 data_status='ready'
-                if not message or message in ('データ取得中', '取得中', '取得失敗'):
+                if not message or message in ('データ取得中', '取得中', '取得失敗', '更新失敗'):
                     if selected_venue and races:
                         message=f'{selected} / {selected_venue} / 予想分析'
                     elif venues:
                         message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
                     else:
-                        message='取得失敗（表示は前回データを維持）'
+                        message='更新失敗（表示は前回データを維持）'
             else:
                 data_status='error'
-                message=job_msg or '取得失敗'
+                message=job_msg or '更新失敗'
                 if source=='nar':
                     show_venue_picker=True
                     if selected==today and not venues:
@@ -3091,6 +3163,12 @@ def index():
                 data_status='updating'
                 if not message or message in ('データ取得中', '取得中'):
                     message=job_msg or 'データ更新中（表示は維持）'
+            elif job_status == 'ready' and (selected_ok or has_content) and (
+                '更新成功' in (job_msg or '') or str((_read_job_status(source) or {}).get('outcome') or '') == 'success'
+            ):
+                data_status='success'
+                if not message or message in ('データ取得中', '取得中', 'データ更新中（表示は維持）'):
+                    message=job_msg or '更新成功'
             elif data_status in ('generating', 'updating') and has_content:
                 data_status='ready'
                 if not message or message in ('データ取得中', '取得中', 'データ更新中（表示は維持）'):
@@ -3911,11 +3989,25 @@ def api_refresh_status():
     # success/error/idle は finished。running だけ継続。ready でも running 中は未完了。
     finished = (state != 'running') or no_meet
     updating = state == 'running'
+    outcome = str(st.get('outcome') or '')
+    if not outcome:
+        stage = str(st.get('stage') or '')
+        if state == 'running':
+            outcome = 'updating'
+        elif stage in ('timeout', 'timeout_ready') or 'タイムアウト' in str(st.get('message') or ''):
+            outcome = 'timeout'
+        elif state == 'success':
+            outcome = 'success'
+        elif state == 'error':
+            outcome = 'failed'
+        else:
+            outcome = 'idle'
     return {
         'ok': True,
         'date': date_str,
         'source': source,
         'state': state,
+        'outcome': outcome,  # updating | success | failed | timeout
         'ready': ready or no_meet,
         'finished': finished,
         'updating': updating,
@@ -3924,6 +4016,7 @@ def api_refresh_status():
         'mtime': mtime,
         'message': str(st.get('message') or st.get('error') or ''),
         'error': str(st.get('error') or ''),
+        'stage': str(st.get('stage') or ''),
     }
 
 

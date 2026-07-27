@@ -67,6 +67,7 @@ body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
 .status-banner.warn{background:#fff8e6;border:1px solid #f0d48a;color:#7a5a00}
 .status-banner.error{background:#fdecea;border:1px solid #f5c2c0;color:#8a1f1a}
 .status-banner.info{background:#eef5ff;border:1px solid #c5d8f7;color:#1e4b8c}
+.status-banner.ok{background:#eefaf0;border:1px solid #b7e0c0;color:#1a6b2e}
 .status-banner a{color:inherit;text-decoration:underline}
 @media (max-width:560px){.ai-card .ban-xl{font-size:30px}.ticket-ban{font-size:26px}.pace-grid{grid-template-columns:1fr 1fr}.ledger-grid{grid-template-columns:1fr 1fr}.ai-board{gap:8px}.ai-board .ab{padding:12px 8px}.ai-board .ab b{font-size:20px}.buy-row .br-ev{font-size:20px}}
 
@@ -354,9 +355,13 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% if _ds == 'generating' %}
 <div class="status-banner warn">初回データ取得中です。取得でき次第、自動で表示します。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
-<div class="status-banner info">バックグラウンドで更新中です。表示中のデータはそのまま維持し、成功後に切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
+<div class="status-banner info">バックグラウンドで更新中です。表示中のデータはそのまま維持し、完了後に切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
+{% elif _ds == 'success' %}
+<div class="status-banner ok">更新成功。最新の予想を表示しています。{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}</div>
+{% elif _ds == 'timeout' %}
+<div class="status-banner warn">更新タイムアウト。処理が時間内に終わりませんでした。表示中のデータは維持しています。<br><a href="/?source={{source}}&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="{{ request.url }}">再読み込み</a></div>
 {% elif _ds == 'error' %}
-<div class="status-banner error">取得失敗。表示中のデータは維持しています。時間をおいて再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source={{source}}&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
+<div class="status-banner error">更新失敗。表示中のデータは維持しています。時間をおいて再取得してください。<br><a href="{{ request.url }}">再読み込み</a> · <a href="/?source={{source}}&mode={{mode}}&today=1&force_refresh=1">本日開催を再取得</a> · <a href="/">トップへ</a></div>
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
@@ -1135,7 +1140,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endif %}
 {% endif %}
 </main>
-{% if source in ['nar','jra'] and (data_status|default('ready')) == 'updating' %}
+{% if source in ['nar','jra'] and (data_status|default('ready')) in ('updating','generating') %}
 <script>
 (function(){
   try{
@@ -1146,12 +1151,12 @@ details.race-acc[open]>.race-acc-body{display:block}
     var tries = 0;
     var maxTries = 90; /* ~12分: 10分タイムアウト後に必ず再読込 */
     var sawRunning = false;
+    function go(){
+      window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
+    }
     function poll(){
       tries += 1;
-      if (tries > maxTries) {
-        window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
-        return;
-      }
+      if (tries > maxTries) { go(); return; }
       var q = '/api/refresh-status?date=' + encodeURIComponent(dateStr || '')
         + '&source=' + encodeURIComponent(sourceStr || 'nar');
       fetch(q, {credentials:'same-origin', cache:'no-store'})
@@ -1160,10 +1165,14 @@ details.race-acc[open]>.race-acc-body{display:block}
           if (!j || !j.ok) { setTimeout(poll, 8000); return; }
           if (j.state === 'running' || j.updating) sawRunning = true;
           var newer = j.mtime && baseMtime && String(j.mtime) !== String(baseMtime);
-          /* success/error どちらでも updating を解除するため再読込 */
-          if (j.state === 'error' || j.state === 'success' || j.finished) {
-            if (newer || sawRunning || tries >= 2 || j.ready || j.state === 'error' || j.state === 'success') {
-              window.location.replace(refreshUrl || (window.location.pathname + window.location.search));
+          var outcome = j.outcome || '';
+          /* 更新成功 / 更新失敗 / タイムアウト で必ず再読込してバナー切替 */
+          if (
+            outcome === 'success' || outcome === 'failed' || outcome === 'timeout'
+            || j.state === 'error' || j.state === 'success' || j.finished
+          ) {
+            if (newer || sawRunning || tries >= 2 || j.ready || outcome || j.state === 'error' || j.state === 'success') {
+              go();
               return;
             }
           }
