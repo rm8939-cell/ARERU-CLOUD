@@ -236,18 +236,14 @@ def build_date_runners(
     fast = _fast_nar_mode() and source == "nar"
     # Render Free: 全体予算（秒）。超えたら残会場はスキップして保存へ進む
     budget_sec = float(os.environ.get("ARERU_FETCH_BUDGET_SEC") or (240 if fast else 1500))
+    if fast:
+        include_results = False  # 結果ページ取得を省略して時間短縮
     _stage_log(
         "START",
         f"source={source} date={target}",
         fast=int(fast), budget_sec=int(budget_sec),
+        include_results=int(include_results),
     )
-
-    # FAST: 通信間隔を短縮
-    if fast:
-        try:
-            client.sleep = min(float(getattr(client, "sleep", 0.25) or 0.25), 0.05)
-        except Exception:
-            pass
 
     ymd = target.replace("-", "")
     t_list = time.perf_counter()

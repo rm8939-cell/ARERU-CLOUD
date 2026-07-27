@@ -2227,6 +2227,73 @@ def _run_odds_only_update(source: str, date_str: str) -> bool:
             )
 
 
+def _runners_ready(date_str: str, source: str = 'nar') -> bool:
+    """当日の runners が source 分あるか。"""
+    c = _nar_day_counts(date_str, source)
+    return int(c.get('runners_races') or 0) > 0
+
+
+def _predict_only_from_runners(source: str, date_str: str) -> bool:
+    """runners 済みで予想だけ作る（Render Free 向け軽量復旧）。"""
+    import time as _time
+    src = source if source in ('jra', 'nar') else 'nar'
+    day = date_str or _today_jst()
+    terminal = False
+    t0 = _time.perf_counter()
+    print(f'[Local Update] START predict-only source={src} date={day}', flush=True)
+    try:
+        _write_job_status(
+            src, state='running', stage='predict_start', message='AI予想生成中',
+            date_str=day,
+        )
+        if not _runners_ready(day, src):
+            raise RuntimeError(f'{day}: runners が無いため予想不可')
+        print('[Local Update] AI予想生成開始 (predict-only)', flush=True)
+        pr = subprocess.run(
+            [sys.executable, 'replay_predict.py', day],
+            check=False, timeout=360,
+        )
+        print(
+            f'[Local Update] AI予想生成終了 sec={_time.perf_counter()-t0:.1f} rc={pr.returncode}',
+            flush=True,
+        )
+        if pr.returncode != 0:
+            raise RuntimeError(f'replay_predict rc={pr.returncode}')
+        if not _nar_pred_ready(day, src):
+            raise RuntimeError('predictions 未生成')
+        c = _nar_day_counts(day, src)
+        print(
+            f'[Local Update] DB保存完了 predictions={c["pred_races"]} venues={c["pred_venues"]}',
+            flush=True,
+        )
+        _clear_runtime_caches()
+        _write_job_status(
+            src, state='success', stage='done', message='更新成功', date_str=day,
+        )
+        auto_seal_if_ready(day, src, True)
+        print(f'[Local Update] END success predict-only total_sec={_time.perf_counter()-t0:.1f}', flush=True)
+        terminal = True
+        return True
+    except Exception as e:
+        err = str(e)[:200]
+        is_timeout = 'タイムアウト' in err or 'Timeout' in err or 'timeout' in err.lower()
+        _write_job_status(
+            src, state='error',
+            stage='timeout' if is_timeout else 'failed',
+            message='更新タイムアウト' if is_timeout else '更新失敗',
+            date_str=day, error=err,
+        )
+        print(f'[Local Update] END failed predict-only err={err}', flush=True)
+        terminal = True
+        return False
+    finally:
+        if not terminal:
+            _finalize_job_if_running(
+                src, ok=False, date_str=day,
+                message='更新失敗', error='predict-only ended while running',
+            )
+
+
 def run_today_pipeline(
     source: str = 'nar',
     force: bool = False,
@@ -2238,6 +2305,7 @@ def run_today_pipeline(
     - 朝8時前 / 未完成: 開催取得→AI予想（本生成）
     - 朝8時以降かつ完成済み: オッズ・取消のみ（ロジック固定）
     - JRA は開催日のみ本生成
+    - Render + NAR: runners 済みなら予想のみ（重取得で Free が固まらない）
     """
     src = source if source in ('jra', 'nar') else 'nar'
     today = _today_jst()
@@ -2262,6 +2330,22 @@ def run_today_pipeline(
         )
         print(f'[{src}-today] no meeting date={today}', flush=True)
         return True
+
+    # 根本対策: Render Free で NAR が runners まで来ているなら予想だけ走る
+    on_render = str(os.environ.get('RENDER') or '').lower() in ('true', '1')
+    if (
+        src == 'nar'
+        and not ready
+        and _runners_ready(today, src)
+        and (on_render or str(os.environ.get('ARERU_FAST_NAR') or '') in ('1', 'true', 'yes'))
+        and not (force and force_full and str(os.environ.get('ARERU_FORCE_FULL_FETCH') or '') in ('1', 'true'))
+    ):
+        print(
+            f'[Local Update] runners済み → predict-only に切替 '
+            f'(Render Free 固まり防止) date={today}',
+            flush=True,
+        )
+        return _predict_only_from_runners(src, today)
 
     lock = DATA / f'.{src}_today_pipeline.lock'
     if lock.exists():
@@ -2577,11 +2661,11 @@ def index():
                         reason='sealed_ready_show_cache', 保存件数='-',
                     )
             elif (not today_ready) and viewing_today:
-                # 未完成: 朝の本生成 or 締切後の復旧のみ（重複起動しない）
+                # 未完成: 朝の本生成 or 締切後の復旧（失敗直後はクールダウン）
                 _start_today(
                     'recovery' if after_deadline else 'morning_missing',
                     force_full=True,
-                    force=bool(force_refresh or want_today or after_deadline),
+                    force=bool(force_refresh or want_today),
                 )
             elif force_refresh or want_today:
                 _start_today(
