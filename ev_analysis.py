@@ -71,14 +71,16 @@ def safe_float(v, default=None):
         return default
 
 
-def safe_int(v, default=0) -> int:
+def safe_int(v, default=0):
     x = safe_float(v, None)
     if x is None:
-        return int(default)
+        return default
     try:
-        return int(x)
+        if abs(x) > 10**15:
+            return default
+        return int(round(x))
     except Exception:
-        return int(default)
+        return default
 
 
 def _clamp(x, a=0.0, b=100.0) -> float:
@@ -126,8 +128,9 @@ def ev_plain_label(display_ev: float | None) -> str:
     return '割高'
 
 
-def stars_for_score(score: int) -> str:
-    filled = max(1, min(5, (int(score) + 19) // 20))
+def stars_for_score(score) -> str:
+    s = safe_int(score, 50)
+    filled = max(1, min(5, (s + 19) // 20))
     return '★' * filled + '☆' * (5 - filled)
 
 
@@ -687,10 +690,15 @@ def _claimable_ai_prob(ai_p: float, implied: float, conf: float, repro: float, n
 
 def _soft_display_ev(raw_ev: float) -> int:
     """極端な生EVを tanh で圧縮し、ユーザーが信じやすい帯に落とす。"""
-    edge = float(raw_ev) - 100.0
+    try:
+        edge = float(raw_ev) - 100.0
+    except (TypeError, ValueError):
+        return 100
+    if edge != edge:  # NaN
+        return 100
     # |edge|が大きいほど伸びにくく、概ね 78〜124%
     compressed = 100.0 + 26.0 * math.tanh(edge / 30.0)
-    return int(round(_clamp(compressed, EV_DISPLAY_MIN, EV_DISPLAY_MAX)))
+    return safe_int(_clamp(compressed, EV_DISPLAY_MIN, EV_DISPLAY_MAX), 100) or 100
 
 
 def score_horse_ev(
@@ -734,7 +742,7 @@ def score_horse_ev(
 
     return {
         '期待値': display_ev,
-        '期待値生': int(round(raw_ev)),
+        '期待値生': safe_int(raw_ev, None),
         '期待値表示': f'{display_ev}%',
         '期待値エッジ': display_ev - 100,
         '期待値トーン': ev_tone(display_ev),
@@ -881,7 +889,12 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
     record.update(decision)
 
     if ev is not None:
-        ev_i = int(round(float(ev)))
+        ev_i = safe_int(ev, None)
+        if ev_i is None:
+            record['期待回収率表示'] = '—'
+            record['期待回収率短'] = '—'
+            record['期待値トーン'] = 'ev-none'
+            return record
         record['期待値'] = ev_i
         record['期待値表示'] = f'{ev_i}%'
         record['期待回収率表示'] = f'{ev_i}%'
@@ -1402,7 +1415,7 @@ def calc_expected_value(market_odds, fair_odds):
     disp = _soft_display_ev(raw)
     return {
         '期待値': disp,
-        '期待値生': int(round(raw)),
+        '期待値生': safe_int(raw, None),
         '期待値表示': f'{disp}%',
         '期待値エッジ': disp - 100,
         '期待値トーン': ev_tone(disp),
@@ -1415,13 +1428,7 @@ def calc_expected_value(market_odds, fair_odds):
 
 def ai_confidence_stars(record: dict) -> str:
     """一覧用AI信頼度 ★。スコアがあればそれを使用。"""
-    score = record.get('AI信頼度スコア')
-    try:
-        if score is not None:
-            return stars_for_score(int(float(score)))
-    except (TypeError, ValueError):
-        pass
-    return stars_for_score(50)
+    return stars_for_score(safe_int(record.get('AI信頼度スコア'), 50))
 
 
 def finish_num(fin):

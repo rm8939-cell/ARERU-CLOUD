@@ -1418,6 +1418,7 @@ def _filter_records_by_source(records, source):
 def _venue_meetings(records):
     """日付内の開催場一覧（レース数・S/A件数付き）。"""
     from netkeiba_client import normalize_venue_name
+    from ev_analysis import safe_int
     buckets={}
     for r in records or []:
         venue=normalize_venue_name(str(r.get('開催地') or '').strip())
@@ -1427,10 +1428,10 @@ def _venue_meetings(records):
         buckets.setdefault(venue, []).append(r)
     meetings=[]
     for venue, rows in sorted(buckets.items(), key=lambda x: x[0]):
-        try:
-            race_nos=sorted({int(float(x.get('レース') or 0)) for x in rows if x.get('レース') not in ('',None)})
-        except Exception:
-            race_nos=[]
+        race_nos=sorted({
+            n for n in (safe_int(x.get('レース'), None) for x in rows)
+            if n is not None and n > 0
+        })
         ranks={}
         for x in rows:
             rk=str(x.get('勝負ランク') or '').upper()
@@ -1753,16 +1754,22 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
 
 def build_buy_candidates(races: list, limit: int = 12) -> list:
     """厳選後の買いレースを期待値順（本日の買い候補）。"""
+    from ev_analysis import safe_float, safe_int
     scored = []
     for r in races or []:
         if not str(r.get('投資判定') or '').startswith('買い'):
             continue
-        try:
-            ev = float(r.get('期待値') if r.get('期待値') is not None else str(r.get('レース期待回収率') or '').replace('%', '') or 0)
-        except (TypeError, ValueError):
+        ev = safe_float(r.get('期待値'), None)
+        if ev is None:
+            ev = safe_float(str(r.get('レース期待回収率') or '').replace('%', ''), None)
+        if ev is None:
             continue
         scored.append((ev, r))
-    scored.sort(key=lambda x: (-x[0], str(x[1].get('開催地') or ''), int(float(x[1].get('レース') or 0) or 0)))
+    scored.sort(key=lambda x: (
+        -x[0],
+        str(x[1].get('開催地') or ''),
+        safe_int(x[1].get('レース'), 0),
+    ))
     return [r for _, r in scored[:limit]]
 
 
@@ -1799,6 +1806,7 @@ def build_today_ai_board(races: list, verification: dict | None = None) -> dict:
 def prep(records, ban_map=None):
     from areru_engine import RANK_LABELS, RANK_CLASSES
     from race_sim import circle_ban
+    from ev_analysis import safe_int
     ban_map=ban_map or {}
     for r in records:
         try: r['印一覧']=json.loads(str(r.get('印データ','[]')).replace('NaN','null'))
@@ -1852,8 +1860,8 @@ def prep(records, ban_map=None):
         else:
             r['本命表示']='—'
         r['レース名表示']=(
-            f"{r.get('開催地','')} {int(float(r['レース'])):02d}R"
-            if str(r.get('レース','')).replace('.','',1).isdigit()
+            f"{r.get('開催地','')} {safe_int(r.get('レース'), 0):02d}R"
+            if safe_int(r.get('レース'), None)
             else str(r.get('開催地') or 'レース')
         )
         # 投資判定のフォールバック（apply_expected_value 後に EV ランクで上書き）
@@ -3242,8 +3250,24 @@ def index():
             else '本日はJRAの開催はありません'
         )
 
-        # 完成済み封印: 常に完成予想を表示（裏オッズ更新でも画面は消さない）
+        # 完成済み封印: 常に完成予想を表示（裏オッズ更新でも画面を消さない）
         if sealed_ready:
+            # 完成予想があるのに会場が空 → 表示パス取りこぼしの再読込
+            if (not has_content) and source == 'nar' and selected and not selected_venue:
+                try:
+                    pred = ARCH / f'predictions_{selected}.csv'
+                    if pred.exists():
+                        light_rows = _read_predictions_for_venue_picker(pred, source)
+                        light_rows = apply_display_ranks(light_rows, by_venue=True)
+                        venues = _venue_meetings(light_rows)
+                        show_venue_picker = True
+                        has_content = bool(venues)
+                        print(
+                            f'[nar-venue] sealed reload venues={len(venues)} date={selected}',
+                            flush=True,
+                        )
+                except Exception as e:
+                    print(f'[nar-venue] sealed reload fail: {e}', flush=True)
             if job_status == 'updating' or (has_content and bg_running and force_refresh):
                 data_status='updating'
                 if selected_venue and races:
@@ -3254,7 +3278,7 @@ def index():
                     message=job_msg or f'{selected} / {label} / AI期待値分析'
             else:
                 data_status='ready'
-                if not message or message in ('データ取得中', '取得中', '取得失敗'):
+                if not message or message in ('データ取得中', '取得中', '取得失敗', 'オッズ更新中'):
                     if selected_venue and races:
                         message=f'{selected} / {selected_venue} / 予想分析'
                     elif venues and show_venue_picker:
