@@ -348,14 +348,14 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endif %}
 <div class="toolbar">
 <form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}">{% if source in ['nar','jra'] and selected_date and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}<select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
-{% if source in ['nar','jra'] %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><input type="hidden" name="force_refresh" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
+{% if source in ['nar','jra'] %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source in ['nar','jra'] %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
-<div class="status-banner warn">初回データ取得中です。取得でき次第、自動で表示します。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
+<div class="status-banner warn">初回データ準備中です。サーバー側の定期更新が完了次第、自動で表示します。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
-<div class="status-banner info">バックグラウンドで更新中です。表示中のデータはそのまま維持し、完了後に切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
+<div class="status-banner info">バックグラウンドで更新中です。表示中の予想はそのまま見られます。完了後に最新へ切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
 {% elif _ds == 'success' %}
 <div class="status-banner ok">更新成功。最新の予想を表示しています。{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}</div>
 {% elif _ds == 'timeout' %}

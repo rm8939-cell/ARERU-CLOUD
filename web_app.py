@@ -361,66 +361,26 @@ def _recovery_debounce_path(source: str) -> Path:
 
 
 def _maybe_schedule_recovery(source: str, reason: str, *, actor: str = 'page') -> bool:
-    """初回未取得で UI が generating のまま止まるのを防ぐ（Render: cron 待ちの復旧起動）。
+    """ページ閲覧からの自動復旧は無効（データ取得は cron / 明示 refresh のみ）。"""
+    log_orchestrator(actor, 'SKIP', source, reason='page_fetch_disabled', detail=reason)
+    return False
 
-    デバウンス付きで1本だけ run_today_pipeline を起動する。
-    """
-    if source not in ('jra', 'nar'):
-        return False
-    today = _today_jst()
-    if _nar_pred_ready(today, source):
-        return False
-    _expire_stale_job(source)
-    if _job_is_active(source):
-        log_orchestrator(actor, 'SKIP', source, reason='job_active', detail=reason)
-        return False
-    if _heavy_busy() or _predict_busy():
-        log_orchestrator(
-            actor, 'SKIP', source,
-            reason='heavy_or_predict_busy',
-            heavy=_HEAVY_JOB_STATE.get('name') or '',
-            predict=_PREDICT_GLOBAL_STATE.get('key') or '',
-            detail=reason,
-        )
-        return False
-    if _job_in_failure_cooldown(source):
-        log_orchestrator(actor, 'SKIP', source, reason='failure_cooldown', detail=reason)
-        return False
-    lock = _recovery_debounce_path(source)
-    try:
-        if lock.exists():
-            age = (__import__('time').time() - lock.stat().st_mtime)
-            if age < _RECOVERY_DEBOUNCE_SEC:
-                log_orchestrator(actor, 'SKIP', source, reason='debounce', age_sec=int(age))
-                return False
-    except Exception:
-        pass
 
-    def _run():
-        try:
-            lock.write_text(str(os.getpid()), encoding='utf-8')
-        except Exception:
-            pass
-        try:
-            log_orchestrator(actor, 'START', source, reason=reason, pipeline='today_full')
-            run_today_pipeline(source, force=True, force_full=True)
-        except Exception as e:
-            log_orchestrator(actor, 'ERROR', source, reason=str(e)[:120])
-        finally:
-            try:
-                lock.unlink(missing_ok=True)
-            except Exception:
-                pass
-
-    try:
-        threading.Thread(
-            target=_run, daemon=True, name=f'{source}-recovery',
-        ).start()
-        log_orchestrator(actor, 'QUEUED', source, reason=reason)
-        return True
-    except Exception as e:
-        log_orchestrator(actor, 'ERROR', source, reason=f'start_fail:{e}')
-        return False
+def _latest_ready_pred_date(source: str, *, on_or_before: str = '') -> str:
+    """ソースの最新完成予想日（キャッシュ即表示用）。"""
+    src = source if source in ('jra', 'nar') else 'nar'
+    cutoff = str(on_or_before or _today_jst())
+    best = ''
+    for f in ARCH.glob('predictions_*.csv'):
+        m = re.fullmatch(r'predictions_(\d{4}-\d{2}-\d{2})\.csv', f.name)
+        if not m:
+            continue
+        day = m.group(1)
+        if day > cutoff:
+            continue
+        if _nar_pred_ready(day, src) and day > best:
+            best = day
+    return best
 
 
 def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -984,7 +944,8 @@ def resolve_fetch_status(
 ) -> tuple:
     """UI用: (data_status, message)。地方・JRA共通。
 
-    朝8時以降・完成済みは通常 ready。generating は初回生成失敗（未完成）時のみ。
+    キャッシュ優先: 予想が実在すれば絶対に generating にしない。
+    generating はキャッシュが無い初回のみ。更新中は updating（表示は維持）。
     """
     src = source if source in ('jra', 'nar') else 'nar'
     _clear_stale_source_locks(src)
@@ -993,7 +954,6 @@ def resolve_fetch_status(
     age = _nar_job_age_sec(st)
     msg = str(st.get('message') or '')
     err = str(st.get('error') or '')
-    job_date = str(st.get('date') or '')
     today = _today_jst()
     selected_date = str(selected_date or '')
     today_ready = _nar_pred_ready(today, src)
@@ -1001,75 +961,48 @@ def resolve_fetch_status(
         _nar_pred_ready(selected_date, src) if selected_date else False
     )
     after_deadline = past_predict_deadline()
+    job_running = state == 'running'
+    if not job_running:
+        for name in (f'.{src}_today_pipeline.lock', f'.{src}_bootstrap.lock'):
+            lp = DATA / name
+            if lp.exists():
+                try:
+                    if (__import__('time').time() - lp.stat().st_mtime) < _JOB_STALE_SEC:
+                        job_running = True
+                        break
+                except Exception:
+                    pass
 
-    if state == 'running':
-        # 完成済みの裏更新（オッズ等）→ UI は updating 扱い（呼び出し側で変換）
+    # 完成キャッシュあり → 常に表示可能（裏更新中のみ updating）
+    if selected_ready or (selected_date == today and today_ready):
         if selected_date == today and today_ready:
+            auto_seal_if_ready(today, src, True)
+        if job_running:
             return 'updating', (msg or 'データ更新中')
-        if selected_date and selected_date != today and selected_ready:
-            return 'updating', (msg or 'データ更新中')
-        # 締切後の未完成のみ「データ取得中」（初回失敗の復旧）
-        if after_deadline and selected_date == today and not today_ready:
-            return 'generating', (msg or 'データ取得中')
-        if not after_deadline and selected_date == today and not today_ready:
-            return 'generating', (msg or 'データ取得中')
-        return 'generating', (msg or 'データ取得中')
-
-    if state == 'error':
-        if selected_date == today and today_ready:
+        if state == 'error':
+            stage = str(st.get('stage') or '')
+            if stage in ('timeout', 'timeout_ready') or 'タイムアウト' in msg:
+                return 'timeout', msg or '更新タイムアウト（表示データは維持）'
             return 'ready', '取得完了'
-        if selected_ready:
-            return 'ready', ''
-        if force_refresh and age < 5:
-            return 'generating', 'データ取得中'
+        return 'ready', (msg or '取得完了') if state == 'success' else ''
+
+    # キャッシュなし
+    if state == 'error':
         stage = str(st.get('stage') or '')
         if stage in ('timeout', 'timeout_ready') or 'タイムアウト' in msg:
             return 'timeout', msg or '更新タイムアウト'
-        # 失敗は必ず error（会場一覧があっても updating/generating に偽装しない）
-        # 復旧ジョブは別途 state=running で起動し、そのときだけ generating になる
         return 'error', '更新失敗' + (f'（{err}）' if err and len(err) < 80 else '')
 
-    if state == 'success':
-        if selected_date and job_date and selected_date != job_date:
-            if selected_date == today and job_date < today:
-                if today_ready:
-                    auto_seal_if_ready(today, src, True)
-                    return 'ready', '取得完了'
-                # 締切前は朝の生成待ち。締切後は復旧表示
-                return 'generating', 'データ取得中'
-            return 'ready', ''
-        if selected_date == today and today_ready:
-            auto_seal_if_ready(today, src, True)
-            return 'ready', msg or '取得完了'
-        if selected_date and not selected_ready:
-            if after_deadline and selected_date == today:
-                return 'generating', 'データ取得中'
-            if selected_date == today:
-                return 'generating', 'データ取得中'
-            return 'error', '取得失敗'
-        return 'ready', msg or '取得完了'
-
-    for name in (f'.{src}_today_pipeline.lock', f'.{src}_bootstrap.lock'):
-        lp = DATA / name
-        if lp.exists():
-            try:
-                age_lock = __import__('time').time() - lp.stat().st_mtime
-                if age_lock < _JOB_STALE_SEC:
-                    if selected_date == today and today_ready:
-                        return 'updating', 'データ更新中'
-                    if selected_date and selected_date != today and selected_ready:
-                        return 'updating', 'データ更新中'
-                    return 'generating', 'データ取得中'
-            except Exception:
-                pass
-
     if selected_date == today and not today_ready:
-        # 開催なしは generating にしない
         if after_deadline and not source_is_race_day(src, today):
             return 'ready', '本日は開催なし'
+        # 初回のみ取得中。ページからは起動しない（cron 待ち）
+        if job_running or force_refresh:
+            return 'generating', (msg or 'データ取得中')
         return 'generating', 'データ取得中'
-    if selected_date == today and today_ready:
-        auto_seal_if_ready(today, src, True)
+
+    if selected_date and not selected_ready:
+        return 'error', '取得失敗'
     return 'ready', ''
 
 
@@ -1545,46 +1478,31 @@ def _refresh_then_predict(
 
 
 def ensure_for_page(d, source='all'):
-    """ページ表示用。同期再生成はしない。 (path|None, status)
+    """ページ表示用。同期再生成も裏ジョブ起動もしない。 (path|None, status)
 
-    status: ready | updating | generating | error
-    締切後・完成済みは本生成ジョブを起こさない。
+    キャッシュ優先: ファイルがあれば即 ready。無い初回のみ generating。
+    データ取得は cron / 明示 refresh のみ。
     """
     f=ARCH/f'predictions_{d}.csv'
     try:
-        # 旧相対ランクCSVは読み込み前にその場で厳格確定（表示のブレ防止）
         if f.exists():
             _ensure_pred_file_finalized(f)
         src = source if source in ('jra', 'nar') else 'all'
         today = _today_jst()
-        frozen = (
-            str(d) == today
-            and src in ('jra', 'nar')
-            and _nar_pred_ready(str(d), src)
-            and (past_predict_deadline() or is_sealed(str(d), src))
-        )
-        if f.exists() and not _need_regen(d, source):
-            if frozen:
+        if src in ('jra', 'nar') and _nar_pred_ready(str(d), src):
+            if (
+                str(d) == today
+                and (past_predict_deadline() or is_sealed(str(d), src))
+            ):
                 auto_seal_if_ready(str(d), src, True)
             return f, 'ready'
-        if _need_regen(d, source):
-            # 凍結後は不足ソースがあってもフル再予想しない（完成表示を優先）
-            if frozen:
-                return f, 'ready'
-            # Render: 閲覧経路から predict ジョブは起こさない。復旧パイプラインのみスケジュール。
-            if _ON_RENDER and not (
-                str(os.environ.get('ARERU_ALLOW_PAGE_PREDICT') or '').strip() in ('1', 'true', 'yes')
-            ):
-                _maybe_schedule_recovery(src, f'ensure_for_page:{d}', actor='page')
-                if f.exists():
-                    return f, 'updating'
-                return None, 'generating'
-            _start_predict_job(d, source)
-            if f.exists():
-                # 既存ファイルがあれば表示しつつ更新中
-                return f, 'updating'
+        if f.exists() and not _need_regen(d, source):
+            return f, 'ready'
+        # キャッシュ無し → ページからは取得しない（cron 待ち）
+        if f.exists():
+            # ファイルはあるが表示ソース行が無い等
             return None, 'generating'
-        return f, 'ready'
+        return None, 'generating'
     except Exception as e:
         print(f'[ensure_for_page] {d}: {e}')
         if f.exists():
@@ -2854,83 +2772,17 @@ def index():
         if source in ('nar', 'jra'):
             _expire_stale_job(source)
             today_ready=_nar_pred_ready(today, source)
-            viewing_today=(
-                force_cal_today or want_today or force_refresh
-                or not explicit_date or explicit_date >= today or not allow_past
-            )
-            after_deadline=past_predict_deadline()
-            job_active=_job_is_active(source)
-
-            def _start_today(reason: str, *, force_full: bool = False, force: bool = False):
-                if job_active:
-                    _pipeline_log(
-                        '表示', 'スキップ', today,
-                        source=source, reason='job_already_running', 保存件数='-',
-                    )
-                    return
-                if _heavy_busy() or _predict_busy():
-                    _pipeline_log(
-                        '表示', 'スキップ', today,
-                        source=source, reason='heavy_or_predict_busy', 保存件数='-',
-                    )
-                    return
-                # Render: 通常閲覧では多重起動しない。未取得時のみ debounced 復旧起動。
-                if _ON_RENDER and not force and not force_refresh and not want_today:
-                    if not today_ready and viewing_today:
-                        _maybe_schedule_recovery(source, 'render_page_generating', actor='page')
-                    _pipeline_log(
-                        '表示', 'スキップ', today,
-                        source=source, reason='render_page_no_auto_job', 保存件数='-',
-                    )
-                    return
-                if (not force) and _job_in_failure_cooldown(source):
-                    _pipeline_log(
-                        '表示', 'スキップ', today,
-                        source=source, reason='failure_cooldown', 保存件数='-',
-                    )
-                    return
-                _pipeline_log(
-                    '表示', '取得起動', today,
-                    source=source, reason=reason,
-                    today_ready=int(today_ready),
-                )
-                threading.Thread(
-                    target=run_today_pipeline,
-                    args=(source,),
-                    kwargs={'force': force, 'force_full': force_full},
-                    daemon=True,
-                ).start()
-
-            # 完成済み（特に8時以降）: 本生成しない。本日ボタン/更新時のみ odds-only。
-            if today_ready and (after_deadline or is_sealed(today, source)):
+            # ページ閲覧ではデータ取得を起動しない（cron / /refresh のみ）
+            if today_ready and (past_predict_deadline() or is_sealed(today, source)):
                 auto_seal_if_ready(today, source, True)
-                if force_refresh or want_today:
-                    _start_today('post_deadline_odds', force_full=False, force=True)
-                else:
-                    _pipeline_log(
-                        '表示', '成功', today,
-                        source=source,
-                        reason='sealed_ready_show_cache', 保存件数='-',
-                    )
-            elif (not today_ready) and viewing_today:
-                # 未完成: 朝の本生成 or 締切後の復旧（失敗直後はクールダウン）
-                _start_today(
-                    'recovery' if after_deadline else 'morning_missing',
-                    force_full=True,
-                    force=bool(force_refresh or want_today),
-                )
-            elif force_refresh or want_today:
-                _start_today(
-                    'force_today',
-                    force_full=not after_deadline,
-                    force=True,
-                )
-            else:
-                _pipeline_log(
-                    '表示', '成功', today,
-                    source=source,
-                    reason='today_ready_skip_bootstrap', 保存件数='-',
-                )
+            _pipeline_log(
+                '表示', '成功', today,
+                source=source,
+                reason='cache_first_no_page_fetch',
+                today_ready=int(today_ready),
+                force_refresh=int(force_refresh),
+                保存件数='-',
+            )
     except Exception as e:
         print(f'[bootstrap] skip: {e}')
         if source in ('nar', 'jra'):
@@ -2973,9 +2825,27 @@ def index():
                         source=source,
                         reason='fallback_av0', explicit=explicit_date or '-', 保存件数=0,
                     )
-    # 地方・中央・当日: 絶対に前日ファイルへフォールバックしない
-    block_stale_today=(source in ('nar', 'jra') and selected==today and not allow_past)
-    block_stale_nar=(source=='nar' and selected==today and not allow_past)
+    # キャッシュ優先: 当日未完成なら最新完成予想日を即表示（履歴明示時以外）
+    # ページを開くたびに取得を始めず、「開いた瞬間に予想が見える」状態にする
+    if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
+        if not _nar_pred_ready(selected or '', source):
+            latest = _latest_ready_pred_date(source, on_or_before=today)
+            if latest and latest != selected:
+                print(
+                    f'[{source}-date] cache-first {selected or "-"} -> {latest}',
+                    flush=True,
+                )
+                selected = latest
+                if latest not in av:
+                    av = sorted(set(av) | {latest}, reverse=True)
+    # 当日完成時のみ「前日へ落とさない」。未完成は上で最新キャッシュへ寄せ済み
+    block_stale_today=(
+        source in ('nar', 'jra')
+        and selected == today
+        and not allow_past
+        and _nar_pred_ready(today, source)
+    )
+    block_stale_nar=(source=='nar' and selected==today and not allow_past and _nar_pred_ready(today, source))
     # 結果検証タブ:
     # - プルダウンは「本日以前の開催日 + 結果確定日」（最新開催日も選択可）
     # - 明示指定日に予想があれば結果未取込でも寄せない（結果待ち表示＋バックグラウンド取得）
@@ -2992,59 +2862,33 @@ def index():
                 av=sorted(set(av)|{explicit_date}, reverse=True)
         else:
             selected=(result_days[0] if result_days else (av[0] if av else ''))
-        try:
-            prefer=[selected] if selected else []
-            if not _ON_RENDER or force_refresh or want_today:
-                threading.Thread(
-                    target=bootstrap_missing_results,
-                    kwargs={'source': source, 'prefer_dates': prefer},
-                    daemon=True,
-                ).start()
-        except Exception as e:
-            print(f'[bootstrap-results] skip: {e}')
     elif mode=='result' and force_cal_today:
         # 当日矯正中は explicit の前日で selected を上書きしない
         av=_result_available_dates(meeting_dates, result_days, today)
         if today not in av:
             av=sorted(set(av)|{today}, reverse=True)
         selected=today
-        try:
-            if not _ON_RENDER or force_refresh or want_today:
-                threading.Thread(
-                    target=bootstrap_missing_results,
-                    kwargs={'source': source, 'prefer_dates': [today]},
-                    daemon=True,
-                ).start()
-        except Exception as e:
-            print(f'[bootstrap-results] skip: {e}')
     elif mode=='result' and not want_today and not explicit_date and source!='nar':
         av=_result_available_dates(meeting_dates, result_days, today)
         selected=(result_days[0] if result_days else (av[0] if av else ''))
-        try:
-            prefer=[selected] if selected else []
-            if not _ON_RENDER or force_refresh or want_today:
-                threading.Thread(
-                    target=bootstrap_missing_results,
-                    kwargs={'source': source, 'prefer_dates': prefer},
-                    daemon=True,
-                ).start()
-        except Exception as e:
-            print(f'[bootstrap-results] skip: {e}')
     elif mode=='result' and source=='nar' and not want_today and not explicit_date:
-        # 地方結果: 当日を優先表示しつつ結果補完
+        # 地方結果: 当日を優先表示（未完成なら後段で最新キャッシュへ）
         av=_result_available_dates(meeting_dates, result_days, today)
         if today not in av:
             av=sorted(set(av)|{today}, reverse=True)
         selected=today
-        try:
-            if not _ON_RENDER or force_refresh or want_today:
-                threading.Thread(
-                    target=bootstrap_missing_results,
-                    kwargs={'source': source, 'prefer_dates': [today]},
-                    daemon=True,
-                ).start()
-        except Exception as e:
-            print(f'[bootstrap-results] skip: {e}')
+    # 結果タブで当日未完成へ戻された場合も、最新キャッシュへ再寄せ
+    if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
+        if not _nar_pred_ready(selected or '', source):
+            latest = _latest_ready_pred_date(source, on_or_before=today)
+            if latest and latest != selected:
+                print(
+                    f'[{source}-date] cache-first(post) {selected or "-"} -> {latest}',
+                    flush=True,
+                )
+                selected = latest
+                if latest not in av:
+                    av = sorted(set(av) | {latest}, reverse=True)
     # 開催場パラメータ:
     # - 「本日開催」ボタン（venue無し）→ 一覧からやり直す
     # - 当日矯正で URL が前日のとき → 前日会場を捨てる
@@ -3096,393 +2940,355 @@ def index():
 
     if selected in av:
         try:
-            # 当日で予想未準備なら前日ファイルを一切読まず取得中へ
-            # 地方は runners があれば開催場一覧だけ先に出す
-            if block_stale_today and not _nar_pred_ready(today, source):
-                pred_path, page_status = None, 'generating'
-                job_st, job_msg = resolve_fetch_status(
-                    today, source=source, force_refresh=force_refresh,
-                )
-                races=[]; show_venue_picker=(source=='nar')
-                venues=_nar_venues_from_runners(today) if source=='nar' else []
-                # 会場があってもジョブ失敗/タイムアウトを updating に偽装しない
-                if job_st == 'updating':
-                    data_status='updating'
-                    message=(
-                        f'本日開催 {today} / {label} / 開催場 {len(venues)}場（更新中）'
-                        if venues else (job_msg or 'データ更新中')
-                    )
-                elif job_st == 'timeout':
-                    data_status='timeout'
-                    message=job_msg or '更新タイムアウト'
-                elif job_st == 'error':
-                    data_status='error'
-                    message=job_msg or '更新失敗'
-                else:
-                    data_status='generating'
-                    message=(
-                        f'本日開催 {today} / {label} / 開催場 {len(venues)}場（予想生成中）'
-                        if venues else (job_msg or 'データ取得中')
-                    )
-                    if _ON_RENDER and not force_refresh and not want_today:
-                        _maybe_schedule_recovery(source, 'block_stale_today', actor='page')
-                races_for_board=[]; buy_candidates=[]; targets=[]
-                data_updated_at=''
-            else:
-                pred_path, page_status = ensure_for_page(selected, source=source)
-                data_status=page_status
+            # キャッシュ優先: 完成予想があれば即表示（ページからは取得しない）
+            pred_path, page_status = ensure_for_page(selected, source=source)
+            data_status=page_status
+            if pred_path is None:
+                # 初回のみ（キャッシュ無し）。ジョブは cron 側。
+                latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
+                if latest and latest != selected:
+                    selected = latest
+                    if latest not in av:
+                        av = sorted(set(av) | {latest}, reverse=True)
+                    pred_path, page_status = ensure_for_page(selected, source=source)
+                    data_status = page_status if pred_path else 'generating'
                 if pred_path is None:
                     data_status='generating' if page_status!='error' else 'error'
-                    message='データ取得中' if source=='nar' and page_status!='error' else 'データ取得中です。完了後に再読み込みしてください。'
-                    if page_status=='error':
-                        message='取得失敗' if source=='nar' else '通信エラー: 予想データの準備に失敗しました。再読み込みしてください。'
+                    message='データ取得中' if page_status!='error' else (
+                        '取得失敗' if source=='nar' else '通信エラー: 予想データの準備に失敗しました。再読み込みしてください。'
+                    )
+                    races=[]; venues=[]; show_venue_picker=(source=='nar')
+                    races_for_board=[]; buy_candidates=[]; targets=[]; data_updated_at=''
                 else:
-                    # 読み込んだファイル日付と selected が一致すること（取り違え防止）
-                    if selected and pred_path and f'predictions_{selected}.csv' not in str(pred_path):
-                        print(f'[nar-date] refuse stale file {pred_path} for selected={selected}', flush=True)
-                        pred_path=None
-                        data_status='error'
-                        message='取得失敗'
-                        races=[]; venues=[]; show_venue_picker=(source=='nar')
-                    else:
-                        # 地方・開催場未選択: 軽量列だけ読んで一覧を出す（メモリ削減）
-                        use_light=(
-                            source=='nar'
-                            and mode in ('predict','result')
-                            and not selected_venue
-                        )
-                        if use_light:
-                            light_rows=_read_predictions_for_venue_picker(pred_path, source)
-                            light_rows=apply_display_ranks(light_rows, by_venue=True)
-                            for row in light_rows:
-                                if not _race_date(row):
-                                    row['日付']=selected
-                            venues=_venue_meetings(light_rows)
-                            show_venue_picker=True
-                            races=[]
-                            races_for_board=[]
-                            buy_candidates=[]
-                            today_ai_board={'has_data':False,'回収率表示':'—','的中率表示':'—','買いレース':'0/0','tone':'roi-bad'}
-                            targets=[]
+                    data_status = 'ready'
+            if pred_path is not None:
+                # 読み込んだファイル日付と selected が一致すること（取り違え防止）
+                if selected and pred_path and f'predictions_{selected}.csv' not in str(pred_path):
+                    print(f'[nar-date] refuse stale file {pred_path} for selected={selected}', flush=True)
+                    pred_path=None
+                    data_status='error'
+                    message='取得失敗'
+                    races=[]; venues=[]; show_venue_picker=(source=='nar')
+                else:
+                    # 地方・開催場未選択: 軽量列だけ読んで一覧を出す（メモリ削減）
+                    use_light=(
+                        source=='nar'
+                        and mode in ('predict','result')
+                        and not selected_venue
+                    )
+                    if use_light:
+                        light_rows=_read_predictions_for_venue_picker(pred_path, source)
+                        light_rows=apply_display_ranks(light_rows, by_venue=True)
+                        for row in light_rows:
+                            if not _race_date(row):
+                                row['日付']=selected
+                        venues=_venue_meetings(light_rows)
+                        show_venue_picker=True
+                        races=[]
+                        races_for_board=[]
+                        buy_candidates=[]
+                        today_ai_board={'has_data':False,'回収率表示':'—','的中率表示':'—','買いレース':'0/0','tone':'roi-bad'}
+                        targets=[]
+                        data_updated_at=''
+                        try:
+                            if pred_path and Path(pred_path).exists():
+                                from datetime import datetime as _dt
+                                data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                        except Exception:
                             data_updated_at=''
-                            try:
-                                if pred_path and Path(pred_path).exists():
-                                    from datetime import datetime as _dt
-                                    data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                            except Exception:
-                                data_updated_at=''
-                            if data_status=='updating':
-                                message=f'{selected} / {label} / データ更新中（表示はキャッシュ）'
-                                if data_updated_at:
-                                    message+=f' · 最終更新 {data_updated_at}'
-                            elif data_status=='generating':
-                                message='データ取得中'
-                            elif venues:
-                                if selected==today:
-                                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                                else:
-                                    message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                        if data_status=='updating':
+                            message=f'{selected} / {label} / データ更新中（表示はキャッシュ）'
+                            if data_updated_at:
+                                message+=f' · 最終更新 {data_updated_at}'
+                        elif data_status=='generating':
+                            message='データ取得中'
+                        elif venues:
+                            if selected==today:
+                                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
                             else:
-                                if force_refresh or want_today or (DATA/'.nar_today_pipeline.lock').exists() or (DATA/'.nar_bootstrap.lock').exists():
-                                    data_status='generating'
-                                    message='データ取得中'
-                                elif selected==today:
-                                    message='本日は地方競馬の開催はありません'
-                                else:
-                                    message=f'{selected} の地方開催データがありません'
+                                message=f'{selected} / {label} / 開催場 {len(venues)}場'
                         else:
-                            # 地方の開催場詳細: 会場で先に絞ってから prep（Render OOM/タイムアウト防止）
-                            # 中央は従来どおりフル読み
-                            if source=='nar' and selected_venue and mode in ('predict','result'):
-                                venue_rows=_read_predictions_for_venue_detail(
-                                    pred_path, source, selected_venue,
-                                )
-                                if not venue_rows:
-                                    # 会場名不一致のフォールバック: 一覧だけ出して再選択を促す
-                                    light_rows=_read_predictions_for_venue_picker(pred_path, source)
-                                    light_rows=apply_display_ranks(light_rows, by_venue=True)
-                                    venues=_venue_meetings(light_rows)
-                                    venue_names={v['name'] for v in venues}
-                                    print(
-                                        f'[nar-venue] miss venue={selected_venue} '
-                                        f'known={sorted(venue_names)} → picker',
-                                        flush=True,
-                                    )
-                                    if selected_venue in venue_names:
-                                        # データ欠損 → 会場再取得
-                                        data_status='generating'
-                                        message='データ取得中'
-                                        show_venue_picker=False
-                                        races=[]; races_for_board=[]; buy_candidates=[]; targets=[]
-                                        try:
-                                            threading.Thread(
-                                                target=bootstrap_venue,
-                                                args=(selected, selected_venue, 'nar'),
-                                                daemon=True,
-                                            ).start()
-                                        except Exception as e:
-                                            print(f'[bootstrap-venue] skip: {e}')
-                                    else:
-                                        selected_venue=''
-                                        show_venue_picker=True
-                                        races=[]; races_for_board=[]
-                                        buy_candidates=[]; targets=[]
-                                        message=f'{selected} / {label} / 開催場 {len(venues)}場'
-                                    today_ai_board={'has_data':False,'回収率表示':'—','的中率表示':'—','買いレース':'0/0','tone':'roi-bad'}
-                                    data_updated_at=''
-                                    try:
-                                        if pred_path and Path(pred_path).exists():
-                                            from datetime import datetime as _dt
-                                            data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                                    except Exception:
-                                        pass
-                                else:
-                                    races=prep(venue_rows, ban_map=_main_ban_map(selected))
-                                    races=_filter_records_by_source(races, source)
-                                    races=apply_display_ranks(races, by_venue=True)
-                                    for row in races:
-                                        if not _race_date(row):
-                                            row['日付']=selected
-                                    if mode=='result':
-                                        races,has_results=attach_results(races, selected_date=selected)
-                                        ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
-                                        tickets_by_race={}
-                                        for t in (verification or {}).get('recent_rows') or []:
-                                            tid=_norm_race_id(t.get('race_id',''))
-                                            if tid:
-                                                tickets_by_race.setdefault(tid, []).append(t)
-                                        for row in races:
-                                            rid=_norm_race_id(row.get('race_id',''))
-                                            row['purchase_ranks']=list(ranks_map.get(rid, []))
-                                            row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
-                                    venues=[{
-                                        'name': selected_venue,
-                                        'count': len(races),
-                                        'race_label': f'1-{len(races)}R' if races else '—',
-                                        's': sum(1 for r in races if str(r.get('勝負ランク'))=='S'),
-                                        'a': sum(1 for r in races if str(r.get('勝負ランク'))=='A'),
-                                    }]
-                                    show_venue_picker=False
-                                    races_for_board=list(races)
-                                    buy_candidates=build_buy_candidates(races_for_board)
-                                    board_verify=verification if mode in ('result','analysis') else dict(_EMPTY_VERIFY)
-                                    today_ai_board=build_today_ai_board(races_for_board, board_verify)
-                                    data_updated_at=''
-                                    try:
-                                        if pred_path and Path(pred_path).exists():
-                                            from datetime import datetime as _dt
-                                            data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                                    except Exception:
-                                        data_updated_at=''
-                                    targets=buy_candidates[:8]
-                                    if data_status=='updating':
-                                        message=f'{selected} / {selected_venue} / データ更新中'
-                                    elif mode=='result':
-                                        message=f'{selected} / {selected_venue} / 結果検証'
-                                    else:
-                                        message=f'{selected} / {selected_venue} / 予想分析'
-                                    print(
-                                        f'[nar-venue] detail ok venue={selected_venue} '
-                                        f'races={len(races)} 保存件数={len(races)}',
-                                        flush=True,
-                                    )
+                            if selected==today:
+                                message='本日は地方競馬の開催はありません'
                             else:
-                                # 全列読みは禁止（Render OOM）。会場詳細と同じ列制限で読む。
-                                venue_rows = _read_predictions_for_venue_detail(
-                                    pred_path, source, selected_venue
-                                ) if selected_venue else _read_predictions_for_venue_picker(pred_path, source)
-                                if selected_venue and venue_rows:
-                                    races = prep(venue_rows, ban_map=_main_ban_map(selected))
-                                    races = _filter_records_by_source(races, source)
-                                    races = apply_display_ranks(races, by_venue=(source == 'nar'))
+                                message=f'{selected} の地方開催データがありません'
+                    else:
+                        # 地方の開催場詳細: 会場で先に絞ってから prep（Render OOM/タイムアウト防止）
+                        # 中央は従来どおりフル読み
+                        if source=='nar' and selected_venue and mode in ('predict','result'):
+                            venue_rows=_read_predictions_for_venue_detail(
+                                pred_path, source, selected_venue,
+                            )
+                            if not venue_rows:
+                                # 会場名不一致のフォールバック: 一覧だけ出して再選択を促す
+                                light_rows=_read_predictions_for_venue_picker(pred_path, source)
+                                light_rows=apply_display_ranks(light_rows, by_venue=True)
+                                venues=_venue_meetings(light_rows)
+                                venue_names={v['name'] for v in venues}
+                                print(
+                                    f'[nar-venue] miss venue={selected_venue} '
+                                    f'known={sorted(venue_names)} → picker',
+                                    flush=True,
+                                )
+                                if selected_venue in venue_names:
+                                    # キャッシュはあるが会場詳細が空 → 一覧へ戻す（ページから再取得しない）
+                                    selected_venue=''
+                                    show_venue_picker=True
+                                    races=[]; races_for_board=[]; buy_candidates=[]; targets=[]
+                                    data_status='ready'
+                                    message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                                else:
+                                    selected_venue=''
+                                    show_venue_picker=True
+                                    races=[]; races_for_board=[]
+                                    buy_candidates=[]; targets=[]
+                                    data_status='ready'
+                                    message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                                today_ai_board={'has_data':False,'回収率表示':'—','的中率表示':'—','買いレース':'0/0','tone':'roi-bad'}
+                                data_updated_at=''
+                                try:
+                                    if pred_path and Path(pred_path).exists():
+                                        from datetime import datetime as _dt
+                                        data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                                except Exception:
+                                    pass
+                            else:
+                                races=prep(venue_rows, ban_map=_main_ban_map(selected))
+                                races=_filter_records_by_source(races, source)
+                                races=apply_display_ranks(races, by_venue=True)
+                                for row in races:
+                                    if not _race_date(row):
+                                        row['日付']=selected
+                                if mode=='result':
+                                    races,has_results=attach_results(races, selected_date=selected)
+                                    ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
+                                    tickets_by_race={}
+                                    for t in (verification or {}).get('recent_rows') or []:
+                                        tid=_norm_race_id(t.get('race_id',''))
+                                        if tid:
+                                            tickets_by_race.setdefault(tid, []).append(t)
                                     for row in races:
-                                        if not _race_date(row):
-                                            row['日付'] = selected
-                                    venues = _venue_meetings(races)
-                                    show_venue_picker = False
-                                    races_for_board = list(races)
-                                    buy_candidates = build_buy_candidates(races_for_board)
-                                    board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
-                                    today_ai_board = build_today_ai_board(races_for_board, board_verify)
+                                        rid=_norm_race_id(row.get('race_id',''))
+                                        row['purchase_ranks']=list(ranks_map.get(rid, []))
+                                        row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
+                                venues=[{
+                                    'name': selected_venue,
+                                    'count': len(races),
+                                    'race_label': f'1-{len(races)}R' if races else '—',
+                                    's': sum(1 for r in races if str(r.get('勝負ランク'))=='S'),
+                                    'a': sum(1 for r in races if str(r.get('勝負ランク'))=='A'),
+                                }]
+                                show_venue_picker=False
+                                races_for_board=list(races)
+                                buy_candidates=build_buy_candidates(races_for_board)
+                                board_verify=verification if mode in ('result','analysis') else dict(_EMPTY_VERIFY)
+                                today_ai_board=build_today_ai_board(races_for_board, board_verify)
+                                data_updated_at=''
+                                try:
+                                    if pred_path and Path(pred_path).exists():
+                                        from datetime import datetime as _dt
+                                        data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                                except Exception:
+                                    data_updated_at=''
+                                targets=buy_candidates[:8]
+                                if data_status=='updating':
+                                    message=f'{selected} / {selected_venue} / データ更新中'
+                                elif mode=='result':
+                                    message=f'{selected} / {selected_venue} / 結果検証'
+                                else:
+                                    message=f'{selected} / {selected_venue} / 予想分析'
+                                print(
+                                    f'[nar-venue] detail ok venue={selected_venue} '
+                                    f'races={len(races)} 保存件数={len(races)}',
+                                    flush=True,
+                                )
+                        else:
+                            # 全列読みは禁止（Render OOM）。会場詳細と同じ列制限で読む。
+                            venue_rows = _read_predictions_for_venue_detail(
+                                pred_path, source, selected_venue
+                            ) if selected_venue else _read_predictions_for_venue_picker(pred_path, source)
+                            if selected_venue and venue_rows:
+                                races = prep(venue_rows, ban_map=_main_ban_map(selected))
+                                races = _filter_records_by_source(races, source)
+                                races = apply_display_ranks(races, by_venue=(source == 'nar'))
+                                for row in races:
+                                    if not _race_date(row):
+                                        row['日付'] = selected
+                                venues = _venue_meetings(races)
+                                show_venue_picker = False
+                                races_for_board = list(races)
+                                buy_candidates = build_buy_candidates(races_for_board)
+                                board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
+                                today_ai_board = build_today_ai_board(races_for_board, board_verify)
+                                data_updated_at = ''
+                                try:
+                                    if pred_path and Path(pred_path).exists():
+                                        from datetime import datetime as _dt
+                                        data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                                except Exception:
                                     data_updated_at = ''
-                                    try:
-                                        if pred_path and Path(pred_path).exists():
-                                            from datetime import datetime as _dt
-                                            data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                                    except Exception:
-                                        data_updated_at = ''
-                                    targets = buy_candidates[:8]
-                                    if data_status == 'updating':
-                                        message = f'{selected} / {selected_venue} / データ更新中'
-                                    elif mode == 'result':
+                                targets = buy_candidates[:8]
+                                if data_status == 'updating':
+                                    message = f'{selected} / {selected_venue} / データ更新中'
+                                elif mode == 'result':
+                                    message = f'{selected} / {selected_venue} / 結果検証'
+                                else:
+                                    message = f'{selected} / {selected_venue} / 予想分析'
+                            else:
+                                df = _fillna_pred_df(pd.read_csv(
+                                    pred_path, encoding='utf-8-sig',
+                                    usecols=lambda c: c in set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付'},
+                                ))
+                                if source in ('jra', 'nar') and 'source' in df.columns:
+                                    df = df[df['source'].astype(str).str.lower() == source].copy()
+                                if mode == 'predict':
+                                    drop_cols = [c for c in (
+                                        'ワイド詳細', '馬連詳細', '馬単詳細', '三連複詳細', '三連単詳細', '本命詳細'
+                                    ) if c in df.columns]
+                                    if drop_cols:
+                                        df = df.drop(columns=drop_cols, errors='ignore')
+                                races = prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
+                                del df
+                                races = _filter_records_by_source(races, source)
+                                races = apply_display_ranks(races, by_venue=(source == 'nar'))
+                                for row in races:
+                                    if not _race_date(row):
+                                        row['日付'] = selected
+                                if mode == 'result':
+                                    races, has_results = attach_results(races, selected_date=selected)
+                                    ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
+                                    tickets_by_race = {}
+                                    for t in (verification or {}).get('recent_rows') or []:
+                                        tid = _norm_race_id(t.get('race_id', ''))
+                                        if tid:
+                                            tickets_by_race.setdefault(tid, []).append(t)
+                                    for row in races:
+                                        rid = _norm_race_id(row.get('race_id', ''))
+                                        row['purchase_ranks'] = list(ranks_map.get(rid, []))
+                                        row['購入馬券一覧'] = list(tickets_by_race.get(rid, []))
+                                venues = _venue_meetings(races)
+                                venue_names = {v['name'] for v in venues}
+                                races_for_board = list(races)
+                                if source == 'nar' and mode in ('predict', 'result'):
+                                    show_venue_picker = True
+                                    if selected_venue and selected_venue not in venue_names:
+                                        selected_venue = ''
+                                    if selected_venue:
+                                        from netkeiba_client import normalize_venue_name as _nv
+                                        races = [
+                                            r for r in races
+                                            if _nv(str(r.get('開催地') or '').strip()) == selected_venue
+                                        ]
+                                        show_venue_picker = False
+                                        races_for_board = list(races)
+                                        if not races:
+                                            # キャッシュ一覧へ戻す（ページから会場再取得しない）
+                                            selected_venue = ''
+                                            show_venue_picker = True
+                                            data_status = 'ready'
+                                            message = f'{selected} / {label} / 開催場 {len(venues)}場'
+                                    else:
+                                        races = []
+                                else:
+                                    selected_venue = ''
+                                buy_candidates = build_buy_candidates(races_for_board)
+                                board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
+                                today_ai_board = build_today_ai_board(races_for_board, board_verify)
+                                data_updated_at = ''
+                                try:
+                                    if pred_path and Path(pred_path).exists():
+                                        from datetime import datetime as _dt
+                                        data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                                except Exception:
+                                    data_updated_at = ''
+                                targets = buy_candidates[:8]
+                                if data_status == 'updating':
+                                    message = f'{selected} / {label} / データ更新中（表示はキャッシュ）'
+                                    if data_updated_at:
+                                        message += f' · 最終更新 {data_updated_at}'
+                                elif data_status == 'generating':
+                                    message = 'データ取得中'
+                                elif source == 'nar' and show_venue_picker:
+                                    if venues:
+                                        if selected == today:
+                                            message = f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                                        else:
+                                            message = f'{selected} / {label} / 開催場 {len(venues)}場'
+                                    else:
+                                        if data_status == 'error':
+                                            message = '取得失敗'
+                                        elif selected == today:
+                                            message = '本日は地方競馬の開催はありません'
+                                        else:
+                                            message = f'{selected} の地方開催データがありません'
+                                elif not races:
+                                    if source == 'nar' and selected_venue and data_status == 'generating':
+                                        message = 'データ取得中'
+                                    else:
+                                        message = f'{selected} / {label} のレースがありません'
+                                elif mode == 'result':
+                                    if selected_venue:
                                         message = f'{selected} / {selected_venue} / 結果検証'
                                     else:
-                                        message = f'{selected} / {selected_venue} / 予想分析'
+                                        message = f'{selected} / {label} / 結果検証モード'
+                                elif mode == 'analysis':
+                                    message = f'{selected} / {label} / AI期待値分析'
                                 else:
-                                    df = _fillna_pred_df(pd.read_csv(
-                                        pred_path, encoding='utf-8-sig',
-                                        usecols=lambda c: c in set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付'},
-                                    ))
-                                    if source in ('jra', 'nar') and 'source' in df.columns:
-                                        df = df[df['source'].astype(str).str.lower() == source].copy()
-                                    if mode == 'predict':
-                                        drop_cols = [c for c in (
-                                            'ワイド詳細', '馬連詳細', '馬単詳細', '三連複詳細', '三連単詳細', '本命詳細'
-                                        ) if c in df.columns]
-                                        if drop_cols:
-                                            df = df.drop(columns=drop_cols, errors='ignore')
-                                    races = prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
-                                    del df
-                                    races = _filter_records_by_source(races, source)
-                                    races = apply_display_ranks(races, by_venue=(source == 'nar'))
-                                    for row in races:
-                                        if not _race_date(row):
-                                            row['日付'] = selected
-                                    if mode == 'result':
-                                        races, has_results = attach_results(races, selected_date=selected)
-                                        ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
-                                        tickets_by_race = {}
-                                        for t in (verification or {}).get('recent_rows') or []:
-                                            tid = _norm_race_id(t.get('race_id', ''))
-                                            if tid:
-                                                tickets_by_race.setdefault(tid, []).append(t)
-                                        for row in races:
-                                            rid = _norm_race_id(row.get('race_id', ''))
-                                            row['purchase_ranks'] = list(ranks_map.get(rid, []))
-                                            row['購入馬券一覧'] = list(tickets_by_race.get(rid, []))
-                                    venues = _venue_meetings(races)
-                                    venue_names = {v['name'] for v in venues}
-                                    races_for_board = list(races)
-                                    if source == 'nar' and mode in ('predict', 'result'):
-                                        show_venue_picker = True
-                                        if selected_venue and selected_venue not in venue_names:
-                                            selected_venue = ''
-                                        if selected_venue:
-                                            from netkeiba_client import normalize_venue_name as _nv
-                                            races = [
-                                                r for r in races
-                                                if _nv(str(r.get('開催地') or '').strip()) == selected_venue
-                                            ]
-                                            show_venue_picker = False
-                                            races_for_board = list(races)
-                                            if not races:
-                                                data_status = 'generating'
-                                                message = 'データ取得中'
-                                                try:
-                                                    if not (_heavy_busy() or _predict_busy()):
-                                                        threading.Thread(
-                                                            target=bootstrap_venue,
-                                                            args=(selected, selected_venue, 'nar'),
-                                                            daemon=True,
-                                                        ).start()
-                                                except Exception as e:
-                                                    print(f'[bootstrap-venue] skip: {e}')
-                                        else:
-                                            races = []
+                                    if selected_venue:
+                                        message = f'{selected} / {selected_venue} / 予想分析'
                                     else:
-                                        selected_venue = ''
-                                    buy_candidates = build_buy_candidates(races_for_board)
-                                    board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
-                                    today_ai_board = build_today_ai_board(races_for_board, board_verify)
-                                    data_updated_at = ''
-                                    try:
-                                        if pred_path and Path(pred_path).exists():
-                                            from datetime import datetime as _dt
-                                            data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                                    except Exception:
-                                        data_updated_at = ''
-                                    targets = buy_candidates[:8]
-                                    if data_status == 'updating':
-                                        message = f'{selected} / {label} / データ更新中（表示はキャッシュ）'
-                                        if data_updated_at:
-                                            message += f' · 最終更新 {data_updated_at}'
-                                    elif data_status == 'generating':
-                                        message = 'データ取得中'
-                                    elif source == 'nar' and show_venue_picker:
-                                        if venues:
-                                            if selected == today:
-                                                message = f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                                            else:
-                                                message = f'{selected} / {label} / 開催場 {len(venues)}場'
-                                        else:
-                                            if data_status == 'error':
-                                                message = '取得失敗'
-                                            elif selected == today:
-                                                message = '本日は地方競馬の開催はありません'
-                                            else:
-                                                message = f'{selected} の地方開催データがありません'
-                                    elif not races:
-                                        if source == 'nar' and selected_venue and data_status == 'generating':
-                                            message = 'データ取得中'
-                                        else:
-                                            message = f'{selected} / {label} のレースがありません'
-                                    elif mode == 'result':
-                                        if selected_venue:
-                                            message = f'{selected} / {selected_venue} / 結果検証'
-                                        else:
-                                            message = f'{selected} / {label} / 結果検証モード'
-                                    elif mode == 'analysis':
                                         message = f'{selected} / {label} / AI期待値分析'
-                                    else:
-                                        if selected_venue:
-                                            message = f'{selected} / {selected_venue} / 予想分析'
-                                        else:
-                                            message = f'{selected} / {label} / AI期待値分析'
         except FileNotFoundError as e:
-            data_status='generating'
-            message='データ取得中' if source=='nar' else (str(e) or 'データ取得中です。完了後に再読み込みしてください。')
+            latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
+            if latest:
+                selected = latest
+                data_status = 'ready'
+                message = f'{selected} / {label}'
+            else:
+                data_status='generating'
+                message='データ取得中' if source=='nar' else (str(e) or 'データ取得中です。完了後に再読み込みしてください。')
         except Exception as e:
             data_status='error'
             message=f'通信エラー: {e}'
     elif selected:
-        if source in ('nar', 'jra') and selected==today:
-            if _nar_pred_ready(today, source):
-                # 日付一覧未更新でも完成予想があれば読み込み側へ寄せる
+        if source in ('nar', 'jra'):
+            latest = _latest_ready_pred_date(source, on_or_before=today)
+            if _nar_pred_ready(selected, source):
                 data_status='ready'
                 message=f'{selected} / {label}'
-                if today not in av:
-                    av=sorted(set(av)|{today}, reverse=True)
+                if selected not in av:
+                    av=sorted(set(av)|{selected}, reverse=True)
+            elif latest:
+                selected = latest
+                data_status='ready'
+                message=f'{selected} / {label}'
+                if latest not in av:
+                    av=sorted(set(av)|{latest}, reverse=True)
+            elif selected == today and past_predict_deadline() and not source_is_race_day(source, today):
+                data_status='ready'
+                message='本日は開催なし' if source=='jra' else '本日は地方競馬の開催はありません'
             else:
                 data_status='generating'
                 message='データ取得中'
                 if today not in av:
                     av=sorted(set(av)|{today}, reverse=True)
-                try:
-                    if not _job_is_active(source) and not _job_in_failure_cooldown(source):
-                        if _ON_RENDER and not force_refresh and not want_today:
-                            _maybe_schedule_recovery(source, 'index_selected_generating', actor='page')
-                        elif not _heavy_busy() and not _predict_busy():
-                            threading.Thread(
-                                target=run_today_pipeline, args=(source,),
-                                kwargs={
-                                    'force': True,
-                                    'force_full': True,
-                                },
-                                daemon=True,
-                            ).start()
-                except Exception:
-                    pass
         else:
             data_status='error'
             message=f'{selected} は保存データにありません'
     elif source in ('nar', 'jra'):
+        latest = _latest_ready_pred_date(source, on_or_before=today)
         if _nar_pred_ready(today, source):
             data_status='ready'
             message=f'{today} / {label}'
+        elif latest:
+            selected = latest
+            data_status='ready'
+            message=f'{selected} / {label}'
+            if latest not in av:
+                av=sorted(set(av)|{latest}, reverse=True)
         else:
             data_status='generating'
             message='データ取得中'
-            try:
-                if not _job_is_active(source) and not _job_in_failure_cooldown(source):
-                    if _ON_RENDER and not force_refresh and not want_today:
-                        _maybe_schedule_recovery(source, 'index_no_date_generating', actor='page')
-                    elif not _heavy_busy() and not _predict_busy():
-                        threading.Thread(
-                            target=run_today_pipeline, args=(source,),
-                            kwargs={'force': True, 'force_full': True}, daemon=True,
-                        ).start()
-            except Exception:
-                pass
     day_stats=None
     if mode=='result' and races and not show_venue_picker:
         day_stats=day_performance(races, verification, safe_pct=_safe_pct)
@@ -3512,10 +3318,33 @@ def index():
             else '本日はJRAの開催はありません'
         )
 
-        # 完成済み封印: 常に完成予想を表示（裏オッズ更新でも画面を消さない）
-        if sealed_ready:
+        # キャッシュ優先: 完成データ/表示ありなら絶対に generating にしない
+        if selected_ok or has_content:
+            if job_status == 'updating' or (bg_running and force_refresh):
+                data_status='updating'
+                if selected_venue and races:
+                    message=f'{selected} / {selected_venue} / 予想分析（更新中）'
+                elif venues and show_venue_picker:
+                    if selected == today:
+                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                    else:
+                        message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                elif not message or message in ('データ取得中', '取得中', '取得失敗', 'オッズ更新中'):
+                    message=job_msg or 'データ更新中（表示は維持）'
+            else:
+                data_status='ready'
+                if not message or message in ('データ取得中', '取得中', '取得失敗', 'オッズ更新中', 'データ更新中（表示は維持）'):
+                    if selected_venue and races:
+                        message=f'{selected} / {selected_venue} / 予想分析'
+                    elif venues and show_venue_picker:
+                        if selected == today:
+                            message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                        else:
+                            message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                    else:
+                        message=job_msg or f'{selected} / {label} / AI期待値分析'
             # 完成予想があるのに会場が空 → 表示パス取りこぼしの再読込
-            if (not has_content) and source == 'nar' and selected and not selected_venue:
+            if (not has_content) and selected_ok and source == 'nar' and selected and not selected_venue:
                 try:
                     pred = ARCH / f'predictions_{selected}.csv'
                     if pred.exists():
@@ -3524,136 +3353,47 @@ def index():
                         venues = _venue_meetings(light_rows)
                         show_venue_picker = True
                         has_content = bool(venues)
-                        print(
-                            f'[nar-venue] sealed reload venues={len(venues)} date={selected}',
-                            flush=True,
-                        )
+                        if venues:
+                            message = (
+                                f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                                if selected == today
+                                else f'{selected} / {label} / 開催場 {len(venues)}場'
+                            )
                 except Exception as e:
-                    print(f'[nar-venue] sealed reload fail: {e}', flush=True)
-            if job_status == 'updating' or (has_content and bg_running and force_refresh):
-                data_status='updating'
-                if selected_venue and races:
-                    message=f'{selected} / {selected_venue} / 予想分析（オッズ更新中）'
-                elif venues and show_venue_picker:
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                else:
-                    message=job_msg or f'{selected} / {label} / AI期待値分析'
-            else:
-                data_status='ready'
-                if not message or message in ('データ取得中', '取得中', '取得失敗', 'オッズ更新中'):
-                    if selected_venue and races:
-                        message=f'{selected} / {selected_venue} / 予想分析'
-                    elif venues and show_venue_picker:
-                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                    else:
-                        message=job_msg or f'{selected} / {label} / AI期待値分析'
-        # 裏更新中（完成データあり）だけ updating。未完成+会場のみは generating のまま
-        elif has_content and job_status == 'updating':
-            data_status='updating'
-            if selected_venue and races:
-                message=f'{selected} / {selected_venue} / 予想分析（更新中）'
-            elif venues and show_venue_picker:
-                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（更新中）'
-            else:
-                message=job_msg or 'データ更新中（表示は維持）'
-        elif has_content and job_status == 'generating':
-            data_status='generating'
-            if venues and show_venue_picker:
-                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
-            else:
-                message=job_msg or 'データ取得中'
-        elif (force_refresh or want_today or force_cal_today) and not selected_ok and not has_content:
-            # 初回未完成（朝生成失敗の復旧含む）のみ generating
-            data_status='generating'
-            message=job_msg or 'データ取得中'
-            if source=='nar':
-                show_venue_picker=True
-                if not venues:
-                    venues=_nar_venues_from_runners(selected or today)
-                if venues:
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
-        elif job_status=='generating' and not has_content:
-            data_status='generating'
-            message=job_msg or 'データ取得中'
-            if source=='nar':
-                show_venue_picker=True
-                if selected==today and not venues:
-                    venues=_nar_venues_from_runners(today)
-                if venues:
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
+                    print(f'[nar-venue] cache reload fail: {e}', flush=True)
         elif job_status=='timeout':
-            if has_content or selected_ok:
-                data_status='timeout'
-                message=job_msg or '更新タイムアウト（表示データは維持）'
-            else:
-                data_status='timeout'
-                message=job_msg or '更新タイムアウト'
-                if source=='nar':
-                    show_venue_picker=True
-                    if selected==today and not venues:
-                        venues=_nar_venues_from_runners(today)
+            data_status='timeout'
+            message=job_msg or '更新タイムアウト'
         elif job_status=='error':
-            if has_content:
-                # 会場一覧だけあっても失敗を隠さない（再発: 更新中のまま）
-                data_status='error'
-                if venues and show_venue_picker and not races:
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場 · 更新失敗'
-                elif selected_venue and races:
-                    message=f'{selected} / {selected_venue} / 予想分析 · 更新失敗（表示は維持）'
-                else:
-                    message=job_msg or '更新失敗（表示は前回データを維持）'
-            else:
-                data_status='error'
-                message=job_msg or '更新失敗'
-                if source=='nar':
-                    show_venue_picker=True
-                    if selected==today and not venues:
-                        venues=_nar_venues_from_runners(today)
-        elif job_status in ('ready', 'updating'):
-            if job_status == 'updating' and has_content:
-                data_status='updating'
-                if not message or message in ('データ取得中', '取得中'):
-                    message=job_msg or 'データ更新中（表示は維持）'
-            elif job_status == 'ready' and (selected_ok or has_content) and (
-                '更新成功' in (job_msg or '') or str((_read_job_status(source) or {}).get('outcome') or '') == 'success'
-            ):
-                data_status='success'
-                if not message or message in ('データ取得中', '取得中', 'データ更新中（表示は維持）'):
-                    message=job_msg or '更新成功'
-            elif data_status in ('generating', 'updating') and has_content:
+            data_status='error'
+            message=job_msg or '更新失敗'
+        elif job_status=='generating':
+            # 初回（キャッシュ無し）のみ
+            data_status='generating'
+            message=job_msg or 'データ取得中'
+        elif selected == today and not selected_ok:
+            if past_predict_deadline() and not source_is_race_day(source, today):
                 data_status='ready'
-                if not message or message in ('データ取得中', '取得中', 'データ更新中（表示は維持）'):
-                    message=job_msg or (
-                        f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                        if venues and show_venue_picker else '取得完了'
-                    )
-            elif data_status=='generating' and not has_content:
-                if selected==today and source=='nar':
-                    venues=_nar_venues_from_runners(today)
-                    show_venue_picker=True
-                if venues or races or selected_ok:
-                    data_status='ready'
-                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場' if venues else '取得完了'
-                else:
-                    data_status='ready'
-                    message=no_meet_label if selected==today else message
-            if data_updated_at and selected and not (ARCH/f'predictions_{selected}.csv').exists():
-                data_updated_at=''
+                message=no_meet_label
+            else:
+                data_status='generating'
+                message=job_msg or 'データ取得中'
+        else:
+            if data_status == 'generating' and not selected_ok and not has_content:
+                pass
+            elif not message:
+                message = f'{selected} / {label}' if selected else message
 
-        # 最終ガード: 封印済み完成予想は generating に落とさない
-        # ※ 会場一覧だけの未完成を updating に昇格しない（失敗/初回取得バナーが消える不具合の原因）
+        # 最終ガード: キャッシュ表示中は generating に落とさない
         has_content=bool(races) or (bool(venues) and show_venue_picker)
-        if sealed_ready and data_status=='generating':
-            data_status='ready'
-        elif sealed_ready and data_status in ('error', 'timeout') and selected_ok:
-            # 完成データがあるのに失敗表示だけは維持しつつ ready 優先はしない
-            # （オッズ更新失敗はバナーで示す）
-            pass
-        elif has_content and data_status=='generating' and selected_ok:
-            # 予想ありの裏更新中のみ updating
-            data_status='updating'
+        selected_ok=_nar_pred_ready(selected, source) if selected else False
+        if (selected_ok or has_content) and data_status == 'generating':
+            data_status = 'updating' if job_status == 'updating' else 'ready'
             if not message or message == 'データ取得中':
-                message='データ更新中（表示は維持）'
+                message = 'データ更新中（表示は維持）' if data_status == 'updating' else (
+                    f'{selected} / {label} / 開催場 {len(venues)}場' if venues and show_venue_picker
+                    else f'{selected} / {label}'
+                )
 
         try:
             pf=ARCH/f'predictions_{selected}.csv' if selected else None
