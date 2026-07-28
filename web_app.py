@@ -649,7 +649,8 @@ def _nar_day_counts(date_str: str, source: str = 'nar') -> dict:
                 usecols=lambda c: c in ('race_id','日付','source'),
             )
             if not rdf.empty and '日付' in rdf.columns:
-                day=rdf[rdf['日付'].astype(str)==str(date_str)]
+                # 会場一覧と同じく先頭10桁で突合（時刻付き日付の取りこぼし防止）
+                day=rdf[rdf['日付'].astype(str).str[:10]==str(date_str)[:10]]
                 if source in ('jra','nar') and 'source' in day.columns:
                     day=day[day['source'].astype(str).str.lower()==source]
                 out['runners_rows']=int(len(day))
@@ -891,9 +892,8 @@ def resolve_fetch_status(
         stage = str(st.get('stage') or '')
         if stage in ('timeout', 'timeout_ready') or 'タイムアウト' in msg:
             return 'timeout', msg or '更新タイムアウト'
-        # 締切後未完成 = 初回生成失敗として generating（復旧導線）
-        if after_deadline and selected_date == today and not today_ready:
-            return 'generating', 'データ取得中'
+        # 失敗は必ず error（会場一覧があっても updating/generating に偽装しない）
+        # 復旧ジョブは別途 state=running で起動し、そのときだけ generating になる
         return 'error', '更新失敗' + (f'（{err}）' if err and len(err) < 80 else '')
 
     if state == 'success':
@@ -2869,13 +2869,30 @@ def index():
             # 地方は runners があれば開催場一覧だけ先に出す
             if block_stale_today and not _nar_pred_ready(today, source):
                 pred_path, page_status = None, 'generating'
-                data_status='generating'
-                message='データ取得中'
+                job_st, job_msg = resolve_fetch_status(
+                    today, source=source, force_refresh=force_refresh,
+                )
                 races=[]; show_venue_picker=(source=='nar')
                 venues=_nar_venues_from_runners(today) if source=='nar' else []
-                if venues:
+                # 会場があってもジョブ失敗/タイムアウトを updating に偽装しない
+                if job_st == 'updating':
                     data_status='updating'
-                    message=f'本日開催 {today} / {label} / 開催場 {len(venues)}場（予想生成中）'
+                    message=(
+                        f'本日開催 {today} / {label} / 開催場 {len(venues)}場（更新中）'
+                        if venues else (job_msg or 'データ更新中')
+                    )
+                elif job_st == 'timeout':
+                    data_status='timeout'
+                    message=job_msg or '更新タイムアウト'
+                elif job_st == 'error':
+                    data_status='error'
+                    message=job_msg or '更新失敗'
+                else:
+                    data_status='generating'
+                    message=(
+                        f'本日開催 {today} / {label} / 開催場 {len(venues)}場（予想生成中）'
+                        if venues else (job_msg or 'データ取得中')
+                    )
                 races_for_board=[]; buy_candidates=[]; targets=[]
                 data_updated_at=''
             else:
@@ -3161,7 +3178,10 @@ def index():
                 if today not in av:
                     av=sorted(set(av)|{today}, reverse=True)
                 try:
-                    if not _job_is_active(source):
+                    if (
+                        not _job_is_active(source)
+                        and not _job_in_failure_cooldown(source)
+                    ):
                         threading.Thread(
                             target=run_today_pipeline, args=(source,),
                             kwargs={
@@ -3183,7 +3203,10 @@ def index():
             data_status='generating'
             message='データ取得中'
             try:
-                if not _job_is_active(source):
+                if (
+                    not _job_is_active(source)
+                    and not _job_in_failure_cooldown(source)
+                ):
                     threading.Thread(
                         target=run_today_pipeline, args=(source,),
                         kwargs={'force': True, 'force_full': True}, daemon=True,
@@ -3238,8 +3261,8 @@ def index():
                         message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
                     else:
                         message=job_msg or f'{selected} / {label} / AI期待値分析'
-        # 既存表示があるときは絶対にクリアしない（チラつき防止）
-        elif has_content and bg_running:
+        # 裏更新中（完成データあり）だけ updating。未完成+会場のみは generating のまま
+        elif has_content and job_status == 'updating':
             data_status='updating'
             if selected_venue and races:
                 message=f'{selected} / {selected_venue} / 予想分析（更新中）'
@@ -3247,6 +3270,12 @@ def index():
                 message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（更新中）'
             else:
                 message=job_msg or 'データ更新中（表示は維持）'
+        elif has_content and job_status == 'generating':
+            data_status='generating'
+            if venues and show_venue_picker:
+                message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
+            else:
+                message=job_msg or 'データ取得中'
         elif (force_refresh or want_today or force_cal_today) and not selected_ok and not has_content:
             # 初回未完成（朝生成失敗の復旧含む）のみ generating
             data_status='generating'
@@ -3256,7 +3285,6 @@ def index():
                 if not venues:
                     venues=_nar_venues_from_runners(selected or today)
                 if venues:
-                    data_status='updating'
                     message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
         elif job_status=='generating' and not has_content:
             data_status='generating'
@@ -3266,7 +3294,6 @@ def index():
                 if selected==today and not venues:
                     venues=_nar_venues_from_runners(today)
                 if venues:
-                    data_status='updating'
                     message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（予想生成中）'
         elif job_status=='timeout':
             if has_content or selected_ok:
@@ -3281,14 +3308,14 @@ def index():
                         venues=_nar_venues_from_runners(today)
         elif job_status=='error':
             if has_content:
-                data_status='ready'
-                if not message or message in ('データ取得中', '取得中', '取得失敗', '更新失敗'):
-                    if selected_venue and races:
-                        message=f'{selected} / {selected_venue} / 予想分析'
-                    elif venues:
-                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                    else:
-                        message='更新失敗（表示は前回データを維持）'
+                # 会場一覧だけあっても失敗を隠さない（再発: 更新中のまま）
+                data_status='error'
+                if venues and show_venue_picker and not races:
+                    message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場 · 更新失敗'
+                elif selected_venue and races:
+                    message=f'{selected} / {selected_venue} / 予想分析 · 更新失敗（表示は維持）'
+                else:
+                    message=job_msg or '更新失敗（表示は前回データを維持）'
             else:
                 data_status='error'
                 message=job_msg or '更新失敗'
@@ -3296,9 +3323,6 @@ def index():
                     show_venue_picker=True
                     if selected==today and not venues:
                         venues=_nar_venues_from_runners(today)
-                    if venues:
-                        data_status='updating'
-                        message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場（再取得待ち）'
         elif job_status in ('ready', 'updating'):
             if job_status == 'updating' and has_content:
                 data_status='updating'
@@ -3330,12 +3354,17 @@ def index():
             if data_updated_at and selected and not (ARCH/f'predictions_{selected}.csv').exists():
                 data_updated_at=''
 
-        # 最終ガード: 中身があるのに generating なら updating へ（画面を消さない）
-        # 封印済み完成予想は generating に落とさない
+        # 最終ガード: 封印済み完成予想は generating に落とさない
+        # ※ 会場一覧だけの未完成を updating に昇格しない（失敗/初回取得バナーが消える不具合の原因）
         has_content=bool(races) or (bool(venues) and show_venue_picker)
         if sealed_ready and data_status=='generating':
             data_status='ready'
-        elif has_content and data_status=='generating':
+        elif sealed_ready and data_status in ('error', 'timeout') and selected_ok:
+            # 完成データがあるのに失敗表示だけは維持しつつ ready 優先はしない
+            # （オッズ更新失敗はバナーで示す）
+            pass
+        elif has_content and data_status=='generating' and selected_ok:
+            # 予想ありの裏更新中のみ updating
             data_status='updating'
             if not message or message == 'データ取得中':
                 message='データ更新中（表示は維持）'
