@@ -11,6 +11,7 @@ from ev_analysis import (
     day_performance,
     load_score_odds,
 )
+from pipeline_stages import log_orchestrator, log_pipeline_stage, predictions_label
 from daily_ops import (
     PREDICT_READY_HOUR,
     past_predict_deadline,
@@ -46,6 +47,8 @@ _PREDICT_GLOBAL_STATE={'running': False, 'key': ''}
 # Render Free: 起動時の NAR+JRA 二重シードは OOM の主因 → 既定スキップ
 _ON_RENDER=str(os.environ.get('RENDER') or '').lower() in ('true', '1')
 _SKIP_BOOT_DEFAULT='1' if _ON_RENDER else '0'
+# ページからの復旧起動デバウンス（秒）
+_RECOVERY_DEBOUNCE_SEC=120
 _EMPTY_VERIFY={
     'has_data':False,'selected_date':'',
     'total_bets':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,
@@ -352,6 +355,74 @@ def _run_replay_predict_subprocess(day: str, *, timeout: int = 360, env=None) ->
             pass
 
 
+def _recovery_debounce_path(source: str) -> Path:
+    src = source if source in ('jra', 'nar') else 'nar'
+    return DATA / f'.{src}_recovery_debounce.lock'
+
+
+def _maybe_schedule_recovery(source: str, reason: str, *, actor: str = 'page') -> bool:
+    """初回未取得で UI が generating のまま止まるのを防ぐ（Render: cron 待ちの復旧起動）。
+
+    デバウンス付きで1本だけ run_today_pipeline を起動する。
+    """
+    if source not in ('jra', 'nar'):
+        return False
+    today = _today_jst()
+    if _nar_pred_ready(today, source):
+        return False
+    _expire_stale_job(source)
+    if _job_is_active(source):
+        log_orchestrator(actor, 'SKIP', source, reason='job_active', detail=reason)
+        return False
+    if _heavy_busy() or _predict_busy():
+        log_orchestrator(
+            actor, 'SKIP', source,
+            reason='heavy_or_predict_busy',
+            heavy=_HEAVY_JOB_STATE.get('name') or '',
+            predict=_PREDICT_GLOBAL_STATE.get('key') or '',
+            detail=reason,
+        )
+        return False
+    if _job_in_failure_cooldown(source):
+        log_orchestrator(actor, 'SKIP', source, reason='failure_cooldown', detail=reason)
+        return False
+    lock = _recovery_debounce_path(source)
+    try:
+        if lock.exists():
+            age = (__import__('time').time() - lock.stat().st_mtime)
+            if age < _RECOVERY_DEBOUNCE_SEC:
+                log_orchestrator(actor, 'SKIP', source, reason='debounce', age_sec=int(age))
+                return False
+    except Exception:
+        pass
+
+    def _run():
+        try:
+            lock.write_text(str(os.getpid()), encoding='utf-8')
+        except Exception:
+            pass
+        try:
+            log_orchestrator(actor, 'START', source, reason=reason, pipeline='today_full')
+            run_today_pipeline(source, force=True, force_full=True)
+        except Exception as e:
+            log_orchestrator(actor, 'ERROR', source, reason=str(e)[:120])
+        finally:
+            try:
+                lock.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    try:
+        threading.Thread(
+            target=_run, daemon=True, name=f'{source}-recovery',
+        ).start()
+        log_orchestrator(actor, 'QUEUED', source, reason=reason)
+        return True
+    except Exception as e:
+        log_orchestrator(actor, 'ERROR', source, reason=f'start_fail:{e}')
+        return False
+
+
 def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
     """予想CSVの欠損埋め。数値列に『なし』を入れない（float変換クラッシュ防止）。"""
     if df is None or df.empty:
@@ -602,6 +673,14 @@ def _clear_runtime_caches():
     _VERIFY_CACHE.clear()
     _PRED_META_CACHE['sig']=None
     _PRED_META_CACHE['data']={}
+
+
+def _clear_runtime_caches_logged(source: str, date_str: str = '', *, actor: str = 'pipeline') -> None:
+    try:
+        _clear_runtime_caches()
+        log_pipeline_stage(source, 6, True, date_str, actor=actor)
+    except Exception as e:
+        log_pipeline_stage(source, 6, False, date_str, error=str(e)[:120], actor=actor)
 
 
 _NAR_JOB_STATUS=DATA/'.nar_job_status.json'  # 互換: 地方は従来パス
@@ -1165,6 +1244,7 @@ def _run_serialized_heavy(name: str, fn, *, wait: bool = False) -> bool:
     acquired = _HEAVY_JOB_LOCK.acquire(timeout=timeout) if wait else _HEAVY_JOB_LOCK.acquire(blocking=False)
     if not acquired:
         busy = _HEAVY_JOB_STATE.get('name') or '?'
+        log_orchestrator('heavy', 'SKIP', '', reason='lock_busy', name=name, busy=busy, wait=int(wait))
         print(f'[heavy] busy ({busy}), skip {name}', flush=True)
         return False
     _HEAVY_JOB_STATE['name'] = name
@@ -1212,6 +1292,7 @@ def _refresh_then_predict(
             status_src, state='running', stage='start', message='データ取得中',
             date_str=primary,
         )
+        log_orchestrator('pipeline', 'START', status_src, dates=','.join(days))
         _pipeline_log('開始', '成功', primary, dates=','.join(days), source=src)
         print('[Local Update] 取得開始', flush=True)
 
@@ -1225,6 +1306,7 @@ def _refresh_then_predict(
         if extra_args:
             cmd.extend(extra_args)
         env=os.environ.copy()
+        env['ARERU_PIPELINE_SOURCE'] = status_src
         # Render Free: NAR は高速モード（履歴ネット取得抑制）
         if status_src == 'nar' and (
             str(env.get('RENDER') or '').lower() in ('true', '1')
@@ -1237,25 +1319,34 @@ def _refresh_then_predict(
         print(f'[{status_src}-job] 開催・レース取得開始: {" ".join(cmd)}', flush=True)
         t_fetch=_time.perf_counter()
         fetch_timeout=int(env.get('ARERU_REFRESH_TIMEOUT_SEC') or (360 if status_src=='nar' else 480))
+        refresh_ok = True
         try:
             # Render Free: サブプロセスを短めに打ち切り、部分 runners があれば予想へ進む
             rc=subprocess.run(cmd, check=False, timeout=fetch_timeout, env=env)
             fetch_sec=_time.perf_counter()-t_fetch
             print(f'[Local Update] 開催・レース取得 subprocess終了 sec={fetch_sec:.1f} rc={rc.returncode}', flush=True)
             if rc.returncode != 0:
+                refresh_ok = False
                 _pipeline_log('開催取得', '失敗', primary, 保存件数=0, error=f'refresh_data rc={rc.returncode}')
                 # 部分保存があれば予想へ（会場スキップ後の途中成果を活かす）
                 partial = any(_nar_day_counts(d, count_src)['runners_races'] > 0 for d in days)
                 if not partial:
+                    log_pipeline_stage(status_src, 1, False, primary, error=f'refresh_rc={rc.returncode}')
+                    log_pipeline_stage(status_src, 2, False, primary, error=f'refresh_rc={rc.returncode}')
+                    log_pipeline_stage(status_src, 3, False, primary, error=f'refresh_rc={rc.returncode}')
                     _pipeline_log('レース取得', '失敗', primary, 保存件数=0)
                     raise RuntimeError(f'refresh_data 終了コード {rc.returncode}')
                 print('[Local Update] refresh_data非0だが runners あり → 予想へ継続', flush=True)
         except subprocess.TimeoutExpired as e:
+            refresh_ok = False
             fetch_sec=_time.perf_counter()-t_fetch
             print(f'[Local Update] 取得TIMEOUT sec={fetch_sec:.1f}: {e}', flush=True)
-            _clear_runtime_caches()
+            _clear_runtime_caches_logged(status_src, primary)
             partial = any(_nar_day_counts(d, count_src)['runners_races'] > 0 for d in days)
             if not partial:
+                log_pipeline_stage(status_src, 1, False, primary, error='refresh_timeout')
+                log_pipeline_stage(status_src, 2, False, primary, error='refresh_timeout')
+                log_pipeline_stage(status_src, 3, False, primary, error='refresh_timeout')
                 raise RuntimeError(
                     f'refresh_data タイムアウト({fetch_timeout}s / Render制限の可能性)'
                 ) from e
@@ -1268,13 +1359,15 @@ def _refresh_then_predict(
                 message='レース部分取得（タイムアウト継続）', date_str=primary,
             )
 
-        # 2) 開催取得 / レース取得 — runners 件数で検証
-        _clear_runtime_caches()
+        # 2) 開催取得 / レース取得 / 出馬表 — runners 件数で検証
         for d in days:
             c=_nar_day_counts(d, count_src)
             if c['runners_races'] <= 0:
                 # 中央の平日など「開催なし」は失敗ではなく完了扱い
                 if len(days) == 1 and d == today:
+                    log_pipeline_stage(status_src, 1, True, d, reason='no_meeting', races=0)
+                    log_pipeline_stage(status_src, 2, True, d, reason='no_meeting', races=0)
+                    log_pipeline_stage(status_src, 3, True, d, reason='no_meeting', horses=0)
                     _pipeline_log('開催取得', '成功', d, 開催場数=0, レース数=0, 保存件数=0, reason='no_meeting')
                     _write_job_status(
                         status_src, state='success', stage='done',
@@ -1283,9 +1376,24 @@ def _refresh_then_predict(
                     print('[Local Update] END no_meeting', flush=True)
                     terminal=True
                     return True
+                log_pipeline_stage(status_src, 1, False, d, venues=0, races=0)
+                log_pipeline_stage(status_src, 2, False, d, races=0)
+                log_pipeline_stage(status_src, 3, False, d, horses=c['runners_rows'])
                 _pipeline_log('開催取得', '失敗', d, 開催場数=0, レース数=0, 保存件数=0)
                 _pipeline_log('レース取得', '失敗', d, 保存件数=0)
                 raise RuntimeError(f'{d}: 開催・レースが runners に保存されませんでした')
+            log_pipeline_stage(
+                status_src, 1, True, d,
+                venues=c['runners_venues'], races=c['runners_races'],
+            )
+            log_pipeline_stage(
+                status_src, 2, True, d,
+                races=c['runners_races'], venues=c['runners_venues'],
+            )
+            log_pipeline_stage(
+                status_src, 3, True, d,
+                horses=c['runners_rows'], races=c['runners_races'],
+            )
             _pipeline_log(
                 '開催取得', '成功', d,
                 開催場数=c['runners_venues'], レース数=c['runners_races'], 保存件数=c['runners_races'],
@@ -1320,24 +1428,30 @@ def _refresh_then_predict(
             try:
                 pr=_run_replay_predict_subprocess(d, timeout=360, env=env)
             except subprocess.TimeoutExpired as e:
+                log_pipeline_stage(status_src, 4, False, d, error='predict_timeout')
                 print(f'[Local Update] AI予想TIMEOUT date={d}: {e}', flush=True)
                 raise RuntimeError(f'replay_predict タイムアウト ({d})') from e
             except RuntimeError as e:
-                # 同時予想禁止
+                log_pipeline_stage(status_src, 4, False, d, error=str(e)[:120])
                 print(f'[Local Update] AI予想スキップ date={d}: {e}', flush=True)
                 raise
             pred_sec=_time.perf_counter()-t_pred
             print(f'[Local Update] AI予想生成終了 date={d} sec={pred_sec:.1f} rc={pr.returncode}', flush=True)
             if pr.returncode != 0:
+                log_pipeline_stage(status_src, 4, False, d, error=f'rc={pr.returncode}')
                 _pipeline_log('AI予想生成', '失敗', d, 保存件数=0, error=f'rc={pr.returncode}')
                 raise RuntimeError(f'replay_predict 終了コード {pr.returncode} ({d})')
             pred=ARCH/f'predictions_{d}.csv'
             if not pred.exists():
+                log_pipeline_stage(status_src, 4, False, d, error='predictions_missing')
+                log_pipeline_stage(status_src, 5, False, d, file=predictions_label(status_src, d))
                 _pipeline_log('AI予想生成', '失敗', d, 保存件数=0, error='predictions未生成')
                 raise RuntimeError(f'predictions_{d}.csv が生成されませんでした')
             c=_nar_day_counts(d, count_src)
             if c['pred_races'] <= 0:
                 if len(days) == 1 and d == today:
+                    log_pipeline_stage(status_src, 4, True, d, reason='no_meeting', races=0)
+                    log_pipeline_stage(status_src, 5, True, d, file=predictions_label(status_src, d), races=0)
                     _pipeline_log('AI予想生成', '成功', d, 保存件数=0, reason='no_meeting')
                     _write_job_status(
                         status_src, state='success', stage='done',
@@ -1345,8 +1459,16 @@ def _refresh_then_predict(
                     )
                     terminal=True
                     return True
+                log_pipeline_stage(status_src, 4, False, d, error='pred_zero')
+                log_pipeline_stage(status_src, 5, False, d, file=predictions_label(status_src, d))
                 _pipeline_log('AI予想生成', '失敗', d, 保存件数=0, error='予想0件')
                 raise RuntimeError(f'{d}: 予想が0件です')
+            log_pipeline_stage(status_src, 4, True, d, races=c['pred_races'], venues=c['pred_venues'])
+            log_pipeline_stage(
+                status_src, 5, True, d,
+                file=predictions_label(status_src, d),
+                races=c['pred_races'], path=str(pred.name),
+            )
             _pipeline_log(
                 'AI予想生成', '成功', d,
                 レース数=c['pred_races'], 開催場数=c['pred_venues'], 保存件数=c['pred_races'],
@@ -1362,10 +1484,10 @@ def _refresh_then_predict(
                 date_str=d,
             )
 
-        _clear_runtime_caches()
         # 成功は「取得できた日の予想が実在するとき」だけ。失敗時に前日へ切り替えない。
         ok_days=[d for d in days if _nar_pred_ready(d, count_src)]
         if not ok_days:
+            log_pipeline_stage(status_src, 5, False, primary, file=predictions_label(status_src, primary))
             _pipeline_log('保存', '失敗', primary, 保存件数=0, error='予想readyなし')
             raise RuntimeError('予想ファイルが生成されませんでした')
         # status.date は当日優先（前日成功で表示が巻き戻るのを防ぐ）
@@ -1375,6 +1497,7 @@ def _refresh_then_predict(
             primary_ok=primary
         else:
             primary_ok=max(ok_days)
+        _clear_runtime_caches_logged(status_src, primary_ok)
         for d in ok_days:
             c=_nar_day_counts(d, count_src)
             _pipeline_log(
@@ -1392,7 +1515,7 @@ def _refresh_then_predict(
         terminal=True
         return True
     except Exception as e:
-        _clear_runtime_caches()
+        _clear_runtime_caches_logged(status_src, primary, actor='pipeline_error')
         err=str(e)[:200]
         is_timeout=('タイムアウト' in err) or ('Timeout' in err) or ('timeout' in err.lower())
         _write_job_status(
@@ -1448,10 +1571,11 @@ def ensure_for_page(d, source='all'):
             # 凍結後は不足ソースがあってもフル再予想しない（完成表示を優先）
             if frozen:
                 return f, 'ready'
-            # Render: 閲覧経路から予想を起こさない（cron / /refresh / 明示更新のみ）
+            # Render: 閲覧経路から predict ジョブは起こさない。復旧パイプラインのみスケジュール。
             if _ON_RENDER and not (
                 str(os.environ.get('ARERU_ALLOW_PAGE_PREDICT') or '').strip() in ('1', 'true', 'yes')
             ):
+                _maybe_schedule_recovery(src, f'ensure_for_page:{d}', actor='page')
                 if f.exists():
                     return f, 'updating'
                 return None, 'generating'
@@ -2530,18 +2654,8 @@ def run_today_pipeline(
     try:
         started = _run_serialized_heavy(f'{src}-today:{today}', _body, wait=bool(force))
         if not started:
-            if _HEAVY_JOB_STATE.get('name'):
-                st = _read_job_status(src)
-                if str(st.get('state')) != 'running':
-                    _write_job_status(
-                        src, state='running', stage='queued', message='データ取得中',
-                        date_str=today,
-                    )
-                return False
-            _write_job_status(
-                src, state='error', stage='failed', message='取得失敗',
-                date_str=today, error='取得ジョブを開始できませんでした',
-            )
+            busy_name = _HEAVY_JOB_STATE.get('name') or ''
+            log_orchestrator('bg', 'SKIP', src, reason='heavy_busy', busy=busy_name)
             return False
         return True
     except Exception as e:
@@ -2760,14 +2874,15 @@ def index():
                         source=source, reason='heavy_or_predict_busy', 保存件数='-',
                     )
                     return
-                # Render: 閲覧だけでは本生成しない（cron / 明示更新のみ）。OOM→白画面防止。
+                # Render: 通常閲覧では多重起動しない。未取得時のみ debounced 復旧起動。
                 if _ON_RENDER and not force and not force_refresh and not want_today:
+                    if not today_ready and viewing_today:
+                        _maybe_schedule_recovery(source, 'render_page_generating', actor='page')
                     _pipeline_log(
                         '表示', 'スキップ', today,
                         source=source, reason='render_page_no_auto_job', 保存件数='-',
                     )
                     return
-                # 強制再取得以外は失敗直後の再起動を抑止
                 if (not force) and _job_in_failure_cooldown(source):
                     _pipeline_log(
                         '表示', 'スキップ', today,
@@ -3009,6 +3124,8 @@ def index():
                         f'本日開催 {today} / {label} / 開催場 {len(venues)}場（予想生成中）'
                         if venues else (job_msg or 'データ取得中')
                     )
+                    if _ON_RENDER and not force_refresh and not want_today:
+                        _maybe_schedule_recovery(source, 'block_stale_today', actor='page')
                 races_for_board=[]; buy_candidates=[]; targets=[]
                 data_updated_at=''
             else:
@@ -3331,21 +3448,18 @@ def index():
                 if today not in av:
                     av=sorted(set(av)|{today}, reverse=True)
                 try:
-                    if (
-                        not _job_is_active(source)
-                        and not _job_in_failure_cooldown(source)
-                        and not (_ON_RENDER and not force_refresh and not want_today)
-                        and not _heavy_busy()
-                        and not _predict_busy()
-                    ):
-                        threading.Thread(
-                            target=run_today_pipeline, args=(source,),
-                            kwargs={
-                                'force': True,
-                                'force_full': True,
-                            },
-                            daemon=True,
-                        ).start()
+                    if not _job_is_active(source) and not _job_in_failure_cooldown(source):
+                        if _ON_RENDER and not force_refresh and not want_today:
+                            _maybe_schedule_recovery(source, 'index_selected_generating', actor='page')
+                        elif not _heavy_busy() and not _predict_busy():
+                            threading.Thread(
+                                target=run_today_pipeline, args=(source,),
+                                kwargs={
+                                    'force': True,
+                                    'force_full': True,
+                                },
+                                daemon=True,
+                            ).start()
                 except Exception:
                     pass
         else:
@@ -3359,17 +3473,14 @@ def index():
             data_status='generating'
             message='データ取得中'
             try:
-                if (
-                    not _job_is_active(source)
-                    and not _job_in_failure_cooldown(source)
-                    and not (_ON_RENDER and not force_refresh and not want_today)
-                    and not _heavy_busy()
-                    and not _predict_busy()
-                ):
-                    threading.Thread(
-                        target=run_today_pipeline, args=(source,),
-                        kwargs={'force': True, 'force_full': True}, daemon=True,
-                    ).start()
+                if not _job_is_active(source) and not _job_in_failure_cooldown(source):
+                    if _ON_RENDER and not force_refresh and not want_today:
+                        _maybe_schedule_recovery(source, 'index_no_date_generating', actor='page')
+                    elif not _heavy_busy() and not _predict_busy():
+                        threading.Thread(
+                            target=run_today_pipeline, args=(source,),
+                            kwargs={'force': True, 'force_full': True}, daemon=True,
+                        ).start()
             except Exception:
                 pass
     day_stats=None
@@ -3578,6 +3689,21 @@ def index():
             refresh_date=q.get('date') or '-',
             保存件数=len(venues) if show_venue_picker else len(races),
         )
+
+    if source in ('nar', 'jra'):
+        disp_date = selected or today
+        if data_status in ('ready', 'success', 'updating') and (
+            _nar_pred_ready(disp_date, source) or races or venues
+        ):
+            log_pipeline_stage(
+                source, 7, True, disp_date,
+                status=data_status, races=len(races), venues=len(venues),
+            )
+        elif data_status == 'generating' and not _nar_pred_ready(disp_date, source):
+            log_pipeline_stage(
+                source, 7, False, disp_date,
+                status=data_status, message=(message or '')[:80],
+            )
 
     return render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
@@ -4377,6 +4503,30 @@ def healthz():
     }
 
 
+@app.route('/api/job-status', methods=['GET'])
+def api_job_status():
+    """ジョブ状態デバッグ（生成パイプライン停止箇所の特定用）。"""
+    source = str(request.args.get('source') or 'nar').strip().lower()
+    if source not in ('nar', 'jra'):
+        source = 'nar'
+    today = _today_jst()
+    st = _expire_stale_job(source)
+    c = _nar_day_counts(today, source)
+    return {
+        'ok': True,
+        'source': source,
+        'today': today,
+        'heavy': _HEAVY_JOB_STATE.get('name') or '',
+        'predict': _PREDICT_GLOBAL_STATE.get('key') or '',
+        'predict_running': _predict_busy(),
+        'heavy_busy': _heavy_busy(),
+        'job_active': _job_is_active(source),
+        'ready': _nar_pred_ready(today, source),
+        'counts': c,
+        'status': st,
+    }
+
+
 def _cron_token_ok() -> bool:
     token=str(request.args.get('token') or request.headers.get('X-Cron-Token') or '').strip()
     expected=str(os.environ.get('CRON_TOKEN') or '').strip()
@@ -4399,6 +4549,7 @@ def _cron_pipeline_mode() -> str:
 def _run_cron_source(src: str, mode: str) -> None:
     today = _today_jst()
     force_full = mode == 'morning'
+    log_orchestrator('cron', 'START', src, mode=mode, date=today)
     print(
         f'[cron-{src}] mode={mode} force_full={force_full} '
         f'deadline_passed={past_predict_deadline()} date={today}',
@@ -4434,6 +4585,10 @@ def _run_cron_source(src: str, mode: str) -> None:
         sealed=int(is_sealed(today, src)),
     )
     print(f'[cron-{src}] done ready={int(ready)} sealed={int(is_sealed(today, src))}', flush=True)
+    log_orchestrator(
+        'cron', 'OK' if ok else 'ERROR', src,
+        mode=mode, ready=int(ready), predictions=c['pred_races'],
+    )
 
 
 @app.route('/cron/nar-daily', methods=['POST','GET'])
@@ -4447,17 +4602,12 @@ def cron_nar_daily():
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
     mode = _cron_pipeline_mode()
-    if _heavy_busy() or _predict_busy():
-        return {
-            'ok': True, 'started': False, 'skipped': True,
-            'reason': 'busy', 'source': 'nar', 'mode': mode,
-            'heavy': _HEAVY_JOB_STATE.get('name') or '',
-        }
 
     def _run():
         try:
             _run_cron_source('nar', mode)
         except Exception as e:
+            log_orchestrator('cron', 'ERROR', 'nar', error=str(e)[:120])
             print(f'[cron-nar] fail: {e}', flush=True)
 
     threading.Thread(target=_run, daemon=True).start()
@@ -4470,17 +4620,12 @@ def cron_jra_daily():
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
     mode = _cron_pipeline_mode()
-    if _heavy_busy() or _predict_busy():
-        return {
-            'ok': True, 'started': False, 'skipped': True,
-            'reason': 'busy', 'source': 'jra', 'mode': mode,
-            'heavy': _HEAVY_JOB_STATE.get('name') or '',
-        }
 
     def _run():
         try:
             _run_cron_source('jra', mode)
         except Exception as e:
+            log_orchestrator('cron', 'ERROR', 'jra', error=str(e)[:120])
             print(f'[cron-jra] fail: {e}', flush=True)
 
     threading.Thread(target=_run, daemon=True).start()
@@ -4493,18 +4638,14 @@ def cron_daily_both():
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
     mode = _cron_pipeline_mode()
-    if _heavy_busy() or _predict_busy():
-        return {
-            'ok': True, 'started': False, 'skipped': True,
-            'reason': 'busy', 'source': 'all', 'mode': mode,
-            'heavy': _HEAVY_JOB_STATE.get('name') or '',
-        }
+    log_orchestrator('cron', 'QUEUED', 'all', mode=mode)
 
     def _run():
         for src in ('nar', 'jra'):
             try:
                 _run_cron_source(src, mode)
             except Exception as e:
+                log_orchestrator('cron', 'ERROR', src, error=str(e)[:120])
                 print(f'[cron-daily] {src} fail: {e}', flush=True)
             # ソース切替前にメモリ回収
             try:
@@ -4512,6 +4653,7 @@ def cron_daily_both():
                 gc.collect()
             except Exception:
                 pass
+        log_orchestrator('cron', 'DONE', 'all', mode=mode)
 
     threading.Thread(target=_run, daemon=True).start()
     return {'ok': True, 'started': True, 'source': 'all', 'mode': mode}

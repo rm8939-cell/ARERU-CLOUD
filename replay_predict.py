@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 from areru_engine import build_predictions, parse_date
+from pipeline_stages import log_pipeline_stage, predictions_label
 
 _BASE = Path(__file__).resolve().parent
 DATA = _BASE / 'data'
@@ -31,6 +32,11 @@ def _log_mem(tag: str) -> None:
     print(f'[predict] MEM {mb:.1f} MB | {tag}', flush=True)
 
 
+def _pipe_src() -> str:
+    s = str(os.environ.get('ARERU_PIPELINE_SOURCE') or 'nar').strip().lower()
+    return s if s in ('nar', 'jra') else 'nar'
+
+
 def load_runners():
     if RUNNERS.exists():
         return pd.read_csv(RUNNERS, encoding='utf-8-sig')
@@ -49,25 +55,36 @@ def run_date(target, runners, history):
     from ev_analysis import assert_predictions_finalized, ensure_predictions_file_finalized
     from race_sim import SIM_RUNS
 
+    src = _pipe_src()
     _log_mem(f'start {target} SIM_RUNS={SIM_RUNS}')
-    # 対象日だけに絞ってから予想（全 runners をレースループ内で持ち回さない）
-    day_mask = parse_date(runners['日付']).dt.strftime('%Y-%m-%d') == target
-    day_runners = runners.loc[day_mask].copy()
-    if day_runners.empty:
-        raise ValueError(f'{target} の出走データがありません')
-    result, scores = build_predictions(target, day_runners, history)
-    assert_predictions_finalized(result, label=target)
-    out_path = OUT / f'predictions_{target}.csv'
-    result.to_csv(out_path, index=False, encoding='utf-8-sig')
-    scores.to_csv(OUT / f'scores_{target}.csv', index=False, encoding='utf-8-sig')
-    # 書き込み後も未確定ならその場で確定（途中失敗・旧ロジック混入の保険）
-    if ensure_predictions_file_finalized(out_path):
-        print(f'⚠ {target}: 未確定ランクを検出したため再確定して保存')
-    print(f'✅ {target}: {len(result)}レース → {out_path}')
-    _log_mem(f'done {target} races={len(result)}')
-    del result, scores, day_runners
-    gc.collect()
-    return out_path
+    try:
+        # 対象日だけに絞ってから予想（全 runners をレースループ内で持ち回さない）
+        day_mask = parse_date(runners['日付']).dt.strftime('%Y-%m-%d') == target
+        day_runners = runners.loc[day_mask].copy()
+        if day_runners.empty:
+            raise ValueError(f'{target} の出走データがありません')
+        result, scores = build_predictions(target, day_runners, history)
+        assert_predictions_finalized(result, label=target)
+        out_path = OUT / f'predictions_{target}.csv'
+        result.to_csv(out_path, index=False, encoding='utf-8-sig')
+        scores.to_csv(OUT / f'scores_{target}.csv', index=False, encoding='utf-8-sig')
+        # 書き込み後も未確定ならその場で確定（途中失敗・旧ロジック混入の保険）
+        if ensure_predictions_file_finalized(out_path):
+            print(f'⚠ {target}: 未確定ランクを検出したため再確定して保存')
+        log_pipeline_stage(src, 4, True, target, races=len(result))
+        log_pipeline_stage(
+            src, 5, True, target,
+            file=predictions_label(src, target), races=len(result),
+        )
+        print(f'✅ {target}: {len(result)}レース → {out_path}')
+        _log_mem(f'done {target} races={len(result)}')
+        del result, scores, day_runners
+        gc.collect()
+        return out_path
+    except Exception as e:
+        log_pipeline_stage(src, 4, False, target, error=str(e)[:120])
+        log_pipeline_stage(src, 5, False, target, file=predictions_label(src, target))
+        raise
 
 
 def main():

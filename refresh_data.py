@@ -21,6 +21,7 @@ import pandas as pd
 
 from areru_engine import parse_date, source_from_race_id
 from netkeiba_client import NetkeibaClient, infer_source
+from pipeline_stages import log_pipeline_stage
 
 # パイプ実行時でも進捗が見えるようにする
 try:
@@ -43,6 +44,11 @@ def _fast_nar_mode() -> bool:
     if str(os.environ.get("RENDER") or "").strip().lower() in ("true", "1"):
         return True
     return False
+
+
+def _pipe_src(source: str = "") -> str:
+    s = str(source or os.environ.get("ARERU_PIPELINE_SOURCE") or "nar").strip().lower()
+    return s if s in ("nar", "jra") else "nar"
 
 
 def _stage_log(stage: str, msg: str = "", **kv) -> None:
@@ -254,6 +260,7 @@ def build_date_runners(
     try:
         race_ids = client.list_race_ids(ymd, source=source)
     except Exception as e:
+        log_pipeline_stage(_pipe_src(source), 1, False, target, error=f"{type(e).__name__}: {e}")
         _stage_log(
             "開催取得",
             "ERROR",
@@ -269,6 +276,7 @@ def build_date_runners(
 
     list_sec = time.perf_counter() - t_list
     if not race_ids:
+        log_pipeline_stage(_pipe_src(source), 1, True, target, reason='no_meeting', races=0)
         _stage_log(
             "開催取得", "0件", date=target, source=source,
             sec=f"{list_sec:.1f}",
@@ -292,6 +300,10 @@ def build_date_runners(
         開催場数=len(venue_names), レース数=len(race_ids),
         場=",".join(venue_names),
         sec=f"{list_sec:.1f}",
+    )
+    log_pipeline_stage(
+        _pipe_src(source), 1, True, target,
+        venues=len(venue_names), races=len(race_ids),
     )
     print(
         f"[pipeline] 開催取得 成功 date={target} source={source} "
@@ -546,6 +558,15 @@ def build_date_runners(
         "runners増分完了",
         rows=len(rows), races=ok_n,
         total_sec=f"{time.perf_counter()-t0:.1f}",
+    )
+    psrc = _pipe_src(source)
+    log_pipeline_stage(
+        psrc, 2, ok_n > 0, target,
+        races=ok_n, fail=fail_n, venues=len(ok_venues),
+    )
+    log_pipeline_stage(
+        psrc, 3, len(rows) > 0, target,
+        horses=len(rows), races=ok_n,
     )
     return _normalize_runners(pd.DataFrame(rows)) if rows else pd.DataFrame(columns=RUNNER_COLS)
 
