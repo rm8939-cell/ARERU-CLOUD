@@ -298,6 +298,17 @@ def _start_predict_job(d, source='all'):
     return True
 
 
+def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
+    """予想CSVの欠損埋め。数値列に『なし』を入れない（float変換クラッシュ防止）。"""
+    if df is None or df.empty:
+        return df
+    out = df.copy()
+    obj_cols = [c for c in out.columns if str(out[c].dtype) == 'object' or str(out[c].dtype).startswith('string')]
+    for c in obj_cols:
+        out[c] = out[c].where(out[c].notna(), 'なし')
+    return out
+
+
 def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
     """開催場一覧用の軽量読み込み（巨大JSON列をスキップ）。"""
     _ensure_pred_file_finalized(pred_path)
@@ -306,7 +317,7 @@ def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
         use=[c for c in _NAR_VENUE_PICKER_COLS if c in cols]
         if not use:
             return []
-        df=pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use).fillna('なし')
+        df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use))
         if source in ('jra','nar') and 'source' in df.columns:
             df=df[df['source'].astype(str).str.lower()==source].copy()
         rows=df.to_dict('records')
@@ -330,9 +341,9 @@ def _read_predictions_for_venue_detail(pred_path, source: str, venue: str) -> li
         use=[c for c in cols if c in want]
         if '開催地' not in use:
             # フォールバック: 全列（古いCSV）
-            df=pd.read_csv(pred_path, encoding='utf-8-sig').fillna('なし')
+            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig'))
         else:
-            df=pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use).fillna('なし')
+            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use))
         if source in ('jra','nar') and 'source' in df.columns:
             df=df[df['source'].astype(str).str.lower()==source].copy()
         if df.empty:
@@ -3026,7 +3037,7 @@ def index():
                                         flush=True,
                                     )
                             else:
-                                df=pd.read_csv(pred_path, encoding='utf-8-sig').fillna('なし')
+                                df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig'))
                                 if source in ('jra','nar') and 'source' in df.columns:
                                     df=df[df['source'].astype(str).str.lower()==source].copy()
                                 if mode=='predict':

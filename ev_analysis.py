@@ -51,6 +51,36 @@ def parse_odds_value(v):
         return None
 
 
+def safe_float(v, default=None):
+    """表示用 fillna('なし') 混入を含む値を安全に float 化。"""
+    if v is None:
+        return default
+    if isinstance(v, (int, float)):
+        try:
+            if pd.isna(v):
+                return default
+        except Exception:
+            pass
+        return float(v)
+    s = str(v).strip().replace('%', '').replace('倍', '').replace(',', '')
+    if not s or s.lower() in ('nan', 'none', 'なし', '—', '-', 'null', 'nat'):
+        return default
+    try:
+        return float(s)
+    except Exception:
+        return default
+
+
+def safe_int(v, default=0) -> int:
+    x = safe_float(v, None)
+    if x is None:
+        return int(default)
+    try:
+        return int(x)
+    except Exception:
+        return int(default)
+
+
 def _clamp(x, a=0.0, b=100.0) -> float:
     return float(max(a, min(b, x)))
 
@@ -103,12 +133,9 @@ def stars_for_score(score: int) -> str:
 
 def _count_past_races(record: dict) -> int:
     for key in ('本命データ件数', 'データ件数'):
-        try:
-            v = int(float(record.get(key)))
-            if v >= 0:
-                return min(5, v)
-        except (TypeError, ValueError):
-            pass
+        v = safe_int(record.get(key), -1)
+        if v >= 0:
+            return min(5, v)
     n = 0
     for i in range(1, 6):
         v = record.get(f'着順{i}')
@@ -461,7 +488,7 @@ def _venue_bias_match_score(record: dict) -> float:
     pick = _main_pick_card(record)
     apt, detail = _aptitude_score(record, pick)
     base += (apt - 50.0) * 0.35
-    course = float(detail.get('コース適性') or 50)
+    course = safe_float(detail.get('コース適性'), 50.0) or 50.0
     base += (course - 50.0) * 0.25
     return _clamp(base)
 
@@ -474,8 +501,12 @@ def calc_race_confidence(record: dict) -> dict:
     """
     pick = _main_pick_card(record)
     n = _count_past_races(record)
-    repro = float(record.get('シミュレーション再現率') or calc_simulation_reproducibility(record, pick))
-    conf = float(record.get('AI信頼度スコア') or calc_ai_confidence(record, pick, repro=repro))
+    repro = safe_float(record.get('シミュレーション再現率'), None)
+    if repro is None:
+        repro = float(calc_simulation_reproducibility(record, pick))
+    conf = safe_float(record.get('AI信頼度スコア'), None)
+    if conf is None:
+        conf = float(calc_ai_confidence(record, pick, repro=repro))
     ability = _ability_gap_score(record)
     pace = _pace_clarity_score(record)
     data_score = _clamp(n * 18.0 + 10.0)  # 0〜5件 → 〜100
@@ -541,27 +572,26 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
             record.setdefault(k, v)
 
     try:
-        conf = float(record.get('AI信頼度スコア') or 0)
+        conf = safe_float(record.get('AI信頼度スコア'), 0.0) or 0.0
     except (TypeError, ValueError):
         conf = 0.0
     try:
-        ability = float(record.get('能力差スコア') or 0)
+        ability = safe_float(record.get('能力差スコア'), 0.0) or 0.0
     except (TypeError, ValueError):
         ability = 0.0
     try:
-        pace = float(record.get('展開読みやすさ') or 0)
+        pace = safe_float(record.get('展開読みやすさ'), 0.0) or 0.0
     except (TypeError, ValueError):
         pace = 0.0
     try:
-        n = int(float(record.get('データ件数') or _count_past_races(record) or 0))
+        n = safe_int(record.get('データ件数'), _count_past_races(record) or 0)
     except (TypeError, ValueError):
         n = 0
     try:
-        repro = float(
-            record.get('シミュレーション再現率')
-            or record.get('シミュレーション一致率')
-            or 0
-        )
+        repro = safe_float(
+            record.get('シミュレーション再現率') or record.get('シミュレーション一致率'),
+            0.0,
+        ) or 0.0
     except (TypeError, ValueError):
         repro = 0.0
 
@@ -812,7 +842,7 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
     # レース信頼度を算出し、勝負ランクの主根拠にする
     conf_pack = calc_race_confidence(record)
     record.update(conf_pack)
-    rc = float(conf_pack.get('レース信頼度スコア') or 50)
+    rc = safe_float(conf_pack.get('レース信頼度スコア'), 50.0) or 50.0
     rk = rank_from_race_confidence(rc)
     # EVが極端に弱い（見送り帯）ならランクを1段落とす
     if ev is not None:
@@ -841,8 +871,8 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
         record['BETクラス'] = 'skip'
 
     has_odds = bool(record.get('オッズ取得済'))
-    ai_conf = float(record.get('AI信頼度スコア') or 50)
-    repro = float(record.get('シミュレーション再現率') or 50)
+    ai_conf = safe_float(record.get('AI信頼度スコア'), 50.0) or 50.0
+    repro = safe_float(record.get('シミュレーション再現率'), 50.0) or 50.0
     if ev is not None:
         record['期待値あり'] = True
         decision = decide_buy_skip(float(ev), ai_conf, repro, True, race_conf=rc)
@@ -867,14 +897,10 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
 
 def _buy_score(record: dict) -> float:
     """厳選時の並び用スコア。"""
-    try:
-        ev = float(record.get('期待値') if record.get('期待値') is not None else 0)
-    except (TypeError, ValueError):
-        ev = 0.0
-    try:
-        rc = float(record.get('レース信頼度スコア') or record.get('AI信頼度スコア') or 0)
-    except (TypeError, ValueError):
-        rc = 0.0
+    ev = safe_float(record.get('期待値'), 0.0) or 0.0
+    rc = safe_float(record.get('レース信頼度スコア'), None)
+    if rc is None:
+        rc = safe_float(record.get('AI信頼度スコア'), 0.0) or 0.0
     rank_bonus = {'S': 12, 'A': 8, 'B': 3, 'C': 0, 'D': -4}.get(
         str(record.get('勝負ランク') or '').upper(), 0
     )
@@ -944,7 +970,9 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
         assigned = {}
         s_left, a_left = s_slots, a_slots
         for pos, (idx, r) in enumerate(ordered):
-            score = float(r.get('レース信頼度スコア') or r.get('AI信頼度スコア') or 50)
+            score = safe_float(r.get('レース信頼度スコア'), None)
+            if score is None:
+                score = safe_float(r.get('AI信頼度スコア'), 50.0) or 50.0
             ok_s, s_detail = qualify_s_rank(r)
             r['S判定'] = s_detail
             if s_left > 0 and ok_s and score >= 66:
@@ -990,16 +1018,10 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
         candidates = []
         for idx, r in items:
             rk = str(r.get('勝負ランク') or '')
-            try:
-                ev = float(r.get('期待値')) if r.get('期待値') is not None else None
-            except (TypeError, ValueError):
-                ev = None
-            try:
-                conf = float(r.get('AI信頼度スコア') or 0)
-                rc = float(r.get('レース信頼度スコア') or conf)
-                repro = float(r.get('シミュレーション再現率') or 0)
-            except (TypeError, ValueError):
-                conf, rc, repro = 0.0, 0.0, 0.0
+            ev = safe_float(r.get('期待値'), None)
+            conf = safe_float(r.get('AI信頼度スコア'), 0.0) or 0.0
+            rc = safe_float(r.get('レース信頼度スコア'), conf) or conf
+            repro = safe_float(r.get('シミュレーション再現率'), 0.0) or 0.0
             has_odds = bool(r.get('オッズ取得済')) or ev is not None
             if rk not in ('S', 'A'):
                 continue
@@ -1504,12 +1526,12 @@ def apply_expected_value(record: dict) -> dict:
     record['ブレンド係数'] = ev.get('ブレンド係数')
     if ev.get('AI適正オッズ補正') is not None:
         record['AI適正オッズ表示'] = ev['AI適正オッズ補正']
-    record['AI信頼度'] = stars_for_score(int(float(ev.get('AI信頼度スコア') or 50)))
+    record['AI信頼度'] = stars_for_score(safe_int(ev.get('AI信頼度スコア'), 50))
 
-    conf = float(ev.get('AI信頼度スコア') or 0)
-    repro = float(ev.get('シミュレーション再現率') or 0)
-    n = int(ev.get('データ件数') or _count_past_races(record))
-    apt = float(ev.get('適性スコア') or 50)
+    conf = safe_float(ev.get('AI信頼度スコア'), 0.0) or 0.0
+    repro = safe_float(ev.get('シミュレーション再現率'), 0.0) or 0.0
+    n = safe_int(ev.get('データ件数'), _count_past_races(record))
+    apt = safe_float(ev.get('適性スコア'), 50.0) or 50.0
     _rescore_pick_cards(record, conf, repro, n, apt)
 
     decision = decide_buy_skip(
