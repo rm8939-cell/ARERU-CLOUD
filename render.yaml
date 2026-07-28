@@ -2,15 +2,25 @@ services:
   - type: web
     name: areru-cloud
     runtime: python
-    # メモリ実測: ページ表示 ~150MB / 取得+予想の同時起動で ~300MB+
+    # メモリ実測: ページ表示 ~100MB / 予想子プロセス ~150MB+ / 同時起動で 512MB 超過→再起動→白画面
     # Free・Starter は RAM 512MB 同じ。Free は 0.1CPU + スリープで日次取得が不安定。
     # 推奨: Standard（2GB / 1CPU）。最低でも Starter（CPU改善・スリープなし）。
-    # プラン変更は Render ダッシュボードでも可（ここを変えても課金確認が必要）。
     plan: free
     buildCommand: pip install -r requirements.txt
-    # workers=1 必須（Free/Starter 512MB では複数 worker で OOM しやすい）
-    startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1 --max-requests 200 --max-requests-jitter 50
+    # workers=1 / threads=1 必須。max-requests でメモリ断片化を定期回収。
+    # timeout は Web 応答用（重いジョブはバックグラウンド）。短めにしてハングを検知。
+    startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 90 --graceful-timeout 30 --max-requests 80 --max-requests-jitter 20 --worker-class sync
+    envVars:
+      - key: ARERU_SKIP_BOOT
+        value: "1"
+      - key: ARERU_SIM_RUNS
+        value: "20000"
+      - key: ARERU_ORDERS_KEEP_MAX
+        value: "20000"
+      - key: ARERU_FAST_NAR
+        value: "1"
+      - key: ARERU_FETCH_BUDGET_SEC
+        value: "240"
 # 地方・中央の日次安定化は GitHub Actions
-# (.github/workflows/nar-daily.yml / nar-daily-data.yml) が
-# 朝・昼・夕に /cron/nar-daily・/cron/jra-daily を叩く（両方とも定期取得＋予想）。
+# (.github/workflows/nar-daily.yml) が /cron/daily を叩く（NAR→JRA 直列）。
 # Render 側に CRON_TOKEN を設定し、GitHub Secrets に CRON_TOKEN / RENDER_APP_URL を入れる。

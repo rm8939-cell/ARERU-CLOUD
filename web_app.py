@@ -37,8 +37,15 @@ _PRED_META_CACHE={'sig':None,'data':{}}
 _PREDICT_JOBS={}
 _PREDICT_JOBS_LOCK=threading.Lock()
 # 重い取得・予想は1本ずつ（web + refresh + replay の三重起動を防ぐ）
-_HEAVY_JOB_LOCK=threading.Lock()
+# RLock: odds-only / predict-only が refresh 経路から呼ばれてもデッドロックしない
+_HEAVY_JOB_LOCK=threading.RLock()
 _HEAVY_JOB_STATE={'name': ''}
+# 予想サブプロセスの同時起動を明示的に禁止（キー違いの多重起動を防ぐ）
+_PREDICT_GLOBAL_LOCK=threading.Lock()
+_PREDICT_GLOBAL_STATE={'running': False, 'key': ''}
+# Render Free: 起動時の NAR+JRA 二重シードは OOM の主因 → 既定スキップ
+_ON_RENDER=str(os.environ.get('RENDER') or '').lower() in ('true', '1')
+_SKIP_BOOT_DEFAULT='1' if _ON_RENDER else '0'
 _EMPTY_VERIFY={
     'has_data':False,'selected_date':'',
     'total_bets':0,'hit_rate':0.0,'recovery':0.0,'roi':0.0,
@@ -268,13 +275,14 @@ def _run_predict_job(d, source='all'):
                     need_refresh=not ((day_mask) & (rdf['source'].astype(str).str.lower()==source)).any()
                 else:
                     need_refresh=d not in set(rd.dropna().tolist())
+                del rdf
             except Exception:
                 need_refresh=True
         if need_refresh:
             src=source if source in ('jra','nar','all') else 'all'
             _refresh_then_predict([d], src)
         else:
-            subprocess.run([sys.executable,'replay_predict.py',d],check=False,timeout=600)
+            _run_replay_predict_subprocess(d)
             _clear_runtime_caches()
         print(f'[predict-job] done {key}')
 
@@ -288,14 +296,60 @@ def _run_predict_job(d, source='all'):
 
 
 def _start_predict_job(d, source='all'):
+    """バックグラウンドで予想。重いジョブ実行中は新規起動しない。"""
     key=f'{d}:{source}'
+    if _heavy_busy() or _predict_busy():
+        print(f'[predict-job] skip busy key={key} heavy={_HEAVY_JOB_STATE.get("name")} pred={_PREDICT_GLOBAL_STATE.get("key")}', flush=True)
+        return False
     with _PREDICT_JOBS_LOCK:
-        if key in _PREDICT_JOBS:
+        if key in _PREDICT_JOBS or _PREDICT_JOBS:
+            # 別日付の予想が走っていれば同時起動しない
+            print(f'[predict-job] skip other-running key={key} active={list(_PREDICT_JOBS)}', flush=True)
             return False
         _PREDICT_JOBS[key]='running'
     threading.Thread(target=_run_predict_job, args=(d, source), daemon=True).start()
     print(f'[predict-job] start {key}')
     return True
+
+
+def _heavy_busy() -> bool:
+    """他ジョブが実行中か。自スレッドの再入は busy とみなさない。"""
+    if hasattr(_HEAVY_JOB_LOCK, '_is_owned') and _HEAVY_JOB_LOCK._is_owned():
+        return False
+    return bool(_HEAVY_JOB_STATE.get('name')) or _HEAVY_JOB_LOCK.locked()
+
+
+def _predict_busy() -> bool:
+    return bool(_PREDICT_GLOBAL_STATE.get('running'))
+
+
+def _run_replay_predict_subprocess(day: str, *, timeout: int = 360, env=None) -> subprocess.CompletedProcess:
+    """replay_predict を1本だけ実行。同時実行をプロセス内で禁止。"""
+    env = dict(env or os.environ)
+    if _ON_RENDER:
+        env.setdefault('ARERU_SIM_RUNS', '20000')
+        env.setdefault('ARERU_ORDERS_KEEP_MAX', '20000')
+    acquired = _PREDICT_GLOBAL_LOCK.acquire(blocking=False)
+    if not acquired:
+        busy = _PREDICT_GLOBAL_STATE.get('key') or '?'
+        raise RuntimeError(f'predict already running ({busy})')
+    _PREDICT_GLOBAL_STATE['running'] = True
+    _PREDICT_GLOBAL_STATE['key'] = str(day)
+    try:
+        print(f'[predict] subprocess start date={day}', flush=True)
+        return subprocess.run(
+            [sys.executable, 'replay_predict.py', str(day)],
+            check=False, timeout=timeout, env=env,
+        )
+    finally:
+        _PREDICT_GLOBAL_STATE['running'] = False
+        _PREDICT_GLOBAL_STATE['key'] = ''
+        _PREDICT_GLOBAL_LOCK.release()
+        try:
+            import gc
+            gc.collect()
+        except Exception:
+            pass
 
 
 def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -1028,7 +1082,10 @@ def _ensure_source_today_seeded(source: str = 'nar') -> None:
             _JRA_BOOT_SEEDED = True
     if str(os.environ.get('ARERU_SKIP_NAR_BOOT') or '').strip() == '1':
         return
-    if str(os.environ.get('ARERU_SKIP_BOOT') or '').strip() == '1':
+    # Render では既定で起動シードをスキップ（NAR+JRA 同時起動→OOM→白画面の主因）
+    skip_boot = str(os.environ.get('ARERU_SKIP_BOOT') or _SKIP_BOOT_DEFAULT).strip()
+    if skip_boot == '1':
+        print(f'[{src}-boot] skipped (ARERU_SKIP_BOOT={skip_boot})', flush=True)
         return
     today = _today_jst()
     if _nar_pred_ready(today, src):
@@ -1085,14 +1142,32 @@ def _nar_force_calendar_today(explicit_date: str, want_today: bool, mode: str, a
 
 
 def _run_serialized_heavy(name: str, fn, *, wait: bool = False) -> bool:
-    """重いジョブを1本化。busy時はスキップ（wait=Trueなら完了待ち）。"""
-    timeout=1800 if wait else 0
-    acquired=_HEAVY_JOB_LOCK.acquire(timeout=timeout) if wait else _HEAVY_JOB_LOCK.acquire(blocking=False)
+    """重いジョブを1本化。busy時はスキップ（wait=Trueなら完了待ち）。
+
+    同一スレッドの再入は RLock で許可（odds-only が refresh 内から呼ばれる経路用）。
+    """
+    holding_before = hasattr(_HEAVY_JOB_LOCK, '_is_owned') and _HEAVY_JOB_LOCK._is_owned()
+    if holding_before:
+        prev = _HEAVY_JOB_STATE.get('name') or ''
+        _HEAVY_JOB_STATE['name'] = name
+        try:
+            print(f'[heavy] nested start {name} (under {prev})', flush=True)
+            fn()
+            print(f'[heavy] nested done {name}', flush=True)
+            return True
+        except Exception as e:
+            print(f'[heavy] nested fail {name}: {e}', flush=True)
+            raise
+        finally:
+            _HEAVY_JOB_STATE['name'] = prev
+
+    timeout = 1800 if wait else 0
+    acquired = _HEAVY_JOB_LOCK.acquire(timeout=timeout) if wait else _HEAVY_JOB_LOCK.acquire(blocking=False)
     if not acquired:
-        busy=_HEAVY_JOB_STATE.get('name') or '?'
+        busy = _HEAVY_JOB_STATE.get('name') or '?'
         print(f'[heavy] busy ({busy}), skip {name}', flush=True)
         return False
-    _HEAVY_JOB_STATE['name']=name
+    _HEAVY_JOB_STATE['name'] = name
     try:
         print(f'[heavy] start {name}', flush=True)
         fn()
@@ -1102,7 +1177,7 @@ def _run_serialized_heavy(name: str, fn, *, wait: bool = False) -> bool:
         print(f'[heavy] fail {name}: {e}', flush=True)
         raise
     finally:
-        _HEAVY_JOB_STATE['name']=''
+        _HEAVY_JOB_STATE['name'] = ''
         _HEAVY_JOB_LOCK.release()
 
 
@@ -1243,13 +1318,14 @@ def _refresh_then_predict(
             print(f'[Local Update] AI予想生成開始 date={d}', flush=True)
             t_pred=_time.perf_counter()
             try:
-                pr=subprocess.run(
-                    [sys.executable,'replay_predict.py',d],
-                    check=False, timeout=360, env=env,
-                )
+                pr=_run_replay_predict_subprocess(d, timeout=360, env=env)
             except subprocess.TimeoutExpired as e:
                 print(f'[Local Update] AI予想TIMEOUT date={d}: {e}', flush=True)
                 raise RuntimeError(f'replay_predict タイムアウト ({d})') from e
+            except RuntimeError as e:
+                # 同時予想禁止
+                print(f'[Local Update] AI予想スキップ date={d}: {e}', flush=True)
+                raise
             pred_sec=_time.perf_counter()-t_pred
             print(f'[Local Update] AI予想生成終了 date={d} sec={pred_sec:.1f} rc={pr.returncode}', flush=True)
             if pr.returncode != 0:
@@ -1372,6 +1448,13 @@ def ensure_for_page(d, source='all'):
             # 凍結後は不足ソースがあってもフル再予想しない（完成表示を優先）
             if frozen:
                 return f, 'ready'
+            # Render: 閲覧経路から予想を起こさない（cron / /refresh / 明示更新のみ）
+            if _ON_RENDER and not (
+                str(os.environ.get('ARERU_ALLOW_PAGE_PREDICT') or '').strip() in ('1', 'true', 'yes')
+            ):
+                if f.exists():
+                    return f, 'updating'
+                return None, 'generating'
             _start_predict_job(d, source)
             if f.exists():
                 # 既存ファイルがあれば表示しつつ更新中
@@ -2195,69 +2278,16 @@ def _patch_predictions_odds_from_runners(date_str: str, source: str) -> int:
             pred.to_csv(pred_path, index=False, encoding='utf-8-sig')
             _clear_runtime_caches()
             print(f'[{src}-odds] patched predictions odds n={n} date={day}', flush=True)
+        try:
+            del runners, pred, day_r, odds_map
+        except Exception:
+            pass
+        import gc
+        gc.collect()
         return n
     except Exception as e:
         print(f'[{src}-odds] patch fail: {e}', flush=True)
         return 0
-
-
-def _run_odds_only_update(source: str, date_str: str) -> bool:
-    """締切後の最小更新: 出走・オッズのみ。ランク/買い判定は再計算しない。"""
-    src = source if source in ('jra', 'nar') else 'nar'
-    day = date_str or _today_jst()
-    terminal = False
-    try:
-        _write_job_status(
-            src, state='running', stage='odds', message='オッズ更新中',
-            date_str=day,
-        )
-        cmd = [
-            sys.executable, 'refresh_data.py',
-            '--dates', day, '--source', src,
-            '--odds-only', '--skip-predict',
-        ]
-        print(f'[{src}-odds] {" ".join(cmd)}', flush=True)
-        try:
-            rc = subprocess.run(cmd, check=False, timeout=900)
-        except subprocess.TimeoutExpired as e:
-            print(f'[{src}-odds] TIMEOUT: {e}', flush=True)
-            _write_job_status(
-                src, state='error', stage='odds_timeout', message='オッズ更新タイムアウト',
-                date_str=day, error='odds refresh timeout',
-            )
-            terminal = True
-            return False
-        _clear_runtime_caches()
-        if rc.returncode != 0:
-            _write_job_status(
-                src, state='error', stage='odds_failed', message='オッズ更新失敗',
-                date_str=day, error=f'rc={rc.returncode}',
-            )
-            terminal = True
-            return False
-        _patch_predictions_odds_from_runners(day, src)
-        _write_job_status(
-            src, state='success', stage='odds_done', message='オッズ更新完了',
-            date_str=day,
-        )
-        # 封印を維持（sources に追記）
-        if _nar_pred_ready(day, src):
-            write_seal(day, sources=[src], note='post_deadline_odds', mode='odds')
-        terminal = True
-        return True
-    except Exception as e:
-        _write_job_status(
-            src, state='error', stage='odds_failed', message='オッズ更新失敗',
-            date_str=day, error=str(e)[:200],
-        )
-        terminal = True
-        return False
-    finally:
-        if not terminal:
-            _finalize_job_if_running(
-                src, ok=False, date_str=day,
-                message='オッズ更新失敗', error='odds job ended while running',
-            )
 
 
 def _runners_ready(date_str: str, source: str = 'nar') -> bool:
@@ -2266,65 +2296,126 @@ def _runners_ready(date_str: str, source: str = 'nar') -> bool:
     return int(c.get('runners_races') or 0) > 0
 
 
-def _predict_only_from_runners(source: str, date_str: str) -> bool:
+def _predict_only_from_runners(source: str, date_str: str, *, wait: bool = False) -> bool:
     """runners 済みで予想だけ作る（Render Free 向け軽量復旧）。"""
     import time as _time
     src = source if source in ('jra', 'nar') else 'nar'
     day = date_str or _today_jst()
-    terminal = False
-    t0 = _time.perf_counter()
-    print(f'[Local Update] START predict-only source={src} date={day}', flush=True)
-    try:
-        _write_job_status(
-            src, state='running', stage='predict_start', message='AI予想生成中',
-            date_str=day,
-        )
-        if not _runners_ready(day, src):
-            raise RuntimeError(f'{day}: runners が無いため予想不可')
-        print('[Local Update] AI予想生成開始 (predict-only)', flush=True)
-        pr = subprocess.run(
-            [sys.executable, 'replay_predict.py', day],
-            check=False, timeout=360,
-        )
-        print(
-            f'[Local Update] AI予想生成終了 sec={_time.perf_counter()-t0:.1f} rc={pr.returncode}',
-            flush=True,
-        )
-        if pr.returncode != 0:
-            raise RuntimeError(f'replay_predict rc={pr.returncode}')
-        if not _nar_pred_ready(day, src):
-            raise RuntimeError('predictions 未生成')
-        c = _nar_day_counts(day, src)
-        print(
-            f'[Local Update] DB保存完了 predictions={c["pred_races"]} venues={c["pred_venues"]}',
-            flush=True,
-        )
-        _clear_runtime_caches()
-        _write_job_status(
-            src, state='success', stage='done', message='更新成功', date_str=day,
-        )
-        auto_seal_if_ready(day, src, True)
-        print(f'[Local Update] END success predict-only total_sec={_time.perf_counter()-t0:.1f}', flush=True)
-        terminal = True
-        return True
-    except Exception as e:
-        err = str(e)[:200]
-        is_timeout = 'タイムアウト' in err or 'Timeout' in err or 'timeout' in err.lower()
-        _write_job_status(
-            src, state='error',
-            stage='timeout' if is_timeout else 'failed',
-            message='更新タイムアウト' if is_timeout else '更新失敗',
-            date_str=day, error=err,
-        )
-        print(f'[Local Update] END failed predict-only err={err}', flush=True)
-        terminal = True
-        return False
-    finally:
-        if not terminal:
-            _finalize_job_if_running(
-                src, ok=False, date_str=day,
-                message='更新失敗', error='predict-only ended while running',
+
+    def _body():
+        nonlocal_terminal = {'ok': False}
+        t0 = _time.perf_counter()
+        print(f'[Local Update] START predict-only source={src} date={day}', flush=True)
+        try:
+            _write_job_status(
+                src, state='running', stage='predict_start', message='AI予想生成中',
+                date_str=day,
             )
+            if not _runners_ready(day, src):
+                raise RuntimeError(f'{day}: runners が無いため予想不可')
+            print('[Local Update] AI予想生成開始 (predict-only)', flush=True)
+            pr = _run_replay_predict_subprocess(day, timeout=360)
+            print(
+                f'[Local Update] AI予想生成終了 sec={_time.perf_counter()-t0:.1f} rc={pr.returncode}',
+                flush=True,
+            )
+            if pr.returncode != 0:
+                raise RuntimeError(f'replay_predict rc={pr.returncode}')
+            if not _nar_pred_ready(day, src):
+                raise RuntimeError('predictions 未生成')
+            c = _nar_day_counts(day, src)
+            print(
+                f'[Local Update] DB保存完了 predictions={c["pred_races"]} venues={c["pred_venues"]}',
+                flush=True,
+            )
+            _clear_runtime_caches()
+            _write_job_status(
+                src, state='success', stage='done', message='更新成功', date_str=day,
+            )
+            auto_seal_if_ready(day, src, True)
+            print(f'[Local Update] END success predict-only total_sec={_time.perf_counter()-t0:.1f}', flush=True)
+            nonlocal_terminal['ok'] = True
+            return True
+        except Exception as e:
+            err = str(e)[:200]
+            is_timeout = 'タイムアウト' in err or 'Timeout' in err or 'timeout' in err.lower()
+            _write_job_status(
+                src, state='error',
+                stage='timeout' if is_timeout else 'failed',
+                message='更新タイムアウト' if is_timeout else '更新失敗',
+                date_str=day, error=err,
+            )
+            print(f'[Local Update] END failed predict-only err={err}', flush=True)
+            raise
+
+    try:
+        # 必ず heavy lock 経由（ロック抜け同時予想が OOM の主因だった）
+        ok = _run_serialized_heavy(f'predict-only:{src}:{day}', _body, wait=wait)
+        return bool(ok)
+    except Exception:
+        return False
+
+
+def _run_odds_only_update(source: str, date_str: str, *, wait: bool = False) -> bool:
+    """締切後の最小更新: 出走・オッズのみ。ランク/買い判定は再計算しない。"""
+    src = source if source in ('jra', 'nar') else 'nar'
+    day = date_str or _today_jst()
+
+    def _body():
+        terminal = False
+        try:
+            _write_job_status(
+                src, state='running', stage='odds', message='オッズ更新中',
+                date_str=day,
+            )
+            cmd = [
+                sys.executable, 'refresh_data.py',
+                '--dates', day, '--source', src,
+                '--odds-only', '--skip-predict',
+            ]
+            print(f'[{src}-odds] {" ".join(cmd)}', flush=True)
+            try:
+                rc = subprocess.run(cmd, check=False, timeout=900)
+            except subprocess.TimeoutExpired as e:
+                _write_job_status(
+                    src, state='error', stage='odds_timeout', message='オッズ更新タイムアウト',
+                    date_str=day, error='odds refresh timeout',
+                )
+                raise RuntimeError('odds refresh timeout') from e
+            if rc.returncode != 0:
+                raise RuntimeError(f'odds refresh rc={rc.returncode}')
+            _clear_runtime_caches()
+            patched = _patch_predictions_odds_from_runners(day, src)
+            if _nar_pred_ready(day, src):
+                write_seal(day, sources=[src], note='post_deadline_odds', mode='odds')
+            _write_job_status(
+                src, state='success', stage='odds_done',
+                message=f'オッズ更新完了({patched})', date_str=day,
+            )
+            terminal = True
+            return True
+        except Exception as e:
+            err = str(e)[:200]
+            is_timeout = 'タイムアウト' in err or 'Timeout' in err or 'timeout' in err.lower()
+            _write_job_status(
+                src, state='error',
+                stage='timeout' if is_timeout else 'failed',
+                message='更新タイムアウト' if is_timeout else '更新失敗',
+                date_str=day, error=err,
+            )
+            terminal = True
+            raise
+        finally:
+            if not terminal:
+                _finalize_job_if_running(
+                    src, ok=False, date_str=day,
+                    message='更新失敗', error='odds-only ended while running',
+                )
+
+    try:
+        return bool(_run_serialized_heavy(f'odds-only:{src}:{day}', _body, wait=wait))
+    except Exception:
+        return False
 
 
 def run_today_pipeline(
@@ -2351,7 +2442,7 @@ def run_today_pipeline(
     # 締切後の通常更新・本日ボタンは odds-only
     if not do_full and should_odds_only_update(src, date_str=today, ready=ready):
         print(f'[{src}-today] post-{PREDICT_READY_HOUR}:00 odds-only date={today}', flush=True)
-        return _run_odds_only_update(src, today)
+        return _run_odds_only_update(src, today, wait=bool(force))
     if not do_full and not ready and past_predict_deadline():
         # 朝の生成に失敗 → 復旧として本生成を許可
         do_full = True
@@ -2378,7 +2469,7 @@ def run_today_pipeline(
             f'(Render Free 固まり防止) date={today}',
             flush=True,
         )
-        return _predict_only_from_runners(src, today)
+        return _predict_only_from_runners(src, today, wait=bool(force))
 
     lock = DATA / f'.{src}_today_pipeline.lock'
     if lock.exists():
@@ -2592,7 +2683,7 @@ def bootstrap_source(source: str) -> bool:
                         src, state='running', stage='predict_start', message='AI予想生成中',
                         date_str=d,
                     )
-                    pr = subprocess.run([sys.executable, 'replay_predict.py', d], check=False, timeout=600)
+                    pr = _run_replay_predict_subprocess(d, timeout=600)
                     if pr.returncode != 0:
                         raise RuntimeError(f'replay_predict 終了コード {pr.returncode}')
                 _clear_runtime_caches()
@@ -2661,6 +2752,19 @@ def index():
                     _pipeline_log(
                         '表示', 'スキップ', today,
                         source=source, reason='job_already_running', 保存件数='-',
+                    )
+                    return
+                if _heavy_busy() or _predict_busy():
+                    _pipeline_log(
+                        '表示', 'スキップ', today,
+                        source=source, reason='heavy_or_predict_busy', 保存件数='-',
+                    )
+                    return
+                # Render: 閲覧だけでは本生成しない（cron / 明示更新のみ）。OOM→白画面防止。
+                if _ON_RENDER and not force and not force_refresh and not want_today:
+                    _pipeline_log(
+                        '表示', 'スキップ', today,
+                        source=source, reason='render_page_no_auto_job', 保存件数='-',
                     )
                     return
                 # 強制再取得以外は失敗直後の再起動を抑止
@@ -2775,11 +2879,12 @@ def index():
             selected=(result_days[0] if result_days else (av[0] if av else ''))
         try:
             prefer=[selected] if selected else []
-            threading.Thread(
-                target=bootstrap_missing_results,
-                kwargs={'source': source, 'prefer_dates': prefer},
-                daemon=True,
-            ).start()
+            if not _ON_RENDER or force_refresh or want_today:
+                threading.Thread(
+                    target=bootstrap_missing_results,
+                    kwargs={'source': source, 'prefer_dates': prefer},
+                    daemon=True,
+                ).start()
         except Exception as e:
             print(f'[bootstrap-results] skip: {e}')
     elif mode=='result' and force_cal_today:
@@ -2789,11 +2894,12 @@ def index():
             av=sorted(set(av)|{today}, reverse=True)
         selected=today
         try:
-            threading.Thread(
-                target=bootstrap_missing_results,
-                kwargs={'source': source, 'prefer_dates': [today]},
-                daemon=True,
-            ).start()
+            if not _ON_RENDER or force_refresh or want_today:
+                threading.Thread(
+                    target=bootstrap_missing_results,
+                    kwargs={'source': source, 'prefer_dates': [today]},
+                    daemon=True,
+                ).start()
         except Exception as e:
             print(f'[bootstrap-results] skip: {e}')
     elif mode=='result' and not want_today and not explicit_date and source!='nar':
@@ -2801,11 +2907,12 @@ def index():
         selected=(result_days[0] if result_days else (av[0] if av else ''))
         try:
             prefer=[selected] if selected else []
-            threading.Thread(
-                target=bootstrap_missing_results,
-                kwargs={'source': source, 'prefer_dates': prefer},
-                daemon=True,
-            ).start()
+            if not _ON_RENDER or force_refresh or want_today:
+                threading.Thread(
+                    target=bootstrap_missing_results,
+                    kwargs={'source': source, 'prefer_dates': prefer},
+                    daemon=True,
+                ).start()
         except Exception as e:
             print(f'[bootstrap-results] skip: {e}')
     elif mode=='result' and source=='nar' and not want_today and not explicit_date:
@@ -2815,11 +2922,12 @@ def index():
             av=sorted(set(av)|{today}, reverse=True)
         selected=today
         try:
-            threading.Thread(
-                target=bootstrap_missing_results,
-                kwargs={'source': source, 'prefer_dates': [today]},
-                daemon=True,
-            ).start()
+            if not _ON_RENDER or force_refresh or want_today:
+                threading.Thread(
+                    target=bootstrap_missing_results,
+                    kwargs={'source': source, 'prefer_dates': [today]},
+                    daemon=True,
+                ).start()
         except Exception as e:
             print(f'[bootstrap-results] skip: {e}')
     # 開催場パラメータ:
@@ -3062,110 +3170,147 @@ def index():
                                         flush=True,
                                     )
                             else:
-                                df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig'))
-                                if source in ('jra','nar') and 'source' in df.columns:
-                                    df=df[df['source'].astype(str).str.lower()==source].copy()
-                                if mode=='predict':
-                                    drop_cols=[c for c in (
-                                        'ワイド詳細','馬連詳細','馬単詳細','三連複詳細','三連単詳細','本命詳細'
-                                    ) if c in df.columns]
-                                    if drop_cols:
-                                        df=df.drop(columns=drop_cols, errors='ignore')
-                                races=prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
-                                races=_filter_records_by_source(races, source)
-                                races=apply_display_ranks(races, by_venue=(source=='nar'))
-                                for row in races:
-                                    if not _race_date(row):
-                                        row['日付']=selected
-                                if mode=='result':
-                                    races,has_results=attach_results(races, selected_date=selected)
-                                    ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
-                                    tickets_by_race={}
-                                    for t in (verification or {}).get('recent_rows') or []:
-                                        tid=_norm_race_id(t.get('race_id',''))
-                                        if tid:
-                                            tickets_by_race.setdefault(tid, []).append(t)
+                                # 全列読みは禁止（Render OOM）。会場詳細と同じ列制限で読む。
+                                venue_rows = _read_predictions_for_venue_detail(
+                                    pred_path, source, selected_venue
+                                ) if selected_venue else _read_predictions_for_venue_picker(pred_path, source)
+                                if selected_venue and venue_rows:
+                                    races = prep(venue_rows, ban_map=_main_ban_map(selected))
+                                    races = _filter_records_by_source(races, source)
+                                    races = apply_display_ranks(races, by_venue=(source == 'nar'))
                                     for row in races:
-                                        rid=_norm_race_id(row.get('race_id',''))
-                                        row['purchase_ranks']=list(ranks_map.get(rid, []))
-                                        row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
-                                venues=_venue_meetings(races)
-                                venue_names={v['name'] for v in venues}
-                                races_for_board=list(races)
-                                if source=='nar' and mode in ('predict','result'):
-                                    show_venue_picker=True
-                                    if selected_venue and selected_venue not in venue_names:
-                                        selected_venue=''
-                                    if selected_venue:
-                                        from netkeiba_client import normalize_venue_name as _nv
-                                        races=[
-                                            r for r in races
-                                            if _nv(str(r.get('開催地') or '').strip())==selected_venue
-                                        ]
-                                        show_venue_picker=False
-                                        races_for_board=list(races)
-                                        if not races:
-                                            data_status='generating'
-                                            message='データ取得中'
-                                            try:
-                                                threading.Thread(
-                                                    target=bootstrap_venue,
-                                                    args=(selected, selected_venue, 'nar'),
-                                                    daemon=True,
-                                                ).start()
-                                            except Exception as e:
-                                                print(f'[bootstrap-venue] skip: {e}')
+                                        if not _race_date(row):
+                                            row['日付'] = selected
+                                    venues = _venue_meetings(races)
+                                    show_venue_picker = False
+                                    races_for_board = list(races)
+                                    buy_candidates = build_buy_candidates(races_for_board)
+                                    board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
+                                    today_ai_board = build_today_ai_board(races_for_board, board_verify)
+                                    data_updated_at = ''
+                                    try:
+                                        if pred_path and Path(pred_path).exists():
+                                            from datetime import datetime as _dt
+                                            data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                                    except Exception:
+                                        data_updated_at = ''
+                                    targets = buy_candidates[:8]
+                                    if data_status == 'updating':
+                                        message = f'{selected} / {selected_venue} / データ更新中'
+                                    elif mode == 'result':
+                                        message = f'{selected} / {selected_venue} / 結果検証'
                                     else:
-                                        races=[]
+                                        message = f'{selected} / {selected_venue} / 予想分析'
                                 else:
-                                    selected_venue=''
-                                buy_candidates=build_buy_candidates(races_for_board)
-                                board_verify=verification if mode in ('result','analysis') else dict(_EMPTY_VERIFY)
-                                today_ai_board=build_today_ai_board(races_for_board, board_verify)
-                                data_updated_at=''
-                                try:
-                                    if pred_path and Path(pred_path).exists():
-                                        from datetime import datetime as _dt
-                                        data_updated_at=_dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                                except Exception:
-                                    data_updated_at=''
-                                targets=buy_candidates[:8]
-                                if data_status=='updating':
-                                    message=f'{selected} / {label} / データ更新中（表示はキャッシュ）'
-                                    if data_updated_at:
-                                        message+=f' · 最終更新 {data_updated_at}'
-                                elif data_status=='generating':
-                                    message='データ取得中'
-                                elif source=='nar' and show_venue_picker:
-                                    if venues:
-                                        if selected==today:
-                                            message=f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                                    df = _fillna_pred_df(pd.read_csv(
+                                        pred_path, encoding='utf-8-sig',
+                                        usecols=lambda c: c in set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付'},
+                                    ))
+                                    if source in ('jra', 'nar') and 'source' in df.columns:
+                                        df = df[df['source'].astype(str).str.lower() == source].copy()
+                                    if mode == 'predict':
+                                        drop_cols = [c for c in (
+                                            'ワイド詳細', '馬連詳細', '馬単詳細', '三連複詳細', '三連単詳細', '本命詳細'
+                                        ) if c in df.columns]
+                                        if drop_cols:
+                                            df = df.drop(columns=drop_cols, errors='ignore')
+                                    races = prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
+                                    del df
+                                    races = _filter_records_by_source(races, source)
+                                    races = apply_display_ranks(races, by_venue=(source == 'nar'))
+                                    for row in races:
+                                        if not _race_date(row):
+                                            row['日付'] = selected
+                                    if mode == 'result':
+                                        races, has_results = attach_results(races, selected_date=selected)
+                                        ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
+                                        tickets_by_race = {}
+                                        for t in (verification or {}).get('recent_rows') or []:
+                                            tid = _norm_race_id(t.get('race_id', ''))
+                                            if tid:
+                                                tickets_by_race.setdefault(tid, []).append(t)
+                                        for row in races:
+                                            rid = _norm_race_id(row.get('race_id', ''))
+                                            row['purchase_ranks'] = list(ranks_map.get(rid, []))
+                                            row['購入馬券一覧'] = list(tickets_by_race.get(rid, []))
+                                    venues = _venue_meetings(races)
+                                    venue_names = {v['name'] for v in venues}
+                                    races_for_board = list(races)
+                                    if source == 'nar' and mode in ('predict', 'result'):
+                                        show_venue_picker = True
+                                        if selected_venue and selected_venue not in venue_names:
+                                            selected_venue = ''
+                                        if selected_venue:
+                                            from netkeiba_client import normalize_venue_name as _nv
+                                            races = [
+                                                r for r in races
+                                                if _nv(str(r.get('開催地') or '').strip()) == selected_venue
+                                            ]
+                                            show_venue_picker = False
+                                            races_for_board = list(races)
+                                            if not races:
+                                                data_status = 'generating'
+                                                message = 'データ取得中'
+                                                try:
+                                                    if not (_heavy_busy() or _predict_busy()):
+                                                        threading.Thread(
+                                                            target=bootstrap_venue,
+                                                            args=(selected, selected_venue, 'nar'),
+                                                            daemon=True,
+                                                        ).start()
+                                                except Exception as e:
+                                                    print(f'[bootstrap-venue] skip: {e}')
                                         else:
-                                            message=f'{selected} / {label} / 開催場 {len(venues)}場'
+                                            races = []
                                     else:
-                                        if data_status=='error':
-                                            message='取得失敗'
-                                        elif selected==today:
-                                            message='本日は地方競馬の開催はありません'
+                                        selected_venue = ''
+                                    buy_candidates = build_buy_candidates(races_for_board)
+                                    board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
+                                    today_ai_board = build_today_ai_board(races_for_board, board_verify)
+                                    data_updated_at = ''
+                                    try:
+                                        if pred_path and Path(pred_path).exists():
+                                            from datetime import datetime as _dt
+                                            data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                                    except Exception:
+                                        data_updated_at = ''
+                                    targets = buy_candidates[:8]
+                                    if data_status == 'updating':
+                                        message = f'{selected} / {label} / データ更新中（表示はキャッシュ）'
+                                        if data_updated_at:
+                                            message += f' · 最終更新 {data_updated_at}'
+                                    elif data_status == 'generating':
+                                        message = 'データ取得中'
+                                    elif source == 'nar' and show_venue_picker:
+                                        if venues:
+                                            if selected == today:
+                                                message = f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
+                                            else:
+                                                message = f'{selected} / {label} / 開催場 {len(venues)}場'
                                         else:
-                                            message=f'{selected} の地方開催データがありません'
-                                elif not races:
-                                    if source=='nar' and selected_venue and data_status=='generating':
-                                        message='データ取得中'
+                                            if data_status == 'error':
+                                                message = '取得失敗'
+                                            elif selected == today:
+                                                message = '本日は地方競馬の開催はありません'
+                                            else:
+                                                message = f'{selected} の地方開催データがありません'
+                                    elif not races:
+                                        if source == 'nar' and selected_venue and data_status == 'generating':
+                                            message = 'データ取得中'
+                                        else:
+                                            message = f'{selected} / {label} のレースがありません'
+                                    elif mode == 'result':
+                                        if selected_venue:
+                                            message = f'{selected} / {selected_venue} / 結果検証'
+                                        else:
+                                            message = f'{selected} / {label} / 結果検証モード'
+                                    elif mode == 'analysis':
+                                        message = f'{selected} / {label} / AI期待値分析'
                                     else:
-                                        message=f'{selected} / {label} のレースがありません'
-                                elif mode=='result':
-                                    if selected_venue:
-                                        message=f'{selected} / {selected_venue} / 結果検証'
-                                    else:
-                                        message=f'{selected} / {label} / 結果検証モード'
-                                elif mode=='analysis':
-                                    message=f'{selected} / {label} / AI期待値分析'
-                                else:
-                                    if selected_venue:
-                                        message=f'{selected} / {selected_venue} / 予想分析'
-                                    else:
-                                        message=f'{selected} / {label} / AI期待値分析'
+                                        if selected_venue:
+                                            message = f'{selected} / {selected_venue} / 予想分析'
+                                        else:
+                                            message = f'{selected} / {label} / AI期待値分析'
         except FileNotFoundError as e:
             data_status='generating'
             message='データ取得中' if source=='nar' else (str(e) or 'データ取得中です。完了後に再読み込みしてください。')
@@ -3189,6 +3334,9 @@ def index():
                     if (
                         not _job_is_active(source)
                         and not _job_in_failure_cooldown(source)
+                        and not (_ON_RENDER and not force_refresh and not want_today)
+                        and not _heavy_busy()
+                        and not _predict_busy()
                     ):
                         threading.Thread(
                             target=run_today_pipeline, args=(source,),
@@ -3214,6 +3362,9 @@ def index():
                 if (
                     not _job_is_active(source)
                     and not _job_in_failure_cooldown(source)
+                    and not (_ON_RENDER and not force_refresh and not want_today)
+                    and not _heavy_busy()
+                    and not _predict_busy()
                 ):
                     threading.Thread(
                         target=run_today_pipeline, args=(source,),
@@ -4214,6 +4365,18 @@ def api_refresh_status():
     }
 
 
+@app.route('/healthz', methods=['GET'])
+def healthz():
+    """軽量ヘルスチェック。ジョブ起動なし（Render wake / GHA 用）。"""
+    return {
+        'ok': True,
+        'today': _today_jst(),
+        'heavy': _HEAVY_JOB_STATE.get('name') or '',
+        'predict': _PREDICT_GLOBAL_STATE.get('key') or '',
+        'pid': os.getpid(),
+    }
+
+
 def _cron_token_ok() -> bool:
     token=str(request.args.get('token') or request.headers.get('X-Cron-Token') or '').strip()
     expected=str(os.environ.get('CRON_TOKEN') or '').strip()
@@ -4284,6 +4447,12 @@ def cron_nar_daily():
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
     mode = _cron_pipeline_mode()
+    if _heavy_busy() or _predict_busy():
+        return {
+            'ok': True, 'started': False, 'skipped': True,
+            'reason': 'busy', 'source': 'nar', 'mode': mode,
+            'heavy': _HEAVY_JOB_STATE.get('name') or '',
+        }
 
     def _run():
         try:
@@ -4301,6 +4470,12 @@ def cron_jra_daily():
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
     mode = _cron_pipeline_mode()
+    if _heavy_busy() or _predict_busy():
+        return {
+            'ok': True, 'started': False, 'skipped': True,
+            'reason': 'busy', 'source': 'jra', 'mode': mode,
+            'heavy': _HEAVY_JOB_STATE.get('name') or '',
+        }
 
     def _run():
         try:
@@ -4314,10 +4489,16 @@ def cron_jra_daily():
 
 @app.route('/cron/daily', methods=['POST','GET'])
 def cron_daily_both():
-    """外部cron向け: 地方→JRA の順で日次更新（直列）。"""
+    """外部cron向け: 地方→JRA の順で日次更新（直列）。推奨エンドポイント。"""
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
     mode = _cron_pipeline_mode()
+    if _heavy_busy() or _predict_busy():
+        return {
+            'ok': True, 'started': False, 'skipped': True,
+            'reason': 'busy', 'source': 'all', 'mode': mode,
+            'heavy': _HEAVY_JOB_STATE.get('name') or '',
+        }
 
     def _run():
         for src in ('nar', 'jra'):
@@ -4325,6 +4506,12 @@ def cron_daily_both():
                 _run_cron_source(src, mode)
             except Exception as e:
                 print(f'[cron-daily] {src} fail: {e}', flush=True)
+            # ソース切替前にメモリ回収
+            try:
+                import gc
+                gc.collect()
+            except Exception:
+                pass
 
     threading.Thread(target=_run, daemon=True).start()
     return {'ok': True, 'started': True, 'source': 'all', 'mode': mode}
@@ -4359,7 +4546,7 @@ def refresh_route():
                         else:
                             cmd=[sys.executable,'refresh_data.py','--latest-only','--odds-only','--source',_source,'--skip-predict']
                             subprocess.run(cmd, check=False, timeout=1800)
-                            subprocess.run([sys.executable,'replay_predict.py',today], check=False, timeout=600)
+                            _run_replay_predict_subprocess(today, timeout=600)
                     elif _mode=='results':
                         if _date and re.fullmatch(r'\d{4}-\d{2}-\d{2}', _date):
                             cmd=[sys.executable,'results.py','--source',_source,'--dates',_date]
@@ -4390,7 +4577,7 @@ def refresh_route():
                             ]
                         subprocess.run(cmd, check=False, timeout=1800)
                         _clear_runtime_caches()
-                        subprocess.run([sys.executable,'replay_predict.py',pred_day], check=False, timeout=600)
+                        _run_replay_predict_subprocess(pred_day, timeout=600)
                         if _source in ('nar','all'):
                             c=_nar_day_counts(pred_day, 'nar')
                             _pipeline_log(

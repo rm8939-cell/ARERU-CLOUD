@@ -6,14 +6,28 @@
 """
 from __future__ import annotations
 
+import os
 import re
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-SIM_RUNS = 100_000
-SIM_BATCH = 5_000
+def _env_int(name: str, default: int) -> int:
+    try:
+        v = int(str(os.environ.get(name) or "").strip())
+        return v if v > 0 else default
+    except Exception:
+        return default
+
+
+# Render Free(512MB) では 10万回×全レースで親Web+子プロセスが合算OOMしやすい。
+# ARERU_SIM_RUNS で上書き可。未設定時は Render なら 2万、それ以外は 10万。
+_DEFAULT_SIM = 20_000 if str(os.environ.get("RENDER") or "").lower() in ("true", "1") else 100_000
+SIM_RUNS = _env_int("ARERU_SIM_RUNS", _DEFAULT_SIM)
+SIM_BATCH = _env_int("ARERU_SIM_BATCH", 2_500 if SIM_RUNS <= 25_000 else 5_000)
+# 券種候補用に保持する着順サンプル上限（全量保持で一時メモリが倍増するのを防ぐ）
+ORDERS_KEEP_MAX = _env_int("ARERU_ORDERS_KEEP_MAX", 25_000)
 
 # 脚質: 0=逃げ寄り … 1=追込寄り
 STYLE_NIGE = 0.15
@@ -428,7 +442,10 @@ def simulate_race_stages(g: pd.DataFrame, profiles: list[dict], pace: dict, runs
 
     finish_counts = np.zeros((n_h, n_h), dtype=np.int64)
     corner_sum = np.zeros(n_h, dtype=np.float64)
-    orders = []
+    # 券種用サンプルのみ保持（全 runs を積むと Render で親+子合算OOM）
+    keep_max = min(int(ORDERS_KEEP_MAX), int(runs))
+    kept = []
+    kept_n = 0
 
     for start in range(0, runs, SIM_BATCH):
         n = min(SIM_BATCH, runs - start)
@@ -463,11 +480,18 @@ def simulate_race_stages(g: pd.DataFrame, profiles: list[dict], pace: dict, runs
             + rng.normal(0, 5.0, size=(n, n_h))
         )
         order = np.argsort(-stretch, axis=1)
-        orders.append(order)
         for pos in range(n_h):
             finish_counts[:, pos] += np.bincount(order[:, pos], minlength=n_h)
+        # バッチ一時配列を早めに解放
+        del ability, start_pos, position, mid_score, corner_latent, corner_order, corner_rank, stretch
+        if kept_n < keep_max:
+            take = min(n, keep_max - kept_n)
+            kept.append(order[:take].copy())
+            kept_n += take
+        del order
 
-    order_all = np.vstack(orders)
+    order_all = np.vstack(kept) if kept else np.zeros((0, n_h), dtype=np.int64)
+    del kept
     return order_all, finish_counts, corner_sum / max(runs, 1)
 
 

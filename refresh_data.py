@@ -781,72 +781,89 @@ def refresh(
     venue_list = [str(v).strip() for v in (venues or []) if str(v).strip()] or None
     dates = resolve_date_tokens(dates)
 
-    for src in sources:
-        target_dates: list[str] = []
-        if dates:
-            target_dates = dates
-        elif discover:
-            found = client.discover_kaisai_dates(
-                lookback=lookback, lookahead=lookahead, source=src
-            )
-            print(f"🗓️  {src.upper()} 自動検出開催日: {found}")
-            if not found:
-                print(f"⚠️  {src.upper()} 開催日なし")
-                continue
-            if latest_only:
-                # 未来カードではなく「本日優先・無ければ直近過去」を中心に ±2 日を取る（JST）
-                today_str = datetime.now(JST).date().isoformat()
-                past_or_today = [d for d in found if d <= today_str]
-                if today_str in found:
-                    anchor = today_str
-                else:
-                    anchor = max(past_or_today) if past_or_today else found[0]
+    try:
+        for src in sources:
+            target_dates: list[str] = []
+            if dates:
+                target_dates = dates
+            elif discover:
+                found = client.discover_kaisai_dates(
+                    lookback=lookback, lookahead=lookahead, source=src
+                )
+                print(f"🗓️  {src.upper()} 自動検出開催日: {found}")
+                if not found:
+                    print(f"⚠️  {src.upper()} 開催日なし")
+                    continue
+                if latest_only:
+                    # 未来カードではなく「本日優先・無ければ直近過去」を中心に ±2 日を取る（JST）
+                    today_str = datetime.now(JST).date().isoformat()
+                    past_or_today = [d for d in found if d <= today_str]
+                    if today_str in found:
+                        anchor = today_str
+                    else:
+                        anchor = max(past_or_today) if past_or_today else found[0]
+                        print(
+                            f"[pipeline] 開催取得 警告 date={anchor} source={src} "
+                            f"reason=today_missing_in_discover today={today_str} "
+                            f"found={found[:8]} 保存件数=0",
+                            flush=True,
+                        )
+                    target_dates = [anchor]
+                    for d in found:
+                        if d == anchor:
+                            continue
+                        delta = abs((datetime.fromisoformat(anchor) - datetime.fromisoformat(d)).days)
+                        if delta <= 2:
+                            target_dates.append(d)
+                    target_dates = sorted(set(target_dates))
                     print(
-                        f"[pipeline] 開催取得 警告 date={anchor} source={src} "
-                        f"reason=today_missing_in_discover today={today_str} "
-                        f"found={found[:8]} 保存件数=0",
+                        f"[pipeline] 開催取得 成功 date={anchor} source={src} "
+                        f"anchor={anchor} targets={target_dates} 保存件数={len(target_dates)}",
                         flush=True,
                     )
-                target_dates = [anchor]
-                for d in found:
-                    if d == anchor:
-                        continue
-                    delta = abs((datetime.fromisoformat(anchor) - datetime.fromisoformat(d)).days)
-                    if delta <= 2:
-                        target_dates.append(d)
-                target_dates = sorted(set(target_dates))
-                print(
-                    f"[pipeline] 開催取得 成功 date={anchor} source={src} "
-                    f"anchor={anchor} targets={target_dates} 保存件数={len(target_dates)}",
-                    flush=True,
-                )
+                else:
+                    existing = set(available_dates(runners, source=src))
+                    recent = found[:4]
+                    target_dates = sorted(set(recent) | (set(found) - existing))
             else:
-                existing = set(available_dates(runners, source=src))
-                recent = found[:4]
-                target_dates = sorted(set(recent) | (set(found) - existing))
-        else:
-            target_dates = available_dates(runners, source=src)
+                target_dates = available_dates(runners, source=src)
 
-        print(f"🎯 {src.upper()} 更新対象: {target_dates}")
-        all_target_dates.extend(target_dates)
+            print(f"🎯 {src.upper()} 更新対象: {target_dates}")
+            all_target_dates.extend(target_dates)
+            _log_mem(f"before {src} fetch")
 
-        if odds_only:
-            runners = refresh_odds_for_dates(client, runners, target_dates, source=src)
-        else:
-            for d in target_dates:
-                # 増分保存用の箱（タイムアウトでも途中まで残す）
-                state = {"df": runners}
+            if odds_only:
+                runners = refresh_odds_for_dates(client, runners, target_dates, source=src)
+            else:
+                for d in target_dates:
+                    # 増分保存用の箱（タイムアウトでも途中まで残す）
+                    state = {"df": runners}
 
-                def _persist(partial: pd.DataFrame, _state=state):
-                    _state["df"] = merge_runners(_state["df"], partial)
-                    save_runners(_state["df"])
+                    def _persist(partial: pd.DataFrame, _state=state):
+                        _state["df"] = merge_runners(_state["df"], partial)
+                        save_runners(_state["df"])
 
-                built = build_date_runners(
-                    client, d, source=src, include_results=True, include_odds=include_odds,
-                    persist_cb=_persist,
-                    venues=venue_list,
-                )
-                runners = merge_runners(state["df"], built)
+                    built = build_date_runners(
+                        client, d, source=src, include_results=True, include_odds=include_odds,
+                        persist_cb=_persist,
+                        venues=venue_list,
+                    )
+                    runners = merge_runners(state["df"], built)
+                    _log_mem(f"after {src} {d}")
+                    import gc
+                    gc.collect()
+    finally:
+        try:
+            client.session.close()
+        except Exception:
+            pass
+        try:
+            del client
+        except Exception:
+            pass
+        import gc
+        gc.collect()
+        _log_mem("after client close")
 
     save_runners(runners)
     all_target_dates = sorted(set(all_target_dates))
@@ -865,6 +882,7 @@ def refresh(
         pass
     import gc
     gc.collect()
+    _log_mem("before predict subprocess")
     if to_gen:
         generate_predictions(to_gen)
     return av

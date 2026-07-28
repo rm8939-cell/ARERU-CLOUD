@@ -1,5 +1,6 @@
-# Render 起動 + 日次 cron（NAR+JRA）
+# Render 起動 + 日次 cron（NAR→JRA 直列）
 # 目標: 毎朝 08:00 JST までに予想完成。以降は odds 更新のみ。
+# 重要: ページ wake は /healthz のみ（/?source=... はジョブ起動して OOM しやすい）
 name: NAR daily wake
 
 on:
@@ -25,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Wake app and run NAR + JRA daily cron
+      - name: Wake app and run daily cron (serialized)
         env:
           APP_URL: ${{ secrets.RENDER_APP_URL }}
           CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
@@ -45,28 +46,34 @@ jobs:
             MODE="odds"
           fi
           echo "mode=${MODE} utc=${HOUR_UTC}:${MIN_UTC}"
-          echo "Waking ${BASE} ..."
-          curl -fsS -o /dev/null -w "wake_nar=%{http_code}\n" --max-time 90 \
-            "${BASE}/?source=nar&mode=predict" || true
-          curl -fsS -o /dev/null -w "wake_jra=%{http_code}\n" --max-time 90 \
-            "${BASE}/?source=jra&mode=predict" || true
-          sleep 8
+          echo "Waking ${BASE}/healthz ..."
+          # ページではなく healthz（ジョブ起動なし）
+          for i in 1 2 3; do
+            code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 90 \
+              "${BASE}/healthz" || echo "000")
+            echo "wake_try=${i} http=${code}"
+            head -c 200 /tmp/healthz.json || true
+            echo
+            if [ "$code" = "200" ]; then
+              break
+            fi
+            sleep 10
+          done
+          sleep 5
           if [ -n "${CRON_TOKEN:-}" ]; then
             Q="?token=${CRON_TOKEN}&mode=${MODE}"
           else
             Q="?mode=${MODE}"
           fi
-          for SRC in nar jra; do
-            URL="${BASE}/cron/${SRC}-daily${Q}"
-            echo "GET ${URL} ..."
-            code=$(curl -sS -o "/tmp/${SRC}_cron.json" -w "%{http_code}" --max-time 120 \
-              -X GET "$URL" || echo "000")
-            echo "${SRC}_cron_http=${code}"
-            head -c 400 "/tmp/${SRC}_cron.json" || true
-            echo
-            if [ "$code" != "200" ] && [ "$code" != "401" ]; then
-              sleep 15
-              curl -fsS --max-time 120 -X GET "$URL" || true
-            fi
-            sleep 5
-          done
+          # NAR→JRA はサーバー側で直列。個別 cron の同時叩きはしない。
+          URL="${BASE}/cron/daily${Q}"
+          echo "GET ${URL} ..."
+          code=$(curl -sS -o /tmp/daily_cron.json -w "%{http_code}" --max-time 120 \
+            -X GET "$URL" || echo "000")
+          echo "daily_cron_http=${code}"
+          head -c 400 /tmp/daily_cron.json || true
+          echo
+          if [ "$code" != "200" ] && [ "$code" != "401" ]; then
+            sleep 20
+            curl -fsS --max-time 120 -X GET "$URL" || true
+          fi

@@ -1,5 +1,5 @@
 [build]
 builder = "NIXPACKS"
 [deploy]
-startCommand = "gunicorn web_app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1"
+startCommand = "gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 90 --max-requests 80 --max-requests-jitter 20 --worker-class sync"
 restartPolicyType = "ON_FAILURE"

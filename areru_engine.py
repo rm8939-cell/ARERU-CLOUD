@@ -570,7 +570,15 @@ def simulate_race(g, runs=None, profiles=None, pace=None):
 
 def _ticket_candidates(g, orders):
     """全組み合わせの仮想的中率。印に依存しない。確率は一様事前へ縮小して校正。"""
-    n=len(g); runs=len(orders)
+    n=len(g)
+    orders=np.asarray(orders)
+    runs=len(orders)
+    # 大配列の二重確保を避ける（Render OOM対策）
+    max_keep=25000
+    if runs>max_keep:
+        rng=np.random.default_rng(42)
+        orders=orders[rng.choice(runs, max_keep, replace=False)]
+        runs=len(orders)
     pos=np.empty_like(orders)
     rows=np.arange(runs)[:,None]
     pos[rows,orders]=np.arange(n)[None,:]
@@ -1212,6 +1220,14 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           '三連単詳細':json.dumps(trifecta_plan,ensure_ascii=False),
           '合成オッズ':synth_disp,'期待回収率':ev_disp,
           'データ頭数':n})
+        # レース単位で大配列を解放（1日80RでRSSが積み上がるのを防ぐ）
+        try:
+            del orders, g, g_base, profiles, candidates
+        except Exception:
+            pass
+        if len(out) % 8 == 0:
+            import gc
+            gc.collect()
 
     result=pd.DataFrame(out).sort_values(['開催地','レース']).reset_index(drop=True)
     # source 別に相対順位で暫定 S/A/B/C を付与（JRA/NAR混在日でもプールを分けて評価）
