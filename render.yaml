@@ -21,6 +21,12 @@ services:
         value: "1"
       - key: ARERU_FETCH_BUDGET_SEC
         value: "240"
-# 地方・中央の日次安定化は GitHub Actions
-# (.github/workflows/nar-daily.yml) が /cron/daily を叩く（NAR→JRA 直列）。
-# Render 側に CRON_TOKEN を設定し、GitHub Secrets に CRON_TOKEN / RENDER_APP_URL を入れる。
+      # 0.1CPU / 512MB では本生成を始めると Web 応答が止まるため、
+      # Render は配信専用。データは GitHub Actions が生成して commit する。
+      - key: ARERU_ENABLE_GENERATION
+        value: "0"
+# データ生成: .github/workflows/nar-daily-data.yml
+#   Actions 上で runners/predictions を作り main に commit → Render が再デプロイ。
+#   モードは「当日 predictions があるか」で決める（schedule は数時間遅延するため）。
+# 死活監視: .github/workflows/nar-daily.yml が /healthz を叩いて配信データの
+#   最新日付を出力する。重い cron は叩かない。

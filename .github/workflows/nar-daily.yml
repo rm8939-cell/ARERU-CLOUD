@@ -1,6 +1,9 @@
-# Render 起動 + 日次 cron（NAR→JRA 直列）
-# 目標: 毎朝 08:00 JST までに予想完成。以降は odds 更新のみ。
-# 重要: ページ wake は /healthz のみ（/?source=... はジョブ起動して OOM しやすい）
+# Render を起こして配信状態を確認するだけのワークフロー。
+#
+# データ生成は nar-daily-data.yml（GitHub Actions 上で生成 → commit）が担当する。
+# Render Free は 0.1CPU / 512MB しかなく、ここで /cron/daily を叩いて本生成を
+# 始めると Web 応答が数十分止まる（実測: healthz が 10 分以上タイムアウト）。
+# そのため Render には重いジョブを投げない。
 name: NAR daily wake
 
 on:
@@ -35,38 +38,32 @@ jobs:
           set -euo pipefail
           BASE="${APP_URL:-https://areru-cloud.onrender.com}"
           BASE="${BASE%/}"
-          # mode は時刻で決めない（schedule は数時間遅延する）。
-          # 未指定なら auto を渡し、サーバー側が当日予想の有無で morning/odds を決める。
-          MODE="${MODE_INPUT:-auto}"
-          echo "mode=${MODE} utc=$(date -u +%H:%M)"
-          echo "Waking ${BASE}/healthz ..."
+          echo "Waking ${BASE}/healthz ... utc=$(date -u +%H:%M)"
           # ページではなく healthz（ジョブ起動なし）
-          for i in 1 2 3; do
+          ok=0
+          for i in 1 2 3 4 5 6; do
             code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 90 \
               "${BASE}/healthz" || echo "000")
             echo "wake_try=${i} http=${code}"
-            head -c 200 /tmp/healthz.json || true
+            cat /tmp/healthz.json || true
             echo
             if [ "$code" = "200" ]; then
+              ok=1
               break
             fi
-            sleep 10
-          done
-          sleep 5
-          if [ -n "${CRON_TOKEN:-}" ]; then
-            Q="?token=${CRON_TOKEN}&mode=${MODE}"
-          else
-            Q="?mode=${MODE}"
-          fi
-          # NAR→JRA はサーバー側で直列。個別 cron の同時叩きはしない。
-          URL="${BASE}/cron/daily${Q}"
-          echo "GET ${URL} ..."
-          code=$(curl -sS -o /tmp/daily_cron.json -w "%{http_code}" --max-time 120 \
-            -X GET "$URL" || echo "000")
-          echo "daily_cron_http=${code}"
-          head -c 400 /tmp/daily_cron.json || true
-          echo
-          if [ "$code" != "200" ] && [ "$code" != "401" ]; then
             sleep 20
-            curl -fsS --max-time 120 -X GET "$URL" || true
+          done
+          if [ "$ok" != "1" ]; then
+            echo "ERROR: Render did not respond to /healthz"
+            exit 1
           fi
+          # 配信中データが当日分かどうかを表示（生成は data ワークフローの責務）
+          python3 - <<'PY'
+          import json
+          with open('/tmp/healthz.json', encoding='utf-8') as f:
+              h = json.load(f)
+          print('served today =', h.get('today'))
+          print('served latest_pred_date =', h.get('latest_pred_date'))
+          print('served latest_pred_mtime =', h.get('latest_pred_mtime'))
+          print('today_ready =', h.get('today_ready'))
+          PY

@@ -47,6 +47,22 @@ _PREDICT_GLOBAL_STATE={'running': False, 'key': ''}
 # Render Free: 起動時の NAR+JRA 二重シードは OOM の主因 → 既定スキップ
 _ON_RENDER=str(os.environ.get('RENDER') or '').lower() in ('true', '1')
 _SKIP_BOOT_DEFAULT='1' if _ON_RENDER else '0'
+
+
+def _generation_enabled() -> bool:
+    """このプロセスで取得・予想の重いジョブを走らせてよいか。
+
+    Render Free は 0.1CPU / 512MB しかなく、本生成を始めると Web 応答が
+    止まる（実測: healthz が 10 分以上タイムアウト）。データの正は
+    GitHub Actions がコミットする CSV なので、既定では Render では生成せず
+    配信のみ行う。ローカルや Actions では従来どおり生成する。
+    """
+    flag = str(os.environ.get('ARERU_ENABLE_GENERATION') or '').strip().lower()
+    if flag in ('1', 'true', 'yes'):
+        return True
+    if flag in ('0', 'false', 'no'):
+        return False
+    return not _ON_RENDER
 # ページからの復旧起動デバウンス（秒）
 _RECOVERY_DEBOUNCE_SEC=120
 _EMPTY_VERIFY={
@@ -2499,6 +2515,15 @@ def run_today_pipeline(
     """
     src = source if source in ('jra', 'nar') else 'nar'
     today = _today_jst()
+    if not _generation_enabled():
+        # Render 配信専用モード。生成は GitHub Actions 側で行いコミットされる
+        log_orchestrator('pipeline', 'SKIP', src, reason='generation_disabled', date=today)
+        print(f'[{src}-today] skip: generation disabled on this host', flush=True)
+        _write_job_status(
+            src, state='success', stage='done',
+            message='データは自動更新されます', date_str=today,
+        )
+        return True
     # 前回ジョブが running のまま残っていたら先に解除
     _expire_stale_job(src)
     ready = _nar_pred_ready(today, src)
@@ -4445,6 +4470,9 @@ def cron_nar_daily():
     """
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
+    if not _generation_enabled():
+        log_orchestrator('cron', 'SKIP', 'nar', reason='generation_disabled')
+        return {'ok': True, 'started': False, 'source': 'nar', 'skipped': 'generation disabled'}
     mode = _cron_pipeline_mode('nar')
 
     def _run():
@@ -4463,6 +4491,9 @@ def cron_jra_daily():
     """外部cron向け: JRAの開催→レース→予想。開催日のみ本生成。"""
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
+    if not _generation_enabled():
+        log_orchestrator('cron', 'SKIP', 'jra', reason='generation_disabled')
+        return {'ok': True, 'started': False, 'source': 'jra', 'skipped': 'generation disabled'}
     mode = _cron_pipeline_mode('jra')
 
     def _run():
@@ -4481,6 +4512,12 @@ def cron_daily_both():
     """外部cron向け: 地方→JRA の順で日次更新（直列）。推奨エンドポイント。"""
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
+    if not _generation_enabled():
+        log_orchestrator('cron', 'SKIP', 'all', reason='generation_disabled')
+        return {
+            'ok': True, 'started': False, 'source': 'all',
+            'skipped': 'generation disabled; data is built by GitHub Actions',
+        }
     mode = _cron_pipeline_mode()
     log_orchestrator('cron', 'QUEUED', 'all', mode=mode)
 
@@ -4516,6 +4553,13 @@ def refresh_route():
     date=str(request.args.get('date') or '').strip()
     if source not in ('jra','nar','all'):
         source='all'
+    if not _generation_enabled():
+        # 配信専用ホストでは重いジョブを受け付けない（Free の固まり防止）
+        log_orchestrator('refresh', 'SKIP', source, reason='generation_disabled', mode=mode)
+        return {
+            'ok': True, 'started': False, 'mode': mode, 'source': source,
+            'skipped': 'generation disabled; data is built by GitHub Actions',
+        }
     try:
         def _run_refresh(_mode=mode, _source=source, _date=date):
             def _body():
