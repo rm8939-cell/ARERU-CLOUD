@@ -1,16 +1,24 @@
 # GitHub 上で本日の runners/predictions を取得して commit
-# 目標: 毎朝 08:00 JST までに predictions を完成させる
+# 目標: 毎日必ず当日の predictions を生成する（Render は git checkout を配信）
+#
+# 重要: GitHub の schedule は公開リポジトリで 3〜4 時間遅延することがある。
+# そのため MODE を「時刻」で決めてはいけない（常に odds になり本生成が走らない）。
+# MODE は「当日 predictions が存在するか」で決める（データ主導）。
 name: NAR daily data
 
 on:
   schedule:
-    # 朝の本生成（JST）: 05:00 / 06:00 / 07:00 / 07:40
-    - cron: '0 20 * * *'    # 05:00 JST
+    # 遅延前提で広めに（JST 表記は理論値。実際は最大4時間程度ずれる）
+    - cron: '0 15 * * *'    # 00:00 JST
+    - cron: '0 17 * * *'    # 02:00 JST
+    - cron: '0 19 * * *'    # 04:00 JST
     - cron: '0 21 * * *'    # 06:00 JST
-    - cron: '0 22 * * *'    # 07:00 JST
-    - cron: '40 22 * * *'   # 07:40 JST
-    # 締切後: オッズ・取消のみ（12:00 JST）
+    - cron: '0 23 * * *'    # 08:00 JST
+    # 日中の追いつき（未生成なら本生成 / 生成済みなら odds のみ）
+    - cron: '0 1 * * *'     # 10:00 JST
     - cron: '0 3 * * *'     # 12:00 JST
+    - cron: '0 5 * * *'     # 14:00 JST
+    - cron: '0 7 * * *'     # 16:00 JST
   workflow_dispatch:
     inputs:
       mode:
@@ -20,6 +28,11 @@ on:
 
 permissions:
   contents: write
+
+# 同時実行で git push が競合しないよう直列化（キャンセルはしない）
+concurrency:
+  group: racing-daily-data
+  cancel-in-progress: false
 
 jobs:
   refresh-and-commit:
@@ -40,26 +53,59 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
 
-      - name: Refresh NAR + JRA (morning full / post-8 odds)
+      - name: Decide mode from data (not from clock)
+        id: decide
         env:
           TZ: Asia/Tokyo
-          ARERU_SKIP_NAR_BOOT: '1'
-          ARERU_SKIP_BOOT: '1'
           MODE_INPUT: ${{ github.event.inputs.mode }}
         run: |
           set -euo pipefail
           TODAY=$(date +%F)
-          HOUR=$(date +%H)
-          if [ -n "${MODE_INPUT:-}" ] && [ "${MODE_INPUT}" != "auto" ]; then
-            MODE="${MODE_INPUT}"
-          elif [ "${HOUR}" -lt 8 ]; then
-            MODE="morning"
-          else
-            MODE="odds"
-          fi
-          echo "Racing refresh date=${TODAY} mode=${MODE} hour=${HOUR}"
+          echo "today=${TODAY}" >> "$GITHUB_OUTPUT"
+          MODE=$(TODAY="${TODAY}" MODE_INPUT="${MODE_INPUT:-auto}" python - <<'PY'
+          import os
+          from pathlib import Path
 
-          TODAY="${TODAY}" python - <<'PY'
+          day = os.environ["TODAY"]
+          forced = (os.environ.get("MODE_INPUT") or "auto").strip().lower()
+          if forced in ("morning", "full"):
+              print("morning")
+              raise SystemExit(0)
+          if forced == "odds":
+              print("odds")
+              raise SystemExit(0)
+
+          # データ主導: 当日 predictions に nar/jra 行があるなら odds、無ければ morning
+          path = Path("data/predictions_by_date") / f"predictions_{day}.csv"
+          if not path.exists() or path.stat().st_size < 64:
+              print("morning")
+              raise SystemExit(0)
+          try:
+              import pandas as pd
+              df = pd.read_csv(path, encoding="utf-8-sig", usecols=lambda c: c in ("source", "race_id"))
+              srcs = set()
+              if "source" in df.columns:
+                  srcs = {str(s).lower() for s in df["source"].dropna().unique()}
+              print("odds" if ("nar" in srcs or "jra" in srcs) else "morning")
+          except Exception:
+              print("morning")
+          PY
+          )
+          echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
+          echo "resolved MODE=${MODE} date=${TODAY} (input=${MODE_INPUT:-auto}, wall=$(date +%H:%M))"
+
+      - name: Refresh NAR + JRA
+        env:
+          TZ: Asia/Tokyo
+          ARERU_SKIP_NAR_BOOT: '1'
+          ARERU_SKIP_BOOT: '1'
+          TODAY: ${{ steps.decide.outputs.today }}
+          MODE: ${{ steps.decide.outputs.mode }}
+        run: |
+          set -euo pipefail
+          echo "Racing refresh date=${TODAY} mode=${MODE}"
+
+          python - <<'PY'
           import os
           from daily_ops import jra_is_race_day, nar_is_race_day
           day = os.environ["TODAY"]
@@ -70,15 +116,17 @@ jobs:
             python refresh_data.py --dates "${TODAY}" --source nar --odds-only --skip-predict || echo "NAR odds soft-fail"
             python refresh_data.py --dates "${TODAY}" --source jra --odds-only --skip-predict || echo "JRA odds soft-fail"
             # ランク再計算はしない（封印維持）。オッズパッチのみ
-            python - <<PY
+            python - <<'PY'
+          import os
           from pathlib import Path
           import pandas as pd
           from areru_engine import parse_date
 
-          day = "${TODAY}"
+          day = os.environ["TODAY"]
           arch = Path("data/predictions_by_date") / f"predictions_{day}.csv"
           rp = Path("data/runners.csv")
           if not arch.exists() or not rp.exists():
+              print("odds patch skip: missing files")
               raise SystemExit(0)
           runners = pd.read_csv(rp, encoding="utf-8-sig")
           pred = pd.read_csv(arch, encoding="utf-8-sig")
@@ -118,11 +166,12 @@ jobs:
           # morning: 開催取得 → 予想本生成
           python refresh_data.py --dates "${TODAY}" --source nar --skip-predict || echo "NAR refresh soft-fail"
           python refresh_data.py --dates "${TODAY}" --source jra --skip-predict || echo "JRA refresh soft-fail"
-          if ! python - <<PY
+          if ! python - <<'PY'
+          import os
           import pandas as pd
           from pathlib import Path
           from areru_engine import parse_date
-          day = "${TODAY}"
+          day = os.environ["TODAY"]
           p = Path("data/runners.csv")
           if not p.exists():
               raise SystemExit(1)
@@ -135,13 +184,13 @@ jobs:
           fi
           python replay_predict.py "${TODAY}"
           test -s "data/predictions_by_date/predictions_${TODAY}.csv"
-          RANK_CHECK_DATE="${TODAY}" python - <<'PY'
+          python - <<'PY'
           import os
           from pathlib import Path
           import pandas as pd
           from ev_analysis import assert_predictions_finalized, predictions_are_finalized
           from daily_ops import write_seal
-          day = os.environ["RANK_CHECK_DATE"]
+          day = os.environ["TODAY"]
           p = Path(f"data/predictions_by_date/predictions_{day}.csv")
           df = pd.read_csv(p, encoding="utf-8-sig")
           assert_predictions_finalized(df, label=p.name)
@@ -157,20 +206,70 @@ jobs:
       - name: Commit and push data
         env:
           TZ: Asia/Tokyo
+          TODAY: ${{ steps.decide.outputs.today }}
+          MODE: ${{ steps.decide.outputs.mode }}
         run: |
           set -euo pipefail
-          TODAY=$(date +%F)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            data/runners.csv \
-            "data/predictions_by_date/predictions_${TODAY}.csv" \
-            "data/predictions_by_date/scores_${TODAY}.csv" \
-            data/odds_tickets \
-            data/predict_seals || true
+          # 生成された全予想ファイル（翌日カード含む）とオッズ・封印を対象にする
+          git add data/runners.csv data/predictions_by_date data/odds_tickets data/predict_seals || true
           if git diff --staged --quiet; then
-            echo "No data changes for ${TODAY}"
+            echo "No data changes for ${TODAY} (mode=${MODE})"
             exit 0
           fi
-          git commit -m "chore: racing daily data ${TODAY}"
-          git push
+          git commit -m "chore: racing daily data ${TODAY} (${MODE})"
+          # 並行 run / 手動 push と競合しても落とさない
+          for i in 1 2 3 4 5; do
+            if git push; then
+              echo "pushed (try ${i})"
+              exit 0
+            fi
+            echo "push conflict; rebase and retry (${i})"
+            git pull --rebase --autostash origin main
+            sleep 5
+          done
+          echo "push failed after retries"
+          exit 1
+
+      - name: Verify today's predictions exist
+        env:
+          TZ: Asia/Tokyo
+          TODAY: ${{ steps.decide.outputs.today }}
+        run: |
+          set -euo pipefail
+          # 開催があるのに当日予想が無いなら失敗させる（success で黙って止まるのを防ぐ）
+          python - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+
+          day = os.environ["TODAY"]
+          path = Path("data/predictions_by_date") / f"predictions_{day}.csv"
+
+          from netkeiba_client import NetkeibaClient
+          client = NetkeibaClient(sleep=0.15)
+          try:
+              nar_races = len(client.list_race_ids(day.replace("-", ""), source="nar"))
+          except Exception as e:
+              print(f"WARN: NAR race list check failed: {e}")
+              nar_races = -1
+
+          if nar_races == 0:
+              print(f"OK: {day} は地方開催なし（予想不要）")
+              sys.exit(0)
+
+          if not path.exists() or path.stat().st_size < 64:
+              print(f"ERROR: {day} は地方 {nar_races} レース開催だが {path} が存在しない")
+              sys.exit(1)
+
+          import pandas as pd
+          df = pd.read_csv(path, encoding="utf-8-sig", usecols=lambda c: c in ("source", "race_id"))
+          nar_rows = 0
+          if "source" in df.columns:
+              nar_rows = int((df["source"].astype(str).str.lower() == "nar").sum())
+          if nar_races > 0 and nar_rows == 0:
+              print(f"ERROR: {path.name} に nar 行が 0（開催 {nar_races} レース）")
+              sys.exit(1)
+          print(f"OK: {path.name} nar_races_in_csv={nar_rows} listed={nar_races}")
+          PY

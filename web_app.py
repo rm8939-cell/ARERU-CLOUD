@@ -4301,13 +4301,40 @@ def api_refresh_status():
 
 @app.route('/healthz', methods=['GET'])
 def healthz():
-    """軽量ヘルスチェック。ジョブ起動なし（Render wake / GHA 用）。"""
+    """軽量ヘルスチェック。ジョブ起動なし（Render wake / GHA 用）。
+
+    デプロイ反映確認用に、配信中の予想データの最新日付と mtime も返す。
+    """
+    today = _today_jst()
+    latest_date = ''
+    latest_mtime = ''
+    try:
+        files = sorted(ARCH.glob('predictions_????-??-??.csv'))
+        if files:
+            newest = files[-1]
+            latest_date = newest.stem.replace('predictions_', '')
+            latest_mtime = datetime.fromtimestamp(
+                newest.stat().st_mtime, JST,
+            ).strftime('%Y-%m-%d %H:%M:%S%z')
+    except Exception:
+        pass
     return {
         'ok': True,
-        'today': _today_jst(),
+        'today': today,
         'heavy': _HEAVY_JOB_STATE.get('name') or '',
         'predict': _PREDICT_GLOBAL_STATE.get('key') or '',
         'pid': os.getpid(),
+        'latest_pred_date': latest_date,
+        'latest_pred_mtime': latest_mtime,
+        'today_ready': {
+            'nar': bool(_nar_pred_ready(today, 'nar')),
+            'jra': bool(_nar_pred_ready(today, 'jra')),
+        },
+        'commit': (
+            os.environ.get('RENDER_GIT_COMMIT')
+            or os.environ.get('GIT_COMMIT')
+            or ''
+        )[:12],
     }
 
 
@@ -4343,15 +4370,24 @@ def _cron_token_ok() -> bool:
     return True
 
 
-def _cron_pipeline_mode() -> str:
-    """cron クエリ mode=morning|odds|auto。未指定は時刻で自動。"""
+def _cron_pipeline_mode(source: str = '') -> str:
+    """cron クエリ mode=morning|odds|auto。
+
+    auto はデータ主導（時刻では決めない）。
+    GitHub の schedule は数時間遅延するため、時刻で odds に落とすと
+    当日予想が一度も生成されないまま「成功」してしまう。
+    """
     mode = str(request.args.get('mode') or '').strip().lower()
     if mode in ('morning', 'full'):
         return 'morning'
     if mode == 'odds':
         return 'odds'
-    # auto / 未指定
-    return 'odds' if past_predict_deadline() else 'morning'
+    today = _today_jst()
+    srcs = [source] if source in ('nar', 'jra') else ['nar', 'jra']
+    # 当日予想が未完成のソースが1つでもあれば本生成
+    if any(not _nar_pred_ready(today, s) for s in srcs):
+        return 'morning'
+    return 'odds'
 
 
 def _run_cron_source(src: str, mode: str) -> None:
@@ -4403,13 +4439,13 @@ def _run_cron_source(src: str, mode: str) -> None:
 def cron_nar_daily():
     """外部cron向け: 地方の開催場→レース→結果をバックグラウンドで安定更新。
 
-    mode=morning … 朝の本生成（8時まで）
-    mode=odds … 締切後のオッズ・取消のみ
-    mode=auto … 時刻で自動切替
+    mode=morning … 本生成
+    mode=odds … オッズ・取消のみ
+    mode=auto … 当日予想の有無で自動切替（時刻では決めない）
     """
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
-    mode = _cron_pipeline_mode()
+    mode = _cron_pipeline_mode('nar')
 
     def _run():
         try:
@@ -4427,7 +4463,7 @@ def cron_jra_daily():
     """外部cron向け: JRAの開催→レース→予想。開催日のみ本生成。"""
     if not _cron_token_ok():
         return {'ok': False, 'error': 'unauthorized'}, 401
-    mode = _cron_pipeline_mode()
+    mode = _cron_pipeline_mode('jra')
 
     def _run():
         try:
@@ -4451,7 +4487,8 @@ def cron_daily_both():
     def _run():
         for src in ('nar', 'jra'):
             try:
-                _run_cron_source(src, mode)
+                # ソース単位で morning/odds を再判定（片方だけ未生成のケース）
+                _run_cron_source(src, 'morning' if not _nar_pred_ready(_today_jst(), src) else mode)
             except Exception as e:
                 log_orchestrator('cron', 'ERROR', src, error=str(e)[:120])
                 print(f'[cron-daily] {src} fail: {e}', flush=True)

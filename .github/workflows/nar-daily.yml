@@ -35,17 +35,10 @@ jobs:
           set -euo pipefail
           BASE="${APP_URL:-https://areru-cloud.onrender.com}"
           BASE="${BASE%/}"
-          # UTC hour → mode（20–22 UTC = 05–07 JST は morning）
-          HOUR_UTC=$(date -u +%H)
-          MIN_UTC=$(date -u +%M)
-          if [ -n "${MODE_INPUT:-}" ] && [ "${MODE_INPUT}" != "auto" ]; then
-            MODE="${MODE_INPUT}"
-          elif [ "${HOUR_UTC}" = "20" ] || [ "${HOUR_UTC}" = "21" ] || [ "${HOUR_UTC}" = "22" ]; then
-            MODE="morning"
-          else
-            MODE="odds"
-          fi
-          echo "mode=${MODE} utc=${HOUR_UTC}:${MIN_UTC}"
+          # mode は時刻で決めない（schedule は数時間遅延する）。
+          # 未指定なら auto を渡し、サーバー側が当日予想の有無で morning/odds を決める。
+          MODE="${MODE_INPUT:-auto}"
+          echo "mode=${MODE} utc=$(date -u +%H:%M)"
           echo "Waking ${BASE}/healthz ..."
           # ページではなく healthz（ジョブ起動なし）
           for i in 1 2 3; do
