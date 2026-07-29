@@ -388,9 +388,20 @@ def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return df
     out = df.copy()
-    obj_cols = [c for c in out.columns if str(out[c].dtype) == 'object' or str(out[c].dtype).startswith('string')]
-    for c in obj_cols:
-        out[c] = out[c].where(out[c].notna(), 'なし')
+    numeric_hints = (
+        '期待値', 'オッズ', '勝率', '連対', '人気', '馬番', 'レース', '信頼度',
+        '件数', '回収', 'SIM', '指数', '評価', '着', '枠', '斤量', '再現',
+    )
+    for c in out.columns:
+        name = str(c)
+        dtype = str(out[c].dtype)
+        if dtype.startswith(('float', 'int', 'Int', 'Float', 'uint')):
+            continue
+        if any(h in name for h in numeric_hints):
+            # 欠損は空のまま（後段は safe_float で処理）
+            continue
+        if dtype == 'object' or dtype.startswith('string'):
+            out[c] = out[c].where(out[c].notna(), '')
     return out
 
 
@@ -1846,34 +1857,47 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
     表示時にも再適用して古いCSVやキャッシュ漏れを防ぐ。
     """
     from ev_analysis import apply_ev_rank_and_labels, build_ai_buy_reasons, tighten_buy_selection
+    cleaned = []
     for r in races or []:
-        apply_ev_rank_and_labels(r)
-        if not r.get('AI買い理由'):
-            r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
-    out = tighten_buy_selection(races or [], by_venue=by_venue)
+        try:
+            apply_ev_rank_and_labels(r)
+            if not r.get('AI買い理由'):
+                r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
+            cleaned.append(r)
+        except Exception as e:
+            print(f'[rank] skip race={r.get("race_id")}: {e}', flush=True)
+            cleaned.append(r)
+    try:
+        out = tighten_buy_selection(cleaned, by_venue=by_venue)
+    except Exception as e:
+        print(f'[rank] tighten fail: {e}', flush=True)
+        out = cleaned
     # 厳選後の投資判定に合わせて本命軸馬券を再生成
     for r in out:
-        src = str(r.get('source') or '').lower()
-        if not src:
-            try:
-                from areru_engine import source_from_race_id
-                src = source_from_race_id(r.get('race_id', ''))
-            except Exception:
-                src = ''
-        if src == 'nar':
-            simple = _simple_nar_tickets(r)
-            if simple:
-                r['推奨馬券一覧'] = simple
-        elif src == 'jra':
-            main_tix = _jra_main_tickets(r)
-            if main_tix:
-                rest = [
-                    t for t in (r.get('推奨馬券一覧') or [])
-                    if isinstance(t, dict) and str(t.get('券種')) not in ('単勝', '馬連', 'ワイド')
-                ]
-                r['推奨馬券一覧'] = (main_tix + rest)[:8]
-        if not r.get('AI買い理由'):
-            r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
+        try:
+            src = str(r.get('source') or '').lower()
+            if not src:
+                try:
+                    from areru_engine import source_from_race_id
+                    src = source_from_race_id(r.get('race_id', ''))
+                except Exception:
+                    src = ''
+            if src == 'nar':
+                simple = _simple_nar_tickets(r)
+                if simple:
+                    r['推奨馬券一覧'] = simple
+            elif src == 'jra':
+                main_tix = _jra_main_tickets(r)
+                if main_tix:
+                    rest = [
+                        t for t in (r.get('推奨馬券一覧') or [])
+                        if isinstance(t, dict) and str(t.get('券種')) not in ('単勝', '馬連', 'ワイド')
+                    ]
+                    r['推奨馬券一覧'] = (main_tix + rest)[:8]
+            if not r.get('AI買い理由'):
+                r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
+        except Exception as e:
+            print(f'[rank] ticket rebuild skip: {e}', flush=True)
     return out
 
 
@@ -2763,7 +2787,25 @@ def index():
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit_date)
         and explicit_date < today
     )
-    # 地方・中央: 本日ボタン／日付未指定／URLに前日残存 → 必ずカレンダー当日＋取得パイプライン
+    # キャッシュ優先: 当日未完成で、URL日付に完成予想があるならその日を閲覧許可
+    # （会場リンクからレース一覧へ入れる。force_cal で venue を消さない）
+    if (
+        source in ('nar', 'jra')
+        and not allow_past
+        and explicit_date
+        and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit_date)
+        and explicit_date < today
+        and not _nar_pred_ready(today, source)
+        and _nar_pred_ready(explicit_date, source)
+    ):
+        allow_past = True
+        print(
+            f'[{source}-date] allow cache-day view date={explicit_date} '
+            f'(today={today} not ready)',
+            flush=True,
+        )
+    # 地方・中央: 本日ボタン／日付未指定／URLに前日残存 → カレンダー当日へ
+    # ※完成キャッシュ日の閲覧（allow_past）は矯正しない
     force_cal_today=(
         source in ('nar', 'jra')
         and _force_calendar_today(explicit_date, want_today, mode, allow_past)
@@ -2892,12 +2934,13 @@ def index():
     # 開催場パラメータ:
     # - 「本日開催」ボタン（venue無し）→ 一覧からやり直す
     # - 当日矯正で URL が前日のとき → 前日会場を捨てる
-    # - それ以外（開くリンクの venue=大井 等）→ 必ず保持（モバイル詳細の生命線）
+    # - キャッシュ日閲覧（allow_past / 完成予想日）→ 会場を保持（レース一覧の生命線）
+    # - それ以外（開くリンクの venue=大井 等）→ 必ず保持
     raw_venue=str(request.args.get('venue') or '').strip()
     if want_today and not raw_venue:
         raw_venue=''
-    elif force_cal_today and explicit_date and explicit_date < today:
-        # 前日URL矯正時のみ会場を捨てる（当日の「開く」は残す）
+    elif force_cal_today and explicit_date and explicit_date < today and not allow_past:
+        # 前日URL矯正時のみ会場を捨てる（キャッシュ日の「開く」は残す）
         raw_venue=''
     selected_venue=''
     if raw_venue:
@@ -3248,8 +3291,33 @@ def index():
                 data_status='generating'
                 message='データ取得中' if source=='nar' else (str(e) or 'データ取得中です。完了後に再読み込みしてください。')
         except Exception as e:
-            data_status='error'
-            message=f'通信エラー: {e}'
+            # 安定稼働: 表示クラッシュでもキャッシュを落とさない
+            print(f'[index] render fail source={source} selected={selected}: {e}', flush=True)
+            latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
+            if latest:
+                selected = latest
+                try:
+                    pred = ARCH / f'predictions_{latest}.csv'
+                    if pred.exists() and source == 'nar':
+                        light_rows = _read_predictions_for_venue_picker(pred, source)
+                        light_rows = apply_display_ranks(light_rows, by_venue=True)
+                        venues = _venue_meetings(light_rows)
+                        show_venue_picker = True
+                        races = []
+                        data_status = 'ready'
+                        message = f'{selected} / {label} / 開催場 {len(venues)}場'
+                        if latest not in av:
+                            av = sorted(set(av) | {latest}, reverse=True)
+                    else:
+                        data_status = 'ready'
+                        message = f'{selected} / {label}'
+                except Exception as e2:
+                    print(f'[index] cache fallback fail: {e2}', flush=True)
+                    data_status = 'ready'
+                    message = f'{selected} / {label}'
+            else:
+                data_status = 'error'
+                message = f'通信エラー: {e}'
     elif selected:
         if source in ('nar', 'jra'):
             latest = _latest_ready_pred_date(source, on_or_before=today)

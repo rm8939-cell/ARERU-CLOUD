@@ -370,7 +370,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% if venues %}
 <div class="venue-list">
 {% for v in venues %}
-<a class="venue-row" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}&venue={{v.name|urlencode}}" data-venue="{{v.name}}">
+<a class="venue-row" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}{% if selected_date and today and selected_date < today %}&history=1{% endif %}&venue={{v.name|urlencode}}" data-venue="{{v.name}}">
 <div class="venue-row-name">{{v.name}}<small>{{v.race_label}} · {{v.count}}レース</small></div>
 <div class="venue-row-meta">
 {% if v.s %}<span class="venue-chip s">S {{v.s}}</span>{% endif %}
