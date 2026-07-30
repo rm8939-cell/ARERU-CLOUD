@@ -1,0 +1,11 @@
+{
+  "date": "2026-07-30",
+  "sealed_at": "2026-07-30T21:22:32+09:00",
+  "deadline_hour": 8,
+  "sources": [
+    "jra",
+    "nar"
+  ],
+  "mode": "odds",
+  "note": "gha_odds"
+}
