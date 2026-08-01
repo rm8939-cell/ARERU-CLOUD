@@ -204,6 +204,7 @@ jobs:
           PY
 
       - name: Commit and push data
+        id: commit
         env:
           TZ: Asia/Tokyo
           TODAY: ${{ steps.decide.outputs.today }}
@@ -216,13 +217,19 @@ jobs:
           git add data/runners.csv data/predictions_by_date data/odds_tickets data/predict_seals || true
           if git diff --staged --quiet; then
             echo "No data changes for ${TODAY} (mode=${MODE})"
+            echo "pushed=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git commit -m "chore: racing daily data ${TODAY} (${MODE})"
+          # [skip render]: データ更新で Render を再デプロイさせない。
+          # Free は zero-downtime deploy 非対応なので、1 日 10 回の再デプロイが
+          # そのまま 1 日 10 回の停止（白画面）になっていた。
+          # 配信側は下の Notify ステップ / data_sync のポーリングで最新化する。
+          git commit -m "chore: racing daily data ${TODAY} (${MODE}) [skip render]"
           # 並行 run / 手動 push と競合しても落とさない
           for i in 1 2 3 4 5; do
             if git push; then
               echo "pushed (try ${i})"
+              echo "pushed=1" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "push conflict; rebase and retry (${i})"
@@ -231,6 +238,31 @@ jobs:
           done
           echo "push failed after retries"
           exit 1
+
+      - name: Notify Render to pull new data
+        if: steps.commit.outputs.pushed == '1'
+        env:
+          APP_URL: ${{ secrets.RENDER_APP_URL }}
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+        run: |
+          set -uo pipefail
+          BASE="${APP_URL:-https://areru-cloud.onrender.com}"
+          BASE="${BASE%/}"
+          # 稼働中のインスタンスに data/ を取り込ませる（再デプロイは起きない）。
+          # スピンダウン中なら復帰に 60〜90 秒かかるのでリトライする。
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -o /tmp/sync.json -w "%{http_code}" --max-time 120 \
+              -X POST "${BASE}/api/data-sync?wait=1&token=${CRON_TOKEN}" || echo 000)
+            echo "sync_try=${i} http=${code}"
+            cat /tmp/sync.json 2>/dev/null || true
+            echo
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          # 取り込みに失敗してもポーリングが拾うのでワークフローは落とさない
+          echo "WARN: data-sync notify failed; falling back to polling"
 
       - name: Verify today's predictions exist
         env:

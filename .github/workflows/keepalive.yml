@@ -1,0 +1,60 @@
+# Render Free のスピンダウン対策。
+#
+# Free の web service は 15 分間 inbound が無いとスピンダウンし、次のアクセスで
+# 60〜90 秒かかるコールドスタートになる。その間ブラウザは何も描けないので、
+# 利用者からは「白画面」に見える（実測: 2026-08-01 の /healthz が 72.9 秒）。
+#
+# schedule は指定どおりには走らない（数分〜十数分ずれる）ため、1 回の run の中で
+# 短い間隔のポーリングを回して 15 分の穴を作らないようにしている。
+name: Keepalive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: render-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ping /healthz until the next run takes over
+        env:
+          APP_URL: ${{ secrets.RENDER_APP_URL }}
+        run: |
+          set -uo pipefail
+          BASE="${APP_URL:-https://areru-cloud.onrender.com}"
+          BASE="${BASE%/}"
+          fail=0
+          # 約 12 分ぶんを 3 分間隔で叩き、次の schedule 実行と重ねる
+          for i in 1 2 3 4 5; do
+            start=$(date +%s)
+            code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 120 \
+              "${BASE}/healthz" || echo 000)
+            took=$(( $(date +%s) - start ))
+            echo "ping=${i} http=${code} took=${took}s"
+            if [ "$code" = "200" ]; then
+              python3 scripts/healthz_summary.py /tmp/healthz.json || true
+              # コールドスタートしていた（=スピンダウンしていた）なら記録に残す
+              if [ "$took" -gt 20 ]; then
+                echo "::warning::cold start detected (${took}s)"
+              fi
+            else
+              fail=$((fail + 1))
+              echo "::warning::healthz failed http=${code}"
+            fi
+            if [ "$i" != "5" ]; then
+              sleep 170
+            fi
+          done
+          if [ "$fail" -ge 3 ]; then
+            echo "::error::Render did not respond to /healthz ${fail}/5 times"
+            exit 1
+          fi
