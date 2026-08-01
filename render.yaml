@@ -53,6 +53,13 @@ services:
 # データ生成: .github/workflows/nar-daily-data.yml
 #   Actions 上で runners/predictions を作り main に commit（[skip render]）→
 #   /api/data-sync を叩いて稼働中のインスタンスへ反映。デプロイは起きない。
-# 死活監視: .github/workflows/keepalive.yml が 5 分ごとに /healthz を叩き、
-#   スピンダウンを防ぎつつ落ちていれば起こす。
+# 死活監視: .github/workflows/keepalive.yml が 5 分間隔で /healthz を叩き続け、
+#   落ちていれば起こしてコールドスタートを記録する。
 #   .github/workflows/nar-display-monitor.yml が JRA・地方の表示を確認する。
+#
+# 注: このファイルは Blueprint 管理のサービスにしか適用されない。
+#   ダッシュボードで作成したサービスの場合、startCommand は Procfile 側
+#   （同じ gunicorn_conf.py を指す）が使われ、上の ARERU_* も未設定になる。
+#   その場合でもデータ同期・自己 ping は RENDER 環境変数の存在で既定 ON に
+#   なるため動作するが、buildFilter と healthCheckPath は
+#   ダッシュボードで設定する必要がある。
