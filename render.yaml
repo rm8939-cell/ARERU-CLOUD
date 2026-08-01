@@ -2,14 +2,27 @@ services:
   - type: web
     name: areru-cloud
     runtime: python
-    # メモリ実測: ページ表示 ~100MB / 予想子プロセス ~150MB+ / 同時起動で 512MB 超過→再起動→白画面
-    # Free・Starter は RAM 512MB 同じ。Free は 0.1CPU + スリープで日次取得が不安定。
-    # 推奨: Standard（2GB / 1CPU）。最低でも Starter（CPU改善・スリープなし）。
+    # メモリ実測: 常駐 ~80MB / JRA 予想ページ描画で +45MB。
+    # Free・Starter は RAM 512MB 同じ。Free は 0.1CPU に加えて
+    #   - 15 分無アクセスでスピンダウン（復帰 60〜90 秒 = ユーザーからは白画面）
+    #   - zero-downtime deploy 非対応（デプロイ中は落ちる）
+    # という制約があるため、下の keepalive / データ同期で回避している。
+    # 恒久的に安定させるなら Standard（2GB / 1CPU）、最低でも Starter を推奨。
     plan: free
+    # Python は .python-version（3.14）で固定。Render の既定バージョンが動くと
+    # 標準ライブラリの差でいきなり 500 を吐きうるため、暗黙の既定に依存しない。
     buildCommand: pip install -r requirements.txt
-    # workers=1 / threads=1 必須。max-requests でメモリ断片化を定期回収。
-    # timeout は Web 応答用（重いジョブはバックグラウンド）。短めにしてハングを検知。
-    startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 90 --graceful-timeout 30 --max-requests 80 --max-requests-jitter 20 --worker-class sync
+    # gunicorn の細かい設定は gunicorn_conf.py（preload / gthread / タイムアウト）
+    startCommand: gunicorn -c gunicorn_conf.py web_app:app
+    healthCheckPath: /healthz
+    # データ更新（GitHub Actions のコミット）で再デプロイしない。
+    # 再デプロイは Free では停止をともない、それが白画面の直接原因だった。
+    # 稼働中のプロセスが data_sync.py で GitHub から data/ を取り込む。
+    # ※ ダッシュボードで作成したサービスには Blueprint が効かないため、
+    #   コミットメッセージ側にも [skip render] を入れて二重に防いでいる。
+    buildFilter:
+      ignoredPaths:
+        - data/**
     envVars:
       - key: ARERU_SKIP_BOOT
         value: "1"
@@ -25,8 +38,19 @@ services:
       # Render は配信専用。データは GitHub Actions が生成して commit する。
       - key: ARERU_ENABLE_GENERATION
         value: "0"
+      # 配信データの取り込み（再デプロイなしで最新化）
+      - key: ARERU_DATA_SYNC
+        value: "1"
+      - key: ARERU_DATA_SYNC_INTERVAL
+        value: "300"
+      # 15 分スピンダウン対策の自己 ping（外部 ping は keepalive.yml）
+      - key: ARERU_KEEPALIVE
+        value: "1"
+      - key: ARERU_KEEPALIVE_INTERVAL
+        value: "600"
 # データ生成: .github/workflows/nar-daily-data.yml
-#   Actions 上で runners/predictions を作り main に commit → Render が再デプロイ。
-#   モードは「当日 predictions があるか」で決める（schedule は数時間遅延するため）。
-# 死活監視: .github/workflows/nar-daily.yml が /healthz を叩いて配信データの
-#   最新日付を出力する。重い cron は叩かない。
+#   Actions 上で runners/predictions を作り main に commit（[skip render]）→
+#   /api/data-sync を叩いて稼働中のインスタンスへ反映。デプロイは起きない。
+# 死活監視: .github/workflows/keepalive.yml が 5 分ごとに /healthz を叩き、
+#   スピンダウンを防ぎつつ落ちていれば起こす。
+#   .github/workflows/nar-display-monitor.yml が JRA・地方の表示を確認する。
