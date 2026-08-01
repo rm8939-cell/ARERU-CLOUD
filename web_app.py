@@ -35,6 +35,10 @@ JST=timezone(timedelta(hours=9))
 
 # プロセス内キャッシュ / バックグラウンド生成（ページ表示をブロックしない）
 _DATES_CACHE={}
+# predictions_YYYY-MM-DD.csv に含まれる source。(path, mtime, size) キーなので
+# 中身が変わったファイルだけ読み直せばよい。日付ファイルは増える一方なので、
+# ここを毎回舐めると表示時間が日々伸びていく。
+_PRED_SOURCE_CACHE={}
 _VERIFY_CACHE={}
 _PRED_META_CACHE={'sig':None,'data':{}}
 _PREDICT_JOBS={}
@@ -158,6 +162,46 @@ def _runner_path():
     if LEGACY.exists(): return LEGACY
     return None
 
+def _pred_file_sources(path: Path):
+    """予想 CSV に含まれる source（jra/nar）。判別できないときは None。
+
+    開催日一覧はキャッシュが切れるたびに predictions_*.csv を全部開き直して
+    いた。ファイルは日ごとに増え続けるので 0.1CPU では日を追うごとに表示が
+    遅くなる。中身が変わっていないファイルは読み直さない。
+    """
+    try:
+        st=path.stat()
+        key=(str(path), st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+    hit=_PRED_SOURCE_CACHE.get(key)
+    if hit is not None:
+        return hit
+    # 全行読まず source / race_id 列だけ usecols
+    try:
+        pdf=pd.read_csv(path,encoding='utf-8-sig',usecols=lambda c: c in ('source','race_id'))
+        if 'source' in pdf.columns:
+            srcs=frozenset(
+                s for s in pdf['source'].astype(str).str.lower().unique()
+                if s in ('jra','nar')
+            )
+        elif 'race_id' in pdf.columns:
+            from areru_engine import source_from_race_id
+            srcs=frozenset(
+                s for s in pdf['race_id'].map(source_from_race_id).unique()
+                if s in ('jra','nar')
+            )
+        else:
+            srcs=None
+    except Exception:
+        srcs=None
+    # 同じパスの古い世代を残さない（mtime が変わると別キーになるため）
+    for k in [k for k in _PRED_SOURCE_CACHE if k[0]==str(path)]:
+        _PRED_SOURCE_CACHE.pop(k, None)
+    _PRED_SOURCE_CACHE[key]=srcs
+    return srcs
+
+
 def dates(source='all'):
     """開催日一覧。runners.csv を正とし、生成済み predictions も合流する。"""
     rp=_runner_path()
@@ -189,19 +233,8 @@ def dates(source='all'):
         if source not in ('jra','nar'):
             found.add(day)
             continue
-        # 高速化: 全行読まず source 列の先頭数千行相当だけ usecols
-        try:
-            pdf=pd.read_csv(f,encoding='utf-8-sig',usecols=lambda c: c in ('source','race_id'))
-            if 'source' in pdf.columns:
-                if (pdf['source'].astype(str).str.lower()==source).any():
-                    found.add(day)
-            elif 'race_id' in pdf.columns:
-                from areru_engine import source_from_race_id
-                if pdf['race_id'].map(source_from_race_id).eq(source).any():
-                    found.add(day)
-            else:
-                found.add(day)
-        except Exception:
+        srcs=_pred_file_sources(f)
+        if srcs is None or source in srcs:
             found.add(day)
     if ANALYSIS_CSV.exists():
         try:

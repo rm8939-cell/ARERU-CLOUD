@@ -1,60 +1,75 @@
-# Render Free のスピンダウン対策。
+# Render Free のスピンダウン監視と復帰。
 #
 # Free の web service は 15 分間 inbound が無いとスピンダウンし、次のアクセスで
 # 60〜90 秒かかるコールドスタートになる。その間ブラウザは何も描けないので、
 # 利用者からは「白画面」に見える（実測: 2026-08-01 の /healthz が 72.9 秒）。
 #
-# schedule は指定どおりには走らない（数分〜十数分ずれる）ため、1 回の run の中で
-# 短い間隔のポーリングを回して 15 分の穴を作らないようにしている。
+# スピンダウンさせない主役はアプリ側の自己 ping（data_sync.start_keepalive）。
+# こちらはインスタンスが再起動などで落ちたときに起こし直す外部の保険で、
+# あわせて RSS・uptime・データ取り込みの状態を記録する。
+#
+# schedule の間隔を短くしても意味がない点に注意。
+# このリポジトリの「毎時」ワークフローは実際には 3.5〜10 時間おきにしか
+# 発火していない（GitHub が public repo の schedule を大幅に間引くため）。
+# そのため 1 回の run を長く回し、concurrency で次の run に引き継ぐ。
 name: Keepalive
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '23 * * * *'
   workflow_dispatch:
 
 concurrency:
   group: render-keepalive
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # ジョブ上限 6 時間の手前まで回し、次の schedule 発火に重ねる
+    timeout-minutes: 330
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ping /healthz until the next run takes over
+      - name: Ping /healthz and report cold starts
         env:
           APP_URL: ${{ secrets.RENDER_APP_URL }}
+          # 5 分間隔 × 64 回 ≒ 5 時間20分
+          PING_COUNT: '64'
+          PING_INTERVAL: '300'
         run: |
           set -uo pipefail
           BASE="${APP_URL:-https://areru-cloud.onrender.com}"
           BASE="${BASE%/}"
           fail=0
-          # 約 12 分ぶんを 3 分間隔で叩き、次の schedule 実行と重ねる
-          for i in 1 2 3 4 5; do
+          cold=0
+          for i in $(seq 1 "${PING_COUNT}"); do
             start=$(date +%s)
             code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 120 \
               "${BASE}/healthz" || echo 000)
             took=$(( $(date +%s) - start ))
-            echo "ping=${i} http=${code} took=${took}s"
+            echo "ping=${i}/${PING_COUNT} http=${code} took=${took}s at=$(date -u +%H:%M:%S)Z"
             if [ "$code" = "200" ]; then
               python3 scripts/healthz_summary.py /tmp/healthz.json || true
-              # コールドスタートしていた（=スピンダウンしていた）なら記録に残す
+              # 20 秒超 = スピンダウンしていた。自己 ping が効いていない兆候
               if [ "$took" -gt 20 ]; then
-                echo "::warning::cold start detected (${took}s)"
+                cold=$((cold + 1))
+                echo "::warning::cold start detected (${took}s) -- instance had spun down"
               fi
             else
               fail=$((fail + 1))
               echo "::warning::healthz failed http=${code}"
             fi
-            if [ "$i" != "5" ]; then
-              sleep 170
+            if [ "$i" != "${PING_COUNT}" ]; then
+              sleep "${PING_INTERVAL}"
             fi
           done
+          echo "summary: failures=${fail}/${PING_COUNT} cold_starts=${cold}"
           if [ "$fail" -ge 3 ]; then
-            echo "::error::Render did not respond to /healthz ${fail}/5 times"
+            echo "::error::Render failed /healthz ${fail} times during this window"
             exit 1
           fi

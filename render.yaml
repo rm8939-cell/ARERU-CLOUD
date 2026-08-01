@@ -44,10 +44,12 @@ services:
       - key: ARERU_DATA_SYNC_INTERVAL
         value: "300"
       # 15 分スピンダウン対策の自己 ping（外部 ping は keepalive.yml）
+      # ※ 常時起動は Free の 750 インスタンス時間/月をほぼ使い切る（1 か月 ≒ 730 時間）。
+      #   他に Free の web service があるなら "0" にするか有料プランへ。
       - key: ARERU_KEEPALIVE
         value: "1"
       - key: ARERU_KEEPALIVE_INTERVAL
-        value: "600"
+        value: "300"
 # データ生成: .github/workflows/nar-daily-data.yml
 #   Actions 上で runners/predictions を作り main に commit（[skip render]）→
 #   /api/data-sync を叩いて稼働中のインスタンスへ反映。デプロイは起きない。

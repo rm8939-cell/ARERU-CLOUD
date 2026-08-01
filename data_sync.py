@@ -358,11 +358,14 @@ def keepalive_url() -> str:
 
 
 def keepalive_interval_sec() -> int:
-    """Render Free は 15 分無アクセスでスピンダウンするので、その手前で叩く。"""
+    """Render Free は 15 分無アクセスでスピンダウンする。
+
+    15 分の窓に対して 5 分間隔なら、1〜2 回失敗してもまだ間に合う。
+    """
     try:
-        return max(60, int(_env('ARERU_KEEPALIVE_INTERVAL', '600')))
+        return max(60, int(_env('ARERU_KEEPALIVE_INTERVAL', '300')))
     except ValueError:
-        return 600
+        return 300
 
 
 def start_keepalive() -> bool:
@@ -385,15 +388,19 @@ def start_keepalive() -> bool:
 
         def _loop() -> None:
             target = f'{url}/healthz'
+            wait = keepalive_interval_sec()
             while True:
-                time.sleep(keepalive_interval_sec())
+                time.sleep(wait)
                 try:
                     req = urllib.request.Request(
                         target, headers={'User-Agent': 'areru-cloud-keepalive/1.0'},
                     )
                     with urllib.request.urlopen(req, timeout=30) as res:
                         res.read(256)
+                    wait = keepalive_interval_sec()
                 except Exception as e:
+                    # 失敗をそのまま間隔ぶん放置すると 15 分の窓を割りうるので詰める
+                    wait = 60
                     print(f'[keepalive] ping failed: {type(e).__name__}: {e}', flush=True)
 
         _KEEPALIVE_THREAD = threading.Thread(target=_loop, daemon=True, name='keepalive')
