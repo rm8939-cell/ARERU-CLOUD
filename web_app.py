@@ -1,5 +1,5 @@
 from flask import Flask,render_template,request
-import subprocess,sys,json,re,threading
+import subprocess,sys,json,re,threading,time
 from pathlib import Path
 from datetime import date, datetime, timezone, timedelta
 import os
@@ -12,6 +12,7 @@ from ev_analysis import (
     load_score_odds,
 )
 from pipeline_stages import log_orchestrator, log_pipeline_stage, predictions_label
+import data_sync
 from daily_ops import (
     PREDICT_READY_HOUR,
     past_predict_deadline,
@@ -24,6 +25,7 @@ from daily_ops import (
 )
 
 app=Flask(__name__)
+_PROCESS_STARTED_AT=time.time()
 BASE=Path(__file__).resolve().parent
 DATA=BASE/'data'; ARCH=DATA/'predictions_by_date'; ARCH.mkdir(parents=True,exist_ok=True)
 RUNNERS=DATA/'runners.csv'
@@ -335,7 +337,14 @@ def _heavy_busy() -> bool:
     """他ジョブが実行中か。自スレッドの再入は busy とみなさない。"""
     if hasattr(_HEAVY_JOB_LOCK, '_is_owned') and _HEAVY_JOB_LOCK._is_owned():
         return False
-    return bool(_HEAVY_JOB_STATE.get('name')) or _HEAVY_JOB_LOCK.locked()
+    if _HEAVY_JOB_STATE.get('name'):
+        return True
+    # RLock.locked() は Python 3.14 以降にしかない。Render の既定 Python が
+    # 変わるだけで /api/job-status が 500 になるので、取得試行で判定する。
+    if _HEAVY_JOB_LOCK.acquire(blocking=False):
+        _HEAVY_JOB_LOCK.release()
+        return False
+    return True
 
 
 def _predict_busy() -> bool:
@@ -1138,7 +1147,6 @@ def _ensure_source_today_seeded(source: str = 'nar') -> None:
         return
 
     def _run():
-        import time
         time.sleep(2 if src == 'nar' else 4)
         try:
             print(f'[{src}-boot] seeding today pipeline date={today}', flush=True)
@@ -4360,7 +4368,35 @@ def healthz():
             or os.environ.get('GIT_COMMIT')
             or ''
         )[:12],
+        # Free の 512MB を超えると Render がワーカーを SIGKILL（exit 137）する。
+        # 白画面の事後解析用に常に載せておく。
+        'rss_mb': data_sync.rss_mb(),
+        'uptime_sec': int(time.time() - _PROCESS_STARTED_AT),
+        'data_sync': data_sync.snapshot(),
     }
+
+
+@app.route('/api/data-sync', methods=['POST', 'GET'])
+def api_data_sync():
+    """GitHub 上の data/ を今すぐ取り込む。
+
+    データ生成ワークフローが commit 直後に叩くことで、次のポーリングを待たずに
+    配信内容が最新になる。再デプロイは起こらないのでサービスは落ちない。
+    """
+    if not _cron_token_ok():
+        return {'ok': False, 'error': 'unauthorized'}, 401
+    if not data_sync.sync_enabled():
+        return {'ok': True, 'started': False, 'skipped': 'data sync disabled',
+                'data_sync': data_sync.snapshot()}
+    force = str(request.args.get('force') or '').strip() in ('1', 'true', 'yes')
+    if str(request.args.get('wait') or '').strip() in ('1', 'true', 'yes'):
+        return {'started': True, **data_sync.sync_once(force=force, on_update=_on_data_synced)}
+
+    def _run():
+        data_sync.sync_once(force=force, on_update=_on_data_synced)
+
+    threading.Thread(target=_run, daemon=True, name='data-sync-request').start()
+    return {'ok': True, 'started': True, 'data_sync': data_sync.snapshot()}
 
 
 @app.route('/api/job-status', methods=['GET'])
@@ -4635,13 +4671,52 @@ def refresh_route():
         return {'ok':False,'error':str(e)}, 500
 
 
-# gunicorn / flask 起動時に当日の地方・JRAを自動シード（リクエスト待ちで空のままにしない）
-try:
-    _ensure_source_today_seeded('nar')
-    _ensure_source_today_seeded('jra')
-except Exception as _boot_e:
-    print(f'[boot] init skip: {_boot_e}', flush=True)
+_BG_STARTED=False
+_BG_LOCK=threading.Lock()
+
+
+def _on_data_synced(changed: int) -> None:
+    _clear_runtime_caches()
+    print(f'[data-sync] runtime caches cleared after {changed} file(s)', flush=True)
+
+
+def start_background_services() -> bool:
+    """常駐スレッドを起動する（プロセスにつき1回）。
+
+    - 当日の地方・JRA の自動シード（リクエスト待ちで空のままにしない）
+    - GitHub からのデータ取り込み
+    - スピンダウン防止の自己 ping
+
+    gunicorn は preload するとモジュール読み込みが arbiter 側で走り、そこで
+    立てたスレッドは fork 後のワーカーに引き継がれない。そのため起動は
+    gunicorn_conf.py の post_fork から呼び、それ以外の経路（`flask run` など）
+    では最初のリクエストで立ち上げる。
+    """
+    global _BG_STARTED
+    with _BG_LOCK:
+        if _BG_STARTED:
+            return False
+        _BG_STARTED=True
+    try:
+        _ensure_source_today_seeded('nar')
+        _ensure_source_today_seeded('jra')
+    except Exception as e:
+        print(f'[boot] init skip: {e}', flush=True)
+    try:
+        data_sync.start_background_sync(on_update=_on_data_synced)
+        data_sync.start_keepalive()
+    except Exception as e:
+        print(f'[boot] background services failed: {e}', flush=True)
+        return False
+    return True
+
+
+@app.before_request
+def _boot_background_services():
+    if not _BG_STARTED:
+        start_background_services()
 
 
 if __name__=='__main__':
+    start_background_services()
     app.run(host='0.0.0.0',port=int(os.environ.get('PORT','5001')),debug=False)
