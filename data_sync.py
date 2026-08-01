@@ -17,11 +17,14 @@ zero-downtime deploy に対応していないので、再デプロイのあい�
 
 取り込み方
 ----------
-公開リポジトリの tarball（codeload）を 1 回だけ落として data/ 配下だけを
-展開する。ファイル単位の差分 API を叩くより往復が少なく、途中で失敗しても
-既存データがそのまま残る。内容が変わったファイルだけ os.replace で
-置き換えるので、変化のないファイルの mtime は動かず、web_app 側の
-mtime ベースのキャッシュも無駄に捨てられない。
+公開リポジトリの tarball（codeload）へ If-None-Match 付きで GET し、変化が
+無ければ 304（0 バイト）で終わる。api.github.com は未認証だと 60 req/hour で、
+しかも Render の送信 IP は他テナントと共有されるため、ポーリングに使うと
+すぐ枯れる。codeload はその制限の外にあり、条件付き GET が効く。
+
+展開は data/ 配下だけ。内容が変わったファイルだけ os.replace で置き換える
+ので、変化のないファイルの mtime は動かず、web_app 側の mtime ベースの
+キャッシュも無駄に捨てられない。途中で失敗しても既存データは残る。
 """
 from __future__ import annotations
 
@@ -33,6 +36,7 @@ import tarfile
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -60,8 +64,10 @@ _MEMBER_RE = re.compile(r'^[^/]+/(data/[^\0]+)$')
 _LOCK = threading.RLock()
 _STATE: dict = {
     'enabled': False,
+    'etag': '',
     'sha': '',
     'last_ok_at': '',
+    'last_change_at': '',
     'last_try_at': '',
     'last_error': '',
     'changed_files': 0,
@@ -111,9 +117,21 @@ def branch_name() -> str:
 
 def interval_sec() -> int:
     try:
-        return max(60, int(_env('ARERU_DATA_SYNC_INTERVAL', str(DEFAULT_INTERVAL_SEC))))
+        return max(30, int(_env('ARERU_DATA_SYNC_INTERVAL', str(DEFAULT_INTERVAL_SEC))))
     except ValueError:
         return DEFAULT_INTERVAL_SEC
+
+
+def verify_every() -> int:
+    """何回に 1 回、ETag を無視して全体を突き合わせるか（0 で無効）。"""
+    try:
+        return max(0, int(_env('ARERU_DATA_SYNC_VERIFY_EVERY', '12')))
+    except ValueError:
+        return 12
+
+
+def tarball_url() -> str:
+    return f'https://codeload.github.com/{repo_slug()}/tar.gz/refs/heads/{branch_name()}'
 
 
 def _now() -> str:
@@ -129,22 +147,25 @@ def _headers(accept: str) -> dict:
 
 
 def _load_state() -> None:
-    """再起動をまたいで最後に取り込んだ sha を思い出す。"""
+    """再起動をまたいで最後に取り込んだ内容を思い出す。"""
     try:
         raw = json.loads(STATE_PATH.read_text(encoding='utf-8'))
     except Exception:
         return
-    if isinstance(raw, dict) and isinstance(raw.get('sha'), str):
-        with _LOCK:
-            _STATE['sha'] = raw.get('sha') or ''
-            _STATE['last_ok_at'] = raw.get('last_ok_at') or ''
+    if not isinstance(raw, dict):
+        return
+    with _LOCK:
+        for key in ('etag', 'sha', 'last_ok_at', 'last_change_at'):
+            value = raw.get(key)
+            if isinstance(value, str):
+                _STATE[key] = value
 
 
 def _save_state() -> None:
     try:
         DATA.mkdir(parents=True, exist_ok=True)
         with _LOCK:
-            payload = {'sha': _STATE['sha'], 'last_ok_at': _STATE['last_ok_at']}
+            payload = {k: _STATE[k] for k in ('etag', 'sha', 'last_ok_at', 'last_change_at')}
         tmp = STATE_PATH.with_suffix('.tmp')
         tmp.write_text(json.dumps(payload), encoding='utf-8')
         os.replace(tmp, STATE_PATH)
@@ -153,7 +174,12 @@ def _save_state() -> None:
 
 
 def head_sha(timeout: int = 20) -> str:
-    """対象ブランチの HEAD sha。Accept ヘッダで sha だけを受け取る（数十バイト）。"""
+    """対象ブランチの HEAD sha。
+
+    ポーリングには使わない（api.github.com は未認証 60 req/hour で、Render の
+    共有 IP ではすぐ枯れる）。実際に取り込みが起きたときだけ、どのコミットを
+    配信しているか記録するために呼ぶ。
+    """
     url = f'https://api.github.com/repos/{repo_slug()}/commits/{branch_name()}'
     req = urllib.request.Request(url, headers=_headers('application/vnd.github.sha'))
     with urllib.request.urlopen(req, timeout=timeout) as res:
@@ -163,20 +189,33 @@ def head_sha(timeout: int = 20) -> str:
     return sha
 
 
-def _download_tarball(sha: str, dest: Path, timeout: int = 120) -> int:
-    url = f'https://codeload.github.com/{repo_slug()}/tar.gz/{sha}'
-    req = urllib.request.Request(url, headers=_headers('application/octet-stream'))
+def _download_tarball(dest: Path, etag: str, timeout: int = 180) -> tuple[int, str]:
+    """条件付き GET。変わっていなければ (0, etag) を返して何も落とさない。"""
+    headers = _headers('application/octet-stream')
+    if etag:
+        headers['If-None-Match'] = etag
+    req = urllib.request.Request(tarball_url(), headers=headers)
     total = 0
-    with urllib.request.urlopen(req, timeout=timeout) as res, dest.open('wb') as out:
-        while True:
-            chunk = res.read(1 << 16)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > MAX_TARBALL_BYTES:
-                raise ValueError('tarball larger than expected; aborting')
-            out.write(chunk)
-    return total
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            if res.status == 304:
+                return 0, etag
+            new_etag = res.headers.get('ETag') or ''
+            with dest.open('wb') as out:
+                while True:
+                    chunk = res.read(1 << 16)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > MAX_TARBALL_BYTES:
+                        raise ValueError('tarball larger than expected; aborting')
+                    out.write(chunk)
+        return total, new_etag
+    except urllib.error.HTTPError as e:
+        # urllib は 304 を例外にすることがある（リダイレクトハンドラ経由）
+        if e.code == 304:
+            return 0, etag
+        raise
 
 
 def _target_path(rel: str) -> Path | None:
@@ -261,37 +300,48 @@ def sync_once(*, force: bool = False, on_update=None) -> dict:
 
 def _sync_body(*, force: bool, on_update) -> dict:
     tmp_dir = None
+    started = time.time()
     try:
-        sha = head_sha()
         with _LOCK:
-            known = _STATE['sha']
-        if sha == known and not force:
-            print(f'[data-sync] up to date sha={sha[:12]}', flush=True)
-            return {'ok': True, 'changed': 0, 'sha': sha, 'skipped': 'unchanged'}
-        started = time.time()
+            etag = '' if force else _STATE['etag']
         tmp_dir = Path(tempfile.mkdtemp(prefix='areru-data-sync-'))
         tar_path = tmp_dir / 'snapshot.tar.gz'
-        size = _download_tarball(sha, tar_path)
+        size, new_etag = _download_tarball(tar_path, etag)
+        if size == 0:
+            with _LOCK:
+                _STATE['last_ok_at'] = _now()
+                _STATE['last_error'] = ''
+            print('[data-sync] up to date (304)', flush=True)
+            return {'ok': True, 'changed': 0, 'skipped': 'unchanged'}
         changed = _extract_data(tar_path)
         took = time.time() - started
         with _LOCK:
-            _STATE['sha'] = sha
+            _STATE['etag'] = new_etag
             _STATE['last_ok_at'] = _now()
             _STATE['last_error'] = ''
             _STATE['changed_files'] = changed
             _STATE['syncs'] += 1
-        _save_state()
+            if changed:
+                _STATE['last_change_at'] = _now()
         print(
-            f'[data-sync] ok sha={sha[:12]} changed={changed} '
-            f'tarball={size // 1024}KB {took:.1f}s',
+            f'[data-sync] ok changed={changed} tarball={size // 1024}KB {took:.1f}s',
             flush=True,
         )
+        # どのコミットを配信しているかの記録。失敗しても取り込み自体は成功。
+        # ポーリングでは叩かないので API の 60 req/hour には当たらない。
+        try:
+            with _LOCK:
+                _STATE['sha'] = head_sha()
+        except Exception as e:
+            print(f'[data-sync] sha lookup skipped: {type(e).__name__}: {e}', flush=True)
+        _save_state()
         if changed and callable(on_update):
             try:
                 on_update(changed)
             except Exception as e:
                 print(f'[data-sync] post-update hook failed: {e}', flush=True)
-        return {'ok': True, 'changed': changed, 'sha': sha}
+        with _LOCK:
+            return {'ok': True, 'changed': changed, 'sha': _STATE['sha']}
     except Exception as e:
         msg = f'{type(e).__name__}: {e}'
         with _LOCK:
@@ -310,7 +360,9 @@ def snapshot() -> dict:
             'repo': repo_slug(),
             'branch': branch_name(),
             'sha': _STATE['sha'][:12],
+            'etag': _STATE['etag'][:18],
             'last_ok_at': _STATE['last_ok_at'],
+            'last_change_at': _STATE['last_change_at'],
             'last_try_at': _STATE['last_try_at'],
             'last_error': _STATE['last_error'],
             'changed_files': _STATE['changed_files'],
@@ -335,9 +387,23 @@ def start_background_sync(on_update=None) -> bool:
             # デプロイ直後の checkout には最新データが入っているので、
             # 起動直後の混雑を避けて少しだけ待ってから取りに行く。
             time.sleep(float(_env('ARERU_DATA_SYNC_DELAY', '10') or 10))
+            backoff = 0
+            polls = 0
+            every = verify_every()
             while True:
-                sync_once(on_update=on_update)
-                time.sleep(interval_sec())
+                # 通常は ETag が変わったときだけ落とす。ただしそれだと
+                # 「上流は変わっていないのにローカルだけ欠けた」状態
+                # （途中で落ちた展開など）を直せないので、定期的に
+                # ETag を無視して全体を突き合わせる。
+                force = every > 0 and polls > 0 and polls % every == 0
+                result = sync_once(force=force, on_update=on_update)
+                polls += 1
+                if result.get('ok'):
+                    backoff = 0
+                else:
+                    # GitHub 側の一時障害で叩き続けない
+                    backoff = min(backoff * 2 or 60, 30 * 60)
+                time.sleep(backoff or interval_sec())
 
         _THREAD = threading.Thread(target=_loop, daemon=True, name='data-sync')
         _THREAD.start()
