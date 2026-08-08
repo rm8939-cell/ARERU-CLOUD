@@ -4,76 +4,76 @@
   "honmei_rows": 1258,
   "by_rank_honmei": {
     "S": {
-      "bets": 53,
-      "hits": 9,
-      "hit_rate": 17.0,
-      "investment": 5300,
-      "payout": 5150,
-      "recovery": 97.2,
-      "profit": -150,
-      "avg_odds": 10.43
+      "bets": 57,
+      "hits": 7,
+      "hit_rate": 12.3,
+      "investment": 5700,
+      "payout": 6270,
+      "recovery": 110.0,
+      "profit": 570,
+      "avg_odds": 12.79
     },
     "A": {
-      "bets": 197,
-      "hits": 23,
-      "hit_rate": 11.7,
-      "investment": 19700,
-      "payout": 17140,
-      "recovery": 87.0,
-      "profit": -2560,
-      "avg_odds": 19.62
+      "bets": 202,
+      "hits": 20,
+      "hit_rate": 9.9,
+      "investment": 20200,
+      "payout": 17480,
+      "recovery": 86.5,
+      "profit": -2720,
+      "avg_odds": 22.21
     },
     "B": {
-      "bets": 443,
-      "hits": 64,
-      "hit_rate": 14.4,
-      "investment": 44300,
-      "payout": 32230,
-      "recovery": 72.8,
-      "profit": -12070,
-      "avg_odds": 14.3
+      "bets": 419,
+      "hits": 65,
+      "hit_rate": 15.5,
+      "investment": 41900,
+      "payout": 29980,
+      "recovery": 71.6,
+      "profit": -11920,
+      "avg_odds": 13.5
     },
     "C": {
-      "bets": 398,
-      "hits": 58,
-      "hit_rate": 14.6,
-      "investment": 39800,
-      "payout": 28570,
-      "recovery": 71.8,
-      "profit": -11230,
-      "avg_odds": 23.57
+      "bets": 412,
+      "hits": 62,
+      "hit_rate": 15.0,
+      "investment": 41200,
+      "payout": 29360,
+      "recovery": 71.3,
+      "profit": -11840,
+      "avg_odds": 22.18
     },
     "D": {
-      "bets": 167,
+      "bets": 168,
       "hits": 12,
-      "hit_rate": 7.2,
-      "investment": 16700,
+      "hit_rate": 7.1,
+      "investment": 16800,
       "payout": 13670,
-      "recovery": 81.9,
-      "profit": -3030,
-      "avg_odds": 26.27
+      "recovery": 81.4,
+      "profit": -3130,
+      "avg_odds": 25.95
     }
   },
   "by_rank_buy_honmei": {
     "S": {
-      "bets": 45,
+      "bets": 50,
       "hits": 6,
-      "hit_rate": 13.3,
-      "investment": 4500,
-      "payout": 4630,
-      "recovery": 102.9,
-      "profit": 130,
-      "avg_odds": 11.72
+      "hit_rate": 12.0,
+      "investment": 5000,
+      "payout": 6070,
+      "recovery": 121.4,
+      "profit": 1070,
+      "avg_odds": 14.01
     },
     "A": {
-      "bets": 91,
-      "hits": 9,
-      "hit_rate": 9.9,
-      "investment": 9100,
-      "payout": 8720,
-      "recovery": 95.8,
-      "profit": -380,
-      "avg_odds": 16.9
+      "bets": 92,
+      "hits": 8,
+      "hit_rate": 8.7,
+      "investment": 9200,
+      "payout": 7090,
+      "recovery": 77.1,
+      "profit": -2110,
+      "avg_odds": 17.47
     },
     "B": {
       "bets": 0
@@ -88,19 +88,19 @@
   "conditions_honmei": [
     {
       "label": "rank S/A",
-      "bets": 250,
-      "hit_rate": 12.8,
-      "avg_odds": 17.66,
-      "recovery": 89.2,
-      "profit": -2710
+      "bets": 259,
+      "hit_rate": 10.4,
+      "avg_odds": 20.14,
+      "recovery": 91.7,
+      "profit": -2150
     },
     {
       "label": "invest=買い",
-      "bets": 136,
-      "hit_rate": 11.0,
-      "avg_odds": 15.19,
-      "recovery": 98.2,
-      "profit": -250
+      "bets": 142,
+      "hit_rate": 9.9,
+      "avg_odds": 16.25,
+      "recovery": 92.7,
+      "profit": -1040
     },
     {
       "label": "ability>=80",
@@ -120,35 +120,35 @@
     },
     {
       "label": "race_conf>=68",
-      "bets": 274,
-      "hit_rate": 10.9,
-      "avg_odds": 17.46,
-      "recovery": 77.8,
-      "profit": -6080
+      "bets": 300,
+      "hit_rate": 10.7,
+      "avg_odds": 17.42,
+      "recovery": 72.9,
+      "profit": -8140
     },
     {
       "label": "race_conf 48-58",
-      "bets": 134,
-      "hit_rate": 22.4,
-      "avg_odds": 14.56,
-      "recovery": 79.1,
-      "profit": -2800
+      "bets": 126,
+      "hit_rate": 23.0,
+      "avg_odds": 14.33,
+      "recovery": 82.5,
+      "profit": -2210
     },
     {
       "label": "EV>=108 (旧買い閾値)",
-      "bets": 502,
-      "hit_rate": 6.8,
-      "avg_odds": 22.92,
-      "recovery": 72.5,
-      "profit": -13790
+      "bets": 505,
+      "hit_rate": 6.7,
+      "avg_odds": 22.84,
+      "recovery": 72.1,
+      "profit": -14090
     },
     {
       "label": "EV 100-108",
-      "bets": 305,
-      "hit_rate": 10.5,
-      "avg_odds": 24.32,
-      "recovery": 75.5,
-      "profit": -7470
+      "bets": 302,
+      "hit_rate": 10.6,
+      "avg_odds": 24.46,
+      "recovery": 76.3,
+      "profit": -7170
     },
     {
       "label": "odds<=10",

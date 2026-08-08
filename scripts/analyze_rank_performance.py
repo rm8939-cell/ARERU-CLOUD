@@ -138,8 +138,8 @@ def main() -> int:
         'conditions_honmei': _condition_block(honmei),
         'notes': [
             '主指標は本命チケット。ワイド等は買い目生成の別問題。',
-            'S は能力差≥80 を主軸にした厳格条件。展開安定≥65 は到達不能だったため廃止。',
-            '買い判定の EV 下限は 108→100。能力差下限とオッズ上限を追加。',
+            'S=能力差≥80×AI≥72×再現≥62×n≥3×オッズ≤50。展開≥65は到達不能、勝率下限は人気寄り選別のため除外。',
+            '詳細な根因と旧/新バックテストは data/s_rank_rootcause_backtest.json / scripts/diagnose_s_rank.py。',
         ],
     }
 

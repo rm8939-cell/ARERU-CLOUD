@@ -24,16 +24,25 @@ BUY_ABILITY_FLOOR = 65.0   # 能力差が無い買いを落とす
 BUY_ODDS_MAX = 50.0        # 50 倍超の本命は的中 0 件（実績）
 
 # Sランク厳格条件（すべて満たした場合のみ S。不足は A へ降格）。
-# 2026-08 時点の実績:
-#   - 旧 S_MIN_PACE_STABLE=65 は展開読みやすさの上限が 60 のため到達不能 → S=0 件
-#   - 能力差≥80 の本命単勝回収 159%（n=56）が最強シグナル
-#   - AI信頼度≥80 は過信（回収 73%）なので 72→60 に下げ、能力差で締める
-S_MIN_AI_CONF = 60.0
+# 設計方針: 「S を増やす」のではなく「長期的に期待値が高い」帯だけを S にする。
+#
+# 到達不能の根因（main 旧仕様）:
+#   - S_MIN_PACE_STABLE=65 だが 展開読みやすさ の観測最大は 60
+#     （荒れ指数≤35 が一度も無く +22 ボーナスが発火しない）
+#   - AND ゲートのため他条件を満たしても S≡0
+#
+# 2026-06〜08 本命単勝バックテスト（旧 vs 新）:
+#   - 能力差≥80（離散トップ帯=88）が唯一のプラス寄りシグナル
+#   - 勝率≥15 の必須化は本命を人気側へ寄せ、能力差エッジを壊す（116%→89%）
+#   - 新 S: 能力差≥80 × AI≥72 × 再現≥62 × n≥3 × オッズ≤50
+#     → S 回収 108.4% / 買い×S 121.4%（旧 A 48.4%、旧 S=0）
+S_MIN_AI_CONF = 72.0
 S_MIN_ABILITY_GAP = 80.0
-S_MIN_PACE_STABLE = 32.0   # 極度の混戦だけ除外（到達不能だった 65 を廃止）
 S_MIN_DATA_N = 3
-S_MIN_REPRO = 50.0
-S_MIN_WIN_PCT = 15.0       # シミュレーション勝率。≥25% 帯は回収 118%
+S_MIN_REPRO = 62.0
+S_MAX_ODDS = 50.0          # 本命オッズ>50 は的中 0（実績）。欠損は許容
+# 展開読みやすさ≥65 は特徴量生成上到達不能のため S 必須条件から除外。
+# 勝率下限も除外（高勝率＝人気寄りで回収を毀損）。
 
 # tighten_buy_selection の絶対スコア下限（スロット埋めによるランク汚染を防ぐ）
 # 旧 A 下限 40 では信頼度の低いレースまで A に押し上げられ、A 回収が 82% まで低下
@@ -577,8 +586,12 @@ def rank_from_race_confidence(score) -> str:
 def qualify_s_rank(record: dict) -> tuple[bool, dict]:
     """Sランク厳格判定。全条件を満たしたときだけ True。
 
-    能力差を主軸にする（実績で本命単勝回収 159%）。展開安定は
-    「極度の混戦を落とす」ソフト下限のみ。シミュレーション勝率も必須。
+    能力差トップ帯（≥80）を主軸にし、AI信頼度・再現性・データ件数で
+    品質を担保。オッズ上限で的中0帯を除外する。
+
+    含めないもの:
+      - 展開読みやすさ≥65 … 特徴量上到達不能（観測max=60）で S≡0 の原因
+      - シミュレーション勝率下限 … 人気寄り選別になり回収を落とす
     """
     # 信頼度パックが未計算なら補完
     if record.get('能力差スコア') is None or record.get('展開読みやすさ') is None:
@@ -595,10 +608,6 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
     except (TypeError, ValueError):
         ability = 0.0
     try:
-        pace = safe_float(record.get('展開読みやすさ'), 0.0) or 0.0
-    except (TypeError, ValueError):
-        pace = 0.0
-    try:
         n = safe_int(record.get('データ件数'), _count_past_races(record) or 0)
     except (TypeError, ValueError):
         n = 0
@@ -609,18 +618,15 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
         ) or 0.0
     except (TypeError, ValueError):
         repro = 0.0
-    try:
-        win_pct = safe_float(record.get('シミュレーション勝率'), 0.0) or 0.0
-    except (TypeError, ValueError):
-        win_pct = 0.0
+    odds = parse_odds_value(record.get('本命オッズ'))
+    odds_ok = odds is None or (0 < odds <= S_MAX_ODDS)
 
     checks = {
         'AI信頼度': conf >= S_MIN_AI_CONF,
         '能力差': ability >= S_MIN_ABILITY_GAP,
-        '展開安定': pace >= S_MIN_PACE_STABLE,
         'データ件数': n >= S_MIN_DATA_N,
         '再現性': repro >= S_MIN_REPRO,
-        '勝率': win_pct >= S_MIN_WIN_PCT,
+        'オッズ': odds_ok,
     }
     detail = {
         '合格': all(checks.values()),
@@ -628,18 +634,16 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
         '値': {
             'AI信頼度': round(conf, 1),
             '能力差': round(ability, 1),
-            '展開安定': round(pace, 1),
             'データ件数': n,
             '再現性': round(repro, 1),
-            '勝率': round(win_pct, 1),
+            'オッズ': None if odds is None else round(odds, 2),
         },
         '閾値': {
             'AI信頼度': S_MIN_AI_CONF,
             '能力差': S_MIN_ABILITY_GAP,
-            '展開安定': S_MIN_PACE_STABLE,
             'データ件数': S_MIN_DATA_N,
             '再現性': S_MIN_REPRO,
-            '勝率': S_MIN_WIN_PCT,
+            'オッズ上限': S_MAX_ODDS,
         },
     }
     if not detail['合格']:
@@ -950,9 +954,9 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
 def _buy_score(record: dict) -> float:
     """厳選時の並び用スコア。
 
-    旧式は (EV-100)*1.8 を強く効かせていたため、人気薄が高順位に並び
-    S/A 枠と買い枠を占有していた。能力差・勝率・レース信頼度を主軸にし、
-    EV の寄与は 115% で頭打ちにする。
+    能力差を最優先（唯一のプラス寄り実績帯）。高勝率ボーナスは付けない
+    （本命を人気側へ寄せ回収を落とすため）。中穴帯に軽い加点、
+    勝率≥30% の極度の人気には減点。EV は 112% で頭打ち。
     """
     ev = safe_float(record.get('期待値'), 0.0) or 0.0
     rc = safe_float(record.get('レース信頼度スコア'), None)
@@ -960,14 +964,18 @@ def _buy_score(record: dict) -> float:
         rc = safe_float(record.get('AI信頼度スコア'), 0.0) or 0.0
     ability = safe_float(record.get('能力差スコア'), 0.0) or 0.0
     win_pct = safe_float(record.get('シミュレーション勝率'), 0.0) or 0.0
+    odds = parse_odds_value(record.get('本命オッズ')) or 0.0
     rank_bonus = {'S': 12, 'A': 8, 'B': 3, 'C': 0, 'D': -4}.get(
         str(record.get('勝負ランク') or '').upper(), 0
     )
+    fav_pen = 8.0 if win_pct >= 30 else 0.0
+    mid_bonus = 5.0 if 8.0 <= odds <= 35.0 else 0.0
     return (
-        rc * 0.45
-        + ability * 0.35
-        + win_pct * 0.25
-        + max(0.0, min(ev, 115.0) - 100.0) * 0.8
+        ability * 0.55
+        + rc * 0.35
+        + max(0.0, min(ev, 112.0) - 100.0) * 0.5
+        + mid_bonus
+        - fav_pen
         + rank_bonus
     )
 
@@ -1324,10 +1332,9 @@ def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
         'thresholds_s': {
             'AI信頼度': S_MIN_AI_CONF,
             '能力差': S_MIN_ABILITY_GAP,
-            '展開安定': S_MIN_PACE_STABLE,
             'データ件数': S_MIN_DATA_N,
             '再現性': S_MIN_REPRO,
-            '勝率': S_MIN_WIN_PCT,
+            'オッズ上限': S_MAX_ODDS,
         },
         'thresholds_buy': {
             'EV': BUY_EV_FLOOR,

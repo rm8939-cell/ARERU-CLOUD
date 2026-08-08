@@ -1,0 +1,131 @@
+{
+  "improvement_confirmed": true,
+  "old_S_gates": {
+    "AI信頼度>=72": {
+      "pass": 532,
+      "pass_pct": 40.1
+    },
+    "能力差>=70": {
+      "pass": 240,
+      "pass_pct": 18.1
+    },
+    "展開安定>=65": {
+      "pass": 0,
+      "pass_pct": 0.0
+    },
+    "データ件数>=3": {
+      "pass": 830,
+      "pass_pct": 62.6
+    },
+    "再現性>=62": {
+      "pass": 816,
+      "pass_pct": 61.5
+    },
+    "ALL_old": {
+      "pass": 0,
+      "pass_pct": 0.0
+    },
+    "ALL_except_pace": {
+      "pass": 157
+    }
+  },
+  "pace_unreachable_proof": {
+    "展開読みやすさ_max": 60.0,
+    "展開読みやすさ_ge65_count": 0,
+    "展開読みやすさ_ge60_count": 109,
+    "荒れ指数_n": 1024,
+    "荒れ指数_min": 42.0,
+    "荒れ指数_le35_count": 0,
+    "formula_note": "pace=50 + (chaos<=35:+22 | <=55:+10 | >=80:-18 | >=65:-10) + 展開相性(+12/-14) + AI総評(+8/-8). chaos<=35 が 0 件のため +22 が発火せず観測 max=60 < 旧閾値65。"
+  },
+  "old_logic": {
+    "S": {
+      "n": 0
+    },
+    "A": {
+      "n": 241,
+      "hits": 15,
+      "hit_rate": 6.2,
+      "recovery": 48.4,
+      "avg_odds": 14.25,
+      "avg_ev": 115.1,
+      "profit": -12440
+    },
+    "B": {
+      "n": 437,
+      "hits": 40,
+      "hit_rate": 9.2,
+      "recovery": 65.9,
+      "avg_odds": 22.54,
+      "avg_ev": 108.0,
+      "profit": -14910
+    },
+    "BUY": {
+      "n": 201,
+      "hit_rate": 7.5,
+      "recovery": 58.0,
+      "avg_odds": 15.14,
+      "avg_ev": 117.8
+    },
+    "BUY_S": {
+      "n": 0
+    }
+  },
+  "new_logic": {
+    "S": {
+      "n": 56,
+      "hits": 6,
+      "hit_rate": 10.7,
+      "recovery": 108.4,
+      "avg_odds": 13.15,
+      "avg_ev": 113.4,
+      "profit": 470
+    },
+    "A": {
+      "n": 192,
+      "hits": 17,
+      "hit_rate": 8.9,
+      "recovery": 87.9,
+      "avg_odds": 22.06,
+      "avg_ev": 113.5,
+      "profit": -2330
+    },
+    "B": {
+      "n": 397,
+      "hits": 47,
+      "hit_rate": 11.8,
+      "recovery": 60.9,
+      "avg_odds": 13.83,
+      "avg_ev": 106.8,
+      "profit": -15510
+    },
+    "BUY": {
+      "n": 146,
+      "hit_rate": 9.6,
+      "recovery": 90.1,
+      "avg_odds": 16.0,
+      "avg_ev": 114.6
+    },
+    "BUY_S": {
+      "n": 50,
+      "hit_rate": 12.0,
+      "recovery": 121.4
+    }
+  },
+  "new_S_definition": {
+    "能力差": ">=80",
+    "AI信頼度": ">=72",
+    "再現性": ">=62",
+    "データ件数": ">=3",
+    "本命オッズ": "<=50 or NA",
+    "removed": [
+      "展開安定>=65",
+      "勝率下限"
+    ]
+  },
+  "notes": [
+    "主指標は本命単勝。S=件数最大化ではなく回収/期待値優先。",
+    "旧Sは展開安定>=65 が数学的に通過不能で常に0件。",
+    "能力差>=80 が最強シグナル。勝率下限は人気寄り選別でエッジを壊す。"
+  ]
+}
