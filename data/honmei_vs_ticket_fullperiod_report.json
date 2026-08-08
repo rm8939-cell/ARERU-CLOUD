@@ -1,0 +1,4573 @@
+{
+  "purpose": "全期間S/A/Bについて本命着順と買い目的中を分離し、仮想買い方別成績で変換効率を検証（コード変更なし）",
+  "period": {
+    "all": "2026-06-25 .. 2026-08-07",
+    "train": "<= 2026-07-28",
+    "test": "> 2026-07-28"
+  },
+  "definitions": {
+    "馬券圏内": "着順1-3",
+    "仮想単勝": "本命に100円。的中時払戻=確定オッズ×100",
+    "仮想複勝": "本命に100円。的中=1-3着。払戻は複勝オッズ近似（公式オッズなし）。回収は採用判定に使わない",
+    "生成ワイド/馬連/三連複/三連単": "analysis_resultの生成買い目（購入対象に限定しない）",
+    "現行購入対象": "購入対象=1の券種合計（レース単位）",
+    "min_n_adoptable": 20,
+    "馬単": "analysis_resultに評価行がなく比較対象外"
+  },
+  "n_total": 649,
+  "counts": {
+    "('JRA', 'A')": 32,
+    "('JRA', 'B')": 70,
+    "('JRA', 'S')": 10,
+    "('地方', 'A')": 167,
+    "('地方', 'B')": 263,
+    "('地方', 'S')": 107
+  },
+  "scopes": {
+    "地方/S/全期間": {
+      "label": "生成三連単",
+      "n": 107,
+      "finish_dist": {
+        "1": 6,
+        "2": 12,
+        "3": 17,
+        "4": 16,
+        "5": 12,
+        "6": 17,
+        "7": 13,
+        "8": 5,
+        "9": 3,
+        "10": 3,
+        "11": 2,
+        "12": 1
+      },
+      "win_n": 6,
+      "place_n": 35,
+      "win_rate": 5.6,
+      "place_rate": 32.7,
+      "buckets": {
+        "本命圏外": 72,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 35,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 72,
+        "avg_finish": 6.22,
+        "avg_odds": 21.01,
+        "avg_pop": 5.26,
+        "avg_ev": 115.58,
+        "avg_ability": 79.99
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 35,
+        "avg_finish": 2.31,
+        "avg_odds": 15.23,
+        "avg_pop": 4.26,
+        "avg_ev": 114.09,
+        "avg_ability": 74.57
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 35,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 35,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 35,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 35,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 107,
+          "hits": 6,
+          "hit_rate": 5.6,
+          "investment": 10700,
+          "payout": 5700,
+          "recovery": 53.3,
+          "avg_odds": 19.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 107,
+          "hits": 35,
+          "hit_rate": 32.7,
+          "investment": 10700,
+          "payout": 18937,
+          "recovery": 177.0,
+          "avg_odds": 6.51,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 107,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 36500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 19.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 107,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 107,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 25300,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 19.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 107,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 107,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 59000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 19.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 107,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 107,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 10700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 19.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 107,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 107,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 41600,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 19.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 107,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 34900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 19.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 32.7,
+        "本命単勝率": 5.6,
+        "仮想単勝回収": 53.3,
+        "仮想複勝回収_近似": 177.0,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "地方/S/学習": {
+      "label": "生成三連単",
+      "n": 49,
+      "finish_dist": {
+        "1": 3,
+        "2": 4,
+        "3": 8,
+        "4": 8,
+        "5": 2,
+        "6": 9,
+        "7": 8,
+        "8": 2,
+        "10": 2,
+        "11": 2,
+        "12": 1
+      },
+      "win_n": 3,
+      "place_n": 15,
+      "win_rate": 6.1,
+      "place_rate": 30.6,
+      "buckets": {
+        "本命圏外": 34,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 15,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 34,
+        "avg_finish": 6.53,
+        "avg_odds": 20.43,
+        "avg_pop": 4.97,
+        "avg_ev": 115.76,
+        "avg_ability": 82.24
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 15,
+        "avg_finish": 2.33,
+        "avg_odds": 20.41,
+        "avg_pop": 4.67,
+        "avg_ev": 114.67,
+        "avg_ability": 77.53
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 15,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 15,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 15,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 15,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 49,
+          "hits": 3,
+          "hit_rate": 6.1,
+          "investment": 4900,
+          "payout": 4670,
+          "recovery": 95.3,
+          "avg_odds": 20.43,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 49,
+          "hits": 15,
+          "hit_rate": 30.6,
+          "investment": 4900,
+          "payout": 10251,
+          "recovery": 209.2,
+          "avg_odds": 6.85,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 49,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 14700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.43,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 49,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 49,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 9700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.43,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 49,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 49,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 18500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.43,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 49,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 49,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 4900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.43,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 49,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 49,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 18400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.43,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 49,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 13400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.43,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 30.6,
+        "本命単勝率": 6.1,
+        "仮想単勝回収": 95.3,
+        "仮想複勝回収_近似": 209.2,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "地方/S/検証": {
+      "label": "生成三連単",
+      "n": 58,
+      "finish_dist": {
+        "1": 3,
+        "2": 8,
+        "3": 9,
+        "4": 8,
+        "5": 10,
+        "6": 8,
+        "7": 5,
+        "8": 3,
+        "9": 3,
+        "10": 1
+      },
+      "win_n": 3,
+      "place_n": 20,
+      "win_rate": 5.2,
+      "place_rate": 34.5,
+      "buckets": {
+        "本命圏外": 38,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 20,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 38,
+        "avg_finish": 5.95,
+        "avg_odds": 21.52,
+        "avg_pop": 5.53,
+        "avg_ev": 115.42,
+        "avg_ability": 77.97
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 20,
+        "avg_finish": 2.3,
+        "avg_odds": 11.35,
+        "avg_pop": 3.95,
+        "avg_ev": 113.65,
+        "avg_ability": 72.35
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 20,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 20,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 20,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 20,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 58,
+          "hits": 3,
+          "hit_rate": 5.2,
+          "investment": 5800,
+          "payout": 1030,
+          "recovery": 17.8,
+          "avg_odds": 18.01,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 58,
+          "hits": 20,
+          "hit_rate": 34.5,
+          "investment": 5800,
+          "payout": 8686,
+          "recovery": 149.8,
+          "avg_odds": 6.21,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 58,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 21800,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.01,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 58,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 58,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 15600,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.01,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 58,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 58,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 40500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.01,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 58,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 58,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 5800,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.01,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 58,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 58,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 23200,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.01,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 58,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 21500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.01,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 34.5,
+        "本命単勝率": 5.2,
+        "仮想単勝回収": 17.8,
+        "仮想複勝回収_近似": 149.8,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "地方/A/全期間": {
+      "label": "生成三連単",
+      "n": 167,
+      "finish_dist": {
+        "1": 20,
+        "2": 16,
+        "3": 28,
+        "4": 23,
+        "5": 20,
+        "6": 16,
+        "7": 15,
+        "8": 11,
+        "9": 9,
+        "10": 3,
+        "11": 5,
+        "14": 1
+      },
+      "win_n": 20,
+      "place_n": 64,
+      "win_rate": 12.0,
+      "place_rate": 38.3,
+      "buckets": {
+        "本命圏外": 103,
+        "本命圏内_購入買い目的中": 1,
+        "本命圏内_購入買い目外れ": 63,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 103,
+        "avg_finish": 6.42,
+        "avg_odds": 44.07,
+        "avg_pop": 5.44,
+        "avg_ev": 112.42,
+        "avg_ability": 62.68
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 63,
+        "avg_finish": 2.14,
+        "avg_odds": 16.8,
+        "avg_pop": 3.75,
+        "avg_ev": 107.86,
+        "avg_ability": 68.46
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 64,
+          "hit_rate_given_honmei_in_money": 1.6,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 64,
+          "hit_rate_given_honmei_in_money": 1.6,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 64,
+          "hit_rate_given_honmei_in_money": 1.6,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 64,
+          "hit_rate_given_honmei_in_money": 1.6,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 167,
+          "hits": 20,
+          "hit_rate": 12.0,
+          "investment": 16700,
+          "payout": 15810,
+          "recovery": 94.7,
+          "avg_odds": 33.53,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 167,
+          "hits": 64,
+          "hit_rate": 38.3,
+          "investment": 16700,
+          "payout": 36164,
+          "recovery": 216.6,
+          "avg_odds": 10.99,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 167,
+          "hits": 2,
+          "hit_rate": 1.2,
+          "investment": 55600,
+          "payout": 890,
+          "recovery": 1.6,
+          "avg_odds": 33.53,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 167,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 167,
+          "hits": 1,
+          "hit_rate": 0.6,
+          "investment": 39200,
+          "payout": 110,
+          "recovery": 0.3,
+          "avg_odds": 33.53,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 167,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 167,
+          "hits": 1,
+          "hit_rate": 0.6,
+          "investment": 95500,
+          "payout": 300,
+          "recovery": 0.3,
+          "avg_odds": 33.53,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 167,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 167,
+          "hits": 2,
+          "hit_rate": 1.2,
+          "investment": 16700,
+          "payout": 8670,
+          "recovery": 51.9,
+          "avg_odds": 33.53,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 167,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 167,
+          "hits": 2,
+          "hit_rate": 1.2,
+          "investment": 64000,
+          "payout": 1300,
+          "recovery": 2.0,
+          "avg_odds": 33.53,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 167,
+          "hits": 2,
+          "hit_rate": 1.2,
+          "investment": 54600,
+          "payout": 890,
+          "recovery": 1.6,
+          "avg_odds": 33.53,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 38.3,
+        "本命単勝率": 12.0,
+        "仮想単勝回収": 94.7,
+        "仮想複勝回収_近似": 216.6,
+        "生成ワイド回収": 1.6,
+        "現行購入回収": 2.0
+      }
+    },
+    "地方/A/学習": {
+      "label": "生成三連単",
+      "n": 77,
+      "finish_dist": {
+        "1": 12,
+        "2": 8,
+        "3": 11,
+        "4": 9,
+        "5": 10,
+        "6": 6,
+        "7": 8,
+        "8": 3,
+        "9": 6,
+        "10": 2,
+        "11": 2
+      },
+      "win_n": 12,
+      "place_n": 31,
+      "win_rate": 15.6,
+      "place_rate": 40.3,
+      "buckets": {
+        "本命圏外": 46,
+        "本命圏内_購入買い目的中": 1,
+        "本命圏内_購入買い目外れ": 30,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 46,
+        "avg_finish": 6.48,
+        "avg_odds": 34.21,
+        "avg_pop": 4.87,
+        "avg_ev": 111.04,
+        "avg_ability": 66.09
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 30,
+        "avg_finish": 2.0,
+        "avg_odds": 18.44,
+        "avg_pop": 3.43,
+        "avg_ev": 105.93,
+        "avg_ability": 72.63
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 31,
+          "hit_rate_given_honmei_in_money": 3.2,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 31,
+          "hit_rate_given_honmei_in_money": 3.2,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 31,
+          "hit_rate_given_honmei_in_money": 3.2,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 31,
+          "hit_rate_given_honmei_in_money": 3.2,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 77,
+          "hits": 12,
+          "hit_rate": 15.6,
+          "investment": 7700,
+          "payout": 7300,
+          "recovery": 94.8,
+          "avg_odds": 27.65,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 77,
+          "hits": 31,
+          "hit_rate": 40.3,
+          "investment": 7700,
+          "payout": 18268,
+          "recovery": 237.2,
+          "avg_odds": 9.08,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 77,
+          "hits": 2,
+          "hit_rate": 2.6,
+          "investment": 22700,
+          "payout": 890,
+          "recovery": 3.9,
+          "avg_odds": 27.65,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 77,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 77,
+          "hits": 1,
+          "hit_rate": 1.3,
+          "investment": 15300,
+          "payout": 110,
+          "recovery": 0.7,
+          "avg_odds": 27.65,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 77,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 77,
+          "hits": 1,
+          "hit_rate": 1.3,
+          "investment": 33900,
+          "payout": 300,
+          "recovery": 0.9,
+          "avg_odds": 27.65,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 77,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 77,
+          "hits": 1,
+          "hit_rate": 1.3,
+          "investment": 7700,
+          "payout": 610,
+          "recovery": 7.9,
+          "avg_odds": 27.65,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 77,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 77,
+          "hits": 2,
+          "hit_rate": 2.6,
+          "investment": 29000,
+          "payout": 1300,
+          "recovery": 4.5,
+          "avg_odds": 27.65,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 77,
+          "hits": 2,
+          "hit_rate": 2.6,
+          "investment": 22100,
+          "payout": 890,
+          "recovery": 4.0,
+          "avg_odds": 27.65,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 40.3,
+        "本命単勝率": 15.6,
+        "仮想単勝回収": 94.8,
+        "仮想複勝回収_近似": 237.2,
+        "生成ワイド回収": 3.9,
+        "現行購入回収": 4.5
+      }
+    },
+    "地方/A/検証": {
+      "label": "生成三連単",
+      "n": 90,
+      "finish_dist": {
+        "1": 8,
+        "2": 8,
+        "3": 17,
+        "4": 14,
+        "5": 10,
+        "6": 10,
+        "7": 7,
+        "8": 8,
+        "9": 3,
+        "10": 1,
+        "11": 3,
+        "14": 1
+      },
+      "win_n": 8,
+      "place_n": 33,
+      "win_rate": 8.9,
+      "place_rate": 36.7,
+      "buckets": {
+        "本命圏外": 57,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 33,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 57,
+        "avg_finish": 6.37,
+        "avg_odds": 52.03,
+        "avg_pop": 5.89,
+        "avg_ev": 113.53,
+        "avg_ability": 59.93
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 33,
+        "avg_finish": 2.27,
+        "avg_odds": 15.31,
+        "avg_pop": 4.03,
+        "avg_ev": 109.61,
+        "avg_ability": 64.67
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 33,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 33,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 33,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 33,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 90,
+          "hits": 8,
+          "hit_rate": 8.9,
+          "investment": 9000,
+          "payout": 8510,
+          "recovery": 94.6,
+          "avg_odds": 38.56,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 90,
+          "hits": 33,
+          "hit_rate": 36.7,
+          "investment": 9000,
+          "payout": 17896,
+          "recovery": 198.8,
+          "avg_odds": 12.62,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 90,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 32900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 38.56,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 90,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 90,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 23900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 38.56,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 90,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 90,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 61600,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 38.56,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 90,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 90,
+          "hits": 1,
+          "hit_rate": 1.1,
+          "investment": 9000,
+          "payout": 8060,
+          "recovery": 89.6,
+          "avg_odds": 38.56,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 90,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 90,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 35000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 38.56,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 90,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 32500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 38.56,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 36.7,
+        "本命単勝率": 8.9,
+        "仮想単勝回収": 94.6,
+        "仮想複勝回収_近似": 198.8,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "地方/B/全期間": {
+      "label": "生成三連単",
+      "n": 263,
+      "finish_dist": {
+        "1": 46,
+        "2": 42,
+        "3": 36,
+        "4": 27,
+        "5": 31,
+        "6": 23,
+        "7": 13,
+        "8": 17,
+        "9": 14,
+        "10": 6,
+        "11": 5,
+        "13": 2,
+        "14": 1
+      },
+      "win_n": 46,
+      "place_n": 124,
+      "win_rate": 17.5,
+      "place_rate": 47.1,
+      "buckets": {
+        "本命圏外": 139,
+        "本命圏内_購入買い目的中": 20,
+        "本命圏内_購入買い目外れ": 104,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 139,
+        "avg_finish": 6.54,
+        "avg_odds": 25.97,
+        "avg_pop": 4.95,
+        "avg_ev": 108.68,
+        "avg_ability": 47.71
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 104,
+        "avg_finish": 1.95,
+        "avg_odds": 8.13,
+        "avg_pop": 3.01,
+        "avg_ev": 103.79,
+        "avg_ability": 55.96
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 124,
+          "hit_rate_given_honmei_in_money": 16.1,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 124,
+          "hit_rate_given_honmei_in_money": 6.5,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 124,
+          "hit_rate_given_honmei_in_money": 3.2,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 124,
+          "hit_rate_given_honmei_in_money": 16.1,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 263,
+          "hits": 46,
+          "hit_rate": 17.5,
+          "investment": 26300,
+          "payout": 19640,
+          "recovery": 74.7,
+          "avg_odds": 17.28,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 263,
+          "hits": 124,
+          "hit_rate": 47.1,
+          "investment": 26300,
+          "payout": 37837,
+          "recovery": 143.9,
+          "avg_odds": NaN,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 263,
+          "hits": 20,
+          "hit_rate": 7.6,
+          "investment": 89500,
+          "payout": 8660,
+          "recovery": 9.7,
+          "avg_odds": 17.28,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 263,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 263,
+          "hits": 8,
+          "hit_rate": 3.0,
+          "investment": 60900,
+          "payout": 4970,
+          "recovery": 8.2,
+          "avg_odds": 17.28,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 263,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 263,
+          "hits": 4,
+          "hit_rate": 1.5,
+          "investment": 153800,
+          "payout": 2280,
+          "recovery": 1.5,
+          "avg_odds": 17.28,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 263,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 263,
+          "hits": 1,
+          "hit_rate": 0.4,
+          "investment": 26300,
+          "payout": 4730,
+          "recovery": 18.0,
+          "avg_odds": 17.28,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 263,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 263,
+          "hits": 20,
+          "hit_rate": 7.6,
+          "investment": 103100,
+          "payout": 8660,
+          "recovery": 8.4,
+          "avg_odds": 17.28,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 263,
+          "hits": 20,
+          "hit_rate": 7.6,
+          "investment": 87900,
+          "payout": 8660,
+          "recovery": 9.9,
+          "avg_odds": 17.28,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 47.1,
+        "本命単勝率": 17.5,
+        "仮想単勝回収": 74.7,
+        "仮想複勝回収_近似": 143.9,
+        "生成ワイド回収": 9.7,
+        "現行購入回収": 8.4
+      }
+    },
+    "地方/B/学習": {
+      "label": "生成三連単",
+      "n": 146,
+      "finish_dist": {
+        "1": 32,
+        "2": 21,
+        "3": 23,
+        "4": 13,
+        "5": 15,
+        "6": 10,
+        "7": 7,
+        "8": 12,
+        "9": 7,
+        "10": 2,
+        "11": 1,
+        "13": 2,
+        "14": 1
+      },
+      "win_n": 32,
+      "place_n": 76,
+      "win_rate": 21.9,
+      "place_rate": 52.1,
+      "buckets": {
+        "本命圏外": 70,
+        "本命圏内_購入買い目的中": 20,
+        "本命圏内_購入買い目外れ": 56,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 70,
+        "avg_finish": 6.66,
+        "avg_odds": 24.63,
+        "avg_pop": 4.78,
+        "avg_ev": 106.85,
+        "avg_ability": 47.8
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 56,
+        "avg_finish": 1.93,
+        "avg_odds": 6.87,
+        "avg_pop": 2.84,
+        "avg_ev": 103.15,
+        "avg_ability": 56.3
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 76,
+          "hit_rate_given_honmei_in_money": 26.3,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 76,
+          "hit_rate_given_honmei_in_money": 10.5,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 76,
+          "hit_rate_given_honmei_in_money": 5.3,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 76,
+          "hit_rate_given_honmei_in_money": 26.3,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 146,
+          "hits": 32,
+          "hit_rate": 21.9,
+          "investment": 14600,
+          "payout": 15230,
+          "recovery": 104.3,
+          "avg_odds": 15.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 146,
+          "hits": 76,
+          "hit_rate": 52.1,
+          "investment": 14600,
+          "payout": 19713,
+          "recovery": 135.0,
+          "avg_odds": NaN,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 146,
+          "hits": 20,
+          "hit_rate": 13.7,
+          "investment": 45500,
+          "payout": 8660,
+          "recovery": 19.0,
+          "avg_odds": 15.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 146,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 146,
+          "hits": 8,
+          "hit_rate": 5.5,
+          "investment": 30000,
+          "payout": 4970,
+          "recovery": 16.6,
+          "avg_odds": 15.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 146,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 146,
+          "hits": 4,
+          "hit_rate": 2.7,
+          "investment": 73800,
+          "payout": 2280,
+          "recovery": 3.1,
+          "avg_odds": 15.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 146,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 146,
+          "hits": 1,
+          "hit_rate": 0.7,
+          "investment": 14600,
+          "payout": 4730,
+          "recovery": 32.4,
+          "avg_odds": 15.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 146,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 146,
+          "hits": 20,
+          "hit_rate": 13.7,
+          "investment": 56700,
+          "payout": 8660,
+          "recovery": 15.3,
+          "avg_odds": 15.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 146,
+          "hits": 20,
+          "hit_rate": 13.7,
+          "investment": 44400,
+          "payout": 8660,
+          "recovery": 19.5,
+          "avg_odds": 15.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "ランク選定と買い目生成の両方（混在）",
+      "conversion_summary": {
+        "本命複勝率": 52.1,
+        "本命単勝率": 21.9,
+        "仮想単勝回収": 104.3,
+        "仮想複勝回収_近似": 135.0,
+        "生成ワイド回収": 19.0,
+        "現行購入回収": 15.3
+      }
+    },
+    "地方/B/検証": {
+      "label": "生成三連単",
+      "n": 117,
+      "finish_dist": {
+        "1": 14,
+        "2": 21,
+        "3": 13,
+        "4": 14,
+        "5": 16,
+        "6": 13,
+        "7": 6,
+        "8": 5,
+        "9": 7,
+        "10": 4,
+        "11": 4
+      },
+      "win_n": 14,
+      "place_n": 48,
+      "win_rate": 12.0,
+      "place_rate": 41.0,
+      "buckets": {
+        "本命圏外": 69,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 48,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 69,
+        "avg_finish": 6.42,
+        "avg_odds": 27.33,
+        "avg_pop": 5.12,
+        "avg_ev": 110.48,
+        "avg_ability": 47.61
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 48,
+        "avg_finish": 1.98,
+        "avg_odds": 9.6,
+        "avg_pop": 3.21,
+        "avg_ev": 104.52,
+        "avg_ability": 55.56
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 48,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 48,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 48,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 48,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 117,
+          "hits": 14,
+          "hit_rate": 12.0,
+          "investment": 11700,
+          "payout": 4410,
+          "recovery": 37.7,
+          "avg_odds": 20.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 117,
+          "hits": 48,
+          "hit_rate": 41.0,
+          "investment": 11700,
+          "payout": 18124,
+          "recovery": 154.9,
+          "avg_odds": 6.89,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 117,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 44000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 117,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 117,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 30900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 117,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 117,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 80000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 117,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 117,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 11700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 117,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 117,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 46400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 117,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 43500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.06,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 41.0,
+        "本命単勝率": 12.0,
+        "仮想単勝回収": 37.7,
+        "仮想複勝回収_近似": 154.9,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "JRA/S/全期間": {
+      "label": "生成三連単",
+      "n": 10,
+      "finish_dist": {
+        "1": 2,
+        "2": 1,
+        "5": 1,
+        "7": 1,
+        "9": 2,
+        "13": 2,
+        "14": 1
+      },
+      "win_n": 2,
+      "place_n": 3,
+      "win_rate": 20.0,
+      "place_rate": 30.0,
+      "buckets": {
+        "本命圏外": 7,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 3,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 7,
+        "avg_finish": 10.0,
+        "avg_odds": 23.94,
+        "avg_pop": 7.86,
+        "avg_ev": 117.86,
+        "avg_ability": 82.43
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 3,
+        "avg_finish": 1.33,
+        "avg_odds": 6.83,
+        "avg_pop": 4.67,
+        "avg_ev": 120.0,
+        "avg_ability": 79.33
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 10,
+          "hits": 2,
+          "hit_rate": 20.0,
+          "investment": 1000,
+          "payout": 1490,
+          "recovery": 149.0,
+          "avg_odds": 18.81,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 10,
+          "hits": 3,
+          "hit_rate": 30.0,
+          "investment": 1000,
+          "payout": 814,
+          "recovery": 81.4,
+          "avg_odds": 6.11,
+          "approx": true,
+          "status": "件数不足（採用候補にしない） / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 10,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.81,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 10,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 10,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.81,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 10,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 10,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1100,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.81,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 10,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 10,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.81,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 10,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 10,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 2900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.81,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 9,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 19.68,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        }
+      },
+      "verdict": "データ不足で判断不能",
+      "conversion_summary": {
+        "本命複勝率": 30.0,
+        "本命単勝率": 20.0,
+        "仮想単勝回収": 149.0,
+        "仮想複勝回収_近似": 81.4,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "JRA/S/学習": {
+      "label": "生成三連単",
+      "n": 6,
+      "finish_dist": {
+        "1": 1,
+        "2": 1,
+        "5": 1,
+        "7": 1,
+        "9": 1,
+        "14": 1
+      },
+      "win_n": 1,
+      "place_n": 2,
+      "win_rate": 16.7,
+      "place_rate": 33.3,
+      "buckets": {
+        "本命圏外": 4,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 2,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 4,
+        "avg_finish": 8.75,
+        "avg_odds": 23.38,
+        "avg_pop": 7.75,
+        "avg_ev": 118.0,
+        "avg_ability": 84.75
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 2,
+        "avg_finish": 1.5,
+        "avg_odds": 7.3,
+        "avg_pop": 3.5,
+        "avg_ev": 120.0,
+        "avg_ability": 75.0
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 2,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 2,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 2,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 2,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 6,
+          "hits": 1,
+          "hit_rate": 16.7,
+          "investment": 600,
+          "payout": 900,
+          "recovery": 150.0,
+          "avg_odds": 18.02,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 6,
+          "hits": 2,
+          "hit_rate": 33.3,
+          "investment": 600,
+          "payout": 578,
+          "recovery": 96.3,
+          "avg_odds": 5.77,
+          "approx": true,
+          "status": "件数不足（採用候補にしない） / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 6,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.02,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 6,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 6,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 600,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.02,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 6,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 6,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.02,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 6,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 6,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 600,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.02,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 6,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 6,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.02,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 6,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 600,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 18.02,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        }
+      },
+      "verdict": "データ不足で判断不能",
+      "conversion_summary": {
+        "本命複勝率": 33.3,
+        "本命単勝率": 16.7,
+        "仮想単勝回収": 150.0,
+        "仮想複勝回収_近似": 96.3,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "JRA/S/検証": {
+      "label": "生成三連単",
+      "n": 4,
+      "finish_dist": {
+        "1": 1,
+        "9": 1,
+        "13": 2
+      },
+      "win_n": 1,
+      "place_n": 1,
+      "win_rate": 25.0,
+      "place_rate": 25.0,
+      "buckets": {
+        "本命圏外": 3,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 1,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 3,
+        "avg_finish": 11.67,
+        "avg_odds": 24.7,
+        "avg_pop": 8.0,
+        "avg_ev": 117.67,
+        "avg_ability": 79.33
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 1,
+        "avg_finish": 1.0,
+        "avg_odds": 5.9,
+        "avg_pop": 7.0,
+        "avg_ev": 120.0,
+        "avg_ability": 88.0
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 1,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 1,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 1,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 1,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 4,
+          "hits": 1,
+          "hit_rate": 25.0,
+          "investment": 400,
+          "payout": 590,
+          "recovery": 147.5,
+          "avg_odds": 20.0,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 4,
+          "hits": 1,
+          "hit_rate": 25.0,
+          "investment": 400,
+          "payout": 236,
+          "recovery": 59.0,
+          "avg_odds": 6.61,
+          "approx": true,
+          "status": "件数不足（採用候補にしない） / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 4,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.0,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 4,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 4,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.0,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 4,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 4,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.0,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 4,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 4,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.0,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 4,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 4,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.0,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 3,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 300,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 23.0,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        }
+      },
+      "verdict": "データ不足で判断不能",
+      "conversion_summary": {
+        "本命複勝率": 25.0,
+        "本命単勝率": 25.0,
+        "仮想単勝回収": 147.5,
+        "仮想複勝回収_近似": 59.0,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "JRA/A/全期間": {
+      "label": "生成三連単",
+      "n": 32,
+      "finish_dist": {
+        "1": 4,
+        "2": 5,
+        "3": 3,
+        "5": 4,
+        "6": 2,
+        "7": 5,
+        "8": 2,
+        "9": 1,
+        "10": 1,
+        "12": 1,
+        "13": 1,
+        "14": 2,
+        "16": 1
+      },
+      "win_n": 4,
+      "place_n": 12,
+      "win_rate": 12.5,
+      "place_rate": 37.5,
+      "buckets": {
+        "本命圏外": 20,
+        "本命圏内_購入買い目的中": 2,
+        "本命圏内_購入買い目外れ": 10,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 20,
+        "avg_finish": 8.55,
+        "avg_odds": 22.47,
+        "avg_pop": 6.3,
+        "avg_ev": 115.1,
+        "avg_ability": 67.15
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 10,
+        "avg_finish": 1.8,
+        "avg_odds": 9.88,
+        "avg_pop": 4.5,
+        "avg_ev": 116.0,
+        "avg_ability": 65.5
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 12,
+          "hit_rate_given_honmei_in_money": 16.7,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 12,
+          "hit_rate_given_honmei_in_money": 8.3,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 12,
+          "hit_rate_given_honmei_in_money": 8.3,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 12,
+          "hit_rate_given_honmei_in_money": 16.7,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 32,
+          "hits": 4,
+          "hit_rate": 12.5,
+          "investment": 3200,
+          "payout": 5350,
+          "recovery": 167.2,
+          "avg_odds": 17.58,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 32,
+          "hits": 12,
+          "hit_rate": 37.5,
+          "investment": 3200,
+          "payout": 4056,
+          "recovery": 126.8,
+          "avg_odds": 5.79,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 32,
+          "hits": 2,
+          "hit_rate": 6.2,
+          "investment": 7100,
+          "payout": 1860,
+          "recovery": 26.2,
+          "avg_odds": 17.58,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 32,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 32,
+          "hits": 1,
+          "hit_rate": 3.1,
+          "investment": 4100,
+          "payout": 1430,
+          "recovery": 34.9,
+          "avg_odds": 17.58,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 32,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 32,
+          "hits": 1,
+          "hit_rate": 3.1,
+          "investment": 6000,
+          "payout": 750,
+          "recovery": 12.5,
+          "avg_odds": 17.58,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 32,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 32,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 3200,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.58,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 32,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 32,
+          "hits": 2,
+          "hit_rate": 6.2,
+          "investment": 12900,
+          "payout": 1860,
+          "recovery": 14.4,
+          "avg_odds": 17.58,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 31,
+          "hits": 2,
+          "hit_rate": 6.5,
+          "investment": 5400,
+          "payout": 1860,
+          "recovery": 34.4,
+          "avg_odds": 16.75,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 37.5,
+        "本命単勝率": 12.5,
+        "仮想単勝回収": 167.2,
+        "仮想複勝回収_近似": 126.8,
+        "生成ワイド回収": 26.2,
+        "現行購入回収": 14.4
+      }
+    },
+    "JRA/A/学習": {
+      "label": "生成三連単",
+      "n": 21,
+      "finish_dist": {
+        "1": 3,
+        "2": 4,
+        "3": 2,
+        "5": 3,
+        "6": 1,
+        "7": 3,
+        "8": 1,
+        "13": 1,
+        "14": 2,
+        "16": 1
+      },
+      "win_n": 3,
+      "place_n": 9,
+      "win_rate": 14.3,
+      "place_rate": 42.9,
+      "buckets": {
+        "本命圏外": 12,
+        "本命圏内_購入買い目的中": 2,
+        "本命圏内_購入買い目外れ": 7,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 12,
+        "avg_finish": 8.92,
+        "avg_odds": 23.34,
+        "avg_pop": 6.08,
+        "avg_ev": 114.75,
+        "avg_ability": 64.08
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 7,
+        "avg_finish": 1.71,
+        "avg_odds": 11.19,
+        "avg_pop": 4.86,
+        "avg_ev": 115.0,
+        "avg_ability": 65.14
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 9,
+          "hit_rate_given_honmei_in_money": 22.2,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 9,
+          "hit_rate_given_honmei_in_money": 11.1,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 9,
+          "hit_rate_given_honmei_in_money": 11.1,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 9,
+          "hit_rate_given_honmei_in_money": 22.2,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 21,
+          "hits": 3,
+          "hit_rate": 14.3,
+          "investment": 2100,
+          "payout": 4510,
+          "recovery": 214.8,
+          "avg_odds": 17.75,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 21,
+          "hits": 9,
+          "hit_rate": 42.9,
+          "investment": 2100,
+          "payout": 3261,
+          "recovery": 155.3,
+          "avg_odds": 5.76,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 21,
+          "hits": 2,
+          "hit_rate": 9.5,
+          "investment": 4600,
+          "payout": 1860,
+          "recovery": 40.4,
+          "avg_odds": 17.75,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 21,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 21,
+          "hits": 1,
+          "hit_rate": 4.8,
+          "investment": 2800,
+          "payout": 1430,
+          "recovery": 51.1,
+          "avg_odds": 17.75,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 21,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 21,
+          "hits": 1,
+          "hit_rate": 4.8,
+          "investment": 4300,
+          "payout": 750,
+          "recovery": 17.4,
+          "avg_odds": 17.75,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 21,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 21,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 2100,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.75,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 21,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 21,
+          "hits": 2,
+          "hit_rate": 9.5,
+          "investment": 8400,
+          "payout": 1860,
+          "recovery": 22.1,
+          "avg_odds": 17.75,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 20,
+          "hits": 2,
+          "hit_rate": 10.0,
+          "investment": 3300,
+          "payout": 1860,
+          "recovery": 56.4,
+          "avg_odds": 16.48,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 42.9,
+        "本命単勝率": 14.3,
+        "仮想単勝回収": 214.8,
+        "仮想複勝回収_近似": 155.3,
+        "生成ワイド回収": 40.4,
+        "現行購入回収": 22.1
+      }
+    },
+    "JRA/A/検証": {
+      "label": "生成三連単",
+      "n": 11,
+      "finish_dist": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "5": 1,
+        "6": 1,
+        "7": 2,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "12": 1
+      },
+      "win_n": 1,
+      "place_n": 3,
+      "win_rate": 9.1,
+      "place_rate": 27.3,
+      "buckets": {
+        "本命圏外": 8,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 3,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 8,
+        "avg_finish": 8.0,
+        "avg_odds": 21.16,
+        "avg_pop": 6.62,
+        "avg_ev": 115.62,
+        "avg_ability": 71.75
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 3,
+        "avg_finish": 2.0,
+        "avg_odds": 6.83,
+        "avg_pop": 3.67,
+        "avg_ev": 118.33,
+        "avg_ability": 66.33
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 3,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 11,
+          "hits": 1,
+          "hit_rate": 9.1,
+          "investment": 1100,
+          "payout": 840,
+          "recovery": 76.4,
+          "avg_odds": 17.25,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 11,
+          "hits": 3,
+          "hit_rate": 27.3,
+          "investment": 1100,
+          "payout": 795,
+          "recovery": 72.3,
+          "avg_odds": 5.85,
+          "approx": true,
+          "status": "件数不足（採用候補にしない） / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 11,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 2500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.25,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 11,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 11,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1300,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.25,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 11,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 11,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.25,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 11,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 11,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 1100,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.25,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "n_ticket_rows": 11,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 11,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 4500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.25,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 11,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 2100,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 17.25,
+          "approx": false,
+          "status": "件数不足（採用候補にしない）",
+          "adoptable": false
+        }
+      },
+      "verdict": "データ不足で判断不能",
+      "conversion_summary": {
+        "本命複勝率": 27.3,
+        "本命単勝率": 9.1,
+        "仮想単勝回収": 76.4,
+        "仮想複勝回収_近似": 72.3,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    },
+    "JRA/B/全期間": {
+      "label": "生成三連単",
+      "n": 70,
+      "finish_dist": {
+        "1": 9,
+        "2": 12,
+        "3": 10,
+        "4": 8,
+        "5": 4,
+        "6": 4,
+        "7": 1,
+        "8": 9,
+        "9": 5,
+        "10": 2,
+        "11": 3,
+        "12": 1,
+        "14": 1,
+        "15": 1
+      },
+      "win_n": 9,
+      "place_n": 31,
+      "win_rate": 12.9,
+      "place_rate": 44.3,
+      "buckets": {
+        "本命圏外": 39,
+        "本命圏内_購入買い目的中": 2,
+        "本命圏内_購入買い目外れ": 29,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 39,
+        "avg_finish": 7.54,
+        "avg_odds": 17.6,
+        "avg_pop": 4.69,
+        "avg_ev": 110.31,
+        "avg_ability": 51.9
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 29,
+        "avg_finish": 1.97,
+        "avg_odds": 8.56,
+        "avg_pop": 3.1,
+        "avg_ev": 104.17,
+        "avg_ability": 56.45
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 31,
+          "hit_rate_given_honmei_in_money": 6.5,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 31,
+          "hit_rate_given_honmei_in_money": 3.2,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 31,
+          "hit_rate_given_honmei_in_money": 3.2,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 31,
+          "hit_rate_given_honmei_in_money": 6.5,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 70,
+          "hits": 9,
+          "hit_rate": 12.9,
+          "investment": 7000,
+          "payout": 3660,
+          "recovery": 52.3,
+          "avg_odds": 13.54,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 70,
+          "hits": 31,
+          "hit_rate": 44.3,
+          "investment": 7000,
+          "payout": 9551,
+          "recovery": 136.4,
+          "avg_odds": 4.59,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 70,
+          "hits": 2,
+          "hit_rate": 2.9,
+          "investment": 14000,
+          "payout": 1560,
+          "recovery": 11.1,
+          "avg_odds": 13.54,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 70,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 70,
+          "hits": 1,
+          "hit_rate": 1.4,
+          "investment": 8800,
+          "payout": 360,
+          "recovery": 4.1,
+          "avg_odds": 13.54,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 70,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 70,
+          "hits": 1,
+          "hit_rate": 1.4,
+          "investment": 13000,
+          "payout": 880,
+          "recovery": 6.8,
+          "avg_odds": 13.54,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 70,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 70,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 7000,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 13.54,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 70,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 70,
+          "hits": 2,
+          "hit_rate": 2.9,
+          "investment": 23300,
+          "payout": 1560,
+          "recovery": 6.7,
+          "avg_odds": 13.54,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 65,
+          "hits": 2,
+          "hit_rate": 3.1,
+          "investment": 11200,
+          "payout": 1560,
+          "recovery": 13.9,
+          "avg_odds": 13.3,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 44.3,
+        "本命単勝率": 12.9,
+        "仮想単勝回収": 52.3,
+        "仮想複勝回収_近似": 136.4,
+        "生成ワイド回収": 11.1,
+        "現行購入回収": 6.7
+      }
+    },
+    "JRA/B/学習": {
+      "label": "生成三連単",
+      "n": 46,
+      "finish_dist": {
+        "1": 6,
+        "2": 7,
+        "3": 7,
+        "4": 7,
+        "5": 2,
+        "6": 2,
+        "7": 1,
+        "8": 4,
+        "9": 3,
+        "10": 2,
+        "11": 3,
+        "14": 1,
+        "15": 1
+      },
+      "win_n": 6,
+      "place_n": 20,
+      "win_rate": 13.0,
+      "place_rate": 43.5,
+      "buckets": {
+        "本命圏外": 26,
+        "本命圏内_購入買い目的中": 2,
+        "本命圏内_購入買い目外れ": 18,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 26,
+        "avg_finish": 7.62,
+        "avg_odds": 13.25,
+        "avg_pop": 3.88,
+        "avg_ev": 108.35,
+        "avg_ability": 52.31
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 18,
+        "avg_finish": 1.94,
+        "avg_odds": 5.31,
+        "avg_pop": 2.89,
+        "avg_ev": 102.56,
+        "avg_ability": 57.0
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 20,
+          "hit_rate_given_honmei_in_money": 10.0,
+          "status": "集計可"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 20,
+          "hit_rate_given_honmei_in_money": 5.0,
+          "status": "集計可"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 20,
+          "hit_rate_given_honmei_in_money": 5.0,
+          "status": "集計可"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 20,
+          "hit_rate_given_honmei_in_money": 10.0,
+          "status": "集計可"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 46,
+          "hits": 6,
+          "hit_rate": 13.0,
+          "investment": 4600,
+          "payout": 2370,
+          "recovery": 51.5,
+          "avg_odds": 9.86,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 46,
+          "hits": 20,
+          "hit_rate": 43.5,
+          "investment": 4600,
+          "payout": 4451,
+          "recovery": 96.8,
+          "avg_odds": 3.53,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 46,
+          "hits": 2,
+          "hit_rate": 4.3,
+          "investment": 9300,
+          "payout": 1560,
+          "recovery": 16.8,
+          "avg_odds": 9.86,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 46,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 46,
+          "hits": 1,
+          "hit_rate": 2.2,
+          "investment": 6100,
+          "payout": 360,
+          "recovery": 5.9,
+          "avg_odds": 9.86,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 46,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 46,
+          "hits": 1,
+          "hit_rate": 2.2,
+          "investment": 9800,
+          "payout": 880,
+          "recovery": 9.0,
+          "avg_odds": 9.86,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 46,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 46,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 4600,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 9.86,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 46,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 46,
+          "hits": 2,
+          "hit_rate": 4.3,
+          "investment": 14800,
+          "payout": 1560,
+          "recovery": 10.5,
+          "avg_odds": 9.86,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 43,
+          "hits": 2,
+          "hit_rate": 4.7,
+          "investment": 8300,
+          "payout": 1560,
+          "recovery": 18.8,
+          "avg_odds": 9.3,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "主因はランク/本命選定（圏外が多い）",
+      "conversion_summary": {
+        "本命複勝率": 43.5,
+        "本命単勝率": 13.0,
+        "仮想単勝回収": 51.5,
+        "仮想複勝回収_近似": 96.8,
+        "生成ワイド回収": 16.8,
+        "現行購入回収": 10.5
+      }
+    },
+    "JRA/B/検証": {
+      "label": "生成三連単",
+      "n": 24,
+      "finish_dist": {
+        "1": 3,
+        "2": 5,
+        "3": 3,
+        "4": 1,
+        "5": 2,
+        "6": 2,
+        "8": 5,
+        "9": 2,
+        "12": 1
+      },
+      "win_n": 3,
+      "place_n": 11,
+      "win_rate": 12.5,
+      "place_rate": 45.8,
+      "buckets": {
+        "本命圏外": 13,
+        "本命圏内_購入買い目的中": 0,
+        "本命圏内_購入買い目外れ": 11,
+        "本命圏内_購入なし_生成券的中": 0,
+        "本命圏内_購入なし_生成券外れ": 0
+      },
+      "means_本命圏外": {
+        "n": 13,
+        "avg_finish": 7.38,
+        "avg_odds": 26.3,
+        "avg_pop": 6.31,
+        "avg_ev": 114.23,
+        "avg_ability": 51.08
+      },
+      "means_本命圏内_購入外れ": {
+        "n": 11,
+        "avg_finish": 2.0,
+        "avg_odds": 13.88,
+        "avg_pop": 3.45,
+        "avg_ev": 106.82,
+        "avg_ability": 55.55
+      },
+      "conversion_given_in_money": {
+        "生成ワイド": {
+          "n_in_money_with_ticket": 11,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成馬連": {
+          "n_in_money_with_ticket": 11,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "生成三連複": {
+          "n_in_money_with_ticket": 11,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        },
+        "購入対象": {
+          "n_in_money_with_purchase": 11,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "bets": {
+        "仮想単勝": {
+          "label": "仮想単勝(本命100円)",
+          "n": 24,
+          "hits": 3,
+          "hit_rate": 12.5,
+          "investment": 2400,
+          "payout": 1290,
+          "recovery": 53.8,
+          "avg_odds": 20.61,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "仮想複勝": {
+          "label": "仮想複勝(本命100円・オッズ近似)",
+          "n": 24,
+          "hits": 11,
+          "hit_rate": 45.8,
+          "investment": 2400,
+          "payout": 5100,
+          "recovery": 212.5,
+          "avg_odds": 6.62,
+          "approx": true,
+          "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+          "adoptable": false
+        },
+        "生成ワイド": {
+          "label": "生成ワイド",
+          "n": 24,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 4700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.61,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 24,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成馬連": {
+          "label": "生成馬連",
+          "n": 24,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 2700,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.61,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 24,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連複": {
+          "label": "生成三連複",
+          "n": 24,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 3200,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.61,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 24,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "生成三連単": {
+          "label": "生成三連単",
+          "n": 24,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 2400,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.61,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "n_ticket_rows": 24,
+          "note": "analysis_result上の生成買い目（購入対象に限定しない）"
+        },
+        "現行購入対象": {
+          "label": "現行購入対象(レース単位・いずれか的中)",
+          "n": 24,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 8500,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 20.61,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true,
+          "note": "レース単位: 購入対象券の合計投資/払戻"
+        },
+        "推奨券種のみ": {
+          "label": "推奨券種のみ",
+          "n": 22,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "investment": 2900,
+          "payout": 0,
+          "recovery": 0.0,
+          "avg_odds": 21.12,
+          "approx": false,
+          "status": "集計可",
+          "adoptable": true
+        }
+      },
+      "verdict": "ランク選定と買い目生成の両方（混在）",
+      "conversion_summary": {
+        "本命複勝率": 45.8,
+        "本命単勝率": 12.5,
+        "仮想単勝回収": 53.8,
+        "仮想複勝回収_近似": 212.5,
+        "生成ワイド回収": 0.0,
+        "現行購入回収": 0.0
+      }
+    }
+  },
+  "improvement_candidates": [
+    {
+      "source": "地方",
+      "rank": "S",
+      "candidate": "本命が圏内でもワイド相手が外れやすい。相手集合/券種配分の見直し",
+      "evidence": {
+        "n": 107,
+        "place_rate": 32.7,
+        "圏内時ワイド的中": {
+          "n_in_money_with_ticket": 35,
+          "hit_rate_given_honmei_in_money": 0.0,
+          "status": "集計可"
+        },
+        "仮想単勝": {
+          "n": 107,
+          "hit_rate": 5.6,
+          "recovery": 53.3,
+          "status": "集計可"
+        },
+        "生成ワイド": {
+          "n": 107,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "status": "集計可"
+        },
+        "現行購入": {
+          "n": 107,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "status": "集計可"
+        }
+      },
+      "status": "改善候補（未実装）"
+    },
+    {
+      "source": "地方",
+      "rank": "S",
+      "candidate": "Sでは本命単勝の仮想成績が生成ワイドを大きく上回る。単勝比重の検討",
+      "evidence": {
+        "仮想単勝回収": 53.3,
+        "生成ワイド回収": 0.0,
+        "n": 107
+      },
+      "status": "改善候補（未実装）"
+    },
+    {
+      "source": "地方",
+      "rank": "S",
+      "candidate": "学習・検証とも本命複勝率が低い（選定問題の再現）",
+      "evidence": {
+        "train_n": 49,
+        "train_place": 30.6,
+        "test_n": 58,
+        "test_place": 34.5
+      },
+      "status": "改善候補（未実装・再現あり）"
+    }
+  ],
+  "rejected_insufficient": [
+    {
+      "source": "JRA",
+      "rank": "S",
+      "reason": "全期間n=10 < 20",
+      "action": "採用候補にしない"
+    }
+  ],
+  "implement_now": false,
+  "S_focus": {
+    "地方": {
+      "全期間": {
+        "n": 107,
+        "win_rate": 5.6,
+        "place_rate": 32.7,
+        "buckets": {
+          "本命圏外": 72,
+          "本命圏内_購入買い目的中": 0,
+          "本命圏内_購入買い目外れ": 35,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "verdict": "主因はランク/本命選定（圏外が多い）",
+        "conversion_given_in_money": {
+          "生成ワイド": {
+            "n_in_money_with_ticket": 35,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          },
+          "生成馬連": {
+            "n_in_money_with_ticket": 35,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          },
+          "生成三連複": {
+            "n_in_money_with_ticket": 35,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          },
+          "購入対象": {
+            "n_in_money_with_purchase": 35,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          }
+        },
+        "bets": {
+          "仮想単勝": {
+            "n": 107,
+            "hits": 6,
+            "hit_rate": 5.6,
+            "recovery": 53.3,
+            "avg_odds": 19.12,
+            "investment": 10700,
+            "payout": 5700,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "仮想複勝": {
+            "n": 107,
+            "hits": 35,
+            "hit_rate": 32.7,
+            "recovery": 177.0,
+            "avg_odds": 6.51,
+            "investment": 10700,
+            "payout": 18937,
+            "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+            "adoptable": false,
+            "approx": true
+          },
+          "生成ワイド": {
+            "n": 107,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 19.12,
+            "investment": 36500,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成馬連": {
+            "n": 107,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 19.12,
+            "investment": 25300,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成三連複": {
+            "n": 107,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 19.12,
+            "investment": 59000,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成三連単": {
+            "n": 107,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 19.12,
+            "investment": 10700,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "現行購入対象": {
+            "n": 107,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 19.12,
+            "investment": 41600,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "推奨券種のみ": {
+            "n": 107,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 19.12,
+            "investment": 34900,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          }
+        },
+        "means_本命圏外": {
+          "n": 72,
+          "avg_finish": 6.22,
+          "avg_odds": 21.01,
+          "avg_pop": 5.26,
+          "avg_ev": 115.58,
+          "avg_ability": 79.99
+        },
+        "means_本命圏内_購入外れ": {
+          "n": 35,
+          "avg_finish": 2.31,
+          "avg_odds": 15.23,
+          "avg_pop": 4.26,
+          "avg_ev": 114.09,
+          "avg_ability": 74.57
+        }
+      },
+      "学習": {
+        "n": 49,
+        "win_rate": 6.1,
+        "place_rate": 30.6,
+        "buckets": {
+          "本命圏外": 34,
+          "本命圏内_購入買い目的中": 0,
+          "本命圏内_購入買い目外れ": 15,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "verdict": "主因はランク/本命選定（圏外が多い）",
+        "conversion_given_in_money": {
+          "生成ワイド": {
+            "n_in_money_with_ticket": 15,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成馬連": {
+            "n_in_money_with_ticket": 15,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成三連複": {
+            "n_in_money_with_ticket": 15,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "購入対象": {
+            "n_in_money_with_purchase": 15,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          }
+        },
+        "bets": {
+          "仮想単勝": {
+            "n": 49,
+            "hits": 3,
+            "hit_rate": 6.1,
+            "recovery": 95.3,
+            "avg_odds": 20.43,
+            "investment": 4900,
+            "payout": 4670,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "仮想複勝": {
+            "n": 49,
+            "hits": 15,
+            "hit_rate": 30.6,
+            "recovery": 209.2,
+            "avg_odds": 6.85,
+            "investment": 4900,
+            "payout": 10251,
+            "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+            "adoptable": false,
+            "approx": true
+          },
+          "生成ワイド": {
+            "n": 49,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.43,
+            "investment": 14700,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成馬連": {
+            "n": 49,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.43,
+            "investment": 9700,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成三連複": {
+            "n": 49,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.43,
+            "investment": 18500,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成三連単": {
+            "n": 49,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.43,
+            "investment": 4900,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "現行購入対象": {
+            "n": 49,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.43,
+            "investment": 18400,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "推奨券種のみ": {
+            "n": 49,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.43,
+            "investment": 13400,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          }
+        },
+        "means_本命圏外": {
+          "n": 34,
+          "avg_finish": 6.53,
+          "avg_odds": 20.43,
+          "avg_pop": 4.97,
+          "avg_ev": 115.76,
+          "avg_ability": 82.24
+        },
+        "means_本命圏内_購入外れ": {
+          "n": 15,
+          "avg_finish": 2.33,
+          "avg_odds": 20.41,
+          "avg_pop": 4.67,
+          "avg_ev": 114.67,
+          "avg_ability": 77.53
+        }
+      },
+      "検証": {
+        "n": 58,
+        "win_rate": 5.2,
+        "place_rate": 34.5,
+        "buckets": {
+          "本命圏外": 38,
+          "本命圏内_購入買い目的中": 0,
+          "本命圏内_購入買い目外れ": 20,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "verdict": "主因はランク/本命選定（圏外が多い）",
+        "conversion_given_in_money": {
+          "生成ワイド": {
+            "n_in_money_with_ticket": 20,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          },
+          "生成馬連": {
+            "n_in_money_with_ticket": 20,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          },
+          "生成三連複": {
+            "n_in_money_with_ticket": 20,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          },
+          "購入対象": {
+            "n_in_money_with_purchase": 20,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "集計可"
+          }
+        },
+        "bets": {
+          "仮想単勝": {
+            "n": 58,
+            "hits": 3,
+            "hit_rate": 5.2,
+            "recovery": 17.8,
+            "avg_odds": 18.01,
+            "investment": 5800,
+            "payout": 1030,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "仮想複勝": {
+            "n": 58,
+            "hits": 20,
+            "hit_rate": 34.5,
+            "recovery": 149.8,
+            "avg_odds": 6.21,
+            "investment": 5800,
+            "payout": 8686,
+            "status": "集計可 / 回収は複勝オッズ近似（採用判定に使わない）",
+            "adoptable": false,
+            "approx": true
+          },
+          "生成ワイド": {
+            "n": 58,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.01,
+            "investment": 21800,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成馬連": {
+            "n": 58,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.01,
+            "investment": 15600,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成三連複": {
+            "n": 58,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.01,
+            "investment": 40500,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "生成三連単": {
+            "n": 58,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.01,
+            "investment": 5800,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "現行購入対象": {
+            "n": 58,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.01,
+            "investment": 23200,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          },
+          "推奨券種のみ": {
+            "n": 58,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.01,
+            "investment": 21500,
+            "payout": 0,
+            "status": "集計可",
+            "adoptable": true,
+            "approx": false
+          }
+        },
+        "means_本命圏外": {
+          "n": 38,
+          "avg_finish": 5.95,
+          "avg_odds": 21.52,
+          "avg_pop": 5.53,
+          "avg_ev": 115.42,
+          "avg_ability": 77.97
+        },
+        "means_本命圏内_購入外れ": {
+          "n": 20,
+          "avg_finish": 2.3,
+          "avg_odds": 11.35,
+          "avg_pop": 3.95,
+          "avg_ev": 113.65,
+          "avg_ability": 72.35
+        }
+      }
+    },
+    "JRA": {
+      "全期間": {
+        "n": 10,
+        "win_rate": 20.0,
+        "place_rate": 30.0,
+        "buckets": {
+          "本命圏外": 7,
+          "本命圏内_購入買い目的中": 0,
+          "本命圏内_購入買い目外れ": 3,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "verdict": "データ不足で判断不能",
+        "conversion_given_in_money": {
+          "生成ワイド": {
+            "n_in_money_with_ticket": 3,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成馬連": {
+            "n_in_money_with_ticket": 3,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成三連複": {
+            "n_in_money_with_ticket": 3,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "購入対象": {
+            "n_in_money_with_purchase": 3,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          }
+        },
+        "bets": {
+          "仮想単勝": {
+            "n": 10,
+            "hits": 2,
+            "hit_rate": 20.0,
+            "recovery": 149.0,
+            "avg_odds": 18.81,
+            "investment": 1000,
+            "payout": 1490,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "仮想複勝": {
+            "n": 10,
+            "hits": 3,
+            "hit_rate": 30.0,
+            "recovery": 81.4,
+            "avg_odds": 6.11,
+            "investment": 1000,
+            "payout": 814,
+            "status": "件数不足（採用候補にしない） / 回収は複勝オッズ近似（採用判定に使わない）",
+            "adoptable": false,
+            "approx": true
+          },
+          "生成ワイド": {
+            "n": 10,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.81,
+            "investment": 1400,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成馬連": {
+            "n": 10,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.81,
+            "investment": 1000,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成三連複": {
+            "n": 10,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.81,
+            "investment": 1100,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成三連単": {
+            "n": 10,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.81,
+            "investment": 1000,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "現行購入対象": {
+            "n": 10,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.81,
+            "investment": 2900,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "推奨券種のみ": {
+            "n": 9,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 19.68,
+            "investment": 900,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          }
+        },
+        "means_本命圏外": {
+          "n": 7,
+          "avg_finish": 10.0,
+          "avg_odds": 23.94,
+          "avg_pop": 7.86,
+          "avg_ev": 117.86,
+          "avg_ability": 82.43
+        },
+        "means_本命圏内_購入外れ": {
+          "n": 3,
+          "avg_finish": 1.33,
+          "avg_odds": 6.83,
+          "avg_pop": 4.67,
+          "avg_ev": 120.0,
+          "avg_ability": 79.33
+        }
+      },
+      "学習": {
+        "n": 6,
+        "win_rate": 16.7,
+        "place_rate": 33.3,
+        "buckets": {
+          "本命圏外": 4,
+          "本命圏内_購入買い目的中": 0,
+          "本命圏内_購入買い目外れ": 2,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "verdict": "データ不足で判断不能",
+        "conversion_given_in_money": {
+          "生成ワイド": {
+            "n_in_money_with_ticket": 2,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成馬連": {
+            "n_in_money_with_ticket": 2,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成三連複": {
+            "n_in_money_with_ticket": 2,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "購入対象": {
+            "n_in_money_with_purchase": 2,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          }
+        },
+        "bets": {
+          "仮想単勝": {
+            "n": 6,
+            "hits": 1,
+            "hit_rate": 16.7,
+            "recovery": 150.0,
+            "avg_odds": 18.02,
+            "investment": 600,
+            "payout": 900,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "仮想複勝": {
+            "n": 6,
+            "hits": 2,
+            "hit_rate": 33.3,
+            "recovery": 96.3,
+            "avg_odds": 5.77,
+            "investment": 600,
+            "payout": 578,
+            "status": "件数不足（採用候補にしない） / 回収は複勝オッズ近似（採用判定に使わない）",
+            "adoptable": false,
+            "approx": true
+          },
+          "生成ワイド": {
+            "n": 6,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.02,
+            "investment": 900,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成馬連": {
+            "n": 6,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.02,
+            "investment": 600,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成三連複": {
+            "n": 6,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.02,
+            "investment": 700,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成三連単": {
+            "n": 6,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.02,
+            "investment": 600,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "現行購入対象": {
+            "n": 6,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.02,
+            "investment": 1900,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "推奨券種のみ": {
+            "n": 6,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 18.02,
+            "investment": 600,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          }
+        },
+        "means_本命圏外": {
+          "n": 4,
+          "avg_finish": 8.75,
+          "avg_odds": 23.38,
+          "avg_pop": 7.75,
+          "avg_ev": 118.0,
+          "avg_ability": 84.75
+        },
+        "means_本命圏内_購入外れ": {
+          "n": 2,
+          "avg_finish": 1.5,
+          "avg_odds": 7.3,
+          "avg_pop": 3.5,
+          "avg_ev": 120.0,
+          "avg_ability": 75.0
+        }
+      },
+      "検証": {
+        "n": 4,
+        "win_rate": 25.0,
+        "place_rate": 25.0,
+        "buckets": {
+          "本命圏外": 3,
+          "本命圏内_購入買い目的中": 0,
+          "本命圏内_購入買い目外れ": 1,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "verdict": "データ不足で判断不能",
+        "conversion_given_in_money": {
+          "生成ワイド": {
+            "n_in_money_with_ticket": 1,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成馬連": {
+            "n_in_money_with_ticket": 1,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "生成三連複": {
+            "n_in_money_with_ticket": 1,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          },
+          "購入対象": {
+            "n_in_money_with_purchase": 1,
+            "hit_rate_given_honmei_in_money": 0.0,
+            "status": "件数不足（採用候補にしない）"
+          }
+        },
+        "bets": {
+          "仮想単勝": {
+            "n": 4,
+            "hits": 1,
+            "hit_rate": 25.0,
+            "recovery": 147.5,
+            "avg_odds": 20.0,
+            "investment": 400,
+            "payout": 590,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "仮想複勝": {
+            "n": 4,
+            "hits": 1,
+            "hit_rate": 25.0,
+            "recovery": 59.0,
+            "avg_odds": 6.61,
+            "investment": 400,
+            "payout": 236,
+            "status": "件数不足（採用候補にしない） / 回収は複勝オッズ近似（採用判定に使わない）",
+            "adoptable": false,
+            "approx": true
+          },
+          "生成ワイド": {
+            "n": 4,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.0,
+            "investment": 500,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成馬連": {
+            "n": 4,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.0,
+            "investment": 400,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成三連複": {
+            "n": 4,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.0,
+            "investment": 400,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "生成三連単": {
+            "n": 4,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.0,
+            "investment": 400,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "現行購入対象": {
+            "n": 4,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 20.0,
+            "investment": 1000,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          },
+          "推奨券種のみ": {
+            "n": 3,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 23.0,
+            "investment": 300,
+            "payout": 0,
+            "status": "件数不足（採用候補にしない）",
+            "adoptable": false,
+            "approx": false
+          }
+        },
+        "means_本命圏外": {
+          "n": 3,
+          "avg_finish": 11.67,
+          "avg_odds": 24.7,
+          "avg_pop": 8.0,
+          "avg_ev": 117.67,
+          "avg_ability": 79.33
+        },
+        "means_本命圏内_購入外れ": {
+          "n": 1,
+          "avg_finish": 1.0,
+          "avg_odds": 5.9,
+          "avg_pop": 7.0,
+          "avg_ev": 120.0,
+          "avg_ability": 88.0
+        }
+      }
+    }
+  },
+  "AB_summary": {
+    "地方": {
+      "A": {
+        "n": 167,
+        "place_rate": 38.3,
+        "win_rate": 12.0,
+        "verdict": "主因はランク/本命選定（圏外が多い）",
+        "buckets": {
+          "本命圏外": 103,
+          "本命圏内_購入買い目的中": 1,
+          "本命圏内_購入買い目外れ": 63,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "仮想単勝": {
+          "n": 167,
+          "hit_rate": 12.0,
+          "recovery": 94.7,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "生成ワイド": {
+          "n": 167,
+          "hit_rate": 1.2,
+          "recovery": 1.6,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "現行購入": {
+          "n": 167,
+          "hit_rate": 1.2,
+          "recovery": 2.0,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "圏内時ワイド的中": {
+          "n_in_money_with_ticket": 64,
+          "hit_rate_given_honmei_in_money": 1.6,
+          "status": "集計可"
+        }
+      },
+      "B": {
+        "n": 263,
+        "place_rate": 47.1,
+        "win_rate": 17.5,
+        "verdict": "主因はランク/本命選定（圏外が多い）",
+        "buckets": {
+          "本命圏外": 139,
+          "本命圏内_購入買い目的中": 20,
+          "本命圏内_購入買い目外れ": 104,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "仮想単勝": {
+          "n": 263,
+          "hit_rate": 17.5,
+          "recovery": 74.7,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "生成ワイド": {
+          "n": 263,
+          "hit_rate": 7.6,
+          "recovery": 9.7,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "現行購入": {
+          "n": 263,
+          "hit_rate": 7.6,
+          "recovery": 8.4,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "圏内時ワイド的中": {
+          "n_in_money_with_ticket": 124,
+          "hit_rate_given_honmei_in_money": 16.1,
+          "status": "集計可"
+        }
+      }
+    },
+    "JRA": {
+      "A": {
+        "n": 32,
+        "place_rate": 37.5,
+        "win_rate": 12.5,
+        "verdict": "主因はランク/本命選定（圏外が多い）",
+        "buckets": {
+          "本命圏外": 20,
+          "本命圏内_購入買い目的中": 2,
+          "本命圏内_購入買い目外れ": 10,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "仮想単勝": {
+          "n": 32,
+          "hit_rate": 12.5,
+          "recovery": 167.2,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "生成ワイド": {
+          "n": 32,
+          "hit_rate": 6.2,
+          "recovery": 26.2,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "現行購入": {
+          "n": 32,
+          "hit_rate": 6.2,
+          "recovery": 14.4,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "圏内時ワイド的中": {
+          "n_in_money_with_ticket": 12,
+          "hit_rate_given_honmei_in_money": 16.7,
+          "status": "件数不足（採用候補にしない）"
+        }
+      },
+      "B": {
+        "n": 70,
+        "place_rate": 44.3,
+        "win_rate": 12.9,
+        "verdict": "主因はランク/本命選定（圏外が多い）",
+        "buckets": {
+          "本命圏外": 39,
+          "本命圏内_購入買い目的中": 2,
+          "本命圏内_購入買い目外れ": 29,
+          "本命圏内_購入なし_生成券的中": 0,
+          "本命圏内_購入なし_生成券外れ": 0
+        },
+        "仮想単勝": {
+          "n": 70,
+          "hit_rate": 12.9,
+          "recovery": 52.3,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "生成ワイド": {
+          "n": 70,
+          "hit_rate": 2.9,
+          "recovery": 11.1,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "現行購入": {
+          "n": 70,
+          "hit_rate": 2.9,
+          "recovery": 6.7,
+          "status": "集計可",
+          "adoptable": true
+        },
+        "圏内時ワイド的中": {
+          "n_in_money_with_ticket": 31,
+          "hit_rate_given_honmei_in_money": 6.5,
+          "status": "集計可"
+        }
+      }
+    }
+  },
+  "conclusion": {
+    "implement_now": false,
+    "headline": "本命着順と買い目を分離すると、地方Sは選定（圏外）と買い目変換の二重損失。仮想単勝と生成ワイド/購入のギャップが変換失敗を示す。JRA/Sは件数不足。"
+  }
+}

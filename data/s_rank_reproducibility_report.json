@@ -1,0 +1,168 @@
+{
+  "frozen_logic": {
+    "S": {
+      "能力差": ">=80",
+      "データ件数": ">=3",
+      "オッズ": "<=50"
+    },
+    "note": "条件固定。再現性検証のみ。再調整禁止。"
+  },
+  "split": {
+    "train": "date <= 2026-07-28",
+    "test": "date > 2026-07-28",
+    "train_n_races": 631,
+    "test_n_races": 425,
+    "train_date_range": [
+      "2026-06-25",
+      "2026-07-28"
+    ],
+    "test_date_range": [
+      "2026-07-29",
+      "2026-08-07"
+    ]
+  },
+  "results": {
+    "新S": {
+      "all": {
+        "n": 57,
+        "hits": 6,
+        "hit_rate": 10.5,
+        "recovery": 100.2,
+        "avg_odds": 14.36,
+        "avg_ev": 114.2,
+        "profit": 10,
+        "ge_100": true
+      },
+      "train": {
+        "n": 33,
+        "hits": 4,
+        "hit_rate": 12.1,
+        "recovery": 149.1,
+        "avg_odds": 13.86,
+        "avg_ev": 114.9,
+        "profit": 1620,
+        "ge_100": true
+      },
+      "test": {
+        "n": 24,
+        "hits": 2,
+        "hit_rate": 8.3,
+        "recovery": 32.9,
+        "avg_odds": 15.06,
+        "avg_ev": 113.3,
+        "profit": -1610,
+        "ge_100": false
+      }
+    },
+    "新A": {
+      "all": {
+        "n": 190,
+        "hits": 16,
+        "hit_rate": 8.4,
+        "recovery": 88.7,
+        "avg_odds": 21.78,
+        "avg_ev": 113.7,
+        "profit": -2140,
+        "ge_100": false
+      },
+      "train": {
+        "n": 91,
+        "hits": 9,
+        "hit_rate": 9.9,
+        "recovery": 114.7,
+        "avg_odds": 21.9,
+        "avg_ev": 112.5,
+        "profit": 1340,
+        "ge_100": true
+      },
+      "test": {
+        "n": 99,
+        "hits": 7,
+        "hit_rate": 7.1,
+        "recovery": 64.8,
+        "avg_odds": 21.67,
+        "avg_ev": 114.7,
+        "profit": -3480,
+        "ge_100": false
+      }
+    },
+    "新B": {
+      "all": {
+        "n": 391,
+        "hits": 49,
+        "hit_rate": 12.5,
+        "recovery": 63.3,
+        "avg_odds": 13.66,
+        "avg_ev": 107.0,
+        "profit": -14350,
+        "ge_100": false
+      },
+      "train": {
+        "n": 212,
+        "hits": 28,
+        "hit_rate": 13.2,
+        "recovery": 68.3,
+        "avg_odds": 13.0,
+        "avg_ev": 105.1,
+        "profit": -6720,
+        "ge_100": false
+      },
+      "test": {
+        "n": 179,
+        "hits": 21,
+        "hit_rate": 11.7,
+        "recovery": 57.4,
+        "avg_odds": 14.45,
+        "avg_ev": 109.3,
+        "profit": -7630,
+        "ge_100": false
+      }
+    },
+    "新BUY×S": {
+      "all": {
+        "n": 51,
+        "hits": 5,
+        "hit_rate": 9.8,
+        "recovery": 108.0,
+        "avg_odds": 15.57,
+        "avg_ev": 116.6,
+        "profit": 410,
+        "ge_100": true
+      },
+      "train": {
+        "n": 30,
+        "hits": 4,
+        "hit_rate": 13.3,
+        "recovery": 164.0,
+        "avg_odds": 14.79,
+        "avg_ev": 116.7,
+        "profit": 1920,
+        "ge_100": true
+      },
+      "test": {
+        "n": 21,
+        "hits": 1,
+        "hit_rate": 4.8,
+        "recovery": 28.1,
+        "avg_odds": 16.69,
+        "avg_ev": 116.4,
+        "profit": -1510,
+        "ge_100": false
+      }
+    }
+  },
+  "holdout_check": {
+    "reference_all_sample_claims": {
+      "新S": 108.4,
+      "新BUY×S": 121.4
+    },
+    "新S_train_recovery": 149.1,
+    "新S_test_recovery": 32.9,
+    "新BUY×S_train_recovery": 164.0,
+    "新BUY×S_test_recovery": 28.1,
+    "新S_test_ge_100": false,
+    "新BUY×S_test_ge_100": false,
+    "verdict": "過学習の可能性",
+    "verdict_detail": "検証期間で新S=32.9% / 新BUY×S=28.1%。学習期間は新S=149.1% / 新BUY×S=164.0%。条件は再調整せず、別期間で100%以上を維持できなかった。"
+  }
+}

@@ -19,6 +19,14 @@
     "b_min_score": 0.0,
     "note": "相対順位の暫定枠のみ。最終勝負ランク/投資判定は ev_analysis.finalize_predictions_df（厳格S条件＋買い厳選）がCSVへ焼き込む。"
   },
-  "status": "baseline_ready_for_optimize_v2",
-  "note": "実着順は評価専用。指数入力には未使用。表示ランクはコード内のS_MIN_* / BUY_* が正。"
+  "status": "rank_condition_optimization_paused",
+  "signals_under_validation": {
+    "能力差": {
+      "threshold": 80,
+      "status": "under_validation",
+      "adopted_as_S_gate": false,
+      "note": "JRA/地方を分離して再検証するまで正式採用しない。S/A/B条件追加による最適化も停止。"
+    }
+  },
+  "note": "実着順は評価専用。S必須は n≥3 とオッズ≤50 のみ。能力差≥80 は検証中シグナル（正式条件外）。詳細は data/ability_signal_reproducibility_report.json。"
 }
