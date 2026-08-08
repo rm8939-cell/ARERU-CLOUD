@@ -1,0 +1,322 @@
+{
+  "scope": "JRA＋地方競馬の混合",
+  "n_all": 1056,
+  "n_jra": 180,
+  "n_nar": 841,
+  "by_source": {
+    "JRA": {
+      "全本命": {
+        "label": "全本命",
+        "n": 180,
+        "hits": 25,
+        "hit_rate": 13.9,
+        "recovery": 80.1,
+        "avg_odds": 15.99,
+        "avg_ev": 107.9,
+        "profit": -3580
+      },
+      "新S": {
+        "label": "新S",
+        "n": 5,
+        "hits": 1,
+        "hit_rate": 20.0,
+        "recovery": 118.0,
+        "avg_odds": 18.2,
+        "avg_ev": 118.0,
+        "profit": 90
+      },
+      "新A": {
+        "label": "新A",
+        "n": 30,
+        "hits": 4,
+        "hit_rate": 13.3,
+        "recovery": 180.3,
+        "avg_odds": 14.66,
+        "avg_ev": 115.6,
+        "profit": 2410
+      },
+      "新B": {
+        "label": "新B",
+        "n": 65,
+        "hits": 10,
+        "hit_rate": 15.4,
+        "recovery": 80.2,
+        "avg_odds": 12.17,
+        "avg_ev": 110.3,
+        "profit": -1290
+      },
+      "新BUY×S": {
+        "label": "新BUY×S",
+        "n": 5,
+        "hits": 1,
+        "hit_rate": 20.0,
+        "recovery": 118.0,
+        "avg_odds": 18.2,
+        "avg_ev": 118.0,
+        "profit": 90
+      },
+      "能力差>=80": {
+        "label": "能力差>=80",
+        "n": 7,
+        "hits": 1,
+        "hit_rate": 14.3,
+        "recovery": 84.3,
+        "avg_odds": 14.06,
+        "avg_ev": 113.1,
+        "profit": -110
+      },
+      "能力差<80": {
+        "label": "能力差<80",
+        "n": 173,
+        "hits": 24,
+        "hit_rate": 13.9,
+        "recovery": 79.9,
+        "avg_odds": 16.07,
+        "avg_ev": 107.7,
+        "profit": -3470
+      },
+      "能力差>=80_train": {
+        "label": "能力差>=80/train",
+        "n": 5,
+        "hits": 0,
+        "hit_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 11.98,
+        "avg_ev": 111.0,
+        "profit": -500
+      },
+      "能力差>=80_test": {
+        "label": "能力差>=80/test",
+        "n": 2,
+        "hits": 1,
+        "hit_rate": 50.0,
+        "recovery": 295.0,
+        "avg_odds": 19.25,
+        "avg_ev": 118.5,
+        "profit": 390
+      },
+      "新S_train": {
+        "label": "新S/train",
+        "n": 3,
+        "hits": 0,
+        "hit_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 17.5,
+        "avg_ev": 117.7,
+        "profit": -300
+      },
+      "新S_test": {
+        "label": "新S/test",
+        "n": 2,
+        "hits": 1,
+        "hit_rate": 50.0,
+        "recovery": 295.0,
+        "avg_odds": 19.25,
+        "avg_ev": 118.5,
+        "profit": 390
+      },
+      "新BUY×S_train": {
+        "label": "新BUY×S/train",
+        "n": 3,
+        "hits": 0,
+        "hit_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 17.5,
+        "avg_ev": 117.7,
+        "profit": -300
+      },
+      "新BUY×S_test": {
+        "label": "新BUY×S/test",
+        "n": 2,
+        "hits": 1,
+        "hit_rate": 50.0,
+        "recovery": 295.0,
+        "avg_odds": 19.25,
+        "avg_ev": 118.5,
+        "profit": 390
+      }
+    },
+    "地方": {
+      "全本命": {
+        "label": "全本命",
+        "n": 841,
+        "hits": 91,
+        "hit_rate": 10.8,
+        "recovery": 61.5,
+        "avg_odds": 19.11,
+        "avg_ev": 106.0,
+        "profit": -32360
+      },
+      "新S": {
+        "label": "新S",
+        "n": 52,
+        "hits": 5,
+        "hit_rate": 9.6,
+        "recovery": 98.5,
+        "avg_odds": 13.99,
+        "avg_ev": 113.9,
+        "profit": -80
+      },
+      "新A": {
+        "label": "新A",
+        "n": 160,
+        "hits": 12,
+        "hit_rate": 7.5,
+        "recovery": 71.6,
+        "avg_odds": 23.11,
+        "avg_ev": 113.3,
+        "profit": -4550
+      },
+      "新B": {
+        "label": "新B",
+        "n": 314,
+        "hits": 39,
+        "hit_rate": 12.4,
+        "recovery": 62.2,
+        "avg_odds": 14.2,
+        "avg_ev": 106.5,
+        "profit": -11860
+      },
+      "新BUY×S": {
+        "label": "新BUY×S",
+        "n": 46,
+        "hits": 4,
+        "hit_rate": 8.7,
+        "recovery": 107.0,
+        "avg_odds": 15.28,
+        "avg_ev": 116.5,
+        "profit": 320
+      },
+      "能力差>=80": {
+        "label": "能力差>=80",
+        "n": 76,
+        "hits": 13,
+        "hit_rate": 17.1,
+        "recovery": 119.5,
+        "avg_odds": 12.63,
+        "avg_ev": 108.9,
+        "profit": 1480
+      },
+      "能力差<80": {
+        "label": "能力差<80",
+        "n": 765,
+        "hits": 78,
+        "hit_rate": 10.2,
+        "recovery": 55.8,
+        "avg_odds": 19.76,
+        "avg_ev": 105.7,
+        "profit": -33840
+      },
+      "能力差>=80_train": {
+        "label": "能力差>=80/train",
+        "n": 46,
+        "hits": 11,
+        "hit_rate": 23.9,
+        "recovery": 187.4,
+        "avg_odds": 11.81,
+        "avg_ev": 109.3,
+        "profit": 4020
+      },
+      "能力差>=80_test": {
+        "label": "能力差>=80/test",
+        "n": 30,
+        "hits": 2,
+        "hit_rate": 6.7,
+        "recovery": 15.3,
+        "avg_odds": 13.9,
+        "avg_ev": 108.3,
+        "profit": -2540
+      },
+      "新S_train": {
+        "label": "新S/train",
+        "n": 30,
+        "hits": 4,
+        "hit_rate": 13.3,
+        "recovery": 164.0,
+        "avg_odds": 13.49,
+        "avg_ev": 114.7,
+        "profit": 1920
+      },
+      "新S_test": {
+        "label": "新S/test",
+        "n": 22,
+        "hits": 1,
+        "hit_rate": 4.5,
+        "recovery": 9.1,
+        "avg_odds": 14.68,
+        "avg_ev": 112.8,
+        "profit": -2000
+      },
+      "新BUY×S_train": {
+        "label": "新BUY×S/train",
+        "n": 27,
+        "hits": 4,
+        "hit_rate": 14.8,
+        "recovery": 182.2,
+        "avg_odds": 14.49,
+        "avg_ev": 116.6,
+        "profit": 2220
+      },
+      "新BUY×S_test": {
+        "label": "新BUY×S/test",
+        "n": 19,
+        "hits": 0,
+        "hit_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 16.42,
+        "avg_ev": 116.2,
+        "profit": -1900
+      }
+    }
+  },
+  "ability80_verdict": {
+    "analysis_scope": "JRA＋地方競馬の混合（過去検証の主集計は混合）",
+    "ability80_jra": {
+      "label": "能力差>=80",
+      "n": 7,
+      "hits": 1,
+      "hit_rate": 14.3,
+      "recovery": 84.3,
+      "avg_odds": 14.06,
+      "avg_ev": 113.1,
+      "profit": -110
+    },
+    "ability80_nar": {
+      "label": "能力差>=80",
+      "n": 76,
+      "hits": 13,
+      "hit_rate": 17.1,
+      "recovery": 119.5,
+      "avg_odds": 12.63,
+      "avg_ev": 108.9,
+      "profit": 1480
+    },
+    "baseline_jra": {
+      "label": "全本命",
+      "n": 180,
+      "hits": 25,
+      "hit_rate": 13.9,
+      "recovery": 80.1,
+      "avg_odds": 15.99,
+      "avg_ev": 107.9,
+      "profit": -3580
+    },
+    "baseline_nar": {
+      "label": "全本命",
+      "n": 841,
+      "hits": 91,
+      "hit_rate": 10.8,
+      "recovery": 61.5,
+      "avg_odds": 19.11,
+      "avg_ev": 106.0,
+      "profit": -32360
+    },
+    "jra_edge_vs_jra_baseline": 4.2,
+    "nar_edge_vs_nar_baseline": 58.0,
+    "jra_ge_100": false,
+    "nar_ge_100": true,
+    "jra_note": "JRAの能力差>=80 は件数不足（n<20）。有効断定不可。",
+    "jra_oos_note": "JRA検証期間の能力差>=80 も件数不足。",
+    "conclusion": "能力差≥80の見かけ上の有効性は主に地方側の数字。JRAは件数不足で成立未確認。"
+  }
+}
