@@ -138,8 +138,8 @@ def main() -> int:
         'conditions_honmei': _condition_block(honmei),
         'notes': [
             '主指標は本命チケット。ワイド等は買い目生成の別問題。',
-            'S=能力差≥80×AI≥72×再現≥62×n≥3×オッズ≤50。展開≥65は到達不能、勝率下限は人気寄り選別のため除外。',
-            '詳細な根因と旧/新バックテストは data/s_rank_rootcause_backtest.json / scripts/diagnose_s_rank.py。',
+            'S必須=能力差≥80×n≥3×オッズ≤50（相対上位）。全体100%超はOOS未再現。',
+            '頑健性検証: data/s_rank_robustness_report.json / scripts/validate_s_rank_robustness.py',
         ],
     }
 

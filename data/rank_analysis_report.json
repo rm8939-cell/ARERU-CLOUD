@@ -4,34 +4,34 @@
   "honmei_rows": 1258,
   "by_rank_honmei": {
     "S": {
-      "bets": 57,
-      "hits": 7,
-      "hit_rate": 12.3,
-      "investment": 5700,
-      "payout": 6270,
-      "recovery": 110.0,
-      "profit": 570,
-      "avg_odds": 12.79
+      "bets": 62,
+      "hits": 8,
+      "hit_rate": 12.9,
+      "investment": 6200,
+      "payout": 6430,
+      "recovery": 103.7,
+      "profit": 230,
+      "avg_odds": 13.99
     },
     "A": {
-      "bets": 202,
+      "bets": 199,
       "hits": 20,
-      "hit_rate": 9.9,
-      "investment": 20200,
-      "payout": 17480,
-      "recovery": 86.5,
-      "profit": -2720,
-      "avg_odds": 22.21
+      "hit_rate": 10.1,
+      "investment": 19900,
+      "payout": 18160,
+      "recovery": 91.3,
+      "profit": -1740,
+      "avg_odds": 22.03
     },
     "B": {
-      "bets": 419,
-      "hits": 65,
-      "hit_rate": 15.5,
-      "investment": 41900,
-      "payout": 29980,
-      "recovery": 71.6,
-      "profit": -11920,
-      "avg_odds": 13.5
+      "bets": 417,
+      "hits": 64,
+      "hit_rate": 15.3,
+      "investment": 41700,
+      "payout": 29140,
+      "recovery": 69.9,
+      "profit": -12560,
+      "avg_odds": 13.48
     },
     "C": {
       "bets": 412,
@@ -56,24 +56,24 @@
   },
   "by_rank_buy_honmei": {
     "S": {
-      "bets": 50,
+      "bets": 53,
       "hits": 6,
-      "hit_rate": 12.0,
-      "investment": 5000,
+      "hit_rate": 11.3,
+      "investment": 5300,
       "payout": 6070,
-      "recovery": 121.4,
-      "profit": 1070,
-      "avg_odds": 14.01
+      "recovery": 114.5,
+      "profit": 770,
+      "avg_odds": 15.77
     },
     "A": {
-      "bets": 92,
+      "bets": 90,
       "hits": 8,
-      "hit_rate": 8.7,
-      "investment": 9200,
+      "hit_rate": 8.9,
+      "investment": 9000,
       "payout": 7090,
-      "recovery": 77.1,
-      "profit": -2110,
-      "avg_odds": 17.47
+      "recovery": 78.8,
+      "profit": -1910,
+      "avg_odds": 16.07
     },
     "B": {
       "bets": 0
@@ -88,19 +88,19 @@
   "conditions_honmei": [
     {
       "label": "rank S/A",
-      "bets": 259,
-      "hit_rate": 10.4,
-      "avg_odds": 20.14,
-      "recovery": 91.7,
-      "profit": -2150
+      "bets": 261,
+      "hit_rate": 10.7,
+      "avg_odds": 20.12,
+      "recovery": 94.2,
+      "profit": -1510
     },
     {
       "label": "invest=買い",
-      "bets": 142,
-      "hit_rate": 9.9,
-      "avg_odds": 16.25,
-      "recovery": 92.7,
-      "profit": -1040
+      "bets": 143,
+      "hit_rate": 9.8,
+      "avg_odds": 15.96,
+      "recovery": 92.0,
+      "profit": -1140
     },
     {
       "label": "ability>=80",
@@ -120,35 +120,35 @@
     },
     {
       "label": "race_conf>=68",
-      "bets": 300,
-      "hit_rate": 10.7,
-      "avg_odds": 17.42,
-      "recovery": 72.9,
-      "profit": -8140
+      "bets": 293,
+      "hit_rate": 10.9,
+      "avg_odds": 17.2,
+      "recovery": 74.6,
+      "profit": -7440
     },
     {
       "label": "race_conf 48-58",
-      "bets": 126,
-      "hit_rate": 23.0,
-      "avg_odds": 14.33,
-      "recovery": 82.5,
-      "profit": -2210
+      "bets": 119,
+      "hit_rate": 22.7,
+      "avg_odds": 14.41,
+      "recovery": 84.5,
+      "profit": -1850
     },
     {
       "label": "EV>=108 (旧買い閾値)",
       "bets": 505,
       "hit_rate": 6.7,
-      "avg_odds": 22.84,
+      "avg_odds": 22.81,
       "recovery": 72.1,
       "profit": -14090
     },
     {
       "label": "EV 100-108",
-      "bets": 302,
+      "bets": 301,
       "hit_rate": 10.6,
-      "avg_odds": 24.46,
-      "recovery": 76.3,
-      "profit": -7170
+      "avg_odds": 24.59,
+      "recovery": 76.5,
+      "profit": -7070
     },
     {
       "label": "odds<=10",
@@ -185,7 +185,7 @@
   ],
   "notes": [
     "主指標は本命チケット。ワイド等は買い目生成の別問題。",
-    "S は能力差≥80 を主軸にした厳格条件。展開安定≥65 は到達不能だったため廃止。",
-    "買い判定の EV 下限は 108→100。能力差下限とオッズ上限を追加。"
+    "S=能力差≥80×AI≥72×再現≥62×n≥3×オッズ≤50。展開≥65は到達不能、勝率下限は人気寄り選別のため除外。",
+    "詳細な根因と旧/新バックテストは data/s_rank_rootcause_backtest.json / scripts/diagnose_s_rank.py。"
   ]
 }

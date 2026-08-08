@@ -24,25 +24,21 @@ BUY_ABILITY_FLOOR = 65.0   # 能力差が無い買いを落とす
 BUY_ODDS_MAX = 50.0        # 50 倍超の本命は的中 0 件（実績）
 
 # Sランク厳格条件（すべて満たした場合のみ S。不足は A へ降格）。
-# 設計方針: 「S を増やす」のではなく「長期的に期待値が高い」帯だけを S にする。
 #
 # 到達不能の根因（main 旧仕様）:
-#   - S_MIN_PACE_STABLE=65 だが 展開読みやすさ の観測最大は 60
-#     （荒れ指数≤35 が一度も無く +22 ボーナスが発火しない）
-#   - AND ゲートのため他条件を満たしても S≡0
+#   S_MIN_PACE_STABLE=65 だが展開読みやすさ観測max=60 → ANDで S≡0
 #
-# 2026-06〜08 本命単勝バックテスト（旧 vs 新）:
-#   - 能力差≥80（離散トップ帯=88）が唯一のプラス寄りシグナル
-#   - 勝率≥15 の必須化は本命を人気側へ寄せ、能力差エッジを壊す（116%→89%）
-#   - 新 S: 能力差≥80 × AI≥72 × 再現≥62 × n≥3 × オッズ≤50
-#     → S 回収 108.4% / 買い×S 121.4%（旧 A 48.4%、旧 S=0）
-S_MIN_AI_CONF = 72.0
-S_MIN_ABILITY_GAP = 80.0
-S_MIN_DATA_N = 3
-S_MIN_REPRO = 62.0
-S_MAX_ODDS = 50.0          # 本命オッズ>50 は的中 0（実績）。欠損は許容
-# 展開読みやすさ≥65 は特徴量生成上到達不能のため S 必須条件から除外。
-# 勝率下限も除外（高勝率＝人気寄りで回収を毀損）。
+# 頑健性検証（data/s_rank_robustness_report.json）の結論:
+#   - 全体回収100%超は学習期間・少数競馬場・上位1〜2的中への依存が大きい
+#   - 検証期間（07-29以降）では複合条件も能力差単独も回収 ~33% で +EV未確立
+#   - AI≥72 / 再現≥62 の追加は OOS を改善せず、条件複雑化による見かけの上振れ
+#   - 再現性優先のため S 必須は最小限にする
+#
+# S = 相対的に強い本命候補（能力差トップ帯）。長期+EV確定ラベルではない。
+S_MIN_ABILITY_GAP = 80.0   # 離散トップ帯（88）。帯別で相対優位の唯一の軸
+S_MIN_DATA_N = 3           # 最低限のデータ品質
+S_MAX_ODDS = 50.0          # 的中0帯の除外（回収かさ上げ目的ではない）。欠損は許容
+# 除外した必須条件: 展開≥65（到達不能）/ 勝率下限（人気寄り）/ AI・再現の高閾値（OOS非改善）
 
 # tighten_buy_selection の絶対スコア下限（スロット埋めによるランク汚染を防ぐ）
 # 旧 A 下限 40 では信頼度の低いレースまで A に押し上げられ、A 回収が 82% まで低下
@@ -586,12 +582,13 @@ def rank_from_race_confidence(score) -> str:
 def qualify_s_rank(record: dict) -> tuple[bool, dict]:
     """Sランク厳格判定。全条件を満たしたときだけ True。
 
-    能力差トップ帯（≥80）を主軸にし、AI信頼度・再現性・データ件数で
-    品質を担保。オッズ上限で的中0帯を除外する。
+    再現性優先の最小条件:
+      - 能力差トップ帯（≥80）
+      - データ件数≥3
+      - 本命オッズ≤50（的中0帯の除外。欠損可）
 
-    含めないもの:
-      - 展開読みやすさ≥65 … 特徴量上到達不能（観測max=60）で S≡0 の原因
-      - シミュレーション勝率下限 … 人気寄り選別になり回収を落とす
+    S は「相対的に強い本命候補」であり、アウトオブサンプルで
+    長期+EVが確定したラベルではない（頑健性レポート参照）。
     """
     # 信頼度パックが未計算なら補完
     if record.get('能力差スコア') is None or record.get('展開読みやすさ') is None:
@@ -600,10 +597,6 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
             record.setdefault(k, v)
 
     try:
-        conf = safe_float(record.get('AI信頼度スコア'), 0.0) or 0.0
-    except (TypeError, ValueError):
-        conf = 0.0
-    try:
         ability = safe_float(record.get('能力差スコア'), 0.0) or 0.0
     except (TypeError, ValueError):
         ability = 0.0
@@ -611,38 +604,25 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
         n = safe_int(record.get('データ件数'), _count_past_races(record) or 0)
     except (TypeError, ValueError):
         n = 0
-    try:
-        repro = safe_float(
-            record.get('シミュレーション再現率') or record.get('シミュレーション一致率'),
-            0.0,
-        ) or 0.0
-    except (TypeError, ValueError):
-        repro = 0.0
     odds = parse_odds_value(record.get('本命オッズ'))
     odds_ok = odds is None or (0 < odds <= S_MAX_ODDS)
 
     checks = {
-        'AI信頼度': conf >= S_MIN_AI_CONF,
         '能力差': ability >= S_MIN_ABILITY_GAP,
         'データ件数': n >= S_MIN_DATA_N,
-        '再現性': repro >= S_MIN_REPRO,
         'オッズ': odds_ok,
     }
     detail = {
         '合格': all(checks.values()),
         '条件': checks,
         '値': {
-            'AI信頼度': round(conf, 1),
             '能力差': round(ability, 1),
             'データ件数': n,
-            '再現性': round(repro, 1),
             'オッズ': None if odds is None else round(odds, 2),
         },
         '閾値': {
-            'AI信頼度': S_MIN_AI_CONF,
             '能力差': S_MIN_ABILITY_GAP,
             'データ件数': S_MIN_DATA_N,
-            '再現性': S_MIN_REPRO,
             'オッズ上限': S_MAX_ODDS,
         },
     }
@@ -1330,11 +1310,10 @@ def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
         'note': 'S/A/Bの的中率・回収率。今後のS判定閾値改善に利用する（自動学習ではない）。',
         'by_rank': {},
         'thresholds_s': {
-            'AI信頼度': S_MIN_AI_CONF,
             '能力差': S_MIN_ABILITY_GAP,
             'データ件数': S_MIN_DATA_N,
-            '再現性': S_MIN_REPRO,
             'オッズ上限': S_MAX_ODDS,
+            'note': 'Sは相対上位ラベル。OOSで長期+EVは未確立（s_rank_robustness_report.json）。',
         },
         'thresholds_buy': {
             'EV': BUY_EV_FLOOR,
