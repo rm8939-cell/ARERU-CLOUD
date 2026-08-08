@@ -15,17 +15,32 @@ AI_FAIR_ODDS_MIN = 1.1
 EV_DISPLAY_MAX = 124
 EV_DISPLAY_MIN = 78
 
-# 買い厳選: 期待回収率の最低ライン（これ未満は候補に入れない）
-BUY_EV_FLOOR = 108
-# レース信頼度の最低ライン
+# 買い厳選のゲート（2026-06〜08 の実績で再調整）。
+# 旧 BUY_EV_FLOOR=108 は高オッズ帯を強制し、本命単勝回収が 74% まで落ちていた
+# （見送り側 94%。EV が高い＝人気薄、という逆選択が原因）。
+BUY_EV_FLOOR = 100
 BUY_CONF_FLOOR = 58
+BUY_ABILITY_FLOOR = 65.0   # 能力差が無い買いを落とす
+BUY_ODDS_MAX = 50.0        # 50 倍超の本命は的中 0 件（実績）
 
-# Sランク厳格条件（すべて満たした場合のみ S。不足は A へ降格）
-S_MIN_AI_CONF = 72.0       # AI信頼度が非常に高い
-S_MIN_ABILITY_GAP = 70.0   # 能力差が明確
-S_MIN_PACE_STABLE = 65.0   # 展開予測が安定
-S_MIN_DATA_N = 3           # データ件数が十分
-S_MIN_REPRO = 62.0         # 予測の再現性が高い
+# Sランク厳格条件（すべて満たした場合のみ S。不足は A へ降格）。
+# 2026-08 時点の実績:
+#   - 旧 S_MIN_PACE_STABLE=65 は展開読みやすさの上限が 60 のため到達不能 → S=0 件
+#   - 能力差≥80 の本命単勝回収 159%（n=56）が最強シグナル
+#   - AI信頼度≥80 は過信（回収 73%）なので 72→60 に下げ、能力差で締める
+S_MIN_AI_CONF = 60.0
+S_MIN_ABILITY_GAP = 80.0
+S_MIN_PACE_STABLE = 32.0   # 極度の混戦だけ除外（到達不能だった 65 を廃止）
+S_MIN_DATA_N = 3
+S_MIN_REPRO = 50.0
+S_MIN_WIN_PCT = 15.0       # シミュレーション勝率。≥25% 帯は回収 118%
+
+# tighten_buy_selection の絶対スコア下限（スロット埋めによるランク汚染を防ぐ）
+# 旧 A 下限 40 では信頼度の低いレースまで A に押し上げられ、A 回収が 82% まで低下
+A_SCORE_FLOOR = 60.0
+B_SCORE_FLOOR = 48.0
+C_SCORE_FLOOR = 38.0
+S_SCORE_FLOOR = 66.0
 
 RANK_PERF_PATH = Path(__file__).resolve().parent / 'data' / 'rank_performance.json'
 
@@ -560,13 +575,10 @@ def rank_from_race_confidence(score) -> str:
 
 
 def qualify_s_rank(record: dict) -> tuple[bool, dict]:
-    """Sランク厳格判定。5条件すべて満たしたときだけ True。
+    """Sランク厳格判定。全条件を満たしたときだけ True。
 
-    ・AI信頼度が非常に高い
-    ・能力差が明確
-    ・展開予測が安定
-    ・データ件数が十分
-    ・予測の再現性が高い
+    能力差を主軸にする（実績で本命単勝回収 159%）。展開安定は
+    「極度の混戦を落とす」ソフト下限のみ。シミュレーション勝率も必須。
     """
     # 信頼度パックが未計算なら補完
     if record.get('能力差スコア') is None or record.get('展開読みやすさ') is None:
@@ -597,6 +609,10 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
         ) or 0.0
     except (TypeError, ValueError):
         repro = 0.0
+    try:
+        win_pct = safe_float(record.get('シミュレーション勝率'), 0.0) or 0.0
+    except (TypeError, ValueError):
+        win_pct = 0.0
 
     checks = {
         'AI信頼度': conf >= S_MIN_AI_CONF,
@@ -604,6 +620,7 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
         '展開安定': pace >= S_MIN_PACE_STABLE,
         'データ件数': n >= S_MIN_DATA_N,
         '再現性': repro >= S_MIN_REPRO,
+        '勝率': win_pct >= S_MIN_WIN_PCT,
     }
     detail = {
         '合格': all(checks.values()),
@@ -614,6 +631,7 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
             '展開安定': round(pace, 1),
             'データ件数': n,
             '再現性': round(repro, 1),
+            '勝率': round(win_pct, 1),
         },
         '閾値': {
             'AI信頼度': S_MIN_AI_CONF,
@@ -621,6 +639,7 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
             '展開安定': S_MIN_PACE_STABLE,
             'データ件数': S_MIN_DATA_N,
             '再現性': S_MIN_REPRO,
+            '勝率': S_MIN_WIN_PCT,
         },
     }
     if not detail['合格']:
@@ -786,10 +805,11 @@ def calc_confidence_adjusted_ev(record: dict) -> dict:
 
 
 def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds: bool,
-                    race_conf: float | None = None) -> dict:
+                    race_conf: float | None = None, *,
+                    ability: float | None = None, odds: float | None = None) -> dict:
     """買い／見送りの暫定判定（最終は tighten_buy_selection で厳選）。
 
-    期待回収率・信頼度が揃った候補のみ「買い」。足りなければ見送り。
+    EV・信頼度に加え、能力差と本命オッズ上限で逆選択を防ぐ。
     """
     if not has_odds or ev is None:
         return {
@@ -800,8 +820,17 @@ def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds:
     e = float(ev)
     conf = float(confidence or 0)
     rc = float(race_conf if race_conf is not None else conf)
-    # 厳選: EV・信頼度・レース信頼度の三重ゲート
-    if e >= BUY_EV_FLOOR and conf >= BUY_CONF_FLOOR and rc >= BUY_CONF_FLOOR and float(repro or 0) >= 42:
+    ab = float(ability or 0)
+    od = float(odds) if odds not in (None, '') else None
+    odds_ok = od is None or (0 < od <= BUY_ODDS_MAX)
+    if (
+        e >= BUY_EV_FLOOR
+        and conf >= BUY_CONF_FLOOR
+        and rc >= BUY_CONF_FLOOR
+        and float(repro or 0) >= 40
+        and ab >= BUY_ABILITY_FLOOR
+        and odds_ok
+    ):
         return {
             '一覧判定': '買い', '一覧判定トーン': 'buy',
             '投資判定': '買い', '投資判定アイコン': '🟢', '投資判定トーン': 'buy',
@@ -852,15 +881,17 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
     record.update(conf_pack)
     rc = safe_float(conf_pack.get('レース信頼度スコア'), 50.0) or 50.0
     rk = rank_from_race_confidence(rc)
-    # EVが極端に弱い（見送り帯）ならランクを1段落とす
+    # EV による降格は「極端に弱い」場合だけ。
+    # 旧仕様の EV<100 で S/A→B は、本命寄り（低EV・高的中）のレースを
+    # 不当に落としていた（EV<90 帯の本命勝率は 51%）。
     if ev is not None:
         try:
             e = float(ev)
-            if e < 100 and rk in ('S', 'A'):
+            if e < 90 and rk in ('S', 'A'):
                 rk = 'B'
-            elif e < 95 and rk == 'B':
+            elif e < 85 and rk == 'B':
                 rk = 'C'
-            elif e < 90:
+            elif e < 80:
                 rk = 'D' if rk != 'S' else 'C'
         except (TypeError, ValueError):
             pass
@@ -881,11 +912,19 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
     has_odds = bool(record.get('オッズ取得済'))
     ai_conf = safe_float(record.get('AI信頼度スコア'), 50.0) or 50.0
     repro = safe_float(record.get('シミュレーション再現率'), 50.0) or 50.0
+    ability = safe_float(record.get('能力差スコア'), 0.0) or 0.0
+    main_odds = parse_odds_value(record.get('本命オッズ'))
     if ev is not None:
         record['期待値あり'] = True
-        decision = decide_buy_skip(float(ev), ai_conf, repro, True, race_conf=rc)
+        decision = decide_buy_skip(
+            float(ev), ai_conf, repro, True, race_conf=rc,
+            ability=ability, odds=main_odds,
+        )
     else:
-        decision = decide_buy_skip(None, ai_conf, repro, has_odds, race_conf=rc)
+        decision = decide_buy_skip(
+            None, ai_conf, repro, has_odds, race_conf=rc,
+            ability=ability, odds=main_odds,
+        )
     record.update(decision)
 
     if ev is not None:
@@ -909,15 +948,28 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
 
 
 def _buy_score(record: dict) -> float:
-    """厳選時の並び用スコア。"""
+    """厳選時の並び用スコア。
+
+    旧式は (EV-100)*1.8 を強く効かせていたため、人気薄が高順位に並び
+    S/A 枠と買い枠を占有していた。能力差・勝率・レース信頼度を主軸にし、
+    EV の寄与は 115% で頭打ちにする。
+    """
     ev = safe_float(record.get('期待値'), 0.0) or 0.0
     rc = safe_float(record.get('レース信頼度スコア'), None)
     if rc is None:
         rc = safe_float(record.get('AI信頼度スコア'), 0.0) or 0.0
+    ability = safe_float(record.get('能力差スコア'), 0.0) or 0.0
+    win_pct = safe_float(record.get('シミュレーション勝率'), 0.0) or 0.0
     rank_bonus = {'S': 12, 'A': 8, 'B': 3, 'C': 0, 'D': -4}.get(
         str(record.get('勝負ランク') or '').upper(), 0
     )
-    return rc * 0.65 + max(0.0, ev - 100.0) * 1.8 + rank_bonus
+    return (
+        rc * 0.45
+        + ability * 0.35
+        + win_pct * 0.25
+        + max(0.0, min(ev, 115.0) - 100.0) * 0.8
+        + rank_bonus
+    )
 
 
 def _scope_key(record: dict, by_venue: bool) -> str:
@@ -988,23 +1040,23 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
                 score = safe_float(r.get('AI信頼度スコア'), 50.0) or 50.0
             ok_s, s_detail = qualify_s_rank(r)
             r['S判定'] = s_detail
-            if s_left > 0 and ok_s and score >= 66:
+            if s_left > 0 and ok_s and score >= S_SCORE_FLOOR:
                 rk = 'S'
                 s_left -= 1
                 r['S降格'] = False
-            elif a_left > 0 and score >= 40:
+            elif a_left > 0 and score >= A_SCORE_FLOOR:
                 rk = 'A'
                 a_left -= 1
                 # S枠候補だったが条件不足 → 明示的に A 降格
-                if not ok_s and score >= 66:
+                if not ok_s and score >= S_SCORE_FLOOR:
                     r['S降格'] = True
                     r['S降格理由'] = s_detail.get('降格理由') or '条件不足'
                 else:
                     r['S降格'] = False
-            elif score >= 48:
+            elif score >= B_SCORE_FLOOR:
                 rk = 'B'
                 r['S降格'] = False
-            elif score >= 38:
+            elif score >= C_SCORE_FLOOR:
                 rk = 'C'
                 r['S降格'] = False
             else:
@@ -1012,7 +1064,7 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
                 r['S降格'] = False
             # 下位帯は S/A にしない
             if pos >= s_slots + a_slots + max(2, n // 3) and rk in ('S', 'A', 'B'):
-                rk = 'C' if score >= 38 else 'D'
+                rk = 'C' if score >= C_SCORE_FLOOR else 'D'
             # 最終ガード: S は必ず qualify 通過
             if rk == 'S' and not ok_s:
                 rk = 'A'
@@ -1027,7 +1079,7 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
             r['BET判定'] = RANK_LABELS.get(rk, '')
             r['BETクラス'] = RANK_CLASSES.get(rk, '')
 
-        # 買い候補: S/A かつ EV・信頼度ゲート通過
+        # 買い候補: S/A かつ EV・能力差・信頼度・オッズ上限を通過
         candidates = []
         for idx, r in items:
             rk = str(r.get('勝負ランク') or '')
@@ -1035,12 +1087,22 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
             conf = safe_float(r.get('AI信頼度スコア'), 0.0) or 0.0
             rc = safe_float(r.get('レース信頼度スコア'), conf) or conf
             repro = safe_float(r.get('シミュレーション再現率'), 0.0) or 0.0
+            ability = safe_float(r.get('能力差スコア'), 0.0) or 0.0
+            main_odds = parse_odds_value(r.get('本命オッズ'))
             has_odds = bool(r.get('オッズ取得済')) or ev is not None
             if rk not in ('S', 'A'):
                 continue
             if not has_odds or ev is None:
                 continue
-            if ev < BUY_EV_FLOOR or conf < BUY_CONF_FLOOR or rc < BUY_CONF_FLOOR or repro < 40:
+            if (
+                ev < BUY_EV_FLOOR
+                or conf < BUY_CONF_FLOOR
+                or rc < BUY_CONF_FLOOR
+                or repro < 40
+                or ability < BUY_ABILITY_FLOOR
+            ):
+                continue
+            if main_odds is not None and main_odds > BUY_ODDS_MAX:
                 continue
             candidates.append((idx, r))
 
@@ -1265,6 +1327,13 @@ def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
             '展開安定': S_MIN_PACE_STABLE,
             'データ件数': S_MIN_DATA_N,
             '再現性': S_MIN_REPRO,
+            '勝率': S_MIN_WIN_PCT,
+        },
+        'thresholds_buy': {
+            'EV': BUY_EV_FLOOR,
+            '信頼度': BUY_CONF_FLOOR,
+            '能力差': BUY_ABILITY_FLOOR,
+            'オッズ上限': BUY_ODDS_MAX,
         },
     }
     empty_rank = {
@@ -1289,12 +1358,23 @@ def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
         _write_rank_perf(out)
         return out
 
-    # 購入対象がある場合は購入分のみ（無い場合は全行）
+    # ランク品質の評価は本命（単勝相当）を主にする。
+    # ワイド・馬連などの複勝系は買い目生成の別問題で、混ぜるとランク改善の
+    # シグナルが消える（実績: 投資判定=買いの本命は回収 ~98%、同レースの
+    # ワイドは回収 0%）。
     base = df
-    if '購入対象' in df.columns:
+    if 'bet_type' in df.columns:
+        honmei = df[df['bet_type'].astype(str) == '本命']
+        if len(honmei) >= 10:
+            base = honmei
+            out['metric'] = '本命チケット'
+    if out.get('metric') != '本命チケット' and '購入対象' in df.columns:
         bought = df[pd.to_numeric(df['購入対象'], errors='coerce').fillna(0).astype(int) == 1]
         if len(bought) >= 10:
             base = bought
+            out['metric'] = '購入対象=1'
+    else:
+        out.setdefault('metric', '全行')
 
     for rk in ('S', 'A', 'B'):
         g = base[base['勝負ランク'].astype(str).str.upper() == rk]

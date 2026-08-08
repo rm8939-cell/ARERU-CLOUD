@@ -1,0 +1,191 @@
+{
+  "pred_files": 28,
+  "analysis_rows": 5991,
+  "honmei_rows": 1258,
+  "by_rank_honmei": {
+    "S": {
+      "bets": 53,
+      "hits": 9,
+      "hit_rate": 17.0,
+      "investment": 5300,
+      "payout": 5150,
+      "recovery": 97.2,
+      "profit": -150,
+      "avg_odds": 10.43
+    },
+    "A": {
+      "bets": 197,
+      "hits": 23,
+      "hit_rate": 11.7,
+      "investment": 19700,
+      "payout": 17140,
+      "recovery": 87.0,
+      "profit": -2560,
+      "avg_odds": 19.62
+    },
+    "B": {
+      "bets": 443,
+      "hits": 64,
+      "hit_rate": 14.4,
+      "investment": 44300,
+      "payout": 32230,
+      "recovery": 72.8,
+      "profit": -12070,
+      "avg_odds": 14.3
+    },
+    "C": {
+      "bets": 398,
+      "hits": 58,
+      "hit_rate": 14.6,
+      "investment": 39800,
+      "payout": 28570,
+      "recovery": 71.8,
+      "profit": -11230,
+      "avg_odds": 23.57
+    },
+    "D": {
+      "bets": 167,
+      "hits": 12,
+      "hit_rate": 7.2,
+      "investment": 16700,
+      "payout": 13670,
+      "recovery": 81.9,
+      "profit": -3030,
+      "avg_odds": 26.27
+    }
+  },
+  "by_rank_buy_honmei": {
+    "S": {
+      "bets": 45,
+      "hits": 6,
+      "hit_rate": 13.3,
+      "investment": 4500,
+      "payout": 4630,
+      "recovery": 102.9,
+      "profit": 130,
+      "avg_odds": 11.72
+    },
+    "A": {
+      "bets": 91,
+      "hits": 9,
+      "hit_rate": 9.9,
+      "investment": 9100,
+      "payout": 8720,
+      "recovery": 95.8,
+      "profit": -380,
+      "avg_odds": 16.9
+    },
+    "B": {
+      "bets": 0
+    },
+    "C": {
+      "bets": 0
+    },
+    "D": {
+      "bets": 0
+    }
+  },
+  "conditions_honmei": [
+    {
+      "label": "rank S/A",
+      "bets": 250,
+      "hit_rate": 12.8,
+      "avg_odds": 17.66,
+      "recovery": 89.2,
+      "profit": -2710
+    },
+    {
+      "label": "invest=買い",
+      "bets": 136,
+      "hit_rate": 11.0,
+      "avg_odds": 15.19,
+      "recovery": 98.2,
+      "profit": -250
+    },
+    {
+      "label": "ability>=80",
+      "bets": 83,
+      "hit_rate": 16.9,
+      "avg_odds": 12.75,
+      "recovery": 116.5,
+      "profit": 1370
+    },
+    {
+      "label": "ability>=70",
+      "bets": 226,
+      "hit_rate": 14.2,
+      "avg_odds": 15.81,
+      "recovery": 76.7,
+      "profit": -5260
+    },
+    {
+      "label": "race_conf>=68",
+      "bets": 274,
+      "hit_rate": 10.9,
+      "avg_odds": 17.46,
+      "recovery": 77.8,
+      "profit": -6080
+    },
+    {
+      "label": "race_conf 48-58",
+      "bets": 134,
+      "hit_rate": 22.4,
+      "avg_odds": 14.56,
+      "recovery": 79.1,
+      "profit": -2800
+    },
+    {
+      "label": "EV>=108 (旧買い閾値)",
+      "bets": 502,
+      "hit_rate": 6.8,
+      "avg_odds": 22.92,
+      "recovery": 72.5,
+      "profit": -13790
+    },
+    {
+      "label": "EV 100-108",
+      "bets": 305,
+      "hit_rate": 10.5,
+      "avg_odds": 24.32,
+      "recovery": 75.5,
+      "profit": -7470
+    },
+    {
+      "label": "odds<=10",
+      "bets": 557,
+      "hit_rate": 22.4,
+      "avg_odds": 5.02,
+      "recovery": 87.3,
+      "profit": -7090
+    },
+    {
+      "label": "odds>50",
+      "bets": 75,
+      "hit_rate": 0.0,
+      "avg_odds": 102.08,
+      "recovery": 0.0,
+      "profit": -7500
+    },
+    {
+      "label": "JRA",
+      "bets": 349,
+      "hit_rate": 12.0,
+      "avg_odds": 16.83,
+      "recovery": 88.6,
+      "profit": -3990
+    },
+    {
+      "label": "NAR",
+      "bets": 909,
+      "hit_rate": 13.6,
+      "avg_odds": 19.15,
+      "recovery": 72.4,
+      "profit": -25050
+    }
+  ],
+  "notes": [
+    "主指標は本命チケット。ワイド等は買い目生成の別問題。",
+    "S は能力差≥80 を主軸にした厳格条件。展開安定≥65 は到達不能だったため廃止。",
+    "買い判定の EV 下限は 108→100。能力差下限とオッズ上限を追加。"
+  ]
+}
