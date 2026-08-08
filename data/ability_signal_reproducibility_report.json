@@ -1,0 +1,1080 @@
+{
+  "purpose": "能力差シグナル単体の再現性検証。ランク条件追加・閾値再調整は禁止。",
+  "no_retuning": true,
+  "split": {
+    "train": "<= 2026-07-28",
+    "test": "> 2026-07-28",
+    "train_n": 631,
+    "test_n": 425
+  },
+  "ability_discrete_values": {
+    "32.0": 152,
+    "45.0": 195,
+    "48.0": 317,
+    "62.0": 168,
+    "75.0": 141,
+    "88.0": 83
+  },
+  "band_note": "実スコアは 32/45/48/62/75/88 のみ。50-59・90-99・100+ は空帯。",
+  "tables": {
+    "全体": {
+      "all": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 168,
+          "hits": 23,
+          "hit_rate": 13.7,
+          "recovery": 95.4,
+          "avg_odds": 17.13,
+          "avg_ev": 107.2,
+          "profit": -770
+        },
+        "70-79": {
+          "n": 141,
+          "hits": 18,
+          "hit_rate": 12.8,
+          "recovery": 54.4,
+          "avg_odds": 17.59,
+          "avg_ev": 108.7,
+          "profit": -6430
+        },
+        "80-89": {
+          "n": 83,
+          "hits": 14,
+          "hit_rate": 16.9,
+          "recovery": 116.5,
+          "avg_odds": 12.75,
+          "avg_ev": 109.3,
+          "profit": 1370
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      },
+      "train": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 83,
+          "hits": 14,
+          "hit_rate": 16.9,
+          "recovery": 142.4,
+          "avg_odds": 18.28,
+          "avg_ev": 105.9,
+          "profit": 3520
+        },
+        "70-79": {
+          "n": 69,
+          "hits": 10,
+          "hit_rate": 14.5,
+          "recovery": 80.0,
+          "avg_odds": 15.57,
+          "avg_ev": 108.2,
+          "profit": -1380
+        },
+        "80-89": {
+          "n": 51,
+          "hits": 11,
+          "hit_rate": 21.6,
+          "recovery": 169.0,
+          "avg_odds": 11.82,
+          "avg_ev": 109.5,
+          "profit": 3520
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      },
+      "test": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 85,
+          "hits": 9,
+          "hit_rate": 10.6,
+          "recovery": 49.5,
+          "avg_odds": 16.02,
+          "avg_ev": 108.5,
+          "profit": -4290
+        },
+        "70-79": {
+          "n": 72,
+          "hits": 8,
+          "hit_rate": 11.1,
+          "recovery": 29.9,
+          "avg_odds": 19.52,
+          "avg_ev": 109.1,
+          "profit": -5050
+        },
+        "80-89": {
+          "n": 32,
+          "hits": 3,
+          "hit_rate": 9.4,
+          "recovery": 32.8,
+          "avg_odds": 14.23,
+          "avg_ev": 108.9,
+          "profit": -2150
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      }
+    },
+    "JRA": {
+      "all": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 38,
+          "hits": 8,
+          "hit_rate": 21.1,
+          "recovery": 152.6,
+          "avg_odds": 8.78,
+          "avg_ev": 105.4,
+          "profit": 2000
+        },
+        "70-79": {
+          "n": 25,
+          "hits": 3,
+          "hit_rate": 12.0,
+          "recovery": 84.0,
+          "avg_odds": 12.3,
+          "avg_ev": 112.2,
+          "profit": -400
+        },
+        "80-89": {
+          "n": 7,
+          "hits": 1,
+          "hit_rate": 14.3,
+          "recovery": 84.3,
+          "avg_odds": 14.06,
+          "avg_ev": 113.1,
+          "profit": -110
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      },
+      "train": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 23,
+          "hits": 6,
+          "hit_rate": 26.1,
+          "recovery": 207.4,
+          "avg_odds": 10.19,
+          "avg_ev": 104.9,
+          "profit": 2470
+        },
+        "70-79": {
+          "n": 14,
+          "hits": 3,
+          "hit_rate": 21.4,
+          "recovery": 150.0,
+          "avg_odds": 9.41,
+          "avg_ev": 110.6,
+          "profit": 700
+        },
+        "80-89": {
+          "n": 5,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_odds": 11.98,
+          "avg_ev": 111.0,
+          "profit": -500
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      },
+      "test": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 15,
+          "hits": 2,
+          "hit_rate": 13.3,
+          "recovery": 68.7,
+          "avg_odds": 6.63,
+          "avg_ev": 106.1,
+          "profit": -470
+        },
+        "70-79": {
+          "n": 11,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_odds": 15.97,
+          "avg_ev": 114.3,
+          "profit": -1100
+        },
+        "80-89": {
+          "n": 2,
+          "hits": 1,
+          "hit_rate": 50.0,
+          "recovery": 295.0,
+          "avg_odds": 19.25,
+          "avg_ev": 118.5,
+          "profit": 390
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      }
+    },
+    "地方": {
+      "all": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 130,
+          "hits": 15,
+          "hit_rate": 11.5,
+          "recovery": 78.7,
+          "avg_odds": 19.58,
+          "avg_ev": 107.7,
+          "profit": -2770
+        },
+        "70-79": {
+          "n": 116,
+          "hits": 15,
+          "hit_rate": 12.9,
+          "recovery": 48.0,
+          "avg_odds": 18.73,
+          "avg_ev": 107.9,
+          "profit": -6030
+        },
+        "80-89": {
+          "n": 76,
+          "hits": 13,
+          "hit_rate": 17.1,
+          "recovery": 119.5,
+          "avg_odds": 12.63,
+          "avg_ev": 108.9,
+          "profit": 1480
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      },
+      "train": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 60,
+          "hits": 8,
+          "hit_rate": 13.3,
+          "recovery": 117.5,
+          "avg_odds": 21.38,
+          "avg_ev": 106.2,
+          "profit": 1050
+        },
+        "70-79": {
+          "n": 55,
+          "hits": 7,
+          "hit_rate": 12.7,
+          "recovery": 62.2,
+          "avg_odds": 17.14,
+          "avg_ev": 107.6,
+          "profit": -2080
+        },
+        "80-89": {
+          "n": 46,
+          "hits": 11,
+          "hit_rate": 23.9,
+          "recovery": 187.4,
+          "avg_odds": 11.81,
+          "avg_ev": 109.3,
+          "profit": 4020
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      },
+      "test": {
+        "50-59": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "60-69": {
+          "n": 70,
+          "hits": 7,
+          "hit_rate": 10.0,
+          "recovery": 45.4,
+          "avg_odds": 18.03,
+          "avg_ev": 109.0,
+          "profit": -3820
+        },
+        "70-79": {
+          "n": 61,
+          "hits": 8,
+          "hit_rate": 13.1,
+          "recovery": 35.2,
+          "avg_odds": 20.16,
+          "avg_ev": 108.1,
+          "profit": -3950
+        },
+        "80-89": {
+          "n": 30,
+          "hits": 2,
+          "hit_rate": 6.7,
+          "recovery": 15.3,
+          "avg_odds": 13.9,
+          "avg_ev": 108.3,
+          "profit": -2540
+        },
+        "90-99": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        },
+        "100+": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": null,
+          "recovery": null,
+          "avg_odds": null,
+          "avg_ev": null,
+          "profit": null
+        }
+      }
+    }
+  },
+  "baseline": {
+    "全体": {
+      "all": {
+        "n": 1056,
+        "hits": 116,
+        "hit_rate": 11.0,
+        "recovery": 62.7,
+        "avg_odds": 18.65,
+        "avg_ev": 106.1,
+        "profit": -39440
+      },
+      "train": {
+        "n": 631,
+        "hits": 65,
+        "hit_rate": 10.3,
+        "recovery": 66.2,
+        "avg_odds": 20.02,
+        "avg_ev": 104.6,
+        "profit": -21350
+      },
+      "test": {
+        "n": 425,
+        "hits": 51,
+        "hit_rate": 12.0,
+        "recovery": 57.4,
+        "avg_odds": 16.61,
+        "avg_ev": 108.4,
+        "profit": -18090
+      }
+    },
+    "JRA": {
+      "all": {
+        "n": 180,
+        "hits": 25,
+        "hit_rate": 13.9,
+        "recovery": 80.1,
+        "avg_odds": 15.99,
+        "avg_ev": 107.9,
+        "profit": -3580
+      },
+      "train": {
+        "n": 108,
+        "hits": 16,
+        "hit_rate": 14.8,
+        "recovery": 93.1,
+        "avg_odds": 17.17,
+        "avg_ev": 107.5,
+        "profit": -740
+      },
+      "test": {
+        "n": 72,
+        "hits": 9,
+        "hit_rate": 12.5,
+        "recovery": 60.6,
+        "avg_odds": 14.21,
+        "avg_ev": 108.5,
+        "profit": -2840
+      }
+    },
+    "地方": {
+      "all": {
+        "n": 841,
+        "hits": 91,
+        "hit_rate": 10.8,
+        "recovery": 61.5,
+        "avg_odds": 19.11,
+        "avg_ev": 106.0,
+        "profit": -32360
+      },
+      "train": {
+        "n": 488,
+        "hits": 49,
+        "hit_rate": 10.0,
+        "recovery": 64.9,
+        "avg_odds": 20.57,
+        "avg_ev": 104.3,
+        "profit": -17110
+      },
+      "test": {
+        "n": 353,
+        "hits": 42,
+        "hit_rate": 11.9,
+        "recovery": 56.8,
+        "avg_odds": 17.1,
+        "avg_ev": 108.4,
+        "profit": -15250
+      }
+    }
+  },
+  "judgments": [
+    {
+      "band": "50-59",
+      "by_scope": {
+        "全体": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        },
+        "JRA": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        },
+        "地方": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        }
+      }
+    },
+    {
+      "band": "60-69",
+      "by_scope": {
+        "全体": {
+          "train": {
+            "n": 83,
+            "hits": 14,
+            "hit_rate": 16.9,
+            "recovery": 142.4,
+            "avg_odds": 18.28,
+            "avg_ev": 105.9,
+            "profit": 3520
+          },
+          "test": {
+            "n": 85,
+            "hits": 9,
+            "hit_rate": 10.6,
+            "recovery": 49.5,
+            "avg_odds": 16.02,
+            "avg_ev": 108.5,
+            "profit": -4290
+          },
+          "edge_train": 76.2,
+          "edge_test": -7.9,
+          "status": "学習のみ優位→未再現/過学習の可能性"
+        },
+        "JRA": {
+          "train": {
+            "n": 23,
+            "hits": 6,
+            "hit_rate": 26.1,
+            "recovery": 207.4,
+            "avg_odds": 10.19,
+            "avg_ev": 104.9,
+            "profit": 2470
+          },
+          "test": {
+            "n": 15,
+            "hits": 2,
+            "hit_rate": 13.3,
+            "recovery": 68.7,
+            "avg_odds": 6.63,
+            "avg_ev": 106.1,
+            "profit": -470
+          },
+          "edge_train": 114.3,
+          "edge_test": 8.1,
+          "status": "学習・検証ともベースライン超過（相対優位のみ）"
+        },
+        "地方": {
+          "train": {
+            "n": 60,
+            "hits": 8,
+            "hit_rate": 13.3,
+            "recovery": 117.5,
+            "avg_odds": 21.38,
+            "avg_ev": 106.2,
+            "profit": 1050
+          },
+          "test": {
+            "n": 70,
+            "hits": 7,
+            "hit_rate": 10.0,
+            "recovery": 45.4,
+            "avg_odds": 18.03,
+            "avg_ev": 109.0,
+            "profit": -3820
+          },
+          "edge_train": 52.6,
+          "edge_test": -11.4,
+          "status": "学習のみ優位→未再現/過学習の可能性"
+        }
+      }
+    },
+    {
+      "band": "70-79",
+      "by_scope": {
+        "全体": {
+          "train": {
+            "n": 69,
+            "hits": 10,
+            "hit_rate": 14.5,
+            "recovery": 80.0,
+            "avg_odds": 15.57,
+            "avg_ev": 108.2,
+            "profit": -1380
+          },
+          "test": {
+            "n": 72,
+            "hits": 8,
+            "hit_rate": 11.1,
+            "recovery": 29.9,
+            "avg_odds": 19.52,
+            "avg_ev": 109.1,
+            "profit": -5050
+          },
+          "edge_train": 13.8,
+          "edge_test": -27.5,
+          "status": "学習のみ優位→未再現/過学習の可能性"
+        },
+        "JRA": {
+          "train": {
+            "n": 14,
+            "hits": 3,
+            "hit_rate": 21.4,
+            "recovery": 150.0,
+            "avg_odds": 9.41,
+            "avg_ev": 110.6,
+            "profit": 700
+          },
+          "test": {
+            "n": 11,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 15.97,
+            "avg_ev": 114.3,
+            "profit": -1100
+          },
+          "edge_train": 56.9,
+          "edge_test": -60.6,
+          "status": "件数不足（再現判定保留）"
+        },
+        "地方": {
+          "train": {
+            "n": 55,
+            "hits": 7,
+            "hit_rate": 12.7,
+            "recovery": 62.2,
+            "avg_odds": 17.14,
+            "avg_ev": 107.6,
+            "profit": -2080
+          },
+          "test": {
+            "n": 61,
+            "hits": 8,
+            "hit_rate": 13.1,
+            "recovery": 35.2,
+            "avg_odds": 20.16,
+            "avg_ev": 108.1,
+            "profit": -3950
+          },
+          "edge_train": -2.7,
+          "edge_test": -21.6,
+          "status": "両期間とも優位なし"
+        }
+      }
+    },
+    {
+      "band": "80-89",
+      "by_scope": {
+        "全体": {
+          "train": {
+            "n": 51,
+            "hits": 11,
+            "hit_rate": 21.6,
+            "recovery": 169.0,
+            "avg_odds": 11.82,
+            "avg_ev": 109.5,
+            "profit": 3520
+          },
+          "test": {
+            "n": 32,
+            "hits": 3,
+            "hit_rate": 9.4,
+            "recovery": 32.8,
+            "avg_odds": 14.23,
+            "avg_ev": 108.9,
+            "profit": -2150
+          },
+          "edge_train": 102.8,
+          "edge_test": -24.6,
+          "status": "学習のみ優位→未再現/過学習の可能性"
+        },
+        "JRA": {
+          "train": {
+            "n": 5,
+            "hits": 0,
+            "hit_rate": 0.0,
+            "recovery": 0.0,
+            "avg_odds": 11.98,
+            "avg_ev": 111.0,
+            "profit": -500
+          },
+          "test": {
+            "n": 2,
+            "hits": 1,
+            "hit_rate": 50.0,
+            "recovery": 295.0,
+            "avg_odds": 19.25,
+            "avg_ev": 118.5,
+            "profit": 390
+          },
+          "edge_train": -93.1,
+          "edge_test": 234.4,
+          "status": "件数不足（再現判定保留）"
+        },
+        "地方": {
+          "train": {
+            "n": 46,
+            "hits": 11,
+            "hit_rate": 23.9,
+            "recovery": 187.4,
+            "avg_odds": 11.81,
+            "avg_ev": 109.3,
+            "profit": 4020
+          },
+          "test": {
+            "n": 30,
+            "hits": 2,
+            "hit_rate": 6.7,
+            "recovery": 15.3,
+            "avg_odds": 13.9,
+            "avg_ev": 108.3,
+            "profit": -2540
+          },
+          "edge_train": 122.5,
+          "edge_test": -41.5,
+          "status": "学習のみ優位→未再現/過学習の可能性"
+        }
+      }
+    },
+    {
+      "band": "90-99",
+      "by_scope": {
+        "全体": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        },
+        "JRA": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        },
+        "地方": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        }
+      }
+    },
+    {
+      "band": "100+",
+      "by_scope": {
+        "全体": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        },
+        "JRA": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        },
+        "地方": {
+          "train": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "test": {
+            "n": 0,
+            "hits": 0,
+            "hit_rate": null,
+            "recovery": null,
+            "avg_odds": null,
+            "avg_ev": null,
+            "profit": null
+          },
+          "edge_train": null,
+          "edge_test": null,
+          "status": "データなし"
+        }
+      }
+    }
+  ],
+  "conclusion": {
+    "absolute_plusEV_reproduced_bands": "なし（要求帯のうち学習・検証とも≥100%かつn十分な帯は無し）",
+    "relative_edge_reproduced": [
+      "JRA:60-69（相対のみ。絶対+EVは検証68.7%）"
+    ],
+    "ability_80_89": {
+      "全体": "学習のみ優位→未再現/過学習の可能性",
+      "JRA": "件数不足（再現判定保留）",
+      "地方": "学習のみ優位→未再現/過学習の可能性",
+      "detail": "地方 train 187.4% → test 15.3%。JRA n=5/2 で判定不能。"
+    },
+    "threshold_ability_ge80": "現時点で不採用が妥当（未来再現が確認できない）",
+    "rank_condition_tuning": "禁止を継続"
+  }
+}
