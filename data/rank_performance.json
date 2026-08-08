@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-08-09T00:05:28+09:00",
+  "updated_at": "2026-08-09T00:32:57+09:00",
   "source": "analysis_result.csv",
-  "note": "S/A/Bの的中率・回収率。今後のS判定閾値改善に利用する（自動学習ではない）。",
+  "note": "S/A/B成績ログ。条件追加による最適化は停止中。能力差≥80 は under_validation（正式採用しない）。",
   "by_rank": {
     "S": {
       "bets": 62,
@@ -32,16 +32,49 @@
     }
   },
   "thresholds_s": {
-    "能力差": 80.0,
     "データ件数": 3,
     "オッズ上限": 50.0,
-    "note": "Sは相対上位ラベル。OOSで長期+EVは未確立（s_rank_robustness_report.json）。"
+    "note": "能力差≥80 は S 条件から外し検証中シグナルとして保持。"
   },
   "thresholds_buy": {
     "EV": 100,
     "信頼度": 58,
     "能力差": 65.0,
     "オッズ上限": 50.0
+  },
+  "signals_under_validation": {
+    "能力差": {
+      "threshold": 80.0,
+      "status": "under_validation",
+      "note": "能力差≥80 は検証中。地方全期間では高回収に見えるが検証期間で崩壊。JRAは全期間n=7・回収84.3%で件数不足（再現性ありとは判断しない）。JRA/地方を分離した再検証まで S 条件へ入れない。",
+      "by_source": {
+        "status": "under_validation",
+        "threshold": 80.0,
+        "adopted_as_S_gate": false,
+        "全体": {
+          "n": 83,
+          "hits": 14,
+          "hit_rate": 16.9,
+          "recovery": 116.5,
+          "avg_odds": 12.75
+        },
+        "JRA": {
+          "n": 7,
+          "hits": 1,
+          "hit_rate": 14.3,
+          "recovery": 84.3,
+          "avg_odds": 14.06
+        },
+        "地方": {
+          "n": 76,
+          "hits": 13,
+          "hit_rate": 17.1,
+          "recovery": 119.5,
+          "avg_odds": 12.63
+        },
+        "note": "能力差≥80 は検証中。地方全期間では高回収に見えるが検証期間で崩壊。JRAは全期間n=7・回収84.3%で件数不足（再現性ありとは判断しない）。JRA/地方を分離した再検証まで S 条件へ入れない。"
+      }
+    }
   },
   "metric": "本命チケット",
   "history": [
@@ -303,6 +336,70 @@
     },
     {
       "updated_at": "2026-08-09T00:05:28+09:00",
+      "by_rank": {
+        "S": {
+          "bets": 62,
+          "hits": 8,
+          "hit_rate": 12.9,
+          "investment": 6200,
+          "payout": 6430,
+          "recovery": 103.7,
+          "profit": 230
+        },
+        "A": {
+          "bets": 199,
+          "hits": 20,
+          "hit_rate": 10.1,
+          "investment": 19900,
+          "payout": 18160,
+          "recovery": 91.3,
+          "profit": -1740
+        },
+        "B": {
+          "bets": 417,
+          "hits": 64,
+          "hit_rate": 15.3,
+          "investment": 41700,
+          "payout": 29140,
+          "recovery": 69.9,
+          "profit": -12560
+        }
+      }
+    },
+    {
+      "updated_at": "2026-08-09T00:32:37+09:00",
+      "by_rank": {
+        "S": {
+          "bets": 62,
+          "hits": 8,
+          "hit_rate": 12.9,
+          "investment": 6200,
+          "payout": 6430,
+          "recovery": 103.7,
+          "profit": 230
+        },
+        "A": {
+          "bets": 199,
+          "hits": 20,
+          "hit_rate": 10.1,
+          "investment": 19900,
+          "payout": 18160,
+          "recovery": 91.3,
+          "profit": -1740
+        },
+        "B": {
+          "bets": 417,
+          "hits": 64,
+          "hit_rate": 15.3,
+          "investment": 41700,
+          "payout": 29140,
+          "recovery": 69.9,
+          "profit": -12560
+        }
+      }
+    },
+    {
+      "updated_at": "2026-08-09T00:32:57+09:00",
       "by_rank": {
         "S": {
           "bets": 62,

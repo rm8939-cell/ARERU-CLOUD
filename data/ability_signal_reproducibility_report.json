@@ -1076,5 +1076,11 @@
     },
     "threshold_ability_ge80": "現時点で不採用が妥当（未来再現が確認できない）",
     "rank_condition_tuning": "禁止を継続"
+  },
+  "formal_adoption": {
+    "ability_ge80_as_S_gate": false,
+    "status": "under_validation",
+    "rank_condition_optimization": "paused",
+    "note": "能力差≥80 は正式採用しない。検証中シグナルとして保持。事実: 地方全期間 n=76 回収119.5%、検証15.3%。JRA全期間 n=7 回収84.3%（件数不足）。※119.5%は地方側でありJRA全期間の数字ではない。"
   }
 }

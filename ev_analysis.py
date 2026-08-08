@@ -28,17 +28,24 @@ BUY_ODDS_MAX = 50.0        # 50 倍超の本命は的中 0 件（実績）
 # 到達不能の根因（main 旧仕様）:
 #   S_MIN_PACE_STABLE=65 だが展開読みやすさ観測max=60 → ANDで S≡0
 #
-# 頑健性検証（data/s_rank_robustness_report.json）の結論:
-#   - 全体回収100%超は学習期間・少数競馬場・上位1〜2的中への依存が大きい
-#   - 検証期間（07-29以降）では複合条件も能力差単独も回収 ~33% で +EV未確立
-#   - AI≥72 / 再現≥62 の追加は OOS を改善せず、条件複雑化による見かけの上振れ
-#   - 再現性優先のため S 必須は最小限にする
+# 方針（2026-08 再現性検証後）:
+#   - S/A/B への条件追加最適化は停止
+#   - 能力差≥80 は正式採用しない（検証中シグナルとして保持のみ）
+#   - 地方全期間の高回収は検証期間で崩壊。JRAは件数不足で再現未確認
+#   - 目的は過去回収最大化ではなく、十分なnで未来再現する条件の確認
 #
-# S = 相対的に強い本命候補（能力差トップ帯）。長期+EV確定ラベルではない。
-S_MIN_ABILITY_GAP = 80.0   # 離散トップ帯（88）。帯別で相対優位の唯一の軸
+# S 必須は運用上の最低品質のみ（回収かさ上げ目的の閾値追加は禁止）。
 S_MIN_DATA_N = 3           # 最低限のデータ品質
 S_MAX_ODDS = 50.0          # 的中0帯の除外（回収かさ上げ目的ではない）。欠損は許容
-# 除外した必須条件: 展開≥65（到達不能）/ 勝率下限（人気寄り）/ AI・再現の高閾値（OOS非改善）
+
+# 検証中シグナル（正式な S/A/B 条件には使わない）
+ABILITY_SIGNAL_WATCH = 80.0
+ABILITY_SIGNAL_STATUS = 'under_validation'  # 正式採用しない
+ABILITY_SIGNAL_NOTE = (
+    '能力差≥80 は検証中。地方全期間では高回収に見えるが検証期間で崩壊。'
+    'JRAは全期間n=7・回収84.3%で件数不足（再現性ありとは判断しない）。'
+    'JRA/地方を分離した再検証まで S 条件へ入れない。'
+)
 
 # tighten_buy_selection の絶対スコア下限（スロット埋めによるランク汚染を防ぐ）
 # 旧 A 下限 40 では信頼度の低いレースまで A に押し上げられ、A 回収が 82% まで低下
@@ -582,13 +589,12 @@ def rank_from_race_confidence(score) -> str:
 def qualify_s_rank(record: dict) -> tuple[bool, dict]:
     """Sランク厳格判定。全条件を満たしたときだけ True。
 
-    再現性優先の最小条件:
-      - 能力差トップ帯（≥80）
+    正式条件（最小）:
       - データ件数≥3
       - 本命オッズ≤50（的中0帯の除外。欠損可）
 
-    S は「相対的に強い本命候補」であり、アウトオブサンプルで
-    長期+EVが確定したラベルではない（頑健性レポート参照）。
+    能力差≥80 は正式条件に含めない（ABILITY_SIGNAL_STATUS=under_validation）。
+    S/A/B への条件追加最適化は停止中。
     """
     # 信頼度パックが未計算なら補完
     if record.get('能力差スコア') is None or record.get('展開読みやすさ') is None:
@@ -608,7 +614,6 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
     odds_ok = odds is None or (0 < odds <= S_MAX_ODDS)
 
     checks = {
-        '能力差': ability >= S_MIN_ABILITY_GAP,
         'データ件数': n >= S_MIN_DATA_N,
         'オッズ': odds_ok,
     }
@@ -616,14 +621,19 @@ def qualify_s_rank(record: dict) -> tuple[bool, dict]:
         '合格': all(checks.values()),
         '条件': checks,
         '値': {
-            '能力差': round(ability, 1),
             'データ件数': n,
             'オッズ': None if odds is None else round(odds, 2),
+            '能力差': round(ability, 1),
         },
         '閾値': {
-            '能力差': S_MIN_ABILITY_GAP,
             'データ件数': S_MIN_DATA_N,
             'オッズ上限': S_MAX_ODDS,
+        },
+        '検証中シグナル': {
+            '能力差': ABILITY_SIGNAL_WATCH,
+            'status': ABILITY_SIGNAL_STATUS,
+            '該当': ability >= ABILITY_SIGNAL_WATCH,
+            'note': ABILITY_SIGNAL_NOTE,
         },
     }
     if not detail['合格']:
@@ -1307,19 +1317,28 @@ def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
     out = {
         'updated_at': datetime.now(jst).isoformat(timespec='seconds'),
         'source': str(src.name),
-        'note': 'S/A/Bの的中率・回収率。今後のS判定閾値改善に利用する（自動学習ではない）。',
+        'note': (
+            'S/A/B成績ログ。条件追加による最適化は停止中。'
+            '能力差≥80 は under_validation（正式採用しない）。'
+        ),
         'by_rank': {},
         'thresholds_s': {
-            '能力差': S_MIN_ABILITY_GAP,
             'データ件数': S_MIN_DATA_N,
             'オッズ上限': S_MAX_ODDS,
-            'note': 'Sは相対上位ラベル。OOSで長期+EVは未確立（s_rank_robustness_report.json）。',
+            'note': '能力差≥80 は S 条件から外し検証中シグナルとして保持。',
         },
         'thresholds_buy': {
             'EV': BUY_EV_FLOOR,
             '信頼度': BUY_CONF_FLOOR,
             '能力差': BUY_ABILITY_FLOOR,
             'オッズ上限': BUY_ODDS_MAX,
+        },
+        'signals_under_validation': {
+            '能力差': {
+                'threshold': ABILITY_SIGNAL_WATCH,
+                'status': ABILITY_SIGNAL_STATUS,
+                'note': ABILITY_SIGNAL_NOTE,
+            },
         },
     }
     empty_rank = {
@@ -1381,6 +1400,12 @@ def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
             'profit': int(pay - inv),
         }
 
+    # 検証中シグナル（能力差≥80）を JRA/地方分離で記録。正式条件には使わない。
+    try:
+        out['signals_under_validation']['能力差']['by_source'] = _ability_signal_watch_stats()
+    except Exception as e:
+        out['signals_under_validation']['能力差']['stats_error'] = str(e)[:200]
+
     # 直近スナップショットを最大30件保持
     prev = {}
     try:
@@ -1396,6 +1421,81 @@ def refresh_rank_performance_log(analysis_csv: Path | None = None) -> dict:
     out['history'] = history[-30:]
     _write_rank_perf(out)
     return out
+
+
+def _ability_signal_watch_stats() -> dict:
+    """能力差≥80 の検証中モニタ（JRA/地方完全分離）。正式採用判定には使わない。"""
+    import re
+    from pathlib import Path as _Path
+
+    root = _Path(__file__).resolve().parent
+    pred_dir = root / 'data' / 'predictions_by_date'
+    results_path = root / 'data' / 'results.csv'
+    if not pred_dir.exists() or not results_path.exists():
+        return {'error': 'predictions/results missing'}
+
+    rows = []
+    for path in sorted(pred_dir.glob('predictions_*.csv')):
+        day = re.search(r'(\d{4}-\d{2}-\d{2})', path.name)
+        df = pd.read_csv(path, dtype=str)
+        df['date'] = day.group(1) if day else ''
+        rows.append(df)
+    if not rows:
+        return {'error': 'no prediction files'}
+    P = pd.concat(rows, ignore_index=True)
+    P['source'] = P.get('source', pd.Series(dtype=str)).astype(str).str.lower()
+    P['能力差スコア'] = pd.to_numeric(P.get('能力差スコア'), errors='coerce')
+    if '本命オッズ' in P.columns:
+        P['本命オッズ'] = pd.to_numeric(
+            P['本命オッズ'].astype(str).str.replace('倍', '', regex=False),
+            errors='coerce',
+        )
+    else:
+        P['本命オッズ'] = pd.NA
+    P['本命馬番_k'] = P.get('本命馬番', pd.Series(dtype=str)).map(
+        lambda x: str(int(float(x))) if safe_float(x) is not None else str(x).strip()
+    )
+
+    R = pd.read_csv(results_path, dtype=str)
+    R['着順_n'] = pd.to_numeric(R['着順'], errors='coerce')
+    W = R[R['着順_n'] == 1][['race_id', '馬番', '確定オッズ']].rename(
+        columns={'馬番': 'win_umaban', '確定オッズ': 'win_odds'}
+    )
+    W['win_umaban'] = W['win_umaban'].astype(str).str.strip()
+    W['win_odds'] = pd.to_numeric(W['win_odds'], errors='coerce')
+    P = P.merge(W, on='race_id', how='inner')
+    P = P[P['本命オッズ'].notna() & (P['本命オッズ'] > 0)].copy()
+    P['hit'] = (P['本命馬番_k'] == P['win_umaban']).astype(int)
+    P['payout'] = 0.0
+    hit_mask = P['hit'] == 1
+    P.loc[hit_mask, 'payout'] = (
+        P.loc[hit_mask, 'win_odds'].fillna(P.loc[hit_mask, '本命オッズ']).fillna(0) * 100
+    )
+    watch = P[P['能力差スコア'] >= ABILITY_SIGNAL_WATCH]
+
+    def _blk(df: pd.DataFrame) -> dict:
+        n = len(df)
+        if n == 0:
+            return {'n': 0, 'hit_rate': None, 'recovery': None, 'avg_odds': None}
+        inv = n * 100.0
+        pay = float(df['payout'].sum())
+        return {
+            'n': int(n),
+            'hits': int(df['hit'].sum()),
+            'hit_rate': round(float(df['hit'].mean() * 100), 1),
+            'recovery': round(pay / inv * 100, 1),
+            'avg_odds': round(float(df['本命オッズ'].mean()), 2),
+        }
+
+    return {
+        'status': ABILITY_SIGNAL_STATUS,
+        'threshold': ABILITY_SIGNAL_WATCH,
+        'adopted_as_S_gate': False,
+        '全体': _blk(watch),
+        'JRA': _blk(watch[watch['source'] == 'jra']),
+        '地方': _blk(watch[watch['source'] == 'nar']),
+        'note': ABILITY_SIGNAL_NOTE,
+    }
 
 
 def _write_rank_perf(payload: dict) -> None:
