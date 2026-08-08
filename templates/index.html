@@ -251,6 +251,9 @@ details.race-acc[open]>.race-acc-body{display:block}
 .simple-summary .ss-rank{font-size:11px;font-weight:800;color:var(--muted)}
 .pick-simple{padding:12px 0;border-bottom:1px solid #eef2f5}
 .pick-simple:last-child{border-bottom:0}
+.pick-simple .ps-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 4px}
+.pick-simple .ps-rank{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+.pick-simple .ps-role{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:0}
 .pick-simple .ps-line{font-size:18px;font-weight:900;margin:0 0 4px}
 .pick-simple .ps-grade{font-size:13px;font-weight:800;color:var(--muted);margin-bottom:6px}
 .pick-simple .ps-grade b{color:var(--brand);font-size:16px;margin-left:4px}
@@ -927,12 +930,16 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endif %}
 
 <div class="section" style="padding-top:12px">
-<div class="section-title">推奨馬</div>
+<div class="section-title">推奨馬（AI上位）</div>
 {% for p in (r.get('予想馬') or []) %}
 <div class="pick-simple">
-<div class="ps-role">{% if p.get('役割')=='本命' %}◎ 本命{% elif p.get('役割')=='対抗' %}○ 対抗{% else %}☆ 注目馬{% endif %}</div>
-<div class="ps-line">{{p.get('表示行') or (p.get('印','') ~ ' ' ~ (p.get('馬番表示') or '') ~ ' ' ~ (p.get('馬名') or ''))}}</div>
+<div class="ps-top">
+<span class="ps-rank">AI {{p.get('AI順位') or loop.index}}位</span>
+<span class="ps-role">{% if p.get('判定') %}{{p.get('印','')}} {{p.get('判定')}}{% elif p.get('役割')=='本命' %}◎ 本命{% elif p.get('役割')=='対抗' %}○ 対抗{% elif p.get('役割')=='注目馬' %}☆ 有力{% else %}{{p.get('印','☆')}} {{p.get('役割') or '相手'}}{% endif %}</span>
+</div>
+<div class="ps-line">{% if p.get('馬番表示') or p.get('馬名') %}{{p.get('馬番表示') or ''}} {{p.get('馬名') or ''}}{% else %}{{p.get('表示行') or '—'}}{% endif %}</div>
 <div class="ps-grade">AI評価：<b>{{p.get('AI評価','—')}}</b></div>
+{% if (p.get('AI順位') or loop.index) <= 3 %}
 <ul>
 {% set tips = p.get('要点') or [] %}
 {% if tips %}
@@ -945,6 +952,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 <li>相手関係を踏まえても残せる内容</li>
 {% endif %}
 </ul>
+{% endif %}
 </div>
 {% else %}
 <div class="reason">予想馬データがありません</div>
