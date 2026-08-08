@@ -1,0 +1,5031 @@
+{
+  "purpose": "地方S本命失敗原因の特徴量分解とS降格仮想BT（コード変更なし）",
+  "s_formal_gates": {
+    "正式": [
+      "データ件数>=3",
+      "本命オッズ<=50"
+    ],
+    "暫定S入口": "レース信頼度>=78 + 枠 + qualify",
+    "合成に使うがS必須ではない": [
+      "AI信頼度",
+      "能力差",
+      "展開読みやすさ",
+      "データ件数スコア",
+      "シミュレーション再現率",
+      "競馬場バイアス"
+    ],
+    "under_validation": "能力差>=80（正式条件ではない）"
+  },
+  "data_gaps": {
+    "距離": "予測CSVにレース単位列なし（全件欠損）",
+    "馬場": "予測CSVにレース単位列なし（全件欠損）"
+  },
+  "split": {
+    "train": "<= 2026-07-28",
+    "test": "> 2026-07-28"
+  },
+  "min_n": {
+    "train": 12,
+    "test": 10,
+    "all": 20
+  },
+  "counts": {
+    "地方S": {
+      "n": 107,
+      "win_n": 6,
+      "place_n": 35,
+      "out_n": 72,
+      "win_rate": 5.6,
+      "place_rate": 32.7,
+      "out_rate": 67.3,
+      "recovery": 53.3,
+      "avg_odds": 19.12,
+      "avg_ev": 115.09
+    },
+    "JRA_S": {
+      "n": 10,
+      "win_n": 2,
+      "place_n": 3,
+      "out_n": 7,
+      "win_rate": 20.0,
+      "place_rate": 30.0,
+      "out_rate": 70.0,
+      "recovery": 149.0,
+      "avg_odds": 18.81,
+      "avg_ev": 118.5
+    },
+    "地方S_学習": {
+      "n": 49,
+      "win_n": 3,
+      "place_n": 15,
+      "out_n": 34,
+      "win_rate": 6.1,
+      "place_rate": 30.6,
+      "out_rate": 69.4,
+      "recovery": 95.3,
+      "avg_odds": 20.43,
+      "avg_ev": 115.43
+    },
+    "地方S_検証": {
+      "n": 58,
+      "win_n": 3,
+      "place_n": 20,
+      "out_n": 38,
+      "win_rate": 5.2,
+      "place_rate": 34.5,
+      "out_rate": 65.5,
+      "recovery": 17.8,
+      "avg_odds": 18.01,
+      "avg_ev": 114.81
+    },
+    "outcome_dist_地方": {
+      "1着": 6,
+      "複勝圏(2-3)": 29,
+      "圏外": 72
+    },
+    "outcome_dist_JRA": {
+      "圏外": 7,
+      "1着": 2,
+      "複勝圏(2-3)": 1
+    }
+  },
+  "implement_now": false,
+  "place_vs_out_means": {
+    "地方_全期間": {
+      "place_n": 35,
+      "out_n": 72,
+      "win_n": 6,
+      "place23_n": 29,
+      "place_means": {
+        "能力差": 74.57,
+        "AI": 77.59,
+        "EV": 114.09,
+        "人気": 4.26,
+        "オッズ": 15.23,
+        "勝率": 19.96,
+        "再現率": 82.98,
+        "レース信頼度": 72.5,
+        "展開読みやすさ": 46.06,
+        "データ件数": 4.94,
+        "競馬場バイアス": 49.85,
+        "荒れ度": 58.97,
+        "荒れ指数": 66.0,
+        "適正オッズ": 9.39,
+        "逃げ有利度": 36.29,
+        "先行有利度": 47.37,
+        "差し有利度": 66.17
+      },
+      "out_means": {
+        "能力差": 79.99,
+        "AI": 77.95,
+        "EV": 115.58,
+        "人気": 5.26,
+        "オッズ": 21.01,
+        "勝率": 18.61,
+        "再現率": 83.32,
+        "レース信頼度": 73.12,
+        "展開読みやすさ": 43.08,
+        "データ件数": 4.97,
+        "競馬場バイアス": 49.43,
+        "荒れ度": 61.63,
+        "荒れ指数": 71.19,
+        "適正オッズ": 12.72,
+        "逃げ有利度": 35.11,
+        "先行有利度": 46.44,
+        "差し有利度": 67.04
+      },
+      "diffs_sorted": [
+        {
+          "feature": "オッズ",
+          "place_mean": 15.23,
+          "out_mean": 21.01,
+          "diff_out_minus_place": 5.77,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "能力差",
+          "place_mean": 74.57,
+          "out_mean": 79.99,
+          "diff_out_minus_place": 5.41,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "荒れ指数",
+          "place_mean": 66.0,
+          "out_mean": 71.19,
+          "diff_out_minus_place": 5.19,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "適正オッズ",
+          "place_mean": 9.39,
+          "out_mean": 12.72,
+          "diff_out_minus_place": 3.33,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "展開読みやすさ",
+          "place_mean": 46.06,
+          "out_mean": 43.08,
+          "diff_out_minus_place": -2.97,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "荒れ度",
+          "place_mean": 58.97,
+          "out_mean": 61.63,
+          "diff_out_minus_place": 2.66,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "EV",
+          "place_mean": 114.09,
+          "out_mean": 115.58,
+          "diff_out_minus_place": 1.5,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "勝率",
+          "place_mean": 19.96,
+          "out_mean": 18.61,
+          "diff_out_minus_place": -1.35,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "逃げ有利度",
+          "place_mean": 36.29,
+          "out_mean": 35.11,
+          "diff_out_minus_place": -1.17,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "人気",
+          "place_mean": 4.26,
+          "out_mean": 5.26,
+          "diff_out_minus_place": 1.01,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "先行有利度",
+          "place_mean": 47.37,
+          "out_mean": 46.44,
+          "diff_out_minus_place": -0.93,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "差し有利度",
+          "place_mean": 66.17,
+          "out_mean": 67.04,
+          "diff_out_minus_place": 0.87,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "レース信頼度",
+          "place_mean": 72.5,
+          "out_mean": 73.12,
+          "diff_out_minus_place": 0.62,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "競馬場バイアス",
+          "place_mean": 49.85,
+          "out_mean": 49.43,
+          "diff_out_minus_place": -0.42,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "AI",
+          "place_mean": 77.59,
+          "out_mean": 77.95,
+          "diff_out_minus_place": 0.36,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "再現率",
+          "place_mean": 82.98,
+          "out_mean": 83.32,
+          "diff_out_minus_place": 0.34,
+          "place_n": 35,
+          "out_n": 72
+        },
+        {
+          "feature": "データ件数",
+          "place_mean": 4.94,
+          "out_mean": 4.97,
+          "diff_out_minus_place": 0.03,
+          "place_n": 35,
+          "out_n": 72
+        }
+      ]
+    },
+    "地方_学習": {
+      "place_n": 15,
+      "out_n": 34,
+      "diffs_sorted": [
+        {
+          "feature": "逃げ有利度",
+          "place_mean": 40.93,
+          "out_mean": 34.35,
+          "diff_out_minus_place": -6.58,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "能力差",
+          "place_mean": 77.53,
+          "out_mean": 82.24,
+          "diff_out_minus_place": 4.7,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "差し有利度",
+          "place_mean": 62.93,
+          "out_mean": 67.5,
+          "diff_out_minus_place": 4.57,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "荒れ指数",
+          "place_mean": 64.13,
+          "out_mean": 68.53,
+          "diff_out_minus_place": 4.4,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "先行有利度",
+          "place_mean": 50.27,
+          "out_mean": 46.24,
+          "diff_out_minus_place": -4.03,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "勝率",
+          "place_mean": 17.99,
+          "out_mean": 19.3,
+          "diff_out_minus_place": 1.31,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "EV",
+          "place_mean": 114.67,
+          "out_mean": 115.76,
+          "diff_out_minus_place": 1.1,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "レース信頼度",
+          "place_mean": 73.05,
+          "out_mean": 74.01,
+          "diff_out_minus_place": 0.95,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "展開読みやすさ",
+          "place_mean": 46.93,
+          "out_mean": 46.06,
+          "diff_out_minus_place": -0.87,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "荒れ度",
+          "place_mean": 58.84,
+          "out_mean": 59.59,
+          "diff_out_minus_place": 0.75,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "競馬場バイアス",
+          "place_mean": 48.08,
+          "out_mean": 48.75,
+          "diff_out_minus_place": 0.67,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "AI",
+          "place_mean": 78.13,
+          "out_mean": 78.53,
+          "diff_out_minus_place": 0.4,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "再現率",
+          "place_mean": 84.01,
+          "out_mean": 83.66,
+          "diff_out_minus_place": -0.34,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "人気",
+          "place_mean": 4.67,
+          "out_mean": 4.97,
+          "diff_out_minus_place": 0.3,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "適正オッズ",
+          "place_mean": 12.09,
+          "out_mean": 12.24,
+          "diff_out_minus_place": 0.16,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "オッズ",
+          "place_mean": 20.41,
+          "out_mean": 20.43,
+          "diff_out_minus_place": 0.02,
+          "place_n": 15,
+          "out_n": 34
+        },
+        {
+          "feature": "データ件数",
+          "place_mean": 5.0,
+          "out_mean": 5.0,
+          "diff_out_minus_place": 0.0,
+          "place_n": 15,
+          "out_n": 34
+        }
+      ]
+    },
+    "地方_検証": {
+      "place_n": 20,
+      "out_n": 38,
+      "diffs_sorted": [
+        {
+          "feature": "オッズ",
+          "place_mean": 11.35,
+          "out_mean": 21.52,
+          "diff_out_minus_place": 10.17,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "荒れ指数",
+          "place_mean": 67.4,
+          "out_mean": 73.58,
+          "diff_out_minus_place": 6.18,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "適正オッズ",
+          "place_mean": 7.37,
+          "out_mean": 13.15,
+          "diff_out_minus_place": 5.78,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "能力差",
+          "place_mean": 72.35,
+          "out_mean": 77.97,
+          "diff_out_minus_place": 5.62,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "展開読みやすさ",
+          "place_mean": 45.4,
+          "out_mean": 40.42,
+          "diff_out_minus_place": -4.98,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "荒れ度",
+          "place_mean": 59.08,
+          "out_mean": 63.46,
+          "diff_out_minus_place": 4.39,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "勝率",
+          "place_mean": 21.44,
+          "out_mean": 17.99,
+          "diff_out_minus_place": -3.45,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "逃げ有利度",
+          "place_mean": 32.8,
+          "out_mean": 35.79,
+          "diff_out_minus_place": 2.99,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "差し有利度",
+          "place_mean": 68.6,
+          "out_mean": 66.63,
+          "diff_out_minus_place": -1.97,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "EV",
+          "place_mean": 113.65,
+          "out_mean": 115.42,
+          "diff_out_minus_place": 1.77,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "人気",
+          "place_mean": 3.95,
+          "out_mean": 5.53,
+          "diff_out_minus_place": 1.58,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "先行有利度",
+          "place_mean": 45.2,
+          "out_mean": 46.63,
+          "diff_out_minus_place": 1.43,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "競馬場バイアス",
+          "place_mean": 51.18,
+          "out_mean": 50.04,
+          "diff_out_minus_place": -1.14,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "再現率",
+          "place_mean": 82.2,
+          "out_mean": 83.01,
+          "diff_out_minus_place": 0.8,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "AI",
+          "place_mean": 77.18,
+          "out_mean": 77.42,
+          "diff_out_minus_place": 0.24,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "レース信頼度",
+          "place_mean": 72.09,
+          "out_mean": 72.32,
+          "diff_out_minus_place": 0.24,
+          "place_n": 20,
+          "out_n": 38
+        },
+        {
+          "feature": "データ件数",
+          "place_mean": 4.9,
+          "out_mean": 4.95,
+          "diff_out_minus_place": 0.05,
+          "place_n": 20,
+          "out_n": 38
+        }
+      ]
+    },
+    "JRA_参考_件数不足": {
+      "n": 10,
+      "place_n": 3,
+      "out_n": 7,
+      "note": "JRA/Sはn不足。地方結論をJRAへ適用しない。"
+    }
+  },
+  "feature_slices_地方S": {
+    "pop_band": [
+      {
+        "band": "10人気+",
+        "all": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 73.1,
+          "avg_ev": 112.0
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 73.1,
+          "avg_ev": 112.0
+        },
+        "test": {
+          "n": 0
+        },
+        "delta_place_all": -32.7,
+        "delta_place_train": -30.6,
+        "delta_place_test": null,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "1人気",
+        "all": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 0,
+          "win_rate": 0.0,
+          "place_rate": 100.0,
+          "out_rate": 0.0,
+          "recovery": 0.0,
+          "avg_odds": 3.3,
+          "avg_ev": 92.0
+        },
+        "train": {
+          "n": 0
+        },
+        "test": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 0,
+          "win_rate": 0.0,
+          "place_rate": 100.0,
+          "out_rate": 0.0,
+          "recovery": 0.0,
+          "avg_odds": 3.3,
+          "avg_ev": 92.0
+        },
+        "delta_place_all": 67.3,
+        "delta_place_train": null,
+        "delta_place_test": 65.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "2-3人気",
+        "all": {
+          "n": 26,
+          "win_n": 4,
+          "place_n": 11,
+          "out_n": 15,
+          "win_rate": 15.4,
+          "place_rate": 42.3,
+          "out_rate": 57.7,
+          "recovery": 61.2,
+          "avg_odds": 7.97,
+          "avg_ev": 111.42
+        },
+        "train": {
+          "n": 14,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 10,
+          "win_rate": 7.1,
+          "place_rate": 28.6,
+          "out_rate": 71.4,
+          "recovery": 40.0,
+          "avg_odds": 9.06,
+          "avg_ev": 114.79
+        },
+        "test": {
+          "n": 12,
+          "win_n": 3,
+          "place_n": 7,
+          "out_n": 5,
+          "win_rate": 25.0,
+          "place_rate": 58.3,
+          "out_rate": 41.7,
+          "recovery": 85.8,
+          "avg_odds": 6.71,
+          "avg_ev": 107.5
+        },
+        "delta_place_all": 9.6,
+        "delta_place_train": -2.0,
+        "delta_place_test": 23.8,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "4-5人気",
+        "all": {
+          "n": 43,
+          "win_n": 0,
+          "place_n": 17,
+          "out_n": 26,
+          "win_rate": 0.0,
+          "place_rate": 39.5,
+          "out_rate": 60.5,
+          "recovery": 0.0,
+          "avg_odds": 14.63,
+          "avg_ev": 117.51
+        },
+        "train": {
+          "n": 20,
+          "win_n": 0,
+          "place_n": 7,
+          "out_n": 13,
+          "win_rate": 0.0,
+          "place_rate": 35.0,
+          "out_rate": 65.0,
+          "recovery": 0.0,
+          "avg_odds": 13.91,
+          "avg_ev": 116.3
+        },
+        "test": {
+          "n": 23,
+          "win_n": 0,
+          "place_n": 10,
+          "out_n": 13,
+          "win_rate": 0.0,
+          "place_rate": 43.5,
+          "out_rate": 56.5,
+          "recovery": 0.0,
+          "avg_odds": 15.25,
+          "avg_ev": 118.57
+        },
+        "delta_place_all": 6.8,
+        "delta_place_train": 4.4,
+        "delta_place_test": 9.0,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "6-9人気",
+        "all": {
+          "n": 35,
+          "win_n": 2,
+          "place_n": 6,
+          "out_n": 29,
+          "win_rate": 5.7,
+          "place_rate": 17.1,
+          "out_rate": 82.9,
+          "recovery": 117.4,
+          "avg_odds": 30.28,
+          "avg_ev": 115.69
+        },
+        "train": {
+          "n": 13,
+          "win_n": 2,
+          "place_n": 4,
+          "out_n": 9,
+          "win_rate": 15.4,
+          "place_rate": 30.8,
+          "out_rate": 69.2,
+          "recovery": 316.2,
+          "avg_odds": 34.59,
+          "avg_ev": 115.31
+        },
+        "test": {
+          "n": 22,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 20,
+          "win_rate": 0.0,
+          "place_rate": 9.1,
+          "out_rate": 90.9,
+          "recovery": 0.0,
+          "avg_odds": 27.73,
+          "avg_ev": 115.91
+        },
+        "delta_place_all": -15.6,
+        "delta_place_train": 0.2,
+        "delta_place_test": -25.4,
+        "n_ok": true,
+        "fragile": false,
+        "status": "検証のみ悪化→過学習疑い（採用しない）"
+      }
+    ],
+    "odds_band": [
+      {
+        "band": "12-20",
+        "all": {
+          "n": 32,
+          "win_n": 1,
+          "place_n": 11,
+          "out_n": 21,
+          "win_rate": 3.1,
+          "place_rate": 34.4,
+          "out_rate": 65.6,
+          "recovery": 51.9,
+          "avg_odds": 16.1,
+          "avg_ev": 117.06
+        },
+        "train": {
+          "n": 13,
+          "win_n": 1,
+          "place_n": 7,
+          "out_n": 6,
+          "win_rate": 7.7,
+          "place_rate": 53.8,
+          "out_rate": 46.2,
+          "recovery": 127.7,
+          "avg_odds": 17.09,
+          "avg_ev": 116.38
+        },
+        "test": {
+          "n": 19,
+          "win_n": 0,
+          "place_n": 4,
+          "out_n": 15,
+          "win_rate": 0.0,
+          "place_rate": 21.1,
+          "out_rate": 78.9,
+          "recovery": 0.0,
+          "avg_odds": 15.42,
+          "avg_ev": 117.53
+        },
+        "delta_place_all": 1.7,
+        "delta_place_train": 23.2,
+        "delta_place_test": -13.4,
+        "n_ok": true,
+        "fragile": false,
+        "status": "学習/検証で逆方向→過学習・不安定（採用しない）"
+      },
+      {
+        "band": "20-50",
+        "all": {
+          "n": 25,
+          "win_n": 1,
+          "place_n": 6,
+          "out_n": 19,
+          "win_rate": 4.0,
+          "place_rate": 24.0,
+          "out_rate": 76.0,
+          "recovery": 98.0,
+          "avg_odds": 30.76,
+          "avg_ev": 115.4
+        },
+        "train": {
+          "n": 13,
+          "win_n": 1,
+          "place_n": 2,
+          "out_n": 11,
+          "win_rate": 7.7,
+          "place_rate": 15.4,
+          "out_rate": 84.6,
+          "recovery": 188.5,
+          "avg_odds": 32.05,
+          "avg_ev": 115.85
+        },
+        "test": {
+          "n": 12,
+          "win_n": 0,
+          "place_n": 4,
+          "out_n": 8,
+          "win_rate": 0.0,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 0.0,
+          "avg_odds": 29.36,
+          "avg_ev": 114.92
+        },
+        "delta_place_all": -8.7,
+        "delta_place_train": -15.2,
+        "delta_place_test": -1.2,
+        "n_ok": true,
+        "fragile": false,
+        "status": "学習のみ悪化→不安定（採用しない）"
+      },
+      {
+        "band": "3-5",
+        "all": {
+          "n": 10,
+          "win_n": 2,
+          "place_n": 5,
+          "out_n": 5,
+          "win_rate": 20.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 83.0,
+          "avg_odds": 4.11,
+          "avg_ev": 107.0
+        },
+        "train": {
+          "n": 3,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 3,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 3.9,
+          "avg_ev": 112.0
+        },
+        "test": {
+          "n": 7,
+          "win_n": 2,
+          "place_n": 5,
+          "out_n": 2,
+          "win_rate": 28.6,
+          "place_rate": 71.4,
+          "out_rate": 28.6,
+          "recovery": 118.6,
+          "avg_odds": 4.2,
+          "avg_ev": 104.86
+        },
+        "delta_place_all": 17.3,
+        "delta_place_train": -30.6,
+        "delta_place_test": 36.9,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "5-8",
+        "all": {
+          "n": 14,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 9,
+          "win_rate": 7.1,
+          "place_rate": 35.7,
+          "out_rate": 64.3,
+          "recovery": 40.0,
+          "avg_odds": 6.32,
+          "avg_ev": 113.0
+        },
+        "train": {
+          "n": 7,
+          "win_n": 1,
+          "place_n": 3,
+          "out_n": 4,
+          "win_rate": 14.3,
+          "place_rate": 42.9,
+          "out_rate": 57.1,
+          "recovery": 80.0,
+          "avg_odds": 6.1,
+          "avg_ev": 111.14
+        },
+        "test": {
+          "n": 7,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 5,
+          "win_rate": 0.0,
+          "place_rate": 28.6,
+          "out_rate": 71.4,
+          "recovery": 0.0,
+          "avg_odds": 6.54,
+          "avg_ev": 114.86
+        },
+        "delta_place_all": 3.0,
+        "delta_place_train": 12.3,
+        "delta_place_test": -5.9,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "8-12",
+        "all": {
+          "n": 20,
+          "win_n": 0,
+          "place_n": 6,
+          "out_n": 14,
+          "win_rate": 0.0,
+          "place_rate": 30.0,
+          "out_rate": 70.0,
+          "recovery": 0.0,
+          "avg_odds": 9.81,
+          "avg_ev": 118.8
+        },
+        "train": {
+          "n": 10,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 8,
+          "win_rate": 0.0,
+          "place_rate": 20.0,
+          "out_rate": 80.0,
+          "recovery": 0.0,
+          "avg_odds": 9.76,
+          "avg_ev": 118.9
+        },
+        "test": {
+          "n": 10,
+          "win_n": 0,
+          "place_n": 4,
+          "out_n": 6,
+          "win_rate": 0.0,
+          "place_rate": 40.0,
+          "out_rate": 60.0,
+          "recovery": 0.0,
+          "avg_odds": 9.86,
+          "avg_ev": 118.7
+        },
+        "delta_place_all": -2.7,
+        "delta_place_train": -10.6,
+        "delta_place_test": 5.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "全期間のみ件数十分（期間分離不足→採用慎重）"
+      },
+      {
+        "band": "<=3",
+        "all": {
+          "n": 2,
+          "win_n": 1,
+          "place_n": 1,
+          "out_n": 1,
+          "win_rate": 50.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 100.0,
+          "avg_odds": 2.4,
+          "avg_ev": 102.0
+        },
+        "train": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 2.8,
+          "avg_ev": 114.0
+        },
+        "test": {
+          "n": 1,
+          "win_n": 1,
+          "place_n": 1,
+          "out_n": 0,
+          "win_rate": 100.0,
+          "place_rate": 100.0,
+          "out_rate": 0.0,
+          "recovery": 200.0,
+          "avg_odds": 2.0,
+          "avg_ev": 90.0
+        },
+        "delta_place_all": 17.3,
+        "delta_place_train": -30.6,
+        "delta_place_test": 65.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": ">50",
+        "all": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 3,
+          "win_rate": 0.0,
+          "place_rate": 25.0,
+          "out_rate": 75.0,
+          "recovery": 0.0,
+          "avg_odds": 107.67,
+          "avg_ev": 113.0
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 0.0,
+          "avg_odds": 103.6,
+          "avg_ev": 110.0
+        },
+        "test": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 111.75,
+          "avg_ev": 116.0
+        },
+        "delta_place_all": -7.7,
+        "delta_place_train": 19.4,
+        "delta_place_test": -34.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      }
+    ],
+    "ev_band": [
+      {
+        "band": "100-108",
+        "all": {
+          "n": 2,
+          "win_n": 1,
+          "place_n": 1,
+          "out_n": 1,
+          "win_rate": 50.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 215.0,
+          "avg_odds": 66.05,
+          "avg_ev": 106.5
+        },
+        "train": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 127.8,
+          "avg_ev": 107.0
+        },
+        "test": {
+          "n": 1,
+          "win_n": 1,
+          "place_n": 1,
+          "out_n": 0,
+          "win_rate": 100.0,
+          "place_rate": 100.0,
+          "out_rate": 0.0,
+          "recovery": 430.0,
+          "avg_odds": 4.3,
+          "avg_ev": 106.0
+        },
+        "delta_place_all": 17.3,
+        "delta_place_train": -30.6,
+        "delta_place_test": 65.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "108-115",
+        "all": {
+          "n": 23,
+          "win_n": 2,
+          "place_n": 9,
+          "out_n": 14,
+          "win_rate": 8.7,
+          "place_rate": 39.1,
+          "out_rate": 60.9,
+          "recovery": 96.5,
+          "avg_odds": 22.03,
+          "avg_ev": 111.91
+        },
+        "train": {
+          "n": 14,
+          "win_n": 2,
+          "place_n": 7,
+          "out_n": 7,
+          "win_rate": 14.3,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 158.6,
+          "avg_odds": 21.26,
+          "avg_ev": 112.07
+        },
+        "test": {
+          "n": 9,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 7,
+          "win_rate": 0.0,
+          "place_rate": 22.2,
+          "out_rate": 77.8,
+          "recovery": 0.0,
+          "avg_odds": 23.21,
+          "avg_ev": 111.67
+        },
+        "delta_place_all": 6.4,
+        "delta_place_train": 19.4,
+        "delta_place_test": -12.3,
+        "n_ok": false,
+        "fragile": false,
+        "status": "全期間のみ件数十分（期間分離不足→採用慎重）"
+      },
+      {
+        "band": "115-120",
+        "all": {
+          "n": 53,
+          "win_n": 1,
+          "place_n": 15,
+          "out_n": 38,
+          "win_rate": 1.9,
+          "place_rate": 28.3,
+          "out_rate": 71.7,
+          "recovery": 46.2,
+          "avg_odds": 21.18,
+          "avg_ev": 117.3
+        },
+        "train": {
+          "n": 20,
+          "win_n": 1,
+          "place_n": 6,
+          "out_n": 14,
+          "win_rate": 5.0,
+          "place_rate": 30.0,
+          "out_rate": 70.0,
+          "recovery": 122.5,
+          "avg_odds": 21.74,
+          "avg_ev": 116.7
+        },
+        "test": {
+          "n": 33,
+          "win_n": 0,
+          "place_n": 9,
+          "out_n": 24,
+          "win_rate": 0.0,
+          "place_rate": 27.3,
+          "out_rate": 72.7,
+          "recovery": 0.0,
+          "avg_odds": 20.84,
+          "avg_ev": 117.67
+        },
+        "delta_place_all": -4.4,
+        "delta_place_train": -0.6,
+        "delta_place_test": -7.2,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "<100",
+        "all": {
+          "n": 7,
+          "win_n": 1,
+          "place_n": 3,
+          "out_n": 4,
+          "win_rate": 14.3,
+          "place_rate": 42.9,
+          "out_rate": 57.1,
+          "recovery": 28.6,
+          "avg_odds": 4.37,
+          "avg_ev": 92.57
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 4.75,
+          "avg_ev": 96.0
+        },
+        "test": {
+          "n": 5,
+          "win_n": 1,
+          "place_n": 3,
+          "out_n": 2,
+          "win_rate": 20.0,
+          "place_rate": 60.0,
+          "out_rate": 40.0,
+          "recovery": 40.0,
+          "avg_odds": 4.22,
+          "avg_ev": 91.2
+        },
+        "delta_place_all": 10.2,
+        "delta_place_train": -30.6,
+        "delta_place_test": 25.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": ">=120",
+        "all": {
+          "n": 22,
+          "win_n": 1,
+          "place_n": 7,
+          "out_n": 15,
+          "win_rate": 4.5,
+          "place_rate": 31.8,
+          "out_rate": 68.2,
+          "recovery": 18.2,
+          "avg_odds": 11.54,
+          "avg_ev": 121.05
+        },
+        "train": {
+          "n": 12,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 10,
+          "win_rate": 0.0,
+          "place_rate": 16.7,
+          "out_rate": 83.3,
+          "recovery": 0.0,
+          "avg_odds": 10.92,
+          "avg_ev": 121.17
+        },
+        "test": {
+          "n": 10,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 5,
+          "win_rate": 10.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 40.0,
+          "avg_odds": 12.27,
+          "avg_ev": 120.9
+        },
+        "delta_place_all": -0.9,
+        "delta_place_train": -13.9,
+        "delta_place_test": 15.5,
+        "n_ok": true,
+        "fragile": false,
+        "status": "学習/検証で逆方向→過学習・不安定（採用しない）"
+      }
+    ],
+    "ai_band": [
+      {
+        "band": "70-80",
+        "all": {
+          "n": 73,
+          "win_n": 5,
+          "place_n": 30,
+          "out_n": 43,
+          "win_rate": 6.8,
+          "place_rate": 41.1,
+          "out_rate": 58.9,
+          "recovery": 44.5,
+          "avg_odds": 18.34,
+          "avg_ev": 114.64
+        },
+        "train": {
+          "n": 32,
+          "win_n": 2,
+          "place_n": 11,
+          "out_n": 21,
+          "win_rate": 6.2,
+          "place_rate": 34.4,
+          "out_rate": 65.6,
+          "recovery": 69.4,
+          "avg_odds": 19.77,
+          "avg_ev": 115.03
+        },
+        "test": {
+          "n": 41,
+          "win_n": 3,
+          "place_n": 19,
+          "out_n": 22,
+          "win_rate": 7.3,
+          "place_rate": 46.3,
+          "out_rate": 53.7,
+          "recovery": 25.1,
+          "avg_odds": 17.22,
+          "avg_ev": 114.34
+        },
+        "delta_place_all": 8.4,
+        "delta_place_train": 3.8,
+        "delta_place_test": 11.8,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "<70",
+        "all": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 61.8,
+          "avg_ev": 108.25
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 86.85,
+          "avg_ev": 108.0
+        },
+        "test": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 36.75,
+          "avg_ev": 108.5
+        },
+        "delta_place_all": -32.7,
+        "delta_place_train": -30.6,
+        "delta_place_test": -34.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": ">=80",
+        "all": {
+          "n": 30,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 25,
+          "win_rate": 3.3,
+          "place_rate": 16.7,
+          "out_rate": 83.3,
+          "recovery": 81.7,
+          "avg_odds": 15.32,
+          "avg_ev": 117.1
+        },
+        "train": {
+          "n": 15,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 11,
+          "win_rate": 6.7,
+          "place_rate": 26.7,
+          "out_rate": 73.3,
+          "recovery": 163.3,
+          "avg_odds": 12.98,
+          "avg_ev": 117.27
+        },
+        "test": {
+          "n": 15,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 14,
+          "win_rate": 0.0,
+          "place_rate": 6.7,
+          "out_rate": 93.3,
+          "recovery": 0.0,
+          "avg_odds": 17.66,
+          "avg_ev": 116.93
+        },
+        "delta_place_all": -16.0,
+        "delta_place_train": -3.9,
+        "delta_place_test": -27.8,
+        "n_ok": true,
+        "fragile": false,
+        "status": "検証のみ悪化→過学習疑い（採用しない）"
+      }
+    ],
+    "ab_band": [
+      {
+        "band": "51-70",
+        "all": {
+          "n": 13,
+          "win_n": 0,
+          "place_n": 8,
+          "out_n": 5,
+          "win_rate": 0.0,
+          "place_rate": 61.5,
+          "out_rate": 38.5,
+          "recovery": 0.0,
+          "avg_odds": 13.47,
+          "avg_ev": 118.54
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 0.0,
+          "avg_odds": 12.9,
+          "avg_ev": 119.0
+        },
+        "test": {
+          "n": 11,
+          "win_n": 0,
+          "place_n": 7,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 63.6,
+          "out_rate": 36.4,
+          "recovery": 0.0,
+          "avg_odds": 13.57,
+          "avg_ev": 118.45
+        },
+        "delta_place_all": 28.8,
+        "delta_place_train": 19.4,
+        "delta_place_test": 29.1,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "71-79",
+        "all": {
+          "n": 41,
+          "win_n": 2,
+          "place_n": 14,
+          "out_n": 27,
+          "win_rate": 4.9,
+          "place_rate": 34.1,
+          "out_rate": 65.9,
+          "recovery": 20.2,
+          "avg_odds": 22.01,
+          "avg_ev": 114.83
+        },
+        "train": {
+          "n": 17,
+          "win_n": 0,
+          "place_n": 7,
+          "out_n": 10,
+          "win_rate": 0.0,
+          "place_rate": 41.2,
+          "out_rate": 58.8,
+          "recovery": 0.0,
+          "avg_odds": 23.69,
+          "avg_ev": 115.65
+        },
+        "test": {
+          "n": 24,
+          "win_n": 2,
+          "place_n": 7,
+          "out_n": 17,
+          "win_rate": 8.3,
+          "place_rate": 29.2,
+          "out_rate": 70.8,
+          "recovery": 34.6,
+          "avg_odds": 20.83,
+          "avg_ev": 114.25
+        },
+        "delta_place_all": 1.4,
+        "delta_place_train": 10.6,
+        "delta_place_test": -5.3,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "<=50",
+        "all": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 0.0,
+          "avg_odds": 10.47,
+          "avg_ev": 119.25
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 0.0,
+          "avg_odds": 10.8,
+          "avg_ev": 119.5
+        },
+        "test": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 0.0,
+          "avg_odds": 10.15,
+          "avg_ev": 119.0
+        },
+        "delta_place_all": 17.3,
+        "delta_place_train": 19.4,
+        "delta_place_test": 15.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": ">=80",
+        "all": {
+          "n": 49,
+          "win_n": 4,
+          "place_n": 11,
+          "out_n": 38,
+          "win_rate": 8.2,
+          "place_rate": 22.4,
+          "out_rate": 77.6,
+          "recovery": 99.4,
+          "avg_odds": 18.9,
+          "avg_ev": 114.06
+        },
+        "train": {
+          "n": 28,
+          "win_n": 3,
+          "place_n": 6,
+          "out_n": 22,
+          "win_rate": 10.7,
+          "place_rate": 21.4,
+          "out_rate": 78.6,
+          "recovery": 166.8,
+          "avg_odds": 19.67,
+          "avg_ev": 114.75
+        },
+        "test": {
+          "n": 21,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 16,
+          "win_rate": 4.8,
+          "place_rate": 23.8,
+          "out_rate": 76.2,
+          "recovery": 9.5,
+          "avg_odds": 17.86,
+          "avg_ev": 113.14
+        },
+        "delta_place_all": -10.3,
+        "delta_place_train": -9.2,
+        "delta_place_test": -10.7,
+        "n_ok": true,
+        "fragile": true,
+        "status": "両期間で複勝率悪化（再現あり・悪化条件）"
+      }
+    ],
+    "rc_band": [
+      {
+        "band": "70-78",
+        "all": {
+          "n": 77,
+          "win_n": 6,
+          "place_n": 25,
+          "out_n": 52,
+          "win_rate": 7.8,
+          "place_rate": 32.5,
+          "out_rate": 67.5,
+          "recovery": 74.0,
+          "avg_odds": 18.37,
+          "avg_ev": 115.18
+        },
+        "train": {
+          "n": 36,
+          "win_n": 3,
+          "place_n": 10,
+          "out_n": 26,
+          "win_rate": 8.3,
+          "place_rate": 27.8,
+          "out_rate": 72.2,
+          "recovery": 129.7,
+          "avg_odds": 19.59,
+          "avg_ev": 115.31
+        },
+        "test": {
+          "n": 41,
+          "win_n": 3,
+          "place_n": 15,
+          "out_n": 26,
+          "win_rate": 7.3,
+          "place_rate": 36.6,
+          "out_rate": 63.4,
+          "recovery": 25.1,
+          "avg_odds": 17.31,
+          "avg_ev": 115.07
+        },
+        "delta_place_all": -0.2,
+        "delta_place_train": -2.8,
+        "delta_place_test": 2.1,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "78-85",
+        "all": {
+          "n": 5,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 20.0,
+          "out_rate": 80.0,
+          "recovery": 0.0,
+          "avg_odds": 11.22,
+          "avg_ev": 119.2
+        },
+        "train": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 3,
+          "win_rate": 0.0,
+          "place_rate": 25.0,
+          "out_rate": 75.0,
+          "recovery": 0.0,
+          "avg_odds": 10.15,
+          "avg_ev": 119.0
+        },
+        "test": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 15.5,
+          "avg_ev": 120.0
+        },
+        "delta_place_all": -12.7,
+        "delta_place_train": -5.6,
+        "delta_place_test": -34.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "<70",
+        "all": {
+          "n": 25,
+          "win_n": 0,
+          "place_n": 9,
+          "out_n": 16,
+          "win_rate": 0.0,
+          "place_rate": 36.0,
+          "out_rate": 64.0,
+          "recovery": 0.0,
+          "avg_odds": 22.98,
+          "avg_ev": 114.0
+        },
+        "train": {
+          "n": 9,
+          "win_n": 0,
+          "place_n": 4,
+          "out_n": 5,
+          "win_rate": 0.0,
+          "place_rate": 44.4,
+          "out_rate": 55.6,
+          "recovery": 0.0,
+          "avg_odds": 28.36,
+          "avg_ev": 114.33
+        },
+        "test": {
+          "n": 16,
+          "win_n": 0,
+          "place_n": 5,
+          "out_n": 11,
+          "win_rate": 0.0,
+          "place_rate": 31.2,
+          "out_rate": 68.8,
+          "recovery": 0.0,
+          "avg_odds": 19.96,
+          "avg_ev": 113.81
+        },
+        "delta_place_all": 3.3,
+        "delta_place_train": 13.8,
+        "delta_place_test": -3.3,
+        "n_ok": false,
+        "fragile": false,
+        "status": "全期間のみ件数十分（期間分離不足→採用慎重）"
+      }
+    ],
+    "pace_band": [
+      {
+        "band": "40-50",
+        "all": {
+          "n": 35,
+          "win_n": 2,
+          "place_n": 11,
+          "out_n": 24,
+          "win_rate": 5.7,
+          "place_rate": 31.4,
+          "out_rate": 68.6,
+          "recovery": 82.3,
+          "avg_odds": 15.77,
+          "avg_ev": 114.17
+        },
+        "train": {
+          "n": 13,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 9,
+          "win_rate": 7.7,
+          "place_rate": 30.8,
+          "out_rate": 69.2,
+          "recovery": 188.5,
+          "avg_odds": 16.72,
+          "avg_ev": 114.62
+        },
+        "test": {
+          "n": 22,
+          "win_n": 1,
+          "place_n": 7,
+          "out_n": 15,
+          "win_rate": 4.5,
+          "place_rate": 31.8,
+          "out_rate": 68.2,
+          "recovery": 19.5,
+          "avg_odds": 15.2,
+          "avg_ev": 113.91
+        },
+        "delta_place_all": -1.3,
+        "delta_place_train": 0.2,
+        "delta_place_test": -2.7,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "<40",
+        "all": {
+          "n": 27,
+          "win_n": 2,
+          "place_n": 6,
+          "out_n": 21,
+          "win_rate": 7.4,
+          "place_rate": 22.2,
+          "out_rate": 77.8,
+          "recovery": 68.9,
+          "avg_odds": 28.56,
+          "avg_ev": 114.37
+        },
+        "train": {
+          "n": 10,
+          "win_n": 1,
+          "place_n": 2,
+          "out_n": 8,
+          "win_rate": 10.0,
+          "place_rate": 20.0,
+          "out_rate": 80.0,
+          "recovery": 166.0,
+          "avg_odds": 29.1,
+          "avg_ev": 114.9
+        },
+        "test": {
+          "n": 17,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 13,
+          "win_rate": 5.9,
+          "place_rate": 23.5,
+          "out_rate": 76.5,
+          "recovery": 11.8,
+          "avg_odds": 28.24,
+          "avg_ev": 114.06
+        },
+        "delta_place_all": -10.5,
+        "delta_place_train": -10.6,
+        "delta_place_test": -11.0,
+        "n_ok": false,
+        "fragile": false,
+        "status": "全期間のみ件数十分（期間分離不足→採用慎重）"
+      },
+      {
+        "band": ">=50",
+        "all": {
+          "n": 45,
+          "win_n": 2,
+          "place_n": 18,
+          "out_n": 27,
+          "win_rate": 4.4,
+          "place_rate": 40.0,
+          "out_rate": 60.0,
+          "recovery": 21.3,
+          "avg_odds": 16.06,
+          "avg_ev": 116.24
+        },
+        "train": {
+          "n": 26,
+          "win_n": 1,
+          "place_n": 9,
+          "out_n": 17,
+          "win_rate": 3.8,
+          "place_rate": 34.6,
+          "out_rate": 65.4,
+          "recovery": 21.5,
+          "avg_odds": 18.94,
+          "avg_ev": 116.04
+        },
+        "test": {
+          "n": 19,
+          "win_n": 1,
+          "place_n": 9,
+          "out_n": 10,
+          "win_rate": 5.3,
+          "place_rate": 47.4,
+          "out_rate": 52.6,
+          "recovery": 21.1,
+          "avg_odds": 12.12,
+          "avg_ev": 116.53
+        },
+        "delta_place_all": 7.3,
+        "delta_place_train": 4.0,
+        "delta_place_test": 12.9,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      }
+    ],
+    "chaos_band": [
+      {
+        "band": "56-70",
+        "all": {
+          "n": 38,
+          "win_n": 2,
+          "place_n": 13,
+          "out_n": 25,
+          "win_rate": 5.3,
+          "place_rate": 34.2,
+          "out_rate": 65.8,
+          "recovery": 79.2,
+          "avg_odds": 17.41,
+          "avg_ev": 115.32
+        },
+        "train": {
+          "n": 17,
+          "win_n": 2,
+          "place_n": 8,
+          "out_n": 9,
+          "win_rate": 11.8,
+          "place_rate": 47.1,
+          "out_rate": 52.9,
+          "recovery": 177.1,
+          "avg_odds": 20.79,
+          "avg_ev": 115.41
+        },
+        "test": {
+          "n": 21,
+          "win_n": 0,
+          "place_n": 5,
+          "out_n": 16,
+          "win_rate": 0.0,
+          "place_rate": 23.8,
+          "out_rate": 76.2,
+          "recovery": 0.0,
+          "avg_odds": 14.67,
+          "avg_ev": 115.24
+        },
+        "delta_place_all": 1.5,
+        "delta_place_train": 16.5,
+        "delta_place_test": -10.7,
+        "n_ok": true,
+        "fragile": false,
+        "status": "学習/検証で逆方向→過学習・不安定（採用しない）"
+      },
+      {
+        "band": "<=55",
+        "all": {
+          "n": 20,
+          "win_n": 1,
+          "place_n": 8,
+          "out_n": 12,
+          "win_rate": 5.0,
+          "place_rate": 40.0,
+          "out_rate": 60.0,
+          "recovery": 20.0,
+          "avg_odds": 17.28,
+          "avg_ev": 118.35
+        },
+        "train": {
+          "n": 13,
+          "win_n": 0,
+          "place_n": 3,
+          "out_n": 10,
+          "win_rate": 0.0,
+          "place_rate": 23.1,
+          "out_rate": 76.9,
+          "recovery": 0.0,
+          "avg_odds": 19.08,
+          "avg_ev": 117.23
+        },
+        "test": {
+          "n": 7,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 2,
+          "win_rate": 14.3,
+          "place_rate": 71.4,
+          "out_rate": 28.6,
+          "recovery": 57.1,
+          "avg_odds": 13.94,
+          "avg_ev": 120.43
+        },
+        "delta_place_all": 7.3,
+        "delta_place_train": -7.5,
+        "delta_place_test": 36.9,
+        "n_ok": false,
+        "fragile": false,
+        "status": "全期間のみ件数十分（期間分離不足→採用慎重）"
+      },
+      {
+        "band": ">70",
+        "all": {
+          "n": 49,
+          "win_n": 3,
+          "place_n": 14,
+          "out_n": 35,
+          "win_rate": 6.1,
+          "place_rate": 28.6,
+          "out_rate": 71.4,
+          "recovery": 46.7,
+          "avg_odds": 21.19,
+          "avg_ev": 113.59
+        },
+        "train": {
+          "n": 19,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 15,
+          "win_rate": 5.3,
+          "place_rate": 21.1,
+          "out_rate": 78.9,
+          "recovery": 87.4,
+          "avg_odds": 21.02,
+          "avg_ev": 114.21
+        },
+        "test": {
+          "n": 30,
+          "win_n": 2,
+          "place_n": 10,
+          "out_n": 20,
+          "win_rate": 6.7,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 21.0,
+          "avg_odds": 21.3,
+          "avg_ev": 113.2
+        },
+        "delta_place_all": -4.1,
+        "delta_place_train": -9.5,
+        "delta_place_test": -1.2,
+        "n_ok": true,
+        "fragile": false,
+        "status": "学習のみ悪化→不安定（採用しない）"
+      }
+    ],
+    "repro_band": [
+      {
+        "band": "70-80",
+        "all": {
+          "n": 4,
+          "win_n": 1,
+          "place_n": 2,
+          "out_n": 2,
+          "win_rate": 25.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 50.0,
+          "avg_odds": 12.6,
+          "avg_ev": 102.25
+        },
+        "train": {
+          "n": 0
+        },
+        "test": {
+          "n": 4,
+          "win_n": 1,
+          "place_n": 2,
+          "out_n": 2,
+          "win_rate": 25.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 50.0,
+          "avg_odds": 12.6,
+          "avg_ev": 102.25
+        },
+        "delta_place_all": 17.3,
+        "delta_place_train": null,
+        "delta_place_test": 15.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "<70",
+        "all": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 127.8,
+          "avg_ev": 107.0
+        },
+        "train": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 127.8,
+          "avg_ev": 107.0
+        },
+        "test": {
+          "n": 0
+        },
+        "delta_place_all": -32.7,
+        "delta_place_train": -30.6,
+        "delta_place_test": null,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": ">=80",
+        "all": {
+          "n": 102,
+          "win_n": 5,
+          "place_n": 33,
+          "out_n": 69,
+          "win_rate": 4.9,
+          "place_rate": 32.4,
+          "out_rate": 67.6,
+          "recovery": 53.9,
+          "avg_odds": 18.31,
+          "avg_ev": 115.68
+        },
+        "train": {
+          "n": 48,
+          "win_n": 3,
+          "place_n": 15,
+          "out_n": 33,
+          "win_rate": 6.2,
+          "place_rate": 31.2,
+          "out_rate": 68.8,
+          "recovery": 97.3,
+          "avg_odds": 18.19,
+          "avg_ev": 115.6
+        },
+        "test": {
+          "n": 54,
+          "win_n": 2,
+          "place_n": 18,
+          "out_n": 36,
+          "win_rate": 3.7,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 15.4,
+          "avg_odds": 18.41,
+          "avg_ev": 115.74
+        },
+        "delta_place_all": -0.3,
+        "delta_place_train": 0.6,
+        "delta_place_test": -1.2,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      }
+    ],
+    "winpct_band": [
+      {
+        "band": "15-25",
+        "all": {
+          "n": 65,
+          "win_n": 4,
+          "place_n": 24,
+          "out_n": 41,
+          "win_rate": 6.2,
+          "place_rate": 36.9,
+          "out_rate": 63.1,
+          "recovery": 56.0,
+          "avg_odds": 15.26,
+          "avg_ev": 116.18
+        },
+        "train": {
+          "n": 33,
+          "win_n": 2,
+          "place_n": 11,
+          "out_n": 22,
+          "win_rate": 6.1,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 91.2,
+          "avg_odds": 15.42,
+          "avg_ev": 115.79
+        },
+        "test": {
+          "n": 32,
+          "win_n": 2,
+          "place_n": 13,
+          "out_n": 19,
+          "win_rate": 6.2,
+          "place_rate": 40.6,
+          "out_rate": 59.4,
+          "recovery": 19.7,
+          "avg_odds": 15.09,
+          "avg_ev": 116.59
+        },
+        "delta_place_all": 4.2,
+        "delta_place_train": 2.7,
+        "delta_place_test": 6.1,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "25-35",
+        "all": {
+          "n": 19,
+          "win_n": 1,
+          "place_n": 6,
+          "out_n": 13,
+          "win_rate": 5.3,
+          "place_rate": 31.6,
+          "out_rate": 68.4,
+          "recovery": 21.1,
+          "avg_odds": 8.72,
+          "avg_ev": 114.58
+        },
+        "train": {
+          "n": 6,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 6,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 9.27,
+          "avg_ev": 119.83
+        },
+        "test": {
+          "n": 13,
+          "win_n": 1,
+          "place_n": 6,
+          "out_n": 7,
+          "win_rate": 7.7,
+          "place_rate": 46.2,
+          "out_rate": 53.8,
+          "recovery": 30.8,
+          "avg_odds": 8.47,
+          "avg_ev": 112.15
+        },
+        "delta_place_all": -1.1,
+        "delta_place_train": -30.6,
+        "delta_place_test": 11.7,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "<15",
+        "all": {
+          "n": 23,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 18,
+          "win_rate": 4.3,
+          "place_rate": 21.7,
+          "out_rate": 78.3,
+          "recovery": 72.2,
+          "avg_odds": 38.62,
+          "avg_ev": 112.43
+        },
+        "train": {
+          "n": 10,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 6,
+          "win_rate": 10.0,
+          "place_rate": 40.0,
+          "out_rate": 60.0,
+          "recovery": 166.0,
+          "avg_odds": 43.65,
+          "avg_ev": 111.6
+        },
+        "test": {
+          "n": 13,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 12,
+          "win_rate": 0.0,
+          "place_rate": 7.7,
+          "out_rate": 92.3,
+          "recovery": 0.0,
+          "avg_odds": 34.75,
+          "avg_ev": 113.08
+        },
+        "delta_place_all": -11.0,
+        "delta_place_train": 9.4,
+        "delta_place_test": -26.8,
+        "n_ok": false,
+        "fragile": false,
+        "status": "全期間のみ件数十分（期間分離不足→採用慎重）"
+      }
+    ],
+    "data_n_band": [
+      {
+        "band": "4-5",
+        "all": {
+          "n": 107,
+          "win_n": 6,
+          "place_n": 35,
+          "out_n": 72,
+          "win_rate": 5.6,
+          "place_rate": 32.7,
+          "out_rate": 67.3,
+          "recovery": 53.3,
+          "avg_odds": 19.12,
+          "avg_ev": 115.09
+        },
+        "train": {
+          "n": 49,
+          "win_n": 3,
+          "place_n": 15,
+          "out_n": 34,
+          "win_rate": 6.1,
+          "place_rate": 30.6,
+          "out_rate": 69.4,
+          "recovery": 95.3,
+          "avg_odds": 20.43,
+          "avg_ev": 115.43
+        },
+        "test": {
+          "n": 58,
+          "win_n": 3,
+          "place_n": 20,
+          "out_n": 38,
+          "win_rate": 5.2,
+          "place_rate": 34.5,
+          "out_rate": 65.5,
+          "recovery": 17.8,
+          "avg_odds": 18.01,
+          "avg_ev": 114.81
+        },
+        "delta_place_all": 0.0,
+        "delta_place_train": 0.0,
+        "delta_place_test": 0.0,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      }
+    ],
+    "venue": [
+      {
+        "band": "佐賀",
+        "all": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 0,
+          "win_rate": 0.0,
+          "place_rate": 100.0,
+          "out_rate": 0.0,
+          "recovery": 0.0,
+          "avg_odds": 17.7,
+          "avg_ev": 117.0
+        },
+        "train": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 0,
+          "win_rate": 0.0,
+          "place_rate": 100.0,
+          "out_rate": 0.0,
+          "recovery": 0.0,
+          "avg_odds": 17.7,
+          "avg_ev": 117.0
+        },
+        "test": {
+          "n": 0
+        },
+        "delta_place_all": 67.3,
+        "delta_place_train": 69.4,
+        "delta_place_test": null,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "名古屋",
+        "all": {
+          "n": 8,
+          "win_n": 1,
+          "place_n": 3,
+          "out_n": 5,
+          "win_rate": 12.5,
+          "place_rate": 37.5,
+          "out_rate": 62.5,
+          "recovery": 25.0,
+          "avg_odds": 14.81,
+          "avg_ev": 113.75
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 1,
+          "win_rate": 0.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 0.0,
+          "avg_odds": 18.85,
+          "avg_ev": 117.0
+        },
+        "test": {
+          "n": 6,
+          "win_n": 1,
+          "place_n": 2,
+          "out_n": 4,
+          "win_rate": 16.7,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 33.3,
+          "avg_odds": 13.47,
+          "avg_ev": 112.67
+        },
+        "delta_place_all": 4.8,
+        "delta_place_train": 19.4,
+        "delta_place_test": -1.2,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "園田",
+        "all": {
+          "n": 14,
+          "win_n": 0,
+          "place_n": 7,
+          "out_n": 7,
+          "win_rate": 0.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 0.0,
+          "avg_odds": 12.57,
+          "avg_ev": 114.86
+        },
+        "train": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 16.3,
+          "avg_ev": 118.5
+        },
+        "test": {
+          "n": 12,
+          "win_n": 0,
+          "place_n": 7,
+          "out_n": 5,
+          "win_rate": 0.0,
+          "place_rate": 58.3,
+          "out_rate": 41.7,
+          "recovery": 0.0,
+          "avg_odds": 11.95,
+          "avg_ev": 114.25
+        },
+        "delta_place_all": 17.3,
+        "delta_place_train": -30.6,
+        "delta_place_test": 23.8,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "大井",
+        "all": {
+          "n": 6,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 0.0,
+          "avg_odds": 35.95,
+          "avg_ev": 116.33
+        },
+        "train": {
+          "n": 6,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 0.0,
+          "avg_odds": 35.95,
+          "avg_ev": 116.33
+        },
+        "test": {
+          "n": 0
+        },
+        "delta_place_all": 0.6,
+        "delta_place_train": 2.7,
+        "delta_place_test": null,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "川崎",
+        "all": {
+          "n": 10,
+          "win_n": 0,
+          "place_n": 3,
+          "out_n": 7,
+          "win_rate": 0.0,
+          "place_rate": 30.0,
+          "out_rate": 70.0,
+          "recovery": 0.0,
+          "avg_odds": 22.39,
+          "avg_ev": 116.3
+        },
+        "train": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 3,
+          "win_rate": 0.0,
+          "place_rate": 25.0,
+          "out_rate": 75.0,
+          "recovery": 0.0,
+          "avg_odds": 15.67,
+          "avg_ev": 117.25
+        },
+        "test": {
+          "n": 6,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 0.0,
+          "avg_odds": 26.87,
+          "avg_ev": 115.67
+        },
+        "delta_place_all": -2.7,
+        "delta_place_train": -5.6,
+        "delta_place_test": -1.2,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "浦和",
+        "all": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 12.0,
+          "avg_ev": 118.5
+        },
+        "train": {
+          "n": 0
+        },
+        "test": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 12.0,
+          "avg_ev": 118.5
+        },
+        "delta_place_all": -32.7,
+        "delta_place_train": null,
+        "delta_place_test": -34.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "盛岡",
+        "all": {
+          "n": 18,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 13,
+          "win_rate": 5.6,
+          "place_rate": 27.8,
+          "out_rate": 72.2,
+          "recovery": 31.1,
+          "avg_odds": 25.87,
+          "avg_ev": 115.56
+        },
+        "train": {
+          "n": 12,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 8,
+          "win_rate": 8.3,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 46.7,
+          "avg_odds": 15.24,
+          "avg_ev": 115.33
+        },
+        "test": {
+          "n": 6,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 5,
+          "win_rate": 0.0,
+          "place_rate": 16.7,
+          "out_rate": 83.3,
+          "recovery": 0.0,
+          "avg_odds": 47.13,
+          "avg_ev": 116.0
+        },
+        "delta_place_all": -4.9,
+        "delta_place_train": 2.7,
+        "delta_place_test": -17.8,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "笠松",
+        "all": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 3,
+          "win_rate": 0.0,
+          "place_rate": 25.0,
+          "out_rate": 75.0,
+          "recovery": 0.0,
+          "avg_odds": 10.47,
+          "avg_ev": 116.0
+        },
+        "train": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 3,
+          "win_rate": 0.0,
+          "place_rate": 25.0,
+          "out_rate": 75.0,
+          "recovery": 0.0,
+          "avg_odds": 10.47,
+          "avg_ev": 116.0
+        },
+        "test": {
+          "n": 0
+        },
+        "delta_place_all": -7.7,
+        "delta_place_train": -5.6,
+        "delta_place_test": null,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "船橋",
+        "all": {
+          "n": 10,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 5,
+          "win_rate": 10.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 40.0,
+          "avg_odds": 13.01,
+          "avg_ev": 117.3
+        },
+        "train": {
+          "n": 0
+        },
+        "test": {
+          "n": 10,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 5,
+          "win_rate": 10.0,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 40.0,
+          "avg_odds": 13.01,
+          "avg_ev": 117.3
+        },
+        "delta_place_all": 17.3,
+        "delta_place_train": null,
+        "delta_place_test": 15.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "金沢",
+        "all": {
+          "n": 10,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 8,
+          "win_rate": 0.0,
+          "place_rate": 20.0,
+          "out_rate": 80.0,
+          "recovery": 0.0,
+          "avg_odds": 16.92,
+          "avg_ev": 114.5
+        },
+        "train": {
+          "n": 6,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 0.0,
+          "avg_odds": 17.33,
+          "avg_ev": 112.67
+        },
+        "test": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 16.3,
+          "avg_ev": 117.25
+        },
+        "delta_place_all": -12.7,
+        "delta_place_train": 2.7,
+        "delta_place_test": -34.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "門別",
+        "all": {
+          "n": 16,
+          "win_n": 2,
+          "place_n": 5,
+          "out_n": 11,
+          "win_rate": 12.5,
+          "place_rate": 31.2,
+          "out_rate": 68.8,
+          "recovery": 180.0,
+          "avg_odds": 19.65,
+          "avg_ev": 111.12
+        },
+        "train": {
+          "n": 6,
+          "win_n": 1,
+          "place_n": 2,
+          "out_n": 4,
+          "win_rate": 16.7,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 408.3,
+          "avg_odds": 29.22,
+          "avg_ev": 112.0
+        },
+        "test": {
+          "n": 10,
+          "win_n": 1,
+          "place_n": 3,
+          "out_n": 7,
+          "win_rate": 10.0,
+          "place_rate": 30.0,
+          "out_rate": 70.0,
+          "recovery": 43.0,
+          "avg_odds": 13.91,
+          "avg_ev": 110.6
+        },
+        "delta_place_all": -1.5,
+        "delta_place_train": 2.7,
+        "delta_place_test": -4.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "高知",
+        "all": {
+          "n": 8,
+          "win_n": 1,
+          "place_n": 1,
+          "out_n": 7,
+          "win_rate": 12.5,
+          "place_rate": 12.5,
+          "out_rate": 87.5,
+          "recovery": 207.5,
+          "avg_odds": 18.55,
+          "avg_ev": 117.75
+        },
+        "train": {
+          "n": 6,
+          "win_n": 1,
+          "place_n": 1,
+          "out_n": 5,
+          "win_rate": 16.7,
+          "place_rate": 16.7,
+          "out_rate": 83.3,
+          "recovery": 276.7,
+          "avg_odds": 21.73,
+          "avg_ev": 117.5
+        },
+        "test": {
+          "n": 2,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 2,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 9.0,
+          "avg_ev": 118.5
+        },
+        "delta_place_all": -20.2,
+        "delta_place_train": -13.9,
+        "delta_place_test": -34.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      }
+    ],
+    "想定ペース": [
+      {
+        "band": "スロー",
+        "all": {
+          "n": 5,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 20.0,
+          "out_rate": 80.0,
+          "recovery": 0.0,
+          "avg_odds": 25.96,
+          "avg_ev": 113.8
+        },
+        "train": {
+          "n": 1,
+          "win_n": 0,
+          "place_n": 1,
+          "out_n": 0,
+          "win_rate": 0.0,
+          "place_rate": 100.0,
+          "out_rate": 0.0,
+          "recovery": 0.0,
+          "avg_odds": 5.4,
+          "avg_ev": 109.0
+        },
+        "test": {
+          "n": 4,
+          "win_n": 0,
+          "place_n": 0,
+          "out_n": 4,
+          "win_rate": 0.0,
+          "place_rate": 0.0,
+          "out_rate": 100.0,
+          "recovery": 0.0,
+          "avg_odds": 31.1,
+          "avg_ev": 115.0
+        },
+        "delta_place_all": -12.7,
+        "delta_place_train": 69.4,
+        "delta_place_test": -34.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "件数不足"
+      },
+      {
+        "band": "ハイ",
+        "all": {
+          "n": 79,
+          "win_n": 5,
+          "place_n": 24,
+          "out_n": 55,
+          "win_rate": 6.3,
+          "place_rate": 30.4,
+          "out_rate": 69.6,
+          "recovery": 67.1,
+          "avg_odds": 18.69,
+          "avg_ev": 114.23
+        },
+        "train": {
+          "n": 33,
+          "win_n": 3,
+          "place_n": 8,
+          "out_n": 25,
+          "win_rate": 9.1,
+          "place_rate": 24.2,
+          "out_rate": 75.8,
+          "recovery": 141.5,
+          "avg_odds": 19.93,
+          "avg_ev": 114.76
+        },
+        "test": {
+          "n": 46,
+          "win_n": 2,
+          "place_n": 16,
+          "out_n": 30,
+          "win_rate": 4.3,
+          "place_rate": 34.8,
+          "out_rate": 65.2,
+          "recovery": 13.7,
+          "avg_odds": 17.8,
+          "avg_ev": 113.85
+        },
+        "delta_place_all": -2.3,
+        "delta_place_train": -6.4,
+        "delta_place_test": 0.3,
+        "n_ok": true,
+        "fragile": false,
+        "status": "差が小さい/不安定"
+      },
+      {
+        "band": "ミドル",
+        "all": {
+          "n": 23,
+          "win_n": 1,
+          "place_n": 10,
+          "out_n": 13,
+          "win_rate": 4.3,
+          "place_rate": 43.5,
+          "out_rate": 56.5,
+          "recovery": 17.4,
+          "avg_odds": 19.1,
+          "avg_ev": 118.35
+        },
+        "train": {
+          "n": 15,
+          "win_n": 0,
+          "place_n": 6,
+          "out_n": 9,
+          "win_rate": 0.0,
+          "place_rate": 40.0,
+          "out_rate": 60.0,
+          "recovery": 0.0,
+          "avg_odds": 22.53,
+          "avg_ev": 117.33
+        },
+        "test": {
+          "n": 8,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 4,
+          "win_rate": 12.5,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 50.0,
+          "avg_odds": 12.69,
+          "avg_ev": 120.25
+        },
+        "delta_place_all": 10.8,
+        "delta_place_train": 9.4,
+        "delta_place_test": 15.5,
+        "n_ok": false,
+        "fragile": false,
+        "status": "全期間のみ件数十分（期間分離不足→採用慎重）"
+      }
+    ]
+  },
+  "reproducible_bad_conditions": [
+    {
+      "feature": "ab_band",
+      "band": ">=80",
+      "status": "両期間で複勝率悪化（再現あり・悪化条件）",
+      "all": {
+        "n": 49,
+        "win_n": 4,
+        "place_n": 11,
+        "out_n": 38,
+        "win_rate": 8.2,
+        "place_rate": 22.4,
+        "out_rate": 77.6,
+        "recovery": 99.4,
+        "avg_odds": 18.9,
+        "avg_ev": 114.06
+      },
+      "train": {
+        "n": 28,
+        "win_n": 3,
+        "place_n": 6,
+        "out_n": 22,
+        "win_rate": 10.7,
+        "place_rate": 21.4,
+        "out_rate": 78.6,
+        "recovery": 166.8,
+        "avg_odds": 19.67,
+        "avg_ev": 114.75
+      },
+      "test": {
+        "n": 21,
+        "win_n": 1,
+        "place_n": 5,
+        "out_n": 16,
+        "win_rate": 4.8,
+        "place_rate": 23.8,
+        "out_rate": 76.2,
+        "recovery": 9.5,
+        "avg_odds": 17.86,
+        "avg_ev": 113.14
+      }
+    }
+  ],
+  "reproducible_good_conditions": [],
+  "unstable_overfit_risk": [
+    {
+      "feature": "pop_band",
+      "band": "2-3人気",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 26,
+        "win_n": 4,
+        "place_n": 11,
+        "out_n": 15,
+        "win_rate": 15.4,
+        "place_rate": 42.3,
+        "out_rate": 57.7,
+        "recovery": 61.2,
+        "avg_odds": 7.97,
+        "avg_ev": 111.42
+      },
+      "train": {
+        "n": 14,
+        "win_n": 1,
+        "place_n": 4,
+        "out_n": 10,
+        "win_rate": 7.1,
+        "place_rate": 28.6,
+        "out_rate": 71.4,
+        "recovery": 40.0,
+        "avg_odds": 9.06,
+        "avg_ev": 114.79
+      },
+      "test": {
+        "n": 12,
+        "win_n": 3,
+        "place_n": 7,
+        "out_n": 5,
+        "win_rate": 25.0,
+        "place_rate": 58.3,
+        "out_rate": 41.7,
+        "recovery": 85.8,
+        "avg_odds": 6.71,
+        "avg_ev": 107.5
+      }
+    },
+    {
+      "feature": "pop_band",
+      "band": "4-5人気",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 43,
+        "win_n": 0,
+        "place_n": 17,
+        "out_n": 26,
+        "win_rate": 0.0,
+        "place_rate": 39.5,
+        "out_rate": 60.5,
+        "recovery": 0.0,
+        "avg_odds": 14.63,
+        "avg_ev": 117.51
+      },
+      "train": {
+        "n": 20,
+        "win_n": 0,
+        "place_n": 7,
+        "out_n": 13,
+        "win_rate": 0.0,
+        "place_rate": 35.0,
+        "out_rate": 65.0,
+        "recovery": 0.0,
+        "avg_odds": 13.91,
+        "avg_ev": 116.3
+      },
+      "test": {
+        "n": 23,
+        "win_n": 0,
+        "place_n": 10,
+        "out_n": 13,
+        "win_rate": 0.0,
+        "place_rate": 43.5,
+        "out_rate": 56.5,
+        "recovery": 0.0,
+        "avg_odds": 15.25,
+        "avg_ev": 118.57
+      }
+    },
+    {
+      "feature": "pop_band",
+      "band": "6-9人気",
+      "status": "検証のみ悪化→過学習疑い（採用しない）",
+      "all": {
+        "n": 35,
+        "win_n": 2,
+        "place_n": 6,
+        "out_n": 29,
+        "win_rate": 5.7,
+        "place_rate": 17.1,
+        "out_rate": 82.9,
+        "recovery": 117.4,
+        "avg_odds": 30.28,
+        "avg_ev": 115.69
+      },
+      "train": {
+        "n": 13,
+        "win_n": 2,
+        "place_n": 4,
+        "out_n": 9,
+        "win_rate": 15.4,
+        "place_rate": 30.8,
+        "out_rate": 69.2,
+        "recovery": 316.2,
+        "avg_odds": 34.59,
+        "avg_ev": 115.31
+      },
+      "test": {
+        "n": 22,
+        "win_n": 0,
+        "place_n": 2,
+        "out_n": 20,
+        "win_rate": 0.0,
+        "place_rate": 9.1,
+        "out_rate": 90.9,
+        "recovery": 0.0,
+        "avg_odds": 27.73,
+        "avg_ev": 115.91
+      }
+    },
+    {
+      "feature": "odds_band",
+      "band": "12-20",
+      "status": "学習/検証で逆方向→過学習・不安定（採用しない）",
+      "all": {
+        "n": 32,
+        "win_n": 1,
+        "place_n": 11,
+        "out_n": 21,
+        "win_rate": 3.1,
+        "place_rate": 34.4,
+        "out_rate": 65.6,
+        "recovery": 51.9,
+        "avg_odds": 16.1,
+        "avg_ev": 117.06
+      },
+      "train": {
+        "n": 13,
+        "win_n": 1,
+        "place_n": 7,
+        "out_n": 6,
+        "win_rate": 7.7,
+        "place_rate": 53.8,
+        "out_rate": 46.2,
+        "recovery": 127.7,
+        "avg_odds": 17.09,
+        "avg_ev": 116.38
+      },
+      "test": {
+        "n": 19,
+        "win_n": 0,
+        "place_n": 4,
+        "out_n": 15,
+        "win_rate": 0.0,
+        "place_rate": 21.1,
+        "out_rate": 78.9,
+        "recovery": 0.0,
+        "avg_odds": 15.42,
+        "avg_ev": 117.53
+      }
+    },
+    {
+      "feature": "odds_band",
+      "band": "20-50",
+      "status": "学習のみ悪化→不安定（採用しない）",
+      "all": {
+        "n": 25,
+        "win_n": 1,
+        "place_n": 6,
+        "out_n": 19,
+        "win_rate": 4.0,
+        "place_rate": 24.0,
+        "out_rate": 76.0,
+        "recovery": 98.0,
+        "avg_odds": 30.76,
+        "avg_ev": 115.4
+      },
+      "train": {
+        "n": 13,
+        "win_n": 1,
+        "place_n": 2,
+        "out_n": 11,
+        "win_rate": 7.7,
+        "place_rate": 15.4,
+        "out_rate": 84.6,
+        "recovery": 188.5,
+        "avg_odds": 32.05,
+        "avg_ev": 115.85
+      },
+      "test": {
+        "n": 12,
+        "win_n": 0,
+        "place_n": 4,
+        "out_n": 8,
+        "win_rate": 0.0,
+        "place_rate": 33.3,
+        "out_rate": 66.7,
+        "recovery": 0.0,
+        "avg_odds": 29.36,
+        "avg_ev": 114.92
+      }
+    },
+    {
+      "feature": "ev_band",
+      "band": "115-120",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 53,
+        "win_n": 1,
+        "place_n": 15,
+        "out_n": 38,
+        "win_rate": 1.9,
+        "place_rate": 28.3,
+        "out_rate": 71.7,
+        "recovery": 46.2,
+        "avg_odds": 21.18,
+        "avg_ev": 117.3
+      },
+      "train": {
+        "n": 20,
+        "win_n": 1,
+        "place_n": 6,
+        "out_n": 14,
+        "win_rate": 5.0,
+        "place_rate": 30.0,
+        "out_rate": 70.0,
+        "recovery": 122.5,
+        "avg_odds": 21.74,
+        "avg_ev": 116.7
+      },
+      "test": {
+        "n": 33,
+        "win_n": 0,
+        "place_n": 9,
+        "out_n": 24,
+        "win_rate": 0.0,
+        "place_rate": 27.3,
+        "out_rate": 72.7,
+        "recovery": 0.0,
+        "avg_odds": 20.84,
+        "avg_ev": 117.67
+      }
+    },
+    {
+      "feature": "ev_band",
+      "band": ">=120",
+      "status": "学習/検証で逆方向→過学習・不安定（採用しない）",
+      "all": {
+        "n": 22,
+        "win_n": 1,
+        "place_n": 7,
+        "out_n": 15,
+        "win_rate": 4.5,
+        "place_rate": 31.8,
+        "out_rate": 68.2,
+        "recovery": 18.2,
+        "avg_odds": 11.54,
+        "avg_ev": 121.05
+      },
+      "train": {
+        "n": 12,
+        "win_n": 0,
+        "place_n": 2,
+        "out_n": 10,
+        "win_rate": 0.0,
+        "place_rate": 16.7,
+        "out_rate": 83.3,
+        "recovery": 0.0,
+        "avg_odds": 10.92,
+        "avg_ev": 121.17
+      },
+      "test": {
+        "n": 10,
+        "win_n": 1,
+        "place_n": 5,
+        "out_n": 5,
+        "win_rate": 10.0,
+        "place_rate": 50.0,
+        "out_rate": 50.0,
+        "recovery": 40.0,
+        "avg_odds": 12.27,
+        "avg_ev": 120.9
+      }
+    },
+    {
+      "feature": "ai_band",
+      "band": "70-80",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 73,
+        "win_n": 5,
+        "place_n": 30,
+        "out_n": 43,
+        "win_rate": 6.8,
+        "place_rate": 41.1,
+        "out_rate": 58.9,
+        "recovery": 44.5,
+        "avg_odds": 18.34,
+        "avg_ev": 114.64
+      },
+      "train": {
+        "n": 32,
+        "win_n": 2,
+        "place_n": 11,
+        "out_n": 21,
+        "win_rate": 6.2,
+        "place_rate": 34.4,
+        "out_rate": 65.6,
+        "recovery": 69.4,
+        "avg_odds": 19.77,
+        "avg_ev": 115.03
+      },
+      "test": {
+        "n": 41,
+        "win_n": 3,
+        "place_n": 19,
+        "out_n": 22,
+        "win_rate": 7.3,
+        "place_rate": 46.3,
+        "out_rate": 53.7,
+        "recovery": 25.1,
+        "avg_odds": 17.22,
+        "avg_ev": 114.34
+      }
+    },
+    {
+      "feature": "ai_band",
+      "band": ">=80",
+      "status": "検証のみ悪化→過学習疑い（採用しない）",
+      "all": {
+        "n": 30,
+        "win_n": 1,
+        "place_n": 5,
+        "out_n": 25,
+        "win_rate": 3.3,
+        "place_rate": 16.7,
+        "out_rate": 83.3,
+        "recovery": 81.7,
+        "avg_odds": 15.32,
+        "avg_ev": 117.1
+      },
+      "train": {
+        "n": 15,
+        "win_n": 1,
+        "place_n": 4,
+        "out_n": 11,
+        "win_rate": 6.7,
+        "place_rate": 26.7,
+        "out_rate": 73.3,
+        "recovery": 163.3,
+        "avg_odds": 12.98,
+        "avg_ev": 117.27
+      },
+      "test": {
+        "n": 15,
+        "win_n": 0,
+        "place_n": 1,
+        "out_n": 14,
+        "win_rate": 0.0,
+        "place_rate": 6.7,
+        "out_rate": 93.3,
+        "recovery": 0.0,
+        "avg_odds": 17.66,
+        "avg_ev": 116.93
+      }
+    },
+    {
+      "feature": "ab_band",
+      "band": "71-79",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 41,
+        "win_n": 2,
+        "place_n": 14,
+        "out_n": 27,
+        "win_rate": 4.9,
+        "place_rate": 34.1,
+        "out_rate": 65.9,
+        "recovery": 20.2,
+        "avg_odds": 22.01,
+        "avg_ev": 114.83
+      },
+      "train": {
+        "n": 17,
+        "win_n": 0,
+        "place_n": 7,
+        "out_n": 10,
+        "win_rate": 0.0,
+        "place_rate": 41.2,
+        "out_rate": 58.8,
+        "recovery": 0.0,
+        "avg_odds": 23.69,
+        "avg_ev": 115.65
+      },
+      "test": {
+        "n": 24,
+        "win_n": 2,
+        "place_n": 7,
+        "out_n": 17,
+        "win_rate": 8.3,
+        "place_rate": 29.2,
+        "out_rate": 70.8,
+        "recovery": 34.6,
+        "avg_odds": 20.83,
+        "avg_ev": 114.25
+      }
+    },
+    {
+      "feature": "rc_band",
+      "band": "70-78",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 77,
+        "win_n": 6,
+        "place_n": 25,
+        "out_n": 52,
+        "win_rate": 7.8,
+        "place_rate": 32.5,
+        "out_rate": 67.5,
+        "recovery": 74.0,
+        "avg_odds": 18.37,
+        "avg_ev": 115.18
+      },
+      "train": {
+        "n": 36,
+        "win_n": 3,
+        "place_n": 10,
+        "out_n": 26,
+        "win_rate": 8.3,
+        "place_rate": 27.8,
+        "out_rate": 72.2,
+        "recovery": 129.7,
+        "avg_odds": 19.59,
+        "avg_ev": 115.31
+      },
+      "test": {
+        "n": 41,
+        "win_n": 3,
+        "place_n": 15,
+        "out_n": 26,
+        "win_rate": 7.3,
+        "place_rate": 36.6,
+        "out_rate": 63.4,
+        "recovery": 25.1,
+        "avg_odds": 17.31,
+        "avg_ev": 115.07
+      }
+    },
+    {
+      "feature": "pace_band",
+      "band": "40-50",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 35,
+        "win_n": 2,
+        "place_n": 11,
+        "out_n": 24,
+        "win_rate": 5.7,
+        "place_rate": 31.4,
+        "out_rate": 68.6,
+        "recovery": 82.3,
+        "avg_odds": 15.77,
+        "avg_ev": 114.17
+      },
+      "train": {
+        "n": 13,
+        "win_n": 1,
+        "place_n": 4,
+        "out_n": 9,
+        "win_rate": 7.7,
+        "place_rate": 30.8,
+        "out_rate": 69.2,
+        "recovery": 188.5,
+        "avg_odds": 16.72,
+        "avg_ev": 114.62
+      },
+      "test": {
+        "n": 22,
+        "win_n": 1,
+        "place_n": 7,
+        "out_n": 15,
+        "win_rate": 4.5,
+        "place_rate": 31.8,
+        "out_rate": 68.2,
+        "recovery": 19.5,
+        "avg_odds": 15.2,
+        "avg_ev": 113.91
+      }
+    },
+    {
+      "feature": "pace_band",
+      "band": ">=50",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 45,
+        "win_n": 2,
+        "place_n": 18,
+        "out_n": 27,
+        "win_rate": 4.4,
+        "place_rate": 40.0,
+        "out_rate": 60.0,
+        "recovery": 21.3,
+        "avg_odds": 16.06,
+        "avg_ev": 116.24
+      },
+      "train": {
+        "n": 26,
+        "win_n": 1,
+        "place_n": 9,
+        "out_n": 17,
+        "win_rate": 3.8,
+        "place_rate": 34.6,
+        "out_rate": 65.4,
+        "recovery": 21.5,
+        "avg_odds": 18.94,
+        "avg_ev": 116.04
+      },
+      "test": {
+        "n": 19,
+        "win_n": 1,
+        "place_n": 9,
+        "out_n": 10,
+        "win_rate": 5.3,
+        "place_rate": 47.4,
+        "out_rate": 52.6,
+        "recovery": 21.1,
+        "avg_odds": 12.12,
+        "avg_ev": 116.53
+      }
+    },
+    {
+      "feature": "chaos_band",
+      "band": "56-70",
+      "status": "学習/検証で逆方向→過学習・不安定（採用しない）",
+      "all": {
+        "n": 38,
+        "win_n": 2,
+        "place_n": 13,
+        "out_n": 25,
+        "win_rate": 5.3,
+        "place_rate": 34.2,
+        "out_rate": 65.8,
+        "recovery": 79.2,
+        "avg_odds": 17.41,
+        "avg_ev": 115.32
+      },
+      "train": {
+        "n": 17,
+        "win_n": 2,
+        "place_n": 8,
+        "out_n": 9,
+        "win_rate": 11.8,
+        "place_rate": 47.1,
+        "out_rate": 52.9,
+        "recovery": 177.1,
+        "avg_odds": 20.79,
+        "avg_ev": 115.41
+      },
+      "test": {
+        "n": 21,
+        "win_n": 0,
+        "place_n": 5,
+        "out_n": 16,
+        "win_rate": 0.0,
+        "place_rate": 23.8,
+        "out_rate": 76.2,
+        "recovery": 0.0,
+        "avg_odds": 14.67,
+        "avg_ev": 115.24
+      }
+    },
+    {
+      "feature": "chaos_band",
+      "band": ">70",
+      "status": "学習のみ悪化→不安定（採用しない）",
+      "all": {
+        "n": 49,
+        "win_n": 3,
+        "place_n": 14,
+        "out_n": 35,
+        "win_rate": 6.1,
+        "place_rate": 28.6,
+        "out_rate": 71.4,
+        "recovery": 46.7,
+        "avg_odds": 21.19,
+        "avg_ev": 113.59
+      },
+      "train": {
+        "n": 19,
+        "win_n": 1,
+        "place_n": 4,
+        "out_n": 15,
+        "win_rate": 5.3,
+        "place_rate": 21.1,
+        "out_rate": 78.9,
+        "recovery": 87.4,
+        "avg_odds": 21.02,
+        "avg_ev": 114.21
+      },
+      "test": {
+        "n": 30,
+        "win_n": 2,
+        "place_n": 10,
+        "out_n": 20,
+        "win_rate": 6.7,
+        "place_rate": 33.3,
+        "out_rate": 66.7,
+        "recovery": 21.0,
+        "avg_odds": 21.3,
+        "avg_ev": 113.2
+      }
+    },
+    {
+      "feature": "repro_band",
+      "band": ">=80",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 102,
+        "win_n": 5,
+        "place_n": 33,
+        "out_n": 69,
+        "win_rate": 4.9,
+        "place_rate": 32.4,
+        "out_rate": 67.6,
+        "recovery": 53.9,
+        "avg_odds": 18.31,
+        "avg_ev": 115.68
+      },
+      "train": {
+        "n": 48,
+        "win_n": 3,
+        "place_n": 15,
+        "out_n": 33,
+        "win_rate": 6.2,
+        "place_rate": 31.2,
+        "out_rate": 68.8,
+        "recovery": 97.3,
+        "avg_odds": 18.19,
+        "avg_ev": 115.6
+      },
+      "test": {
+        "n": 54,
+        "win_n": 2,
+        "place_n": 18,
+        "out_n": 36,
+        "win_rate": 3.7,
+        "place_rate": 33.3,
+        "out_rate": 66.7,
+        "recovery": 15.4,
+        "avg_odds": 18.41,
+        "avg_ev": 115.74
+      }
+    },
+    {
+      "feature": "winpct_band",
+      "band": "15-25",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 65,
+        "win_n": 4,
+        "place_n": 24,
+        "out_n": 41,
+        "win_rate": 6.2,
+        "place_rate": 36.9,
+        "out_rate": 63.1,
+        "recovery": 56.0,
+        "avg_odds": 15.26,
+        "avg_ev": 116.18
+      },
+      "train": {
+        "n": 33,
+        "win_n": 2,
+        "place_n": 11,
+        "out_n": 22,
+        "win_rate": 6.1,
+        "place_rate": 33.3,
+        "out_rate": 66.7,
+        "recovery": 91.2,
+        "avg_odds": 15.42,
+        "avg_ev": 115.79
+      },
+      "test": {
+        "n": 32,
+        "win_n": 2,
+        "place_n": 13,
+        "out_n": 19,
+        "win_rate": 6.2,
+        "place_rate": 40.6,
+        "out_rate": 59.4,
+        "recovery": 19.7,
+        "avg_odds": 15.09,
+        "avg_ev": 116.59
+      }
+    },
+    {
+      "feature": "data_n_band",
+      "band": "4-5",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 107,
+        "win_n": 6,
+        "place_n": 35,
+        "out_n": 72,
+        "win_rate": 5.6,
+        "place_rate": 32.7,
+        "out_rate": 67.3,
+        "recovery": 53.3,
+        "avg_odds": 19.12,
+        "avg_ev": 115.09
+      },
+      "train": {
+        "n": 49,
+        "win_n": 3,
+        "place_n": 15,
+        "out_n": 34,
+        "win_rate": 6.1,
+        "place_rate": 30.6,
+        "out_rate": 69.4,
+        "recovery": 95.3,
+        "avg_odds": 20.43,
+        "avg_ev": 115.43
+      },
+      "test": {
+        "n": 58,
+        "win_n": 3,
+        "place_n": 20,
+        "out_n": 38,
+        "win_rate": 5.2,
+        "place_rate": 34.5,
+        "out_rate": 65.5,
+        "recovery": 17.8,
+        "avg_odds": 18.01,
+        "avg_ev": 114.81
+      }
+    },
+    {
+      "feature": "想定ペース",
+      "band": "ハイ",
+      "status": "差が小さい/不安定",
+      "all": {
+        "n": 79,
+        "win_n": 5,
+        "place_n": 24,
+        "out_n": 55,
+        "win_rate": 6.3,
+        "place_rate": 30.4,
+        "out_rate": 69.6,
+        "recovery": 67.1,
+        "avg_odds": 18.69,
+        "avg_ev": 114.23
+      },
+      "train": {
+        "n": 33,
+        "win_n": 3,
+        "place_n": 8,
+        "out_n": 25,
+        "win_rate": 9.1,
+        "place_rate": 24.2,
+        "out_rate": 75.8,
+        "recovery": 141.5,
+        "avg_odds": 19.93,
+        "avg_ev": 114.76
+      },
+      "test": {
+        "n": 46,
+        "win_n": 2,
+        "place_n": 16,
+        "out_n": 30,
+        "win_rate": 4.3,
+        "place_rate": 34.8,
+        "out_rate": 65.2,
+        "recovery": 13.7,
+        "avg_odds": 17.8,
+        "avg_ev": 113.85
+      }
+    }
+  ],
+  "insufficient_n": [
+    {
+      "feature": "pop_band",
+      "band": "10人気+",
+      "all_n": 2,
+      "status": "件数不足"
+    },
+    {
+      "feature": "pop_band",
+      "band": "1人気",
+      "all_n": 1,
+      "status": "件数不足"
+    },
+    {
+      "feature": "odds_band",
+      "band": "3-5",
+      "all_n": 10,
+      "status": "件数不足"
+    },
+    {
+      "feature": "odds_band",
+      "band": "5-8",
+      "all_n": 14,
+      "status": "件数不足"
+    },
+    {
+      "feature": "odds_band",
+      "band": "<=3",
+      "all_n": 2,
+      "status": "件数不足"
+    },
+    {
+      "feature": "odds_band",
+      "band": ">50",
+      "all_n": 4,
+      "status": "件数不足"
+    },
+    {
+      "feature": "ev_band",
+      "band": "100-108",
+      "all_n": 2,
+      "status": "件数不足"
+    },
+    {
+      "feature": "ev_band",
+      "band": "<100",
+      "all_n": 7,
+      "status": "件数不足"
+    },
+    {
+      "feature": "ai_band",
+      "band": "<70",
+      "all_n": 4,
+      "status": "件数不足"
+    },
+    {
+      "feature": "ab_band",
+      "band": "51-70",
+      "all_n": 13,
+      "status": "件数不足"
+    },
+    {
+      "feature": "ab_band",
+      "band": "<=50",
+      "all_n": 4,
+      "status": "件数不足"
+    },
+    {
+      "feature": "rc_band",
+      "band": "78-85",
+      "all_n": 5,
+      "status": "件数不足"
+    },
+    {
+      "feature": "repro_band",
+      "band": "70-80",
+      "all_n": 4,
+      "status": "件数不足"
+    },
+    {
+      "feature": "repro_band",
+      "band": "<70",
+      "all_n": 1,
+      "status": "件数不足"
+    },
+    {
+      "feature": "winpct_band",
+      "band": "25-35",
+      "all_n": 19,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "佐賀",
+      "all_n": 1,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "名古屋",
+      "all_n": 8,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "園田",
+      "all_n": 14,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "大井",
+      "all_n": 6,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "川崎",
+      "all_n": 10,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "浦和",
+      "all_n": 2,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "盛岡",
+      "all_n": 18,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "笠松",
+      "all_n": 4,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "船橋",
+      "all_n": 10,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "金沢",
+      "all_n": 10,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "門別",
+      "all_n": 16,
+      "status": "件数不足"
+    },
+    {
+      "feature": "venue",
+      "band": "高知",
+      "all_n": 8,
+      "status": "件数不足"
+    },
+    {
+      "feature": "想定ペース",
+      "band": "スロー",
+      "all_n": 5,
+      "status": "件数不足"
+    }
+  ],
+  "demotion_backtest_地方S": {
+    "現状維持_全S": {
+      "remaining_S": {
+        "n": 107,
+        "win_n": 6,
+        "place_n": 35,
+        "out_n": 72,
+        "win_rate": 5.6,
+        "place_rate": 32.7,
+        "out_rate": 67.3,
+        "recovery": 53.3,
+        "avg_odds": 19.12,
+        "avg_ev": 115.09
+      },
+      "demoted_pool": {
+        "n": 0
+      },
+      "demoted_n": 0
+    },
+    "地方S全件をAへ": {
+      "remaining_S": {
+        "n": 0,
+        "note": "地方S消滅"
+      },
+      "demoted_pool": {
+        "n": 107,
+        "win_n": 6,
+        "place_n": 35,
+        "out_n": 72,
+        "win_rate": 5.6,
+        "place_rate": 32.7,
+        "out_rate": 67.3,
+        "recovery": 53.3,
+        "avg_odds": 19.12,
+        "avg_ev": 115.09,
+        "treated_as": "A"
+      },
+      "demoted_n": 107,
+      "implication": "地方にSが残らない。UI上のSはJRAのみ（JRAは別管理）。"
+    },
+    "地方S全件をBへ": {
+      "remaining_S": {
+        "n": 0,
+        "note": "地方S消滅"
+      },
+      "demoted_pool": {
+        "n": 107,
+        "win_n": 6,
+        "place_n": 35,
+        "out_n": 72,
+        "win_rate": 5.6,
+        "place_rate": 32.7,
+        "out_rate": 67.3,
+        "recovery": 53.3,
+        "avg_odds": 19.12,
+        "avg_ev": 115.09,
+        "treated_as": "B"
+      },
+      "demoted_n": 107
+    },
+    "条件降格_4-5人気をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 64,
+          "win_n": 6,
+          "place_n": 18,
+          "out_n": 46,
+          "win_rate": 9.4,
+          "place_rate": 28.1,
+          "out_rate": 71.9,
+          "recovery": 89.1,
+          "avg_odds": 22.13,
+          "avg_ev": 113.47
+        },
+        "train": {
+          "n": 29,
+          "win_n": 3,
+          "place_n": 8,
+          "out_n": 21,
+          "win_rate": 10.3,
+          "place_rate": 27.6,
+          "out_rate": 72.4,
+          "recovery": 161.0,
+          "avg_odds": 24.92,
+          "avg_ev": 114.83
+        },
+        "test": {
+          "n": 35,
+          "win_n": 3,
+          "place_n": 10,
+          "out_n": 25,
+          "win_rate": 8.6,
+          "place_rate": 28.6,
+          "out_rate": 71.4,
+          "recovery": 29.4,
+          "avg_odds": 19.82,
+          "avg_ev": 112.34
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 43,
+          "win_n": 0,
+          "place_n": 17,
+          "out_n": 26,
+          "win_rate": 0.0,
+          "place_rate": 39.5,
+          "out_rate": 60.5,
+          "recovery": 0.0,
+          "avg_odds": 14.63,
+          "avg_ev": 117.51
+        },
+        "train": {
+          "n": 20,
+          "win_n": 0,
+          "place_n": 7,
+          "out_n": 13,
+          "win_rate": 0.0,
+          "place_rate": 35.0,
+          "out_rate": 65.0,
+          "recovery": 0.0,
+          "avg_odds": 13.91,
+          "avg_ev": 116.3
+        },
+        "test": {
+          "n": 23,
+          "win_n": 0,
+          "place_n": 10,
+          "out_n": 13,
+          "win_rate": 0.0,
+          "place_rate": 43.5,
+          "out_rate": 56.5,
+          "recovery": 0.0,
+          "avg_odds": 15.25,
+          "avg_ev": 118.57
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 43,
+      "overfit_check": [
+        "残Sが学習高回収・検証低回収→過学習疑い"
+      ]
+    },
+    "条件降格_オッズ8-12をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 87,
+          "win_n": 6,
+          "place_n": 29,
+          "out_n": 58,
+          "win_rate": 6.9,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 65.5,
+          "avg_odds": 21.26,
+          "avg_ev": 114.24
+        },
+        "train": {
+          "n": 39,
+          "win_n": 3,
+          "place_n": 13,
+          "out_n": 26,
+          "win_rate": 7.7,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 119.7,
+          "avg_odds": 23.16,
+          "avg_ev": 114.54
+        },
+        "test": {
+          "n": 48,
+          "win_n": 3,
+          "place_n": 16,
+          "out_n": 32,
+          "win_rate": 6.2,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 21.5,
+          "avg_odds": 19.71,
+          "avg_ev": 114.0
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 20,
+          "win_n": 0,
+          "place_n": 6,
+          "out_n": 14,
+          "win_rate": 0.0,
+          "place_rate": 30.0,
+          "out_rate": 70.0,
+          "recovery": 0.0,
+          "avg_odds": 9.81,
+          "avg_ev": 118.8
+        },
+        "train": {
+          "n": 10,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 8,
+          "win_rate": 0.0,
+          "place_rate": 20.0,
+          "out_rate": 80.0,
+          "recovery": 0.0,
+          "avg_odds": 9.76,
+          "avg_ev": 118.9
+        },
+        "test": {
+          "n": 10,
+          "win_n": 0,
+          "place_n": 4,
+          "out_n": 6,
+          "win_rate": 0.0,
+          "place_rate": 40.0,
+          "out_rate": 60.0,
+          "recovery": 0.0,
+          "avg_odds": 9.86,
+          "avg_ev": 118.7
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 20,
+      "overfit_check": [
+        "残Sが学習高回収・検証低回収→過学習疑い"
+      ]
+    },
+    "条件降格_4-5人気_OR_オッズ8-12をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 55,
+          "win_n": 6,
+          "place_n": 16,
+          "out_n": 39,
+          "win_rate": 10.9,
+          "place_rate": 29.1,
+          "out_rate": 70.9,
+          "recovery": 103.6,
+          "avg_odds": 24.11,
+          "avg_ev": 112.64
+        },
+        "train": {
+          "n": 25,
+          "win_n": 3,
+          "place_n": 7,
+          "out_n": 18,
+          "win_rate": 12.0,
+          "place_rate": 28.0,
+          "out_rate": 72.0,
+          "recovery": 186.8,
+          "avg_odds": 27.31,
+          "avg_ev": 114.28
+        },
+        "test": {
+          "n": 30,
+          "win_n": 3,
+          "place_n": 9,
+          "out_n": 21,
+          "win_rate": 10.0,
+          "place_rate": 30.0,
+          "out_rate": 70.0,
+          "recovery": 34.3,
+          "avg_odds": 21.44,
+          "avg_ev": 111.27
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 52,
+          "win_n": 0,
+          "place_n": 19,
+          "out_n": 33,
+          "win_rate": 0.0,
+          "place_rate": 36.5,
+          "out_rate": 63.5,
+          "recovery": 0.0,
+          "avg_odds": 13.83,
+          "avg_ev": 117.69
+        },
+        "train": {
+          "n": 24,
+          "win_n": 0,
+          "place_n": 8,
+          "out_n": 16,
+          "win_rate": 0.0,
+          "place_rate": 33.3,
+          "out_rate": 66.7,
+          "recovery": 0.0,
+          "avg_odds": 13.25,
+          "avg_ev": 116.62
+        },
+        "test": {
+          "n": 28,
+          "win_n": 0,
+          "place_n": 11,
+          "out_n": 17,
+          "win_rate": 0.0,
+          "place_rate": 39.3,
+          "out_rate": 60.7,
+          "recovery": 0.0,
+          "avg_odds": 14.33,
+          "avg_ev": 118.61
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 52,
+      "overfit_check": [
+        "残Sが学習高回収・検証低回収→過学習疑い"
+      ]
+    },
+    "条件降格_6-9人気をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 72,
+          "win_n": 4,
+          "place_n": 29,
+          "out_n": 43,
+          "win_rate": 5.6,
+          "place_rate": 40.3,
+          "out_rate": 59.7,
+          "recovery": 22.1,
+          "avg_odds": 13.69,
+          "avg_ev": 114.81
+        },
+        "train": {
+          "n": 36,
+          "win_n": 1,
+          "place_n": 11,
+          "out_n": 25,
+          "win_rate": 2.8,
+          "place_rate": 30.6,
+          "out_rate": 69.4,
+          "recovery": 15.6,
+          "avg_odds": 15.31,
+          "avg_ev": 115.47
+        },
+        "test": {
+          "n": 36,
+          "win_n": 3,
+          "place_n": 18,
+          "out_n": 18,
+          "win_rate": 8.3,
+          "place_rate": 50.0,
+          "out_rate": 50.0,
+          "recovery": 28.6,
+          "avg_odds": 12.07,
+          "avg_ev": 114.14
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 35,
+          "win_n": 2,
+          "place_n": 6,
+          "out_n": 29,
+          "win_rate": 5.7,
+          "place_rate": 17.1,
+          "out_rate": 82.9,
+          "recovery": 117.4,
+          "avg_odds": 30.28,
+          "avg_ev": 115.69
+        },
+        "train": {
+          "n": 13,
+          "win_n": 2,
+          "place_n": 4,
+          "out_n": 9,
+          "win_rate": 15.4,
+          "place_rate": 30.8,
+          "out_rate": 69.2,
+          "recovery": 316.2,
+          "avg_odds": 34.59,
+          "avg_ev": 115.31
+        },
+        "test": {
+          "n": 22,
+          "win_n": 0,
+          "place_n": 2,
+          "out_n": 20,
+          "win_rate": 0.0,
+          "place_rate": 9.1,
+          "out_rate": 90.9,
+          "recovery": 0.0,
+          "avg_odds": 27.73,
+          "avg_ev": 115.91
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 35,
+      "overfit_check": [
+        "残Sが検証でも改善方向（比較的安定の可能性）"
+      ]
+    },
+    "条件降格_オッズ12-20をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 75,
+          "win_n": 5,
+          "place_n": 24,
+          "out_n": 51,
+          "win_rate": 6.7,
+          "place_rate": 32.0,
+          "out_rate": 68.0,
+          "recovery": 53.9,
+          "avg_odds": 20.4,
+          "avg_ev": 114.25
+        },
+        "train": {
+          "n": 36,
+          "win_n": 2,
+          "place_n": 8,
+          "out_n": 28,
+          "win_rate": 5.6,
+          "place_rate": 22.2,
+          "out_rate": 77.8,
+          "recovery": 83.6,
+          "avg_odds": 21.63,
+          "avg_ev": 115.08
+        },
+        "test": {
+          "n": 39,
+          "win_n": 3,
+          "place_n": 16,
+          "out_n": 23,
+          "win_rate": 7.7,
+          "place_rate": 41.0,
+          "out_rate": 59.0,
+          "recovery": 26.4,
+          "avg_odds": 19.27,
+          "avg_ev": 113.49
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 32,
+          "win_n": 1,
+          "place_n": 11,
+          "out_n": 21,
+          "win_rate": 3.1,
+          "place_rate": 34.4,
+          "out_rate": 65.6,
+          "recovery": 51.9,
+          "avg_odds": 16.1,
+          "avg_ev": 117.06
+        },
+        "train": {
+          "n": 13,
+          "win_n": 1,
+          "place_n": 7,
+          "out_n": 6,
+          "win_rate": 7.7,
+          "place_rate": 53.8,
+          "out_rate": 46.2,
+          "recovery": 127.7,
+          "avg_odds": 17.09,
+          "avg_ev": 116.38
+        },
+        "test": {
+          "n": 19,
+          "win_n": 0,
+          "place_n": 4,
+          "out_n": 15,
+          "win_rate": 0.0,
+          "place_rate": 21.1,
+          "out_rate": 78.9,
+          "recovery": 0.0,
+          "avg_odds": 15.42,
+          "avg_ev": 117.53
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 32,
+      "overfit_check": [
+        "降格側が学習◎検証×→条件追加は過学習リスク"
+      ]
+    },
+    "条件降格_EV115-120をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 54,
+          "win_n": 5,
+          "place_n": 20,
+          "out_n": 34,
+          "win_rate": 9.3,
+          "place_rate": 37.0,
+          "out_rate": 63.0,
+          "recovery": 60.2,
+          "avg_odds": 17.09,
+          "avg_ev": 112.93
+        },
+        "train": {
+          "n": 29,
+          "win_n": 2,
+          "place_n": 9,
+          "out_n": 20,
+          "win_rate": 6.9,
+          "place_rate": 31.0,
+          "out_rate": 69.0,
+          "recovery": 76.6,
+          "avg_odds": 19.52,
+          "avg_ev": 114.55
+        },
+        "test": {
+          "n": 25,
+          "win_n": 3,
+          "place_n": 11,
+          "out_n": 14,
+          "win_rate": 12.0,
+          "place_rate": 44.0,
+          "out_rate": 56.0,
+          "recovery": 41.2,
+          "avg_odds": 14.28,
+          "avg_ev": 111.04
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 53,
+          "win_n": 1,
+          "place_n": 15,
+          "out_n": 38,
+          "win_rate": 1.9,
+          "place_rate": 28.3,
+          "out_rate": 71.7,
+          "recovery": 46.2,
+          "avg_odds": 21.18,
+          "avg_ev": 117.3
+        },
+        "train": {
+          "n": 20,
+          "win_n": 1,
+          "place_n": 6,
+          "out_n": 14,
+          "win_rate": 5.0,
+          "place_rate": 30.0,
+          "out_rate": 70.0,
+          "recovery": 122.5,
+          "avg_odds": 21.74,
+          "avg_ev": 116.7
+        },
+        "test": {
+          "n": 33,
+          "win_n": 0,
+          "place_n": 9,
+          "out_n": 24,
+          "win_rate": 0.0,
+          "place_rate": 27.3,
+          "out_rate": 72.7,
+          "recovery": 0.0,
+          "avg_odds": 20.84,
+          "avg_ev": 117.67
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 53,
+      "overfit_check": [
+        "明確な過学習シグナルなし/判定保留"
+      ]
+    },
+    "条件降格_能力差>=80をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 58,
+          "win_n": 2,
+          "place_n": 24,
+          "out_n": 34,
+          "win_rate": 3.4,
+          "place_rate": 41.4,
+          "out_rate": 58.6,
+          "recovery": 14.3,
+          "avg_odds": 19.3,
+          "avg_ev": 115.97
+        },
+        "train": {
+          "n": 21,
+          "win_n": 0,
+          "place_n": 9,
+          "out_n": 12,
+          "win_rate": 0.0,
+          "place_rate": 42.9,
+          "out_rate": 57.1,
+          "recovery": 0.0,
+          "avg_odds": 21.43,
+          "avg_ev": 116.33
+        },
+        "test": {
+          "n": 37,
+          "win_n": 2,
+          "place_n": 15,
+          "out_n": 22,
+          "win_rate": 5.4,
+          "place_rate": 40.5,
+          "out_rate": 59.5,
+          "recovery": 22.4,
+          "avg_odds": 18.09,
+          "avg_ev": 115.76
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 49,
+          "win_n": 4,
+          "place_n": 11,
+          "out_n": 38,
+          "win_rate": 8.2,
+          "place_rate": 22.4,
+          "out_rate": 77.6,
+          "recovery": 99.4,
+          "avg_odds": 18.9,
+          "avg_ev": 114.06
+        },
+        "train": {
+          "n": 28,
+          "win_n": 3,
+          "place_n": 6,
+          "out_n": 22,
+          "win_rate": 10.7,
+          "place_rate": 21.4,
+          "out_rate": 78.6,
+          "recovery": 166.8,
+          "avg_odds": 19.67,
+          "avg_ev": 114.75
+        },
+        "test": {
+          "n": 21,
+          "win_n": 1,
+          "place_n": 5,
+          "out_n": 16,
+          "win_rate": 4.8,
+          "place_rate": 23.8,
+          "out_rate": 76.2,
+          "recovery": 9.5,
+          "avg_odds": 17.86,
+          "avg_ev": 113.14
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 49,
+      "overfit_check": [
+        "降格側が両期間とも低複勝→降格条件として再現あり"
+      ]
+    },
+    "条件降格_人気>=4をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 27,
+          "win_n": 4,
+          "place_n": 12,
+          "out_n": 15,
+          "win_rate": 14.8,
+          "place_rate": 44.4,
+          "out_rate": 55.6,
+          "recovery": 58.9,
+          "avg_odds": 7.8,
+          "avg_ev": 110.7
+        },
+        "train": {
+          "n": 14,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 10,
+          "win_rate": 7.1,
+          "place_rate": 28.6,
+          "out_rate": 71.4,
+          "recovery": 40.0,
+          "avg_odds": 9.06,
+          "avg_ev": 114.79
+        },
+        "test": {
+          "n": 13,
+          "win_n": 3,
+          "place_n": 8,
+          "out_n": 5,
+          "win_rate": 23.1,
+          "place_rate": 61.5,
+          "out_rate": 38.5,
+          "recovery": 79.2,
+          "avg_odds": 6.45,
+          "avg_ev": 106.31
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 80,
+          "win_n": 2,
+          "place_n": 23,
+          "out_n": 57,
+          "win_rate": 2.5,
+          "place_rate": 28.7,
+          "out_rate": 71.2,
+          "recovery": 51.4,
+          "avg_odds": 22.94,
+          "avg_ev": 116.58
+        },
+        "train": {
+          "n": 35,
+          "win_n": 2,
+          "place_n": 11,
+          "out_n": 24,
+          "win_rate": 5.7,
+          "place_rate": 31.4,
+          "out_rate": 68.6,
+          "recovery": 117.4,
+          "avg_odds": 24.97,
+          "avg_ev": 115.69
+        },
+        "test": {
+          "n": 45,
+          "win_n": 0,
+          "place_n": 12,
+          "out_n": 33,
+          "win_rate": 0.0,
+          "place_rate": 26.7,
+          "out_rate": 73.3,
+          "recovery": 0.0,
+          "avg_odds": 21.35,
+          "avg_ev": 117.27
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 80,
+      "overfit_check": [
+        "残Sが検証でも改善方向（比較的安定の可能性）"
+      ]
+    },
+    "条件降格_人気>=4をBへ": {
+      "remaining_S": {
+        "all": {
+          "n": 27,
+          "win_n": 4,
+          "place_n": 12,
+          "out_n": 15,
+          "win_rate": 14.8,
+          "place_rate": 44.4,
+          "out_rate": 55.6,
+          "recovery": 58.9,
+          "avg_odds": 7.8,
+          "avg_ev": 110.7
+        },
+        "train": {
+          "n": 14,
+          "win_n": 1,
+          "place_n": 4,
+          "out_n": 10,
+          "win_rate": 7.1,
+          "place_rate": 28.6,
+          "out_rate": 71.4,
+          "recovery": 40.0,
+          "avg_odds": 9.06,
+          "avg_ev": 114.79
+        },
+        "test": {
+          "n": 13,
+          "win_n": 3,
+          "place_n": 8,
+          "out_n": 5,
+          "win_rate": 23.1,
+          "place_rate": 61.5,
+          "out_rate": 38.5,
+          "recovery": 79.2,
+          "avg_odds": 6.45,
+          "avg_ev": 106.31
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 80,
+          "win_n": 2,
+          "place_n": 23,
+          "out_n": 57,
+          "win_rate": 2.5,
+          "place_rate": 28.7,
+          "out_rate": 71.2,
+          "recovery": 51.4,
+          "avg_odds": 22.94,
+          "avg_ev": 116.58
+        },
+        "train": {
+          "n": 35,
+          "win_n": 2,
+          "place_n": 11,
+          "out_n": 24,
+          "win_rate": 5.7,
+          "place_rate": 31.4,
+          "out_rate": 68.6,
+          "recovery": 117.4,
+          "avg_odds": 24.97,
+          "avg_ev": 115.69
+        },
+        "test": {
+          "n": 45,
+          "win_n": 0,
+          "place_n": 12,
+          "out_n": 33,
+          "win_rate": 0.0,
+          "place_rate": 26.7,
+          "out_rate": 73.3,
+          "recovery": 0.0,
+          "avg_odds": 21.35,
+          "avg_ev": 117.27
+        },
+        "treated_as": "B"
+      },
+      "demoted_n": 80,
+      "overfit_check": [
+        "残Sが検証でも改善方向（比較的安定の可能性）"
+      ]
+    },
+    "条件降格_オッズ>8をAへ": {
+      "remaining_S": {
+        "all": {
+          "n": 26,
+          "win_n": 4,
+          "place_n": 11,
+          "out_n": 15,
+          "win_rate": 15.4,
+          "place_rate": 42.3,
+          "out_rate": 57.7,
+          "recovery": 61.2,
+          "avg_odds": 5.17,
+          "avg_ev": 109.85
+        },
+        "train": {
+          "n": 11,
+          "win_n": 1,
+          "place_n": 3,
+          "out_n": 8,
+          "win_rate": 9.1,
+          "place_rate": 27.3,
+          "out_rate": 72.7,
+          "recovery": 50.9,
+          "avg_odds": 5.2,
+          "avg_ev": 111.64
+        },
+        "test": {
+          "n": 15,
+          "win_n": 3,
+          "place_n": 8,
+          "out_n": 7,
+          "win_rate": 20.0,
+          "place_rate": 53.3,
+          "out_rate": 46.7,
+          "recovery": 68.7,
+          "avg_odds": 5.15,
+          "avg_ev": 108.53
+        }
+      },
+      "demoted_pool": {
+        "all": {
+          "n": 81,
+          "win_n": 2,
+          "place_n": 24,
+          "out_n": 57,
+          "win_rate": 2.5,
+          "place_rate": 29.6,
+          "out_rate": 70.4,
+          "recovery": 50.7,
+          "avg_odds": 23.59,
+          "avg_ev": 116.78
+        },
+        "train": {
+          "n": 38,
+          "win_n": 2,
+          "place_n": 12,
+          "out_n": 26,
+          "win_rate": 5.3,
+          "place_rate": 31.6,
+          "out_rate": 68.4,
+          "recovery": 108.2,
+          "avg_odds": 24.83,
+          "avg_ev": 116.53
+        },
+        "test": {
+          "n": 43,
+          "win_n": 0,
+          "place_n": 12,
+          "out_n": 31,
+          "win_rate": 0.0,
+          "place_rate": 27.9,
+          "out_rate": 72.1,
+          "recovery": 0.0,
+          "avg_odds": 22.5,
+          "avg_ev": 117.0
+        },
+        "treated_as": "A"
+      },
+      "demoted_n": 81,
+      "overfit_check": [
+        "残Sが検証でも改善方向（比較的安定の可能性）"
+      ]
+    }
+  },
+  "judgment": {
+    "地方Sを現状維持すべきか": "ラベルとしては維持可。ただし本命品質は低く、Sの意味（高信頼）を満たしていない。",
+    "地方だけS基準を変更すべきか": "今は変更しない（実装しない）。期間分離で「複勝も単勝回収も同時に改善する」条件が見つからない。",
+    "JRA": "変更しない（n=10で判断不能。地方結論を移植しない）。",
+    "理由": [
+      "地方S 107件中72件が圏外（複勝率32.7%）。学習30.6%/検証34.5%で再現。",
+      "圏外群は能力差・荒れ指数・オッズが平均的に高いが、帯条件の多くは学習/検証で逆方向（過学習リスク）。",
+      "唯一の再現悪化帯は能力差>=80の複勝率（学習21.4%/検証23.8%）だが、これを外すと残Sの単勝回収が学習0%/検証22%に崩壊（勝ち馬が能力差高位に偏る）。採用不可。",
+      "人気>=4除外は検証の残Sは良く見えるが学習残S複勝28.6%のまま→期間不一致で採用不可。",
+      "4-5人気ORオッズ8-12除外は残Sが学習回収187%→検証34%で過学習。",
+      "距離・馬場は全件欠損で原因特定に使えない。"
+    ],
+    "recommended_decision": "地方Sは「現状維持（条件追加なし）」。品質は低いが、再現性のある安全な基準変更がない。S全廃（地方S→A）はバッジ設計の話であり本命成績自体は変わらない。次に実装するなら、まず本命選定の入口（レース信頼度合成や枠配分）の再設計検証であり、単発ゲート追加ではない。",
+    "if_implement_later": [
+      {
+        "priority": 1,
+        "change": "実装しない（条件追加ゲート）",
+        "why": "再現＋非過学習＋単勝/複勝両立を満たすルールが未発見"
+      },
+      {
+        "priority": 2,
+        "change": "もしUI上「地方にSを出さない」方針なら、地方だけ暫定SをAに落とす（qualifyではなく枠割当側）",
+        "scope": "地方のみ",
+        "effect": "本命単勝の中身は不変。S件数ゼロ化。買い判定がS/A依存なら買い集合が変わる可能性→別BT必須",
+        "status": "方針次第の設計変更候補（数値改善ではなくラベル政策）"
+      },
+      {
+        "priority": 3,
+        "change": "能力差>=80をS必須にも除外にもしない（under_validation継続）",
+        "why": "複勝は弱いが単勝回収は学習で強く検証で崩壊。どちらにも使えない",
+        "evidence": {
+          "place_train": 21.4,
+          "place_test": 23.8,
+          "demote_remaining_recovery_train": 0.0,
+          "demote_remaining_recovery_test": 22.4,
+          "demoted_pool_recovery_all": 99.4
+        }
+      },
+      {
+        "priority": 4,
+        "change": "監視継続: 地方Sの複勝率・単勝回収を学習/検証で別表示",
+        "metrics": [
+          "place_rate",
+          "win_recovery",
+          "out_rate"
+        ]
+      },
+      {
+        "do_not_implement": [
+          "人気>=4をS除外（学習残Sが改善しない）",
+          "6-9人気除外（検証のみ悪化パターンと表裏）",
+          "オッズ12-20除外（学習/検証逆方向）",
+          "AI>=80除外（検証のみ悪化）",
+          "EV帯の単発除外",
+          "競馬場単体除外（件数不足）",
+          "距離・馬場条件（データ欠損）"
+        ]
+      }
+    ]
+  },
+  "best_conditional_demotion": {
+    "selected": null,
+    "reason": "検証だけ良く学習が悪い、または複勝改善と単勝回収がトレードオフになる条件のみ。採用なし。",
+    "reviewed": {
+      "能力差>=80をAへ": {
+        "place_improved": true,
+        "win_recovery_destroyed": true,
+        "adopt": false,
+        "remaining_test_place": 40.5,
+        "remaining_train_recovery": 0.0,
+        "remaining_test_recovery": 22.4
+      },
+      "人気>=4をAへ": {
+        "adopt": false,
+        "reason": "残S学習複勝28.6%で改善せず、検証61.5%との乖離が大きい",
+        "remaining_train_place": 28.6,
+        "remaining_test_place": 61.5
+      },
+      "4-5人気_OR_オッズ8-12": {
+        "adopt": false,
+        "reason": "残S学習回収186.8%→検証34.3%で過学習"
+      },
+      "地方S全件Aへ": {
+        "adopt": "方針次第",
+        "reason": "数値改善ではなくSラベル政策。本命成績は不変"
+      }
+    }
+  },
+  "consistent_numeric_signals": [
+    {
+      "feature": "能力差",
+      "train_diff_out_minus_place": 4.7,
+      "test_diff_out_minus_place": 5.62,
+      "train_place_mean": 77.53,
+      "train_out_mean": 82.24,
+      "test_place_mean": 72.35,
+      "test_out_mean": 77.97,
+      "interpretation": "圏外の方が高い",
+      "note": "平均差の符号一致。因果・閾値確定ではない。nはplace/outの期間別件数に依存。"
+    },
+    {
+      "feature": "荒れ指数",
+      "train_diff_out_minus_place": 4.4,
+      "test_diff_out_minus_place": 6.18,
+      "train_place_mean": 64.13,
+      "train_out_mean": 68.53,
+      "test_place_mean": 67.4,
+      "test_out_mean": 73.58,
+      "interpretation": "圏外の方が高い",
+      "note": "平均差の符号一致。因果・閾値確定ではない。nはplace/outの期間別件数に依存。"
+    },
+    {
+      "feature": "EV",
+      "train_diff_out_minus_place": 1.1,
+      "test_diff_out_minus_place": 1.77,
+      "train_place_mean": 114.67,
+      "train_out_mean": 115.76,
+      "test_place_mean": 113.65,
+      "test_out_mean": 115.42,
+      "interpretation": "圏外の方が高い",
+      "note": "平均差の符号一致。因果・閾値確定ではない。nはplace/outの期間別件数に依存。"
+    },
+    {
+      "feature": "展開読みやすさ",
+      "train_diff_out_minus_place": -0.87,
+      "test_diff_out_minus_place": -4.98,
+      "train_place_mean": 46.93,
+      "train_out_mean": 46.06,
+      "test_place_mean": 45.4,
+      "test_out_mean": 40.42,
+      "interpretation": "圏外の方が低い",
+      "note": "平均差の符号一致。因果・閾値確定ではない。nはplace/outの期間別件数に依存。"
+    },
+    {
+      "feature": "荒れ度",
+      "train_diff_out_minus_place": 0.75,
+      "test_diff_out_minus_place": 4.39,
+      "train_place_mean": 58.84,
+      "train_out_mean": 59.59,
+      "test_place_mean": 59.08,
+      "test_out_mean": 63.46,
+      "interpretation": "圏外の方が高い",
+      "note": "平均差の符号一致。因果・閾値確定ではない。nはplace/outの期間別件数に依存。"
+    }
+  ],
+  "root_cause_summary": {
+    "primary": "本命選定失敗（圏外72/107）。S入口のレース信頼度合成が高能力差・高EV寄りの穴馬を拾い、複勝圏に入れない。",
+    "paradox": "圏外の方が能力差平均が高い（place74.6 vs out80.0）。能力差シグナルがS失敗と共存。",
+    "secondary_market": "圏外は平均オッズ・人気が不利側（オッズ21 vs 15、人気5.3 vs 4.3）だが、帯カットはOOSで不安定。",
+    "pace": "圏外は荒れ指数が高め（符号は両期間一致）だが、閾値化すると件数/安定性不足。",
+    "not_ticket": "本分析は本命着順のみ。買い目変換失敗は別問題として既知。",
+    "missing": [
+      "距離",
+      "馬場"
+    ]
+  }
+}
