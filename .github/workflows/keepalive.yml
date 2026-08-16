@@ -1,0 +1,75 @@
+# Render Free のスピンダウン監視と復帰。
+#
+# Free の web service は 15 分間 inbound が無いとスピンダウンし、次のアクセスで
+# 60〜90 秒かかるコールドスタートになる。その間ブラウザは何も描けないので、
+# 利用者からは「白画面」に見える（実測: 2026-08-01 の /healthz が 72.9 秒）。
+#
+# スピンダウンさせない主役はアプリ側の自己 ping（data_sync.start_keepalive）。
+# こちらはインスタンスが再起動などで落ちたときに起こし直す外部の保険で、
+# あわせて RSS・uptime・データ取り込みの状態を記録する。
+#
+# schedule の間隔を短くしても意味がない点に注意。
+# このリポジトリの「毎時」ワークフローは実際には 3.5〜10 時間おきにしか
+# 発火していない（GitHub が public repo の schedule を大幅に間引くため）。
+# そのため 1 回の run を長く回し、concurrency で次の run に引き継ぐ。
+name: Keepalive
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: render-keepalive
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    # ジョブ上限 6 時間の手前まで回し、次の schedule 発火に重ねる
+    timeout-minutes: 330
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ping /healthz and report cold starts
+        env:
+          APP_URL: ${{ secrets.RENDER_APP_URL }}
+          # 5 分間隔 × 64 回 ≒ 5 時間20分
+          PING_COUNT: '64'
+          PING_INTERVAL: '300'
+        run: |
+          set -uo pipefail
+          BASE="${APP_URL:-https://areru-cloud.onrender.com}"
+          BASE="${BASE%/}"
+          fail=0
+          cold=0
+          for i in $(seq 1 "${PING_COUNT}"); do
+            start=$(date +%s)
+            code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 120 \
+              "${BASE}/healthz" || echo 000)
+            took=$(( $(date +%s) - start ))
+            echo "ping=${i}/${PING_COUNT} http=${code} took=${took}s at=$(date -u +%H:%M:%S)Z"
+            if [ "$code" = "200" ]; then
+              python3 scripts/healthz_summary.py /tmp/healthz.json || true
+              # 20 秒超 = スピンダウンしていた。自己 ping が効いていない兆候
+              if [ "$took" -gt 20 ]; then
+                cold=$((cold + 1))
+                echo "::warning::cold start detected (${took}s) -- instance had spun down"
+              fi
+            else
+              fail=$((fail + 1))
+              echo "::warning::healthz failed http=${code}"
+            fi
+            if [ "$i" != "${PING_COUNT}" ]; then
+              sleep "${PING_INTERVAL}"
+            fi
+          done
+          echo "summary: failures=${fail}/${PING_COUNT} cold_starts=${cold}"
+          if [ "$fail" -ge 3 ]; then
+            echo "::error::Render failed /healthz ${fail} times during this window"
+            exit 1
+          fi

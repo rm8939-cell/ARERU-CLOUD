@@ -1,10 +1,13 @@
-# Render を起こして配信状態を確認するだけのワークフロー。
+# 配信中データが当日分になっているかを確認するワークフロー。
 #
 # データ生成は nar-daily-data.yml（GitHub Actions 上で生成 → commit）が担当する。
 # Render Free は 0.1CPU / 512MB しかなく、ここで /cron/daily を叩いて本生成を
 # 始めると Web 応答が数十分止まる（実測: healthz が 10 分以上タイムアウト）。
 # そのため Render には重いジョブを投げない。
-name: NAR daily wake
+#
+# データコミットは [skip render] を付けており再デプロイを起こさないので、
+# ここでは /api/data-sync を叩いて取り込みを確実にしてから中身を確認する。
+name: Serving data check
 
 on:
   schedule:
@@ -18,35 +21,26 @@ on:
     - cron: '0 3 * * *'     # 12:00 JST
     - cron: '0 6 * * *'     # 15:00 JST
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'morning | odds | auto'
-        required: false
-        default: 'auto'
 
 jobs:
-  wake-and-refresh:
+  check-served-data:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Wake app and run daily cron (serialized)
+      - name: Wake app and pull latest data
         env:
           APP_URL: ${{ secrets.RENDER_APP_URL }}
           CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
-          MODE_INPUT: ${{ github.event.inputs.mode }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           BASE="${APP_URL:-https://areru-cloud.onrender.com}"
           BASE="${BASE%/}"
           echo "Waking ${BASE}/healthz ... utc=$(date -u +%H:%M)"
-          # ページではなく healthz（ジョブ起動なし）
           ok=0
           for i in 1 2 3 4 5 6; do
-            code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 90 \
+            code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 120 \
               "${BASE}/healthz" || echo "000")
             echo "wake_try=${i} http=${code}"
-            cat /tmp/healthz.json || true
-            echo
             if [ "$code" = "200" ]; then
               ok=1
               break
@@ -54,16 +48,25 @@ jobs:
             sleep 20
           done
           if [ "$ok" != "1" ]; then
-            echo "ERROR: Render did not respond to /healthz"
+            echo "::error::Render did not respond to /healthz"
             exit 1
           fi
-          # 配信中データが当日分かどうかを表示（生成は data ワークフローの責務）
+          # 再デプロイなしで最新データを取り込ませる
+          curl -sS -o /tmp/sync.json -w "data-sync http=%{http_code}\n" --max-time 120 \
+            -X POST "${BASE}/api/data-sync?wait=1&token=${CRON_TOKEN}" || true
+          cat /tmp/sync.json 2>/dev/null || true
+          echo
+          curl -sS -o /tmp/healthz.json --max-time 120 "${BASE}/healthz" || true
           python3 - <<'PY'
           import json
           with open('/tmp/healthz.json', encoding='utf-8') as f:
               h = json.load(f)
+          ds = h.get('data_sync') or {}
           print('served today =', h.get('today'))
           print('served latest_pred_date =', h.get('latest_pred_date'))
           print('served latest_pred_mtime =', h.get('latest_pred_mtime'))
           print('today_ready =', h.get('today_ready'))
+          print('rss_mb =', h.get('rss_mb'), 'uptime_sec =', h.get('uptime_sec'))
+          print('data_sync =', {k: ds.get(k) for k in
+                                ('enabled', 'sha', 'last_ok_at', 'last_error', 'changed_files')})
           PY

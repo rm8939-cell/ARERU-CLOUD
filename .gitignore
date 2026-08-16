@@ -5,3 +5,7 @@ data/cache/
 .env
 .venv/
 venv/
+# 稼働中インスタンスのローカル状態（data_sync / ジョブ状態 / ロック）
+data/.data_sync.json
+data/.*_job_status.json
+data/.sync-*

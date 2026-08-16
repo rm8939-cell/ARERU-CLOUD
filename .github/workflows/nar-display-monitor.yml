@@ -1,5 +1,7 @@
-# 地方表示の24時間監視（開催場・レース一覧・予想）
-name: NAR display monitor
+# JRA・地方の表示監視（レース一覧・予想が実際に描かれているか）
+#
+# 以前は地方しか見ていなかったため、JRA が白画面でも success のままだった。
+name: Display monitor
 
 on:
   schedule:
@@ -10,23 +12,24 @@ on:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check NAR venues / races / predictions
+      - name: Check JRA / NAR races and predictions
         env:
           APP_URL: ${{ secrets.RENDER_APP_URL }}
+          MONITOR_SOURCES: jra,nar
         run: |
           set -euo pipefail
           BASE="${APP_URL:-https://areru-cloud.onrender.com}"
           export APP_URL="$BASE"
-          # wake
+          # スピンダウンからの復帰を待つ（Free のコールドスタートは 60〜90 秒）
           for i in 1 2 3; do
-            code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 90 "${BASE}/healthz" || echo 000)
+            code=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" --max-time 120 "${BASE}/healthz" || echo 000)
             echo "wake=$i http=$code"
             if [ "$code" = "200" ]; then break; fi
-            sleep 8
+            sleep 10
           done
-          python3 scripts/monitor_nar_display.py
+          python3 scripts/monitor_display.py
