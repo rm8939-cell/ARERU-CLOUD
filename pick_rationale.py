@@ -620,6 +620,442 @@ def horse_grade(score) -> str:
     return "D"
 
 
+# --- BUY理由 構造化（Phase1: 実データのみ / 推測禁止） ---
+
+BUY_REASON_CATEGORY_ORDER: tuple[str, ...] = (
+    "expected_value",
+    "ability",
+    "odds",
+    "trouble",
+    "bias",
+    "pedigree",
+    "rotation",
+    "pace",
+    "jockey",
+)
+
+BUY_REASON_LABELS: dict[str, str] = {
+    "expected_value": "期待値",
+    "ability": "能力",
+    "odds": "オッズ",
+    "trouble": "前走不利",
+    "bias": "コース・馬場バイアス",
+    "pedigree": "血統",
+    "rotation": "ローテ",
+    "pace": "ラップ",
+    "jockey": "騎手",
+}
+
+# Phase2表示: A/B/C / 参考 / 判定なし（内部gradeはstrong等のまま）
+BUY_REASON_GRADE_DISPLAY: dict[str, str] = {
+    "strong": "A",
+    "medium": "B",
+    "weak": "C",
+    "reference": "参考",
+    "unavailable": "判定なし",
+}
+
+_MAIN_REASON_CATS = ("expected_value", "ability", "odds")
+_FILLER_PLUS = {
+    "条件面の大きな欠点が見当たらない",
+    "相手関係を踏まえても残せる内容",
+    "総合指数とシミュレーションのバランスが良い",
+    "条件面のバランスが良い",
+    "相手関係でも残せる",
+    "再現性のある評価",
+    "総合評価上位",
+    "欠点が少ない",
+}
+
+
+def _safe_float(v) -> float | None:
+    try:
+        if v is None or v == "" or v == "—":
+            return None
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_int(v) -> int | None:
+    try:
+        if v is None or v == "" or v == "—":
+            return None
+        return int(float(v))
+    except (TypeError, ValueError):
+        return None
+
+
+def _reason_item(
+    category: str,
+    *,
+    grade: str,
+    evidence: str,
+    data_available: bool,
+    score: float | None = None,
+) -> dict[str, Any]:
+    return {
+        "category": category,
+        "label": BUY_REASON_LABELS.get(category, category),
+        "grade": grade,
+        "grade_display": BUY_REASON_GRADE_DISPLAY.get(grade, grade),
+        "evidence": str(evidence or "").strip(),
+        "data_available": bool(data_available),
+        "score": score,
+    }
+
+
+def _reason_unavailable(category: str) -> dict[str, Any]:
+    return _reason_item(
+        category,
+        grade="unavailable",
+        evidence="十分なデータなし",
+        data_available=False,
+        score=None,
+    )
+
+
+def build_structured_buy_reasons(
+    card: dict | None = None,
+    race: dict | None = None,
+) -> list[dict[str, Any]]:
+    """BUY説明用の9項目。判定そのものには使わない。
+
+    主根拠: expected_value / ability / odds
+    参考: trouble / bias / pace / jockey（取得済みデータのみ）
+    判定なし: pedigree / rotation（およびデータ無し項目）
+    """
+    card = card if isinstance(card, dict) else {}
+    race = race if isinstance(race, dict) else {}
+    items: list[dict[str, Any]] = []
+
+    # 1) 期待値（馬カード優先 → レース）
+    ev = _safe_float(card.get("期待値"))
+    if ev is None:
+        ev = _safe_float(race.get("期待値"))
+    if ev is not None:
+        edge = round(ev - 100.0, 1)
+        edge_txt = f"+{edge}%" if edge > 0 else f"{edge}%"
+        if ev >= 115 or edge >= 15:
+            grade = "strong"
+            evidence = f"想定オッズに対してEV {ev:.0f}（{edge_txt}）"
+        elif ev >= 108 or edge >= 8:
+            grade = "medium"
+            evidence = f"想定オッズに対してEV {ev:.0f}（{edge_txt}）"
+        else:
+            grade = "weak"
+            evidence = f"EV {ev:.0f}（{edge_txt}）/ BUY床未満"
+        items.append(_reason_item(
+            "expected_value",
+            grade=grade,
+            evidence=evidence,
+            data_available=True,
+            score=edge,
+        ))
+    else:
+        items.append(_reason_unavailable("expected_value"))
+
+    # 2) 能力
+    idx = _safe_int(card.get("近走指数順位"))
+    ai_score = _safe_float(card.get("AI評価"))
+    if ai_score is None:
+        ai_score = _safe_float(card.get("AI信頼度スコア"))
+    if idx is not None:
+        if idx == 1:
+            grade, evidence = "strong", "近走指数がメンバー上位（1位）"
+        elif idx <= 3:
+            grade, evidence = "medium", f"近走指数がメンバー上位（{idx}位）"
+        else:
+            grade, evidence = "weak", f"近走指数{idx}位"
+        if ai_score is not None:
+            evidence = f"{evidence} / AI評価 {ai_score:.0f}"
+        items.append(_reason_item(
+            "ability",
+            grade=grade,
+            evidence=evidence,
+            data_available=True,
+            score=float(idx),
+        ))
+    elif ai_score is not None:
+        items.append(_reason_item(
+            "ability",
+            grade="weak",
+            evidence=f"AI評価 {ai_score:.0f}",
+            data_available=True,
+            score=ai_score,
+        ))
+    else:
+        items.append(_reason_unavailable("ability"))
+
+    # 3) オッズ
+    market = _safe_float(card.get("単勝オッズ"))
+    if market is None:
+        market = _safe_float(race.get("本命オッズ") or race.get("現在オッズ"))
+    fair = _safe_float(card.get("AI適正オッズ"))
+    if fair is None:
+        fair = _safe_float(race.get("AI適正オッズ"))
+    pop = _safe_int(card.get("人気"))
+    if pop is None:
+        pop = _safe_int(race.get("本命人気"))
+    if market is not None and market > 0:
+        bits = [f"{market:.1f}倍"]
+        if pop is not None:
+            bits.append(f"{pop}人気")
+        ratio = (market / fair) if (fair is not None and fair > 0) else None
+        if ratio is not None and ratio >= 1.25:
+            grade = "strong"
+            evidence = " / ".join(bits) + " / 能力評価に対して人気が低い"
+        elif ratio is not None and ratio >= 1.12:
+            grade = "medium"
+            evidence = " / ".join(bits) + " / AI想定より割安"
+        elif ratio is not None:
+            grade = "weak"
+            evidence = " / ".join(bits) + " / 乖離は限定的"
+        else:
+            grade = "weak"
+            evidence = " / ".join(bits) + " / 適正オッズ比較なし"
+        items.append(_reason_item(
+            "odds",
+            grade=grade,
+            evidence=evidence,
+            data_available=True,
+            score=round(ratio, 2) if ratio is not None else market,
+        ))
+    else:
+        items.append(_reason_unavailable("odds"))
+
+    # 4) 前走不利 — 参考のみ（断定しない）
+    trouble_mark = str(card.get("前走不利補正") or "").strip()
+    plus = card.get("プラス材料一覧") or _split_materials(card.get("プラス材料") or "")
+    has_trouble_proxy = ("補正" in trouble_mark) or any("前走不利" in str(p) for p in plus)
+    if has_trouble_proxy:
+        items.append(_reason_item(
+            "trouble",
+            grade="reference",
+            evidence="代理指標で不利の可能性あり（通過・上がり実測は未取得）",
+            data_available=True,
+            score=None,
+        ))
+    elif trouble_mark:
+        items.append(_reason_item(
+            "trouble",
+            grade="reference",
+            evidence="現在取得できる代理指標では強い根拠なし",
+            data_available=True,
+            score=None,
+        ))
+    else:
+        items.append(_reason_unavailable("trouble"))
+
+    # 5) コース・馬場バイアス — 参考（展開・枠のみ）
+    pace = race.get("展開予想データ") if isinstance(race.get("展開予想データ"), dict) else {}
+    if not pace:
+        raw_pace = race.get("展開予想")
+        if isinstance(raw_pace, dict):
+            pace = raw_pace
+        elif isinstance(raw_pace, str) and raw_pace.strip().startswith("{"):
+            try:
+                import json as _json
+                obj = _json.loads(raw_pace)
+                if isinstance(obj, dict):
+                    pace = obj
+            except Exception:
+                pace = {}
+    bias_rate = _safe_float(race.get("競馬場バイアス一致率"))
+    bias_bits: list[str] = []
+    if pace.get("想定ペース"):
+        bias_bits.append(f"想定ペース{pace.get('想定ペース')}")
+    if pace.get("有利枠"):
+        bias_bits.append(f"有利枠 {pace.get('有利枠')}")
+    if bias_rate is not None:
+        bias_bits.append(f"バイアス一致率 {bias_rate:.0f}")
+    if bias_bits:
+        items.append(_reason_item(
+            "bias",
+            grade="reference",
+            evidence=" / ".join(bias_bits) + "（展開・枠データのみ・断定なし）",
+            data_available=True,
+            score=bias_rate,
+        ))
+    else:
+        items.append(_reason_unavailable("bias"))
+
+    # 6) 血統 — 常に判定なし
+    items.append(_reason_unavailable("pedigree"))
+
+    # 7) ローテ — 常に判定なし
+    items.append(_reason_unavailable("rotation"))
+
+    # 8) ラップ — 参考（実ラップなし）
+    lap = str(card.get("ラップ適性") or "").strip()
+    if lap and lap not in ("—", "-", "なし", "nan"):
+        items.append(_reason_item(
+            "pace",
+            grade="reference",
+            evidence=f"{lap}（実ラップ未取得・代理評価）",
+            data_available=True,
+            score=None,
+        ))
+    else:
+        items.append(_reason_unavailable("pace"))
+
+    # 9) 騎手 — 参考 / データなし
+    jockey_mark = str(card.get("騎手相性") or "").strip()
+    jockey_name = str(card.get("騎手") or "").strip()
+    if jockey_mark in ("○", "◎") or any("騎手" in str(p) for p in plus):
+        evidence = "騎手相性マークあり"
+        if jockey_name:
+            evidence = f"{jockey_name} / {evidence}"
+        items.append(_reason_item(
+            "jockey",
+            grade="reference",
+            evidence=evidence + "（詳細成績は未集計）",
+            data_available=True,
+            score=None,
+        ))
+    elif jockey_name:
+        items.append(_reason_item(
+            "jockey",
+            grade="reference",
+            evidence=f"{jockey_name} / 騎手成績の強い根拠なし",
+            data_available=True,
+            score=None,
+        ))
+    else:
+        items.append(_reason_unavailable("jockey"))
+
+    by_cat = {x["category"]: x for x in items}
+    return [by_cat[c] for c in BUY_REASON_CATEGORY_ORDER if c in by_cat]
+
+
+def format_buy_reason_shorts(reasons: list[dict[str, Any]], limit: int = 3) -> list[str]:
+    """主根拠のみ短文化。reference/unavailable/fillerは出さない。"""
+    out: list[str] = []
+    for item in reasons or []:
+        if not isinstance(item, dict):
+            continue
+        if not item.get("data_available"):
+            continue
+        if item.get("grade") not in ("strong", "medium", "weak"):
+            continue
+        if item.get("category") not in _MAIN_REASON_CATS:
+            continue
+        label = item.get("label") or BUY_REASON_LABELS.get(str(item.get("category")), "")
+        letter = item.get("grade_display") or BUY_REASON_GRADE_DISPLAY.get(str(item.get("grade")), "")
+        ev = str(item.get("evidence") or "").strip()
+        if not ev:
+            continue
+        tip = ev.split(" / ")[0]
+        msg = f"{label} {letter} {tip}".strip()
+        if msg and msg not in out:
+            out.append(msg)
+        if len(out) >= limit:
+            break
+    return out[:limit]
+
+
+def build_buy_verdict_pack(
+    reasons: list[dict[str, Any]] | None,
+    card: dict | None = None,
+    race: dict | None = None,
+    *,
+    is_buy: bool = False,
+    role: str = "",
+    ai_letter: str = "",
+) -> dict[str, Any]:
+    """BUY総合表示用。9項目平均での再判定はしない。"""
+    card = card if isinstance(card, dict) else {}
+    race = race if isinstance(race, dict) else {}
+    reasons = [r for r in (reasons or []) if isinstance(r, dict)]
+    by_cat = {str(r.get("category")): r for r in reasons}
+
+    # 総合評価: 既存ランク / AI評価のみ（9項目から作らない）
+    if is_buy and role == "本命":
+        overall = str(race.get("勝負ランク") or ai_letter or "—")
+        overall_note = "既存BUY判定・レース信頼度に基づく表示"
+    else:
+        overall = str(ai_letter or "—")
+        overall_note = "馬のAI評価（BUY再判定ではない）"
+
+    # 買いの主因: 実データがある主根拠のみ（strong→medium、期待値優先）
+    main_causes: list[str] = []
+    for grade_want in ("strong", "medium"):
+        for cat in _MAIN_REASON_CATS:
+            item = by_cat.get(cat)
+            if not item or not item.get("data_available"):
+                continue
+            if item.get("grade") != grade_want:
+                continue
+            label = item.get("label") or BUY_REASON_LABELS.get(cat, cat)
+            letter = item.get("grade_display") or ""
+            tip = str(item.get("evidence") or "").split(" / ")[0].strip()
+            line = f"{label} {letter}：{tip}".strip("：")
+            if line and line not in main_causes:
+                main_causes.append(line)
+            if len(main_causes) >= 2:
+                break
+        if len(main_causes) >= 2:
+            break
+
+    # プラス材料: カードの実データ（filler除外）＋主根拠の短文
+    plus_raw = card.get("プラス材料一覧") or _split_materials(card.get("プラス材料") or "")
+    plus_items: list[str] = []
+    for p in plus_raw:
+        s = str(p).strip()
+        if not s or s in _FILLER_PLUS:
+            continue
+        if s not in plus_items:
+            plus_items.append(s)
+        if len(plus_items) >= 3:
+            break
+    if len(plus_items) < 2:
+        for cat in _MAIN_REASON_CATS:
+            item = by_cat.get(cat)
+            if not item or not item.get("data_available"):
+                continue
+            if item.get("grade") not in ("strong", "medium"):
+                continue
+            tip = str(item.get("evidence") or "").split(" / ")[0].strip()
+            if tip and tip not in plus_items:
+                plus_items.append(tip)
+            if len(plus_items) >= 3:
+                break
+
+    # 注意点: カードの不安材料＋弱い主根拠（実データのみ）
+    minus_raw = card.get("不安材料一覧") or _split_materials(card.get("不安材料") or "")
+    cautions: list[str] = []
+    for m in minus_raw:
+        s = str(m).strip()
+        if not s or s in _FILLER_PLUS:
+            continue
+        if s not in cautions:
+            cautions.append(s)
+        if len(cautions) >= 3:
+            break
+    for cat in _MAIN_REASON_CATS:
+        item = by_cat.get(cat)
+        if not item or not item.get("data_available"):
+            continue
+        if item.get("grade") != "weak":
+            continue
+        tip = str(item.get("evidence") or "").strip()
+        if tip and tip not in cautions:
+            cautions.append(tip)
+        if len(cautions) >= 3:
+            break
+    # 参考項目で「強い根拠なし」は注意として出さない（ノイズ）。データ不足の明示のみ。
+
+    return {
+        "総合評価": overall,
+        "総合評価注記": overall_note,
+        "買いの主因": main_causes,
+        "買いの主因テキスト": " / ".join(main_causes) if main_causes else ("データ不足" if not is_buy else "主根拠の抽出待ち"),
+        "プラス材料": plus_items[:3],
+        "注意点": cautions[:3],
+        "is_buy": bool(is_buy),
+    }
+
+
 def build_compact_bullets(card: dict, limit: int = 4, role: str = '') -> list[str]:
     """詳細根拠をユーザー向けの短い箇条書きへ圧縮。
 
@@ -712,19 +1148,7 @@ def build_compact_bullets(card: dict, limit: int = 4, role: str = '') -> list[st
         elif len(key) <= 10:
             add(key)
 
-    # 本命は定型埋めを最小限（中身のある根拠を優先）
-    if role == "本命":
-        if len(bullets) < 3:
-            for filler in ("総合評価上位", "欠点が少ない"):
-                if len(bullets) >= min(3, limit):
-                    break
-                add(filler)
-        return bullets[:limit]
-
-    for filler in ("総合評価上位", "欠点が少ない", "相手関係でも残せる"):
-        if len(bullets) >= min(3, limit):
-            break
-        add(filler)
+    # filler禁止: 実データ由来の短文のみ返す
     return bullets[:limit]
 
 
@@ -755,11 +1179,25 @@ def build_display_picks(record: dict) -> list[dict]:
                 conf = float(card.get("AI評価") or 50)
             except (TypeError, ValueError):
                 conf = 50.0
-        grade = horse_grade(conf)
+        try:
+            ai_raw = float(card.get("AI評価")) if card.get("AI評価") not in (None, "", "—") else conf
+        except (TypeError, ValueError):
+            ai_raw = conf
+        grade = horse_grade(ai_raw)
         ban = str(card.get("馬番表示") or card.get("馬番") or "").strip()
         name = str(card.get("馬名") or "").strip()
         line = f"{mark}{ban} {name}".strip() if ban else f"{mark} {name}".strip()
         tip_limit = 4 if role == "本命" else 3
+        reasons = build_structured_buy_reasons(card, record)
+        is_buy = role == "本命" and str(record.get("投資判定") or "").startswith("買い")
+        verdict = build_buy_verdict_pack(
+            reasons,
+            card,
+            record,
+            is_buy=is_buy,
+            role=role,
+            ai_letter=grade,
+        )
         out.append({
             "役割": role,
             "印": mark,
@@ -768,7 +1206,25 @@ def build_display_picks(record: dict) -> list[dict]:
             "表示行": line,
             "AI評価": grade,
             "AI信頼度スコア": round(conf, 1),
-            "要点": build_compact_bullets(card, limit=tip_limit, role=role),
+            "単勝オッズ": card.get("単勝オッズ"),
+            "人気": card.get("人気"),
+            "期待値": card.get("期待値"),
+            "騎手": card.get("騎手") or "",
+            "近走指数順位": card.get("近走指数順位"),
+            "判定ラベル": (
+                "🔥 BUY" if is_buy
+                else ("⭐ 注目" if role in ("注目馬", "穴馬") else "○ 対抗")
+            ),
+            "買う根拠": reasons,
+            "総合評価": verdict.get("総合評価"),
+            "買いの主因": verdict.get("買いの主因") or [],
+            "買いの主因テキスト": verdict.get("買いの主因テキスト") or "",
+            "プラス材料表示": verdict.get("プラス材料") or [],
+            "注意点": verdict.get("注意点") or [],
+            "verdict": verdict,
+            "要点": format_buy_reason_shorts(reasons, limit=tip_limit) or build_compact_bullets(
+                card, limit=tip_limit, role=role
+            ),
             "カード": card,
         })
     return out[:3]

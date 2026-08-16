@@ -28,6 +28,20 @@ app=Flask(__name__)
 _PROCESS_STARTED_AT=time.time()
 BASE=Path(__file__).resolve().parent
 DATA=BASE/'data'; ARCH=DATA/'predictions_by_date'; ARCH.mkdir(parents=True,exist_ok=True)
+
+
+@app.after_request
+def _no_store_html(resp):
+    """画面HTMLの古いキャッシュで白画面化しないよう、HTMLのみ再検証を強制。API仕様は不変。"""
+    try:
+        ctype = (resp.headers.get('Content-Type') or '').lower()
+        if 'text/html' in ctype:
+            resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            resp.headers['Pragma'] = 'no-cache'
+            resp.headers['Expires'] = '0'
+    except Exception:
+        pass
+    return resp
 RUNNERS=DATA/'runners.csv'
 LEGACY=DATA/'score_test_data.csv'
 ANALYSIS_CSV=DATA/'analysis_result.csv'
@@ -1890,6 +1904,160 @@ def _main_ban_map(selected_date: str) -> dict:
     return m
 
 
+_JOCKEY_CACHE: dict[str, dict[str, str]] = {}
+
+
+def _jockey_map_for_race(race_id: str) -> dict[str, str]:
+    """runners.csv から race_id 内の 馬名→騎手（既存ファイルのみ）。"""
+    rid = _norm_race_id(race_id)
+    if not rid:
+        return {}
+    if rid in _JOCKEY_CACHE:
+        return _JOCKEY_CACHE[rid]
+    out: dict[str, str] = {}
+    if not RUNNERS.exists():
+        _JOCKEY_CACHE[rid] = out
+        return out
+    try:
+        df = pd.read_csv(RUNNERS, encoding='utf-8-sig', dtype=str).fillna('')
+        if 'race_id' not in df.columns and '\ufeffrace_id' in df.columns:
+            df = df.rename(columns={'\ufeffrace_id': 'race_id'})
+        if 'race_id' not in df.columns or '馬名' not in df.columns or '騎手' not in df.columns:
+            _JOCKEY_CACHE[rid] = out
+            return out
+        df['_rid'] = df['race_id'].map(_norm_race_id)
+        sub = df[df['_rid'] == rid]
+        for _, row in sub.iterrows():
+            name = clean_horse(row.get('馬名', ''))
+            jk = str(row.get('騎手') or '').strip()
+            if name and jk and jk.lower() not in ('nan', 'none'):
+                out[name] = jk
+    except Exception as e:
+        print(f'[jockey-map] fail rid={rid}: {e}', flush=True)
+    _JOCKEY_CACHE[rid] = out
+    return out
+
+
+def _attach_jockey_from_runners(race: dict) -> None:
+    """表示用に騎手名をカードへ付与。データ取得はしない。"""
+    jmap = _jockey_map_for_race(race.get('race_id') or race.get('\ufeffrace_id') or '')
+    if not jmap:
+        return
+    for c in race.get('ピックカード一覧') or []:
+        if not isinstance(c, dict):
+            continue
+        if str(c.get('騎手') or '').strip():
+            continue
+        name = clean_horse(c.get('馬名', ''))
+        if name and name in jmap:
+            c['騎手'] = jmap[name]
+    main = race.get('本命カード')
+    if isinstance(main, dict) and not str(main.get('騎手') or '').strip():
+        name = clean_horse(main.get('馬名') or race.get('本命') or '')
+        if name and name in jmap:
+            main['騎手'] = jmap[name]
+
+
+def build_predict_day_summary(races: list) -> dict:
+    """今日のAIサマリー（表示用。判定ロジック非改変）。"""
+    races = races or []
+    buy_races = [r for r in races if str(r.get('投資判定') or '').startswith('買い')]
+    skip_races = [r for r in races if '見送' in str(r.get('投資判定') or '')]
+    buy_horses = 0
+    watch_horses = 0
+    for r in races:
+        is_buy = str(r.get('投資判定') or '').startswith('買い')
+        for p in (r.get('予想馬') or []):
+            if not isinstance(p, dict):
+                continue
+            role = str(p.get('役割') or '')
+            if is_buy and role == '本命':
+                buy_horses += 1
+            elif role in ('注目馬', '穴馬'):
+                watch_horses += 1
+    return {
+        '買い推奨レース': len(buy_races),
+        'BUY頭数': buy_horses,
+        '注目頭数': watch_horses,
+        '見送りレース': len(skip_races),
+        '全レース': len(races),
+        'has_buy': len(buy_races) > 0,
+        'empty_buy_msg': '本日はBUY条件を満たす対象なし' if not buy_races else '',
+    }
+
+
+def _pick_board_row(race: dict, pick: dict) -> dict:
+    """トップボード用の薄い行（表示専用）。"""
+    from ev_analysis import safe_float, safe_int
+    ev = safe_float(pick.get('期待値'), None)
+    return {
+        'race_id': race.get('race_id'),
+        '開催地': race.get('開催地'),
+        'レース': race.get('レース'),
+        'レース名表示': race.get('レース名表示') or race.get('開催地'),
+        '勝負ランク': race.get('勝負ランク'),
+        '投資判定': race.get('投資判定'),
+        '投資判定トーン': race.get('投資判定トーン'),
+        '役割': pick.get('役割'),
+        '表示行': pick.get('表示行'),
+        '馬名': pick.get('馬名'),
+        '馬番表示': pick.get('馬番表示'),
+        '人気': pick.get('人気'),
+        '単勝オッズ': pick.get('単勝オッズ'),
+        '期待値': ev,
+        '期待値表示': f'{int(ev)}%' if ev is not None else '—',
+        'AI評価': pick.get('AI評価'),
+        '判定ラベル': pick.get('判定ラベル'),
+        '買いの主因テキスト': pick.get('買いの主因テキスト') or '',
+        '買いの主因': pick.get('買いの主因') or [],
+        '注意点': pick.get('注意点') or [],
+        '総合評価': pick.get('総合評価') or race.get('勝負ランク') or '—',
+        '_ev_sort': ev if ev is not None else -1,
+        '_rno': safe_int(race.get('レース'), 0) or 0,
+    }
+
+
+def build_predict_horse_boards(races: list, limit: int = 8) -> dict:
+    """トップ: おすすめ / BUY / 高EV / 注目（表示用。BUY判定は変更しない）。"""
+    recommends: list[dict] = []
+    buy_horses: list[dict] = []
+    high_ev: list[dict] = []
+    watch: list[dict] = []
+    buy_ids: set[tuple] = set()
+
+    for r in races or []:
+        is_buy = str(r.get('投資判定') or '').startswith('買い')
+        for p in (r.get('予想馬') or []):
+            if not isinstance(p, dict):
+                continue
+            role = str(p.get('役割') or '')
+            row = _pick_board_row(r, p)
+            key = (str(r.get('race_id') or ''), str(p.get('馬名') or ''), role)
+            if is_buy and role == '本命':
+                buy_horses.append(row)
+                recommends.append(row)
+                buy_ids.add(key)
+            elif role in ('注目馬', '穴馬'):
+                watch.append(row)
+            try:
+                ev = float(p.get('期待値')) if p.get('期待値') not in (None, '', '—') else None
+            except (TypeError, ValueError):
+                ev = None
+            # 高EV: 既存床108以上の表示フィルタ（判定ロジック変更ではない）
+            if ev is not None and ev >= 108 and key not in buy_ids:
+                high_ev.append(row)
+
+    def _sort_ev(rows: list[dict]) -> list[dict]:
+        return sorted(rows, key=lambda x: (-(x.get('_ev_sort') or -1), str(x.get('開催地') or ''), x.get('_rno') or 0))
+
+    return {
+        'おすすめ': _sort_ev(recommends)[:limit],
+        'BUY馬': _sort_ev(buy_horses)[:limit],
+        '高EV馬': _sort_ev(high_ev)[:limit],
+        '注目馬': _sort_ev(watch)[:limit],
+    }
+
+
 def _json_field(raw, default=None):
     if default is None:
         default=[]
@@ -1951,8 +2119,13 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
                         if isinstance(t, dict) and str(t.get('券種')) not in ('単勝', '馬連', 'ワイド')
                     ]
                     r['推奨馬券一覧'] = (main_tix + rest)[:8]
-            if not r.get('AI買い理由'):
-                r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
+            # 厳選後も説明用の買う根拠を再構築（判定は変更しない）
+            from ev_analysis import attach_structured_buy_reasons
+            attach_structured_buy_reasons(r)
+            r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
+            if r.get('予想馬'):
+                from pick_rationale import build_display_picks
+                r['予想馬'] = build_display_picks(r)
         except Exception as e:
             print(f'[rank] ticket rebuild skip: {e}', flush=True)
     return out
@@ -2097,9 +2270,13 @@ def prep(records, ban_map=None):
             r['投資判定']='見送り' if '見送' in str(r.get('投資判定')) else '買い'
         if not r.get('投資判定表示'):
             r['投資判定表示']=r.get('投資判定') or '判定待ち'
-        if not r.get('予想馬'):
-            from pick_rationale import build_display_picks
-            r['予想馬']=build_display_picks(r)
+        # 既存 runners から騎手名のみ結合（取得処理は変更しない）
+        _attach_jockey_from_runners(r)
+        from pick_rationale import build_display_picks
+        r['予想馬']=build_display_picks(r)
+        from ev_analysis import attach_structured_buy_reasons, build_ai_buy_reasons
+        attach_structured_buy_reasons(r)
+        r['AI買い理由']=build_ai_buy_reasons(r, limit=3)
         # 地方: 単勝・馬連・ワイドのシンプル買い目を優先表示
         # 中央: 本命軸の単勝・馬連・ワイドを先頭に保証（既存フォーメーションは後ろに残す）
         src=str(r.get('source') or '').lower()
@@ -3045,7 +3222,9 @@ def index():
             venues=[],selected_venue='',show_venue_picker=False,
             today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
             day_stats=None,data_status='ready',
-            buy_candidates=[],today_ai_board=today_ai_board,data_updated_at='')
+            buy_candidates=[],today_ai_board=today_ai_board,data_updated_at='',
+            predict_day_summary={'買い推奨レース':0,'BUY頭数':0,'注目頭数':0,'見送りレース':0,'全レース':0,'has_buy':False,'empty_buy_msg':''},
+            predict_horse_boards={'おすすめ':[],'BUY馬':[],'高EV馬':[],'注目馬':[]})
 
     if selected in av:
         try:
@@ -3579,6 +3758,12 @@ def index():
                 status=data_status, message=(message or '')[:80],
             )
 
+    predict_day_summary = build_predict_day_summary(races if (mode == 'predict' and not show_venue_picker) else [])
+    predict_horse_boards = build_predict_horse_boards(
+        races if (mode == 'predict' and not show_venue_picker) else [],
+        limit=8,
+    )
+
     return render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
@@ -3587,7 +3772,9 @@ def index():
         today_date=today,
         day_stats=day_stats,data_status=data_status,
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
-        status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime)
+        status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime,
+        predict_day_summary=predict_day_summary,
+        predict_horse_boards=predict_horse_boards)
 
 
 def attach_results(records, selected_date=''):

@@ -1346,57 +1346,49 @@ def _write_rank_perf(payload: dict) -> None:
 
 
 def build_ai_buy_reasons(record: dict, limit: int = 3) -> list[str]:
-    """詳細用の短い買い理由（最大3）。"""
-    reasons: list[str] = []
+    """詳細用の短い買い理由（最大3）。構造化根拠の主項目のみ。fillerなし。"""
+    structured = attach_structured_buy_reasons(record)
+    from pick_rationale import format_buy_reason_shorts
+    return format_buy_reason_shorts(structured, limit=limit)
 
-    def add(msg: str):
-        msg = str(msg or '').strip()
-        if msg and msg not in reasons and len(reasons) < limit:
-            reasons.append(msg)
 
-    ev = record.get('期待値')
-    try:
-        edge = int(round(float(ev) - 100)) if ev is not None else None
-    except (TypeError, ValueError):
-        edge = None
-    if edge is not None and edge > 0:
-        add(f'単勝期待値＋{edge}%')
-    elif edge is not None and edge < 0:
-        add(f'単勝期待値{edge}%')
-
-    for pick in (record.get('予想馬') or [])[:1]:
-        for tip in (pick.get('要点') or [])[:2]:
-            add(str(tip))
-    if not reasons:
-        for c in (record.get('ピックカード一覧') or [])[:1]:
-            if not isinstance(c, dict):
-                continue
-            try:
-                idx = int(float(c.get('近走指数順位')))
-                if idx == 1:
-                    add('近走指数トップ')
-                elif idx <= 3:
-                    add(f'近走指数{idx}位')
-            except (TypeError, ValueError):
-                pass
-            mo = c.get('単勝オッズ')
-            fo = c.get('AI適正オッズ')
-            try:
-                if mo and fo and float(mo) > float(fo) * 1.15:
-                    add('人気との乖離が大きい')
-            except (TypeError, ValueError):
-                pass
-            for p in (c.get('プラス材料一覧') or []):
-                add(str(p))
-                if len(reasons) >= limit:
-                    break
-    while len(reasons) < min(2, limit) and record.get('投資判定') == '買い':
-        for filler in ('条件面のバランスが良い', '相手関係でも残せる', '再現性のある評価'):
-            add(filler)
-            if len(reasons) >= min(2, limit):
+def attach_structured_buy_reasons(record: dict) -> list:
+    """レースに買う根拠（9項目）を付与。BUY判定には使わない。"""
+    from pick_rationale import build_structured_buy_reasons, build_buy_verdict_pack
+    card = None
+    for c in (record.get('ピックカード一覧') or []):
+        if isinstance(c, dict) and str(c.get('役割') or '') == '本命':
+            card = c
+            break
+    if card is None:
+        main = record.get('本命カード')
+        if isinstance(main, dict) and main:
+            card = main
+    if card is None:
+        for c in (record.get('ピックカード一覧') or []):
+            if isinstance(c, dict):
+                card = c
                 break
-        break
-    return reasons[:limit]
+    structured = build_structured_buy_reasons(card, record)
+    record['買う根拠'] = structured
+    is_buy = str(record.get('投資判定') or '').startswith('買い')
+    try:
+        from pick_rationale import horse_grade
+        ai_letter = horse_grade(card.get('AI評価') if isinstance(card, dict) else None)
+    except Exception:
+        ai_letter = str(record.get('勝負ランク') or '—')
+    verdict = build_buy_verdict_pack(
+        structured,
+        card if isinstance(card, dict) else {},
+        record,
+        is_buy=is_buy,
+        role='本命',
+        ai_letter=ai_letter,
+    )
+    record['BUY総合'] = verdict
+    record['買いの主因'] = verdict.get('買いの主因') or []
+    record['買いの主因テキスト'] = verdict.get('買いの主因テキスト') or ''
+    return structured
 
 
 def calc_expected_value(market_odds, fair_odds):
