@@ -2340,12 +2340,21 @@ def _pedigree_from_cache(name: str) -> dict:
     }
 
 
+def _ped_name(v) -> str:
+    """『カリフォルニアクロームCalifornia Chrome(米)』→ 和名のみ。和名が無ければ原文。"""
+    s = re.sub(r'\s+', ' ', _clean_cell(v)).strip()
+    if not s:
+        return ''
+    m = re.match(r'^([^\x00-\x7F]+?)[A-Za-z].*$', s)
+    return (m.group(1).strip() if m and m.group(1).strip() else s)
+
+
 def build_pedigree_display(name: str) -> dict:
     """表示用血統。取得できない場合は NO_DATA。スコア化しない。"""
     ped = _pedigree_from_cache(name) or _load_pedigree_index().get(clean_horse(name)) or {}
-    sire = ped.get('父') or ''
-    dam = ped.get('母') or ''
-    bms = ped.get('母父') or ''
+    sire = _ped_name(ped.get('父'))
+    dam = _ped_name(ped.get('母'))
+    bms = _ped_name(ped.get('母父'))
     has = bool(sire or dam or bms)
     bits = [x for x in (f'父 {sire}' if sire else '', f'母 {dam}' if dam else '', f'母父 {bms}' if bms else '') if x]
     return {
