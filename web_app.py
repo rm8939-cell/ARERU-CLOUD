@@ -1965,7 +1965,8 @@ NO_DATA = 'データなし'
 # 戦績1行の表示キー。古い保存データにキーが無くても NO_DATA で埋める（後方互換）。
 HISTORY_DISPLAY_KEYS = (
     '日付', '開催地', 'レース名', '距離', '馬場', '頭数', '人気', '着順',
-    '騎手', '斤量', '馬体重', 'タイム', '着差', '通過順', '実ラップ',
+    '騎手', '斤量', '馬体重', 'タイム', '着差', '通過順', '上り3F', 'ペース',
+    '実ラップ',
 )
 # 実データが来たときだけ使う任意キー（現状の保存データには無い）
 _HISTORY_PASS_KEYS = ('通過順', '通過', 'コーナー通過順')
@@ -1977,6 +1978,7 @@ _RUNNER_HISTORY_CACHE: dict[str, object] = {'sig': None, 'by_horse': {}}
 _HORSE_ID_MAP_CACHE: dict[str, object] = {'sig': None, 'by_horse': {}}
 HORSE_CACHE_DIR = DATA / 'cache' / 'horse_results'
 HORSE_ID_MAP = DATA / 'cache' / 'horse_ids.json'
+PEDIGREE_CACHE_DIR = DATA / 'cache' / 'horse_pedigree'
 
 
 def _clean_cell(v) -> str:
@@ -2100,8 +2102,12 @@ def _load_pedigree_index() -> dict:
 
 
 def build_history_display_rows(name: str, before_date: str = '', limit: int = 5) -> list:
-    """表示用の過去走。取得できない項目は NO_DATA。判定には使わない。"""
-    rows = _load_history_index().get(clean_horse(name)) or []
+    """表示用の過去走。取得できない項目は NO_DATA。判定には使わない。
+
+    実測値（通過・上り・ペース）を持つ戦績キャッシュを優先し、無ければ
+    all_history.csv を使う。どちらも無ければ空リスト。
+    """
+    rows = _horse_cache_rows(name) or _load_history_index().get(clean_horse(name)) or []
     target = str(before_date or '').strip()
     out: list[dict] = []
     for row in rows:
@@ -2179,8 +2185,12 @@ def _load_horse_id_map() -> dict:
     return by_horse
 
 
-def _horse_cache_dates(name: str) -> list:
-    """馬名→horse_idマップがある場合のみ、既存キャッシュの出走日を返す。"""
+def _horse_cache_rows(name: str) -> list:
+    """馬名→horse_idマップがある場合のみ、戦績キャッシュを表示キーへ変換。
+
+    キャッシュに無い項目は空のまま（推測しない）。旧形式キャッシュでは
+    通過・上り・ペース等が空になる。
+    """
     hid = _load_horse_id_map().get(clean_horse(name))
     if not hid:
         return []
@@ -2188,24 +2198,47 @@ def _horse_cache_dates(name: str) -> list:
     if not path.exists():
         return []
     try:
-        rows = json.loads(path.read_text(encoding='utf-8'))
+        raw = json.loads(path.read_text(encoding='utf-8'))
     except Exception:
         return []
-    if not isinstance(rows, list):
+    if not isinstance(raw, list):
         return []
     out = []
-    for row in rows:
+    for row in raw:
         if not isinstance(row, dict):
             continue
         d = _norm_hist_date(row.get('年月日'))
-        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', d):
-            out.append({
-                '日付': d,
-                '開催地': _clean_cell(row.get('場')),
-                'レース名': _clean_cell(row.get('レース名')),
-            })
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', d):
+            continue
+        out.append({
+            '日付': d,
+            '開催地': _clean_cell(row.get('場')),
+            'レース名': _clean_cell(row.get('レース名')),
+            '距離': _clean_cell(row.get('距離')),
+            '馬場': _clean_cell(row.get('馬場')),
+            '頭数': _clean_cell(row.get('頭数')),
+            '人気': _clean_cell(row.get('人気')),
+            '着順': _clean_cell(row.get('着順')),
+            '騎手': _clean_cell(row.get('騎手')),
+            '斤量': _clean_cell(row.get('斤量')),
+            '馬体重': _clean_cell(row.get('馬体重')),
+            'タイム': _clean_cell(row.get('タイム')),
+            '着差': _clean_cell(row.get('着差')),
+            '通過順': _clean_cell(row.get('通過')),
+            '上り3F': _clean_cell(row.get('上り')),
+            'ペース': _clean_cell(row.get('ペース')),
+            '実ラップ': '',
+        })
     out.sort(key=lambda x: x['日付'], reverse=True)
     return out
+
+
+def _horse_cache_dates(name: str) -> list:
+    """ローテ算出用。戦績キャッシュの出走日のみ。"""
+    return [
+        {'日付': r['日付'], '開催地': r.get('開催地') or '', 'レース名': r.get('レース名') or ''}
+        for r in _horse_cache_rows(name)
+    ]
 
 
 def build_rotation_display(rows: list, target_date: str = '', extra: list | None = None) -> dict:
@@ -2286,9 +2319,30 @@ def attach_rotation_to_cards(race: dict, target_date: str = '') -> None:
             c['ローテ'] = build_rotation_display([], '')
 
 
+def _pedigree_from_cache(name: str) -> dict:
+    """任意の data/cache/horse_pedigree/{horse_id}.json があれば読む。無ければ空。"""
+    hid = _load_horse_id_map().get(clean_horse(name))
+    if not hid:
+        return {}
+    path = PEDIGREE_CACHE_DIR / f'{hid}.json'
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    return {
+        '父': _clean_cell(raw.get('父') or raw.get('sire')),
+        '母': _clean_cell(raw.get('母') or raw.get('dam')),
+        '母父': _clean_cell(raw.get('母父') or raw.get('母の父') or raw.get('broodmare_sire')),
+    }
+
+
 def build_pedigree_display(name: str) -> dict:
     """表示用血統。取得できない場合は NO_DATA。スコア化しない。"""
-    ped = _load_pedigree_index().get(clean_horse(name)) or {}
+    ped = _pedigree_from_cache(name) or _load_pedigree_index().get(clean_horse(name)) or {}
     sire = ped.get('父') or ''
     dam = ped.get('母') or ''
     bms = ped.get('母父') or ''
@@ -2323,6 +2377,8 @@ def attach_display_history(race: dict, target_date: str = '') -> None:
             p['血統'] = build_pedigree_display(p.get('馬名') or '')
             latest = rows[0] if rows else {}
             p['通過順表示'] = latest.get('通過順') or NO_DATA
+            p['上り3F表示'] = latest.get('上り3F') or NO_DATA
+            p['ペース表示'] = latest.get('ペース') or NO_DATA
             p['実ラップ表示'] = latest.get('実ラップ') or NO_DATA
         except Exception as e:
             print(f"[display-history] skip {p.get('馬名')}: {e}", flush=True)
@@ -2331,6 +2387,8 @@ def attach_display_history(race: dict, target_date: str = '') -> None:
             p.setdefault('ローテ', build_rotation_display([], ''))
             p.setdefault('血統', build_pedigree_display(''))
             p.setdefault('通過順表示', NO_DATA)
+            p.setdefault('上り3F表示', NO_DATA)
+            p.setdefault('ペース表示', NO_DATA)
             p.setdefault('実ラップ表示', NO_DATA)
 
 

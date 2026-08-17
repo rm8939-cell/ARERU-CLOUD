@@ -1189,8 +1189,8 @@ body.mode-predict .venue-back{color:var(--brand)}
 <div class="val">ローテ：{{_rot.get('表示') or 'データなし'}}<br>血統：{{_ped.get('表示') or 'データなし'}}</div>
 </div>
 <div class="hd-block">
-<div class="lbl">通過順 / 実ラップ</div>
-<div class="val">通過順：{{p.get('通過順表示') or 'データなし'}} · 実ラップ：{{p.get('実ラップ表示') or 'データなし'}}</div>
+<div class="lbl">前走 通過順 / 上り / ラップ</div>
+<div class="val">通過順：{{p.get('通過順表示') or 'データなし'}} · 上り3F：{{p.get('上り3F表示') or 'データなし'}} · ペース：{{p.get('ペース表示') or 'データなし'}} · 実ラップ：{{p.get('実ラップ表示') or 'データなし'}}</div>
 </div>
 {% set _hist = p.get('戦績') or [] %}
 <div class="hd-block">
@@ -1201,7 +1201,7 @@ body.mode-predict .venue-back{color:var(--brand)}
 <div class="hh-row">
 <div class="hh-head">{{h.get('日付') or 'データなし'}} · {{h.get('開催地') or 'データなし'}} · {{h.get('レース名') or 'データなし'}}</div>
 <div class="hh-body">{{h.get('着順') or 'データなし'}}着 / {{h.get('人気') or 'データなし'}}人気 / {{h.get('頭数') or 'データなし'}}頭 · {{h.get('距離') or 'データなし'}} {{h.get('馬場') or 'データなし'}} · {{h.get('タイム') or 'データなし'}} · 着差 {{h.get('着差') or 'データなし'}}</div>
-<div class="hh-body">騎手 {{h.get('騎手') or 'データなし'}} · 斤量 {{h.get('斤量') or 'データなし'}} · 馬体重 {{h.get('馬体重') or 'データなし'}} · 通過順 {{h.get('通過順') or 'データなし'}} · 実ラップ {{h.get('実ラップ') or 'データなし'}}</div>
+<div class="hh-body">騎手 {{h.get('騎手') or 'データなし'}} · 斤量 {{h.get('斤量') or 'データなし'}} · 馬体重 {{h.get('馬体重') or 'データなし'}} · 通過順 {{h.get('通過順') or 'データなし'}} · 上り3F {{h.get('上り3F') or 'データなし'}} · ペース {{h.get('ペース') or 'データなし'}} · 実ラップ {{h.get('実ラップ') or 'データなし'}}</div>
 </div>
 {% endfor %}
 </div>

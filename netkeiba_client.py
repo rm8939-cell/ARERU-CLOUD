@@ -54,6 +54,43 @@ HISTORY_EXTRA_KEYS = tuple(HISTORY_EXTRA_HEADERS.keys())
 HISTORY_ROW_KEYS = HISTORY_BASE_KEYS + HISTORY_EXTRA_KEYS
 
 
+HORSE_ID_MAP = CACHE.parent / "horse_ids.json"
+
+
+def load_horse_ids() -> dict:
+    """馬名→horse_id の索引。壊れていても空dictで返す。"""
+    if not HORSE_ID_MAP.exists():
+        return {}
+    try:
+        data = json.loads(HORSE_ID_MAP.read_text(encoding="utf-8"))
+        return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def remember_horse_ids(entries: list[dict]) -> None:
+    """出馬表由来の 馬名→horse_id を追記保存。失敗しても取得処理は止めない。"""
+    pairs = {
+        str(e.get("馬名") or "").strip(): str(e.get("horse_id") or "").strip()
+        for e in (entries or [])
+        if isinstance(e, dict)
+    }
+    pairs = {k: v for k, v in pairs.items() if k and v}
+    if not pairs:
+        return
+    try:
+        current = load_horse_ids()
+        if all(current.get(k) == v for k, v in pairs.items()):
+            return
+        current.update(pairs)
+        HORSE_ID_MAP.parent.mkdir(parents=True, exist_ok=True)
+        tmp = HORSE_ID_MAP.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(HORSE_ID_MAP)
+    except Exception as e:
+        print(f"[horse-ids] save skip: {e}", flush=True)
+
+
 def _history_extra_indexes(headers: list[str]) -> dict[str, int]:
     """戦績テーブルの見出しから追加項目の列位置を引く。無い項目は返さない。"""
     if not headers:
@@ -388,6 +425,8 @@ class NetkeibaClient:
         for r in rows:
             uniq[r["馬名"]] = r
         out = list(uniq.values())
+        # 出馬表で得た 馬名→horse_id を保存（表示側が戦績キャッシュを引くため）
+        remember_horse_ids(out)
         if not out:
             print(
                 f"[netkeiba-api] {src.upper()} 出馬表0頭 race_id={race_id} "
