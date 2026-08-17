@@ -722,8 +722,8 @@ def build_structured_buy_reasons(
     """BUY説明用の9項目。判定そのものには使わない。
 
     主根拠: expected_value / ability / odds
-    参考: trouble / bias / pace / jockey（取得済みデータのみ）
-    判定なし: pedigree / rotation（およびデータ無し項目）
+    参考: bias / jockey（取得済みデータのみ・代理指標）
+    判定なし: trouble / pace / pedigree / rotation（およびデータ無し項目）
     """
     card = card if isinstance(card, dict) else {}
     race = race if isinstance(race, dict) else {}
@@ -824,28 +824,9 @@ def build_structured_buy_reasons(
     else:
         items.append(_reason_unavailable("odds"))
 
-    # 4) 前走不利 — 参考のみ（断定しない）
-    trouble_mark = str(card.get("前走不利補正") or "").strip()
+    # 4) 前走不利 — 通過順・上がり実測が未取得のため常に判定なし
     plus = card.get("プラス材料一覧") or _split_materials(card.get("プラス材料") or "")
-    has_trouble_proxy = ("補正" in trouble_mark) or any("前走不利" in str(p) for p in plus)
-    if has_trouble_proxy:
-        items.append(_reason_item(
-            "trouble",
-            grade="reference",
-            evidence="代理指標で不利の可能性あり（通過・上がり実測は未取得）",
-            data_available=True,
-            score=None,
-        ))
-    elif trouble_mark:
-        items.append(_reason_item(
-            "trouble",
-            grade="reference",
-            evidence="現在取得できる代理指標では強い根拠なし",
-            data_available=True,
-            score=None,
-        ))
-    else:
-        items.append(_reason_unavailable("trouble"))
+    items.append(_reason_unavailable("trouble"))
 
     # 5) コース・馬場バイアス — 参考（展開・枠のみ）
     pace = race.get("展開予想データ") if isinstance(race.get("展開予想データ"), dict) else {}
@@ -886,18 +867,8 @@ def build_structured_buy_reasons(
     # 7) ローテ — 常に判定なし
     items.append(_reason_unavailable("rotation"))
 
-    # 8) ラップ — 参考（実ラップなし）
-    lap = str(card.get("ラップ適性") or "").strip()
-    if lap and lap not in ("—", "-", "なし", "nan"):
-        items.append(_reason_item(
-            "pace",
-            grade="reference",
-            evidence=f"{lap}（実ラップ未取得・代理評価）",
-            data_available=True,
-            score=None,
-        ))
-    else:
-        items.append(_reason_unavailable("pace"))
+    # 8) ラップ — 実ラップ（ハロンタイム）が未取得のため常に判定なし
+    items.append(_reason_unavailable("pace"))
 
     # 9) 騎手 — 参考 / データなし
     jockey_mark = str(card.get("騎手相性") or "").strip()

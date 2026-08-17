@@ -4,18 +4,12 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>ARERU.EXE</title>
 <style>
-/* 白画面防止: html/body/主要枠は常に可視化（JS失敗時もHTMLだけ見える） */
-html,body{visibility:visible!important;opacity:1!important}
-html{display:block!important;color-scheme:light}
-body{display:block!important;margin:0;min-height:100vh;background:#f3f5f7;color:#121820}
-.header,main.wrap,.wrap{visibility:visible!important;opacity:1!important}
-.header{display:block!important;color:#fff}
-.logo{display:block!important;visibility:visible!important;opacity:1!important;color:#fff}
+html{color-scheme:light}
 noscript.areru-noscript{display:block;padding:12px 16px;background:#fff8e6;color:#7a5a00;font-weight:700;border-bottom:1px solid #f0d48a}
 :root{--bg:#f3f5f7;--card:#fff;--line:#e6ebf0;--text:#121820;--muted:#6a7682;--red:#d64545;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a7f4b;--soft:#eaf6f0;--purple:#6b4eff;--blue:#2f6fed;--radius:16px}
 body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
 body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
-*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden}body{background:var(--bg);color:var(--text);font-family:"Avenir Next","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow-x:hidden}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--text);font-family:"Avenir Next","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow-x:hidden;min-height:100vh}
 .wrap{max-width:760px;width:100%;margin:auto;padding:0 16px}.header{padding:28px 0 18px;border-bottom:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,#12352a 0%,var(--brand) 55%,#0d4a32 100%);color:#fff}
 .header .eyebrow,.header .sub{color:rgba(255,255,255,.78)}.header .logo{color:#fff}.header .logo b{color:#ffd4d0}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:28px;font-weight:800;letter-spacing:.05em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:4px;font-size:12px}
@@ -442,10 +436,10 @@ body.mode-predict .venue-back{color:var(--brand)}
   .top-boards .top-board.span2{grid-column:1 / -1}
 }
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}}{% if mode=='predict' %} mode-predict{% endif %}" id="top" style="visibility:visible;opacity:1;min-height:100vh">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}}{% if mode=='predict' %} mode-predict{% endif %}" id="top">
 <noscript class="areru-noscript">JavaScriptが無効です。基本の予想画面は表示されます。</noscript>
-<header class="header" style="visibility:visible;opacity:1;color:#fff"><div class="wrap"><div class="eyebrow">EXPECTED VALUE INTELLIGENCE</div><div class="logo" style="visibility:visible;opacity:1;color:#fff">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
-<main class="wrap" style="visibility:visible;opacity:1">
+<header class="header"><div class="wrap"><div class="eyebrow">EXPECTED VALUE INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
+<main class="wrap">
 <nav class="source-tabs">
 <a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
 <a class="{{'active' if source=='nar' else ''}}" href="/?source=nar&mode={{mode}}">地方</a>
