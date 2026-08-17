@@ -1958,6 +1958,236 @@ def _attach_jockey_from_runners(race: dict) -> None:
             main['騎手'] = jmap[name]
 
 
+ALL_HISTORY = DATA / 'all_history.csv'
+PEDIGREE_CSV = DATA / 'pedigree.csv'
+NO_DATA = 'データなし'
+
+# 戦績1行の表示キー。古い保存データにキーが無くても NO_DATA で埋める（後方互換）。
+HISTORY_DISPLAY_KEYS = (
+    '日付', '開催地', 'レース名', '距離', '馬場', '頭数', '人気', '着順',
+    '騎手', '斤量', '馬体重', 'タイム', '着差', '通過順', '実ラップ',
+)
+# 実データが来たときだけ使う任意キー（現状の保存データには無い）
+_HISTORY_PASS_KEYS = ('通過順', '通過', 'コーナー通過順')
+_HISTORY_LAP_KEYS = ('実ラップ', 'ラップ', 'ハロンタイム', '上り', '上がり', '後3F')
+
+_HISTORY_CACHE: dict[str, object] = {'sig': None, 'by_horse': {}}
+_PEDIGREE_CACHE: dict[str, object] = {'sig': None, 'by_horse': {}}
+
+
+def _clean_cell(v) -> str:
+    """CSV由来の空値・NaN を空文字へ。値の捏造はしない。"""
+    if v is None:
+        return ''
+    try:
+        if isinstance(v, float) and pd.isna(v):
+            return ''
+    except Exception:
+        pass
+    s = str(v).strip()
+    if not s or s.lower() in ('nan', 'none', 'nat', '—', '-'):
+        return ''
+    if s.endswith('.0') and s[:-2].isdigit():
+        s = s[:-2]
+    return s
+
+
+def _norm_hist_date(v) -> str:
+    """'2026年6月14日' / '2026/06/14' などを YYYY-MM-DD へ。失敗時は原文。"""
+    s = _clean_cell(v)
+    if not s:
+        return ''
+    m = re.match(r'^(\d{4})\D+(\d{1,2})\D+(\d{1,2})', s)
+    if m:
+        return f'{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
+    return s
+
+
+def _first_existing(row: dict, keys: tuple) -> str:
+    for k in keys:
+        v = _clean_cell(row.get(k))
+        if v:
+            return v
+    return ''
+
+
+def _load_history_index() -> dict:
+    """all_history.csv を 馬名→過去走（新しい順）へ。新規取得はしない。"""
+    if not ALL_HISTORY.exists():
+        return {}
+    try:
+        st = ALL_HISTORY.stat()
+        sig = (str(ALL_HISTORY), st.st_mtime_ns, st.st_size)
+    except OSError:
+        return {}
+    if _HISTORY_CACHE.get('sig') == sig:
+        return _HISTORY_CACHE.get('by_horse') or {}
+    by_horse: dict[str, list[dict]] = {}
+    try:
+        df = pd.read_csv(ALL_HISTORY, encoding='utf-8-sig', dtype=str)
+        cols = set(df.columns)
+        for raw in df.to_dict('records'):
+            name = clean_horse(raw.get('馬名', ''))
+            if not name:
+                continue
+            row = {
+                '日付': _norm_hist_date(raw.get('年月日')),
+                '開催地': _clean_cell(raw.get('場')),
+                'レース名': _clean_cell(raw.get('レース名')),
+                '距離': _clean_cell(raw.get('距離')),
+                '馬場': _clean_cell(raw.get('馬場')),
+                '頭数': _clean_cell(raw.get('頭数')),
+                '人気': _clean_cell(raw.get('人気')),
+                '着順': _clean_cell(raw.get('着順')),
+                '騎手': _clean_cell(raw.get('騎手') or raw.get('騎手名')),
+                '斤量': _clean_cell(raw.get('斤量') or raw.get('負担重量')),
+                '馬体重': _clean_cell(raw.get('馬体重')),
+                'タイム': _clean_cell(raw.get('タイム')),
+                '着差': _clean_cell(raw.get('着差')),
+                # 実データが入っている場合のみ拾う（無ければ空＝データなし表示）
+                '通過順': _first_existing(raw, _HISTORY_PASS_KEYS),
+                '実ラップ': _first_existing(raw, _HISTORY_LAP_KEYS),
+            }
+            by_horse.setdefault(name, []).append(row)
+        for rows in by_horse.values():
+            rows.sort(key=lambda x: x.get('日付') or '', reverse=True)
+        print(
+            f'[history] all_history.csv loaded horses={len(by_horse)} cols={len(cols)}',
+            flush=True,
+        )
+    except Exception as e:
+        print(f'[history] load fail: {e}', flush=True)
+        by_horse = {}
+    _HISTORY_CACHE['sig'] = sig
+    _HISTORY_CACHE['by_horse'] = by_horse
+    return by_horse
+
+
+def _load_pedigree_index() -> dict:
+    """任意の data/pedigree.csv があれば 馬名→父/母/母父。無ければ空。"""
+    if not PEDIGREE_CSV.exists():
+        return {}
+    try:
+        st = PEDIGREE_CSV.stat()
+        sig = (str(PEDIGREE_CSV), st.st_mtime_ns, st.st_size)
+    except OSError:
+        return {}
+    if _PEDIGREE_CACHE.get('sig') == sig:
+        return _PEDIGREE_CACHE.get('by_horse') or {}
+    by_horse: dict[str, dict] = {}
+    try:
+        df = pd.read_csv(PEDIGREE_CSV, encoding='utf-8-sig', dtype=str)
+        for raw in df.to_dict('records'):
+            name = clean_horse(raw.get('馬名', ''))
+            if not name:
+                continue
+            by_horse[name] = {
+                '父': _clean_cell(raw.get('父')),
+                '母': _clean_cell(raw.get('母')),
+                '母父': _clean_cell(raw.get('母父') or raw.get('母の父')),
+            }
+        print(f'[pedigree] loaded horses={len(by_horse)}', flush=True)
+    except Exception as e:
+        print(f'[pedigree] load fail: {e}', flush=True)
+        by_horse = {}
+    _PEDIGREE_CACHE['sig'] = sig
+    _PEDIGREE_CACHE['by_horse'] = by_horse
+    return by_horse
+
+
+def build_history_display_rows(name: str, before_date: str = '', limit: int = 5) -> list:
+    """表示用の過去走。取得できない項目は NO_DATA。判定には使わない。"""
+    rows = _load_history_index().get(clean_horse(name)) or []
+    target = str(before_date or '').strip()
+    out: list[dict] = []
+    for row in rows:
+        d = row.get('日付') or ''
+        if target and d and d >= target:
+            continue
+        out.append({k: (row.get(k) or NO_DATA) for k in HISTORY_DISPLAY_KEYS})
+        if len(out) >= max(1, limit):
+            break
+    return out
+
+
+def build_rotation_display(rows: list, target_date: str = '') -> dict:
+    """表示用ローテ（前走日 / 間隔 / 中n週）。予想・EV・BUYには渡さない。"""
+    empty = {'あり': False, '前走日': NO_DATA, '間隔日数': None, '中何週': NO_DATA, '表示': NO_DATA}
+    last_date = ''
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        d = str(row.get('日付') or '').strip()
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', d):
+            last_date = d
+            break
+    if not last_date or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(target_date or '')):
+        return empty
+    try:
+        days = (date.fromisoformat(str(target_date)) - date.fromisoformat(last_date)).days
+    except ValueError:
+        return empty
+    if days < 0:
+        return empty
+    weeks = days // 7
+    week_txt = '連闘' if days <= 8 else f'中{max(weeks - 1, 0)}週'
+    return {
+        'あり': True,
+        '前走日': last_date,
+        '間隔日数': days,
+        '中何週': week_txt,
+        '表示': f'前走 {last_date} / {days}日 / {week_txt}',
+    }
+
+
+def build_pedigree_display(name: str) -> dict:
+    """表示用血統。取得できない場合は NO_DATA。スコア化しない。"""
+    ped = _load_pedigree_index().get(clean_horse(name)) or {}
+    sire = ped.get('父') or ''
+    dam = ped.get('母') or ''
+    bms = ped.get('母父') or ''
+    has = bool(sire or dam or bms)
+    bits = [x for x in (f'父 {sire}' if sire else '', f'母 {dam}' if dam else '', f'母父 {bms}' if bms else '') if x]
+    return {
+        'あり': has,
+        '父': sire or NO_DATA,
+        '母': dam or NO_DATA,
+        '母父': bms or NO_DATA,
+        '表示': ' / '.join(bits) if bits else NO_DATA,
+    }
+
+
+def attach_display_history(race: dict, target_date: str = '') -> None:
+    """予想馬へ戦績・ローテ・通過順・実ラップ・血統を表示用に付与。
+
+    既存データのみ利用し、無い項目は「データなし」。予想順位・EV・BUY判定へは
+    一切渡さない（表示専用フィールド）。
+    """
+    if not isinstance(race, dict):
+        return
+    target = str(target_date or '').strip() or _race_date(race)
+    for p in race.get('予想馬') or []:
+        if not isinstance(p, dict):
+            continue
+        try:
+            rows = build_history_display_rows(p.get('馬名') or '', before_date=target, limit=5)
+            p['戦績'] = rows
+            p['戦績件数'] = len(rows)
+            p['ローテ'] = build_rotation_display(rows, target)
+            p['血統'] = build_pedigree_display(p.get('馬名') or '')
+            latest = rows[0] if rows else {}
+            p['通過順表示'] = latest.get('通過順') or NO_DATA
+            p['実ラップ表示'] = latest.get('実ラップ') or NO_DATA
+        except Exception as e:
+            print(f"[display-history] skip {p.get('馬名')}: {e}", flush=True)
+            p.setdefault('戦績', [])
+            p.setdefault('戦績件数', 0)
+            p.setdefault('ローテ', build_rotation_display([], ''))
+            p.setdefault('血統', build_pedigree_display(''))
+            p.setdefault('通過順表示', NO_DATA)
+            p.setdefault('実ラップ表示', NO_DATA)
+
+
 def build_predict_day_summary(races: list) -> dict:
     """今日のAIサマリー（表示用。判定ロジック非改変）。"""
     races = races or []
@@ -2132,6 +2362,7 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
             if r.get('予想馬'):
                 from pick_rationale import build_display_picks
                 r['予想馬'] = build_display_picks(r)
+                attach_display_history(r)
         except Exception as e:
             print(f'[rank] ticket rebuild skip: {e}', flush=True)
     return out
@@ -2280,6 +2511,7 @@ def prep(records, ban_map=None):
         _attach_jockey_from_runners(r)
         from pick_rationale import build_display_picks
         r['予想馬']=build_display_picks(r)
+        attach_display_history(r)
         from ev_analysis import attach_structured_buy_reasons, build_ai_buy_reasons
         attach_structured_buy_reasons(r)
         r['AI買い理由']=build_ai_buy_reasons(r, limit=3)
@@ -3763,6 +3995,11 @@ def index():
                 source, 7, False, disp_date,
                 status=data_status, message=(message or '')[:80],
             )
+
+    if mode == 'predict' and not show_venue_picker:
+        # 表示日が確定したここでローテ表示を確定させる（判定には使わない）
+        for _r in races:
+            attach_display_history(_r, selected or today)
 
     predict_day_summary = build_predict_day_summary(races if (mode == 'predict' and not show_venue_picker) else [])
     predict_horse_boards = build_predict_horse_boards(

@@ -406,6 +406,10 @@ body.mode-predict .venue-back{color:var(--brand)}
 .horse-dash .hd-block .val.main{color:#ffb08a;font-weight:850}
 .horse-dash .hd-block .val.warn{color:#e8b84a}
 .horse-dash .hd-why-title{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted);margin:8px 0 8px}
+.horse-dash .hd-hist{display:grid;gap:6px}
+.horse-dash .hh-row{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:10px;padding:8px 9px;min-width:0}
+.horse-dash .hh-head{font-size:12px;font-weight:850;color:var(--text);line-height:1.4;word-break:break-word}
+.horse-dash .hh-body{margin-top:3px;font-size:11px;font-weight:700;color:var(--muted);line-height:1.5;word-break:break-word}
 .top-board{border:1px solid var(--line);background:var(--card);border-radius:var(--radius);margin:0 0 14px;overflow:hidden}
 .top-board>h2{margin:0;padding:14px 16px 10px;font-size:14px;font-weight:900;letter-spacing:.04em;border-bottom:1px solid var(--line);color:var(--text)}
 .top-board .tb-list{display:grid;gap:0}
@@ -1178,6 +1182,33 @@ body.mode-predict .venue-back{color:var(--brand)}
 {% if p.get('注意点') %}
 <div class="hd-block"><div class="lbl">注意点</div><div class="val warn">{{p.get('注意点')|join(' / ')}}</div></div>
 {% endif %}
+{% set _rot = p.get('ローテ') or {} %}
+{% set _ped = p.get('血統') or {} %}
+<div class="hd-block">
+<div class="lbl">ローテ / 血統</div>
+<div class="val">ローテ：{{_rot.get('表示') or 'データなし'}}<br>血統：{{_ped.get('表示') or 'データなし'}}</div>
+</div>
+<div class="hd-block">
+<div class="lbl">通過順 / 実ラップ</div>
+<div class="val">通過順：{{p.get('通過順表示') or 'データなし'}} · 実ラップ：{{p.get('実ラップ表示') or 'データなし'}}</div>
+</div>
+{% set _hist = p.get('戦績') or [] %}
+<div class="hd-block">
+<div class="lbl">戦績（直近{{_hist|length}}走）</div>
+{% if _hist %}
+<div class="hd-hist">
+{% for h in _hist %}
+<div class="hh-row">
+<div class="hh-head">{{h.get('日付') or 'データなし'}} · {{h.get('開催地') or 'データなし'}} · {{h.get('レース名') or 'データなし'}}</div>
+<div class="hh-body">{{h.get('着順') or 'データなし'}}着 / {{h.get('人気') or 'データなし'}}人気 / {{h.get('頭数') or 'データなし'}}頭 · {{h.get('距離') or 'データなし'}} {{h.get('馬場') or 'データなし'}} · {{h.get('タイム') or 'データなし'}} · 着差 {{h.get('着差') or 'データなし'}}</div>
+<div class="hh-body">騎手 {{h.get('騎手') or 'データなし'}} · 斤量 {{h.get('斤量') or 'データなし'}} · 馬体重 {{h.get('馬体重') or 'データなし'}} · 通過順 {{h.get('通過順') or 'データなし'}} · 実ラップ {{h.get('実ラップ') or 'データなし'}}</div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="val">データなし</div>
+{% endif %}
+</div>
 {% set _pr = p.get('買う根拠') or [] %}
 {% if _pr and _flag=='buy' %}
 <div class="hd-why-title">根拠内訳</div>
