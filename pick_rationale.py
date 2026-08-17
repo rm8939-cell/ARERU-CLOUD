@@ -715,6 +715,30 @@ def _reason_unavailable(category: str) -> dict[str, Any]:
     )
 
 
+def _rotation_reason(card: dict | None) -> dict[str, Any]:
+    """ローテ根拠。実データ（前走日）が無ければ判定なし。推測はしない。"""
+    rot = (card or {}).get("ローテ") if isinstance(card, dict) else None
+    if not isinstance(rot, dict) or not rot.get("あり"):
+        return _reason_unavailable("rotation")
+    days = _safe_int(rot.get("間隔日数"))
+    if days is None:
+        return _reason_unavailable("rotation")
+    last = str(rot.get("前走日") or "").strip()
+    weeks = str(rot.get("中何週") or "").strip()
+    src = str(rot.get("出典") or "").strip()
+    bits = [f"前走 {last}" if last else "", f"{days}日", weeks]
+    evidence = " / ".join([b for b in bits if b])
+    if src:
+        evidence += f"（{src}ベース・間隔のみ）"
+    return _reason_item(
+        "rotation",
+        grade="reference",
+        evidence=evidence,
+        data_available=True,
+        score=float(days),
+    )
+
+
 def build_structured_buy_reasons(
     card: dict | None = None,
     race: dict | None = None,
@@ -864,8 +888,8 @@ def build_structured_buy_reasons(
     # 6) 血統 — 常に判定なし
     items.append(_reason_unavailable("pedigree"))
 
-    # 7) ローテ — 常に判定なし
-    items.append(_reason_unavailable("rotation"))
+    # 7) ローテ — 取得済みの前走日から算出できた場合のみ参考として出す
+    items.append(_rotation_reason(card))
 
     # 8) ラップ — 実ラップ（ハロンタイム）が未取得のため常に判定なし
     items.append(_reason_unavailable("pace"))
