@@ -390,6 +390,7 @@ body.mode-predict .venue-back{color:var(--brand)}
 .horse-dash .hd-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
 .horse-dash .hd-name{font-size:17px;font-weight:900;line-height:1.3}
 .horse-dash .hd-name small{display:block;margin-top:3px;font-size:11px;font-weight:700;color:var(--muted)}
+.horse-dash .hd-rank{display:inline-block;margin-right:8px;padding:2px 7px;border-radius:999px;background:rgba(34,211,238,.12);border:1px solid var(--line);font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--brand);vertical-align:middle}
 .horse-dash .hd-flag{flex-shrink:0;font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px;background:rgba(139,155,180,.15);color:var(--muted)}
 .horse-dash .hd-flag.buy{background:rgba(255,122,69,.2);color:#ff9b78}
 .horse-dash .hd-flag.watch{background:rgba(110,168,255,.18);color:#8cbcff}
@@ -1152,14 +1153,14 @@ body.mode-predict .venue-back{color:var(--brand)}
 {% endif %}
 
 <div class="section" style="padding-top:12px">
-<div class="section-title">馬カード</div>
+<div class="section-title">馬カード（AI上位{{(r.get('予想馬') or [])|length}}頭）</div>
 <div class="horse-dash">
 {% for p in (r.get('予想馬') or []) %}
 {% set _flag = 'buy' if (p.get('役割')=='本命' and r.get('投資判定トーン')=='buy') else ('watch' if p.get('役割') in ('注目馬','穴馬') else '') %}
 <div class="hd-card {% if _flag=='buy' %}buy-card{% elif _flag=='watch' %}watch-card{% endif %}">
 <div class="hd-top">
-<div class="hd-name">{{p.get('馬名') or '—'}}
-<small>{{p.get('馬番表示') or '—'}}番{% if p.get('役割')=='本命' %} · ◎本命{% elif p.get('役割')=='対抗' %} · ○対抗{% else %} · ☆注目{% endif %}{% if p.get('騎手') %} · {{p.get('騎手')}}{% endif %}</small>
+<div class="hd-name"><span class="hd-rank">AI {{p.get('AI順位') or loop.index}}位</span>{{p.get('馬名') or '—'}}
+<small>{{p.get('馬番表示') or '—'}}番 · {{p.get('印','')}}{{p.get('判定') or p.get('役割') or '—'}}{% if p.get('騎手') %} · {{p.get('騎手')}}{% endif %}</small>
 </div>
 <span class="hd-flag {{_flag}}">{% if _flag=='buy' %}🔥 BUY{% elif _flag=='watch' %}⭐ 注目{% else %}○ 対抗{% endif %}</span>
 </div>

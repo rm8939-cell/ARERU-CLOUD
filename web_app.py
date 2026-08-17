@@ -1967,14 +1967,17 @@ def build_predict_day_summary(races: list) -> dict:
     watch_horses = 0
     for r in races:
         is_buy = str(r.get('投資判定') or '').startswith('買い')
+        # 注目はレースごとの注目枠1頭のみ。表示頭数を増やしても件数が膨らまないようにする。
+        counted_watch = False
         for p in (r.get('予想馬') or []):
             if not isinstance(p, dict):
                 continue
             role = str(p.get('役割') or '')
             if is_buy and role == '本命':
                 buy_horses += 1
-            elif role in ('注目馬', '穴馬'):
+            elif role in ('注目馬', '穴馬') and not counted_watch:
                 watch_horses += 1
+                counted_watch = True
     return {
         '買い推奨レース': len(buy_races),
         'BUY頭数': buy_horses,
@@ -2027,6 +2030,8 @@ def build_predict_horse_boards(races: list, limit: int = 8) -> dict:
 
     for r in races or []:
         is_buy = str(r.get('投資判定') or '').startswith('買い')
+        # 注目ボードはレースごとの注目枠1頭のみ（表示頭数拡張で候補が膨らまないように）
+        picked_watch = False
         for p in (r.get('予想馬') or []):
             if not isinstance(p, dict):
                 continue
@@ -2037,8 +2042,9 @@ def build_predict_horse_boards(races: list, limit: int = 8) -> dict:
                 buy_horses.append(row)
                 recommends.append(row)
                 buy_ids.add(key)
-            elif role in ('注目馬', '穴馬'):
+            elif role in ('注目馬', '穴馬') and not picked_watch:
                 watch.append(row)
+                picked_watch = True
             try:
                 ev = float(p.get('期待値')) if p.get('期待値') not in (None, '', '—') else None
             except (TypeError, ValueError):

@@ -1123,26 +1123,45 @@ def build_compact_bullets(card: dict, limit: int = 4, role: str = '') -> list[st
     return bullets[:limit]
 
 
+DISPLAY_PICK_LIMIT = 6
+
+_DISPLAY_JUDGE_BY_RANK: dict[int, str] = {
+    1: "本命",
+    2: "対抗",
+    3: "有力",
+    4: "相手",
+    5: "抑え",
+    6: "穴候補",
+}
+
+_DISPLAY_MARK_BY_ROLE: dict[str, str] = {
+    "本命": "◎",
+    "対抗": "○",
+    "注目馬": "☆",
+    "穴馬": "▲",
+}
+
+
 def build_display_picks(record: dict) -> list[dict]:
-    """画面表示用: ◎本命 / ○対抗 / ☆注目馬 の3頭のみ。"""
-    cards = [c for c in (record.get("ピックカード一覧") or []) if isinstance(c, dict)]
-    by_role = {str(c.get("役割")): c for c in cards}
-    ordered: list[tuple[str, str, dict | None]] = [
-        ("本命", "◎", by_role.get("本命")),
-        ("対抗", "○", by_role.get("対抗")),
-    ]
-    spotlight = by_role.get("注目馬")
-    if spotlight is None:
-        for c in cards:
-            if c.get("役割") == "穴馬":
-                spotlight = c
-                break
-    ordered.append(("注目馬", "☆", spotlight))
+    """画面表示用: 既存ピックカード一覧からAI上位を最大6頭まで。
+
+    選定・S/A/B・BUY・EVロジックは変更しない。エンジンが並べたピックカード順
+    （本命→対抗→注目馬→穴馬…）をそのまま順位として使う。対象が6頭未満なら
+    存在する分だけ返す。
+    """
+    cards = [
+        c for c in (record.get("ピックカード一覧") or []) if isinstance(c, dict)
+    ][:DISPLAY_PICK_LIMIT]
 
     out = []
-    for role, mark, card in ordered:
-        if not card:
-            continue
+    hole_i = 0
+    for card in cards:
+        role = str(card.get("役割") or "").strip() or "本命"
+        if role == "穴馬":
+            mark = "▲" if hole_i == 0 else "△"
+            hole_i += 1
+        else:
+            mark = _DISPLAY_MARK_BY_ROLE.get(role, "☆")
         try:
             conf = float(card.get("AI信頼度スコア"))
         except (TypeError, ValueError):
@@ -1158,6 +1177,8 @@ def build_display_picks(record: dict) -> list[dict]:
         ban = str(card.get("馬番表示") or card.get("馬番") or "").strip()
         name = str(card.get("馬名") or "").strip()
         line = f"{mark}{ban} {name}".strip() if ban else f"{mark} {name}".strip()
+        rank = len(out) + 1
+        judge = _DISPLAY_JUDGE_BY_RANK.get(rank, role)
         tip_limit = 4 if role == "本命" else 3
         reasons = build_structured_buy_reasons(card, record)
         is_buy = role == "本命" and str(record.get("投資判定") or "").startswith("買い")
@@ -1170,7 +1191,9 @@ def build_display_picks(record: dict) -> list[dict]:
             ai_letter=grade,
         )
         out.append({
+            "AI順位": rank,
             "役割": role,
+            "判定": judge,
             "印": mark,
             "馬番表示": ban,
             "馬名": name,
@@ -1198,7 +1221,7 @@ def build_display_picks(record: dict) -> list[dict]:
             ),
             "カード": card,
         })
-    return out[:3]
+    return out
 
 
 def enrich_pick_card(card: dict, race: dict | None = None) -> dict:
