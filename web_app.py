@@ -2561,11 +2561,11 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
                     r['推奨馬券一覧'] = (main_tix + rest)[:8]
             # 厳選後も説明用の買う根拠を再構築（判定は変更しない）
             from ev_analysis import attach_structured_buy_reasons
+            attach_rotation_to_cards(r)
             attach_structured_buy_reasons(r)
             r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
             if r.get('予想馬'):
                 from pick_rationale import build_display_picks
-                attach_rotation_to_cards(r)
                 r['予想馬'] = build_display_picks(r)
                 attach_display_history(r)
         except Exception as e:
@@ -4203,9 +4203,20 @@ def index():
             )
 
     if mode == 'predict' and not show_venue_picker:
-        # 表示日が確定したここでローテ表示を確定させる（判定には使わない）
+        # 表示日が確定したここでローテを確定させ、説明用の根拠だけ組み直す
+        # （BUY/EV判定は再計算しない）
+        _disp_date = selected or today
         for _r in races:
-            attach_display_history(_r, selected or today)
+            try:
+                attach_rotation_to_cards(_r, _disp_date)
+                if _r.get('予想馬'):
+                    from pick_rationale import build_display_picks
+                    _r['予想馬'] = build_display_picks(_r)
+                from ev_analysis import attach_structured_buy_reasons
+                attach_structured_buy_reasons(_r)
+            except Exception as e:
+                print(f'[rotation] reason rebuild skip: {e}', flush=True)
+            attach_display_history(_r, _disp_date)
 
     predict_day_summary = build_predict_day_summary(races if (mode == 'predict' and not show_venue_picker) else [])
     predict_horse_boards = build_predict_horse_boards(

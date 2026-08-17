@@ -17,6 +17,7 @@ NAR_BASE = "https://nar.netkeiba.com"
 DB = "https://db.netkeiba.com"
 CACHE = Path("data/cache/horse_results")
 CACHE.mkdir(parents=True, exist_ok=True)
+PEDIGREE_CACHE = Path("data/cache/horse_pedigree")
 JST = timezone(timedelta(hours=9))
 
 # JRA: 01-10 / NAR: 30台〜
@@ -837,6 +838,53 @@ class NetkeibaClient:
                 hist.append(normalize_history_row(row))
         cache_path.write_text(json.dumps(hist, ensure_ascii=False), encoding="utf-8")
         return hist
+
+    def fetch_horse_pedigree(
+        self,
+        horse_id: str,
+        use_cache: bool = True,
+        cache_only: bool = False,
+    ) -> dict:
+        """血統（父 / 母 / 母父）。判別できない場合は空dictでキャッシュも書かない。"""
+        cache_path = PEDIGREE_CACHE / f"{horse_id}.json"
+        if use_cache and cache_path.exists():
+            try:
+                data = json.loads(cache_path.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    return data
+            except Exception:
+                pass
+        if cache_only:
+            return {}
+        url = f"{DB}/horse/ped/{horse_id}/"
+        soup = self._get(url, encoding="euc-jp")
+        table = soup.select_one("table.blood_table")
+        if table is None:
+            return {}
+
+        def _span(value: str) -> list:
+            return [td for td in table.find_all("td") if str(td.get("rowspan") or "") == value]
+
+        def _name(td) -> str:
+            a = td.select_one("a") if td is not None else None
+            return a.get_text(strip=True) if a else ""
+
+        # 5代表示: 父/母 が rowspan=16、その親世代が rowspan=8（母父は3番目）
+        gen1 = _span("16")
+        gen2 = _span("8")
+        data = {
+            "父": _name(gen1[0]) if len(gen1) > 0 else "",
+            "母": _name(gen1[1]) if len(gen1) > 1 else "",
+            "母父": _name(gen2[2]) if len(gen2) > 2 else "",
+        }
+        if not any(data.values()):
+            return {}
+        try:
+            PEDIGREE_CACHE.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:
+            print(f"[pedigree] cache skip {horse_id}: {e}", flush=True)
+        return data
 
     def past_five_for_score(self, history: list[dict], before_date: str) -> dict:
         """対象日より前の直近5走の着順/人気/場/レース名を score 用列に変換。"""
