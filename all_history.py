@@ -7,7 +7,30 @@ import re
 from io import StringIO
 
 
-TARGET_DATE = "2026年7月12日"
+def target_date_from_meeting():
+    """対象開催日（今回レース）を JRA の開催一覧から解決する。
+
+    ここで得た日付の過去走は「今回の結果」なので履歴から除外する。
+    取得できない場合は None を返し、除外なしで続行する。
+    """
+    try:
+        from races import get_selected_meeting
+
+        date_text = get_selected_meeting()["date"]
+    except Exception as error:
+        print("⚠️ 対象開催日を解決できません:", error)
+        return None
+
+    match = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", str(date_text))
+
+    if match is None:
+        return None
+
+    return (
+        f"{int(match.group(1))}年"
+        f"{int(match.group(2))}月"
+        f"{int(match.group(3))}日"
+    )
 
 
 def normalize_date(value):
@@ -33,6 +56,8 @@ def normalize_date(value):
 
 
 def save_all_history():
+
+    target_date = target_date_from_meeting()
 
     with open(
         "data/horse_links.csv",
@@ -79,7 +104,7 @@ def save_all_history():
     print("🔥 全馬過去走取得開始")
     print("====================")
     print("対象馬:", total)
-    print("🚫 除外日:", TARGET_DATE)
+    print("🚫 除外日:", target_date or "なし（解決できず）")
 
     for i, horse in enumerate(
         horses,
@@ -277,7 +302,7 @@ def save_all_history():
                     continue
 
                 # 今回レース結果を除外
-                if date == TARGET_DATE:
+                if target_date and date == target_date:
 
                     excluded_count += 1
 
