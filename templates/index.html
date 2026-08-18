@@ -327,29 +327,6 @@ details.race-acc[open]>.race-acc-body{display:block}
 .today-hero .th-count span{font-size:14px;font-weight:800}
 .buy-card-grid{display:grid;gap:14px;margin:0 0 22px}
 @media (min-width:860px){.buy-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap{max-width:980px}}
-/* AREru指数 本命一覧（predictions.csv の表示専用） */
-.areru-picks{border:1px solid var(--line);background:var(--card);border-radius:var(--radius);margin:0 0 18px;overflow:hidden}
-.areru-picks>h2{margin:0;padding:14px 16px 8px;font-size:15px;font-weight:900;letter-spacing:.02em;color:var(--text)}
-.areru-picks .ap-meta{padding:0 16px 8px;font-size:11px;font-weight:700;color:var(--muted);line-height:1.5}
-.areru-picks .ap-list{display:grid;gap:0;border-top:1px solid var(--line)}
-.areru-picks .ap-row{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--line)}
-.areru-picks .ap-row:last-child{border-bottom:0}
-.areru-picks .ap-no{font-size:13px;font-weight:900;color:var(--muted);font-variant-numeric:tabular-nums}
-.areru-picks .ap-horse{font-size:15px;font-weight:900;line-height:1.3;word-break:break-word}
-.areru-picks .ap-sub{margin-top:3px;font-size:11px;font-weight:700;color:var(--muted);line-height:1.4}
-.areru-picks .ap-nums{text-align:right;min-width:0}
-.areru-picks .ap-odds{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
-.areru-picks .ap-index{margin-top:3px;font-size:11px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums}
-@media (max-width:560px){
-  .areru-picks .ap-row{grid-template-columns:38px 1fr auto;gap:8px;padding:10px 12px}
-  .areru-picks .ap-horse{font-size:14px}
-  .areru-picks .ap-odds{font-size:15px}
-}
-@media (max-width:420px){
-  .areru-picks .ap-row{grid-template-columns:34px 1fr;row-gap:2px}
-  .areru-picks .ap-nums{grid-column:2;text-align:left;display:flex;gap:10px;align-items:baseline}
-  .areru-picks .ap-index{margin-top:0}
-}
 .buy-card{display:block;text-decoration:none;color:inherit;background:#fff;border:2px solid #1a7f4b;border-radius:20px;padding:16px 16px 14px;box-shadow:0 10px 24px rgba(26,127,75,.14);overflow:hidden}
 .buy-card:active{transform:scale(.995)}
 .buy-card .bc-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -1088,29 +1065,6 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endfor %}
 </div>
 </details>
-{% endif %}
-
-{% set _ap = areru_pipeline if areru_pipeline is defined and areru_pipeline else {} %}
-{% if _ap.get('あり') %}
-<section class="areru-picks" id="areru-pipeline" aria-label="AREru指数 本命一覧">
-<h2>AREru指数 本命一覧（{{_ap.get('件数')}}R）</h2>
-<div class="ap-meta">開催日 {{_ap.get('開催日') or 'データなし'}}{% if _ap.get('更新') %} · 更新 {{_ap.get('更新')}}{% endif %}</div>
-<div class="ap-list">
-{% for row in _ap.get('行') or [] %}
-<div class="ap-row">
-<div class="ap-no">{{row.get('レース')}}R</div>
-<div class="ap-main">
-<div class="ap-horse">{{row.get('本命') or 'データなし'}}</div>
-<div class="ap-sub">{{row.get('判定') or 'データなし'}}{% if row.get('荒れ度') is not none %} · 荒れ度 {{row.get('荒れ度')}}{% endif %}</div>
-</div>
-<div class="ap-nums">
-<div class="ap-odds">{% if row.get('本命オッズ') is not none %}{{row.get('本命オッズ')}}倍{% else %}データなし{% endif %}</div>
-<div class="ap-index">AREru {% if row.get('AREru指数') is not none %}{{row.get('AREru指数')}}{% else %}データなし{% endif %}</div>
-</div>
-</div>
-{% endfor %}
-</div>
-</section>
 {% endif %}
 
 <details class="detail-fold" id="predict-race-panel">
