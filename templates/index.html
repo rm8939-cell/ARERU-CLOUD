@@ -421,6 +421,17 @@ body.mode-predict .venue-back{color:var(--brand)}
 .top-board .tb-sub{font-size:12px;color:#ffb08a;margin-top:4px;line-height:1.4;font-weight:700}
 .top-board .tb-meta{text-align:right}
 .top-board .tb-ev{font-size:20px;font-weight:900;color:#ff9b78;font-variant-numeric:tabular-nums}
+#areru-pipeline{margin:0 0 14px}
+#areru-pipeline .ap-meta{padding:8px 14px 0;font-size:11px;font-weight:700;color:var(--muted);line-height:1.5}
+#areru-pipeline .ap-list{display:grid;gap:0;padding:8px 0 4px}
+#areru-pipeline .ap-row{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+#areru-pipeline .ap-row:last-child{border-bottom:0}
+#areru-pipeline .ap-no{font-size:13px;font-weight:900;color:var(--muted);font-variant-numeric:tabular-nums}
+#areru-pipeline .ap-horse{font-size:15px;font-weight:900;line-height:1.3;word-break:break-word}
+#areru-pipeline .ap-sub{margin-top:3px;font-size:11px;font-weight:700;color:var(--muted);line-height:1.4}
+#areru-pipeline .ap-nums{text-align:right;min-width:0}
+#areru-pipeline .ap-odds{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+#areru-pipeline .ap-index{margin-top:3px;font-size:11px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums}
 .top-board .tb-ev.mid{color:#e8b84a}
 .top-board .tb-flag{display:inline-flex;margin-top:6px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:850}
 .top-board .tb-flag.buy{background:rgba(255,122,69,.2);color:#ff9b78}
@@ -1085,6 +1096,29 @@ body.mode-predict .venue-back{color:var(--brand)}
 {% endif %}
 </section>
 </div>
+
+{% set _ap = areru_pipeline if areru_pipeline is defined and areru_pipeline else {} %}
+{% if _ap.get('あり') %}
+<section class="top-board" id="areru-pipeline">
+<h2>AREru指数 本命一覧（{{_ap.get('件数')}}R）</h2>
+<div class="ap-meta">開催日 {{_ap.get('開催日') or 'データなし'}}{% if _ap.get('更新') %} · 更新 {{_ap.get('更新')}}{% endif %} · main.py の predictions.csv</div>
+<div class="ap-list">
+{% for row in _ap.get('行') or [] %}
+<div class="ap-row">
+<div class="ap-no">{{row.get('レース')}}R</div>
+<div class="ap-main">
+<div class="ap-horse">{{row.get('本命') or 'データなし'}}</div>
+<div class="ap-sub">{{row.get('判定') or 'データなし'}}{% if row.get('荒れ度') is not none %} · 荒れ度 {{row.get('荒れ度')}}{% endif %}</div>
+</div>
+<div class="ap-nums">
+<div class="ap-odds">{% if row.get('本命オッズ') is not none %}{{row.get('本命オッズ')}}倍{% else %}データなし{% endif %}</div>
+<div class="ap-index">AREru {% if row.get('AREru指数') is not none %}{{row.get('AREru指数')}}{% else %}データなし{% endif %}</div>
+</div>
+</div>
+{% endfor %}
+</div>
+</section>
+{% endif %}
 
 <section class="race-list-panel" id="predict-race-panel">
 <h2>レース一覧{% if selected_venue %}<span class="venue-tag">{{selected_venue}}</span>{% endif %}</h2>
