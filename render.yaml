@@ -7,9 +7,11 @@ services:
     # 推奨: Standard（2GB / 1CPU）。最低でも Starter（CPU改善・スリープなし）。
     plan: free
     buildCommand: pip install -r requirements.txt
-    # workers=1 / threads=1 必須。max-requests でメモリ断片化を定期回収。
-    # timeout は Web 応答用（重いジョブはバックグラウンド）。短めにしてハングを検知。
-    startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 90 --graceful-timeout 30 --max-requests 80 --max-requests-jitter 20 --worker-class sync
+    # 設定は gunicorn_conf.py に集約（workers=1 / gthread 2スレッド / preload）。
+    # スレッド1本だと重いページ描画中に /healthz まで詰まり、ヘルスチェック失敗で
+    # インスタンスごと落ちる。
+    startCommand: gunicorn -c gunicorn_conf.py web_app:app
+    healthCheckPath: /healthz
     envVars:
       - key: ARERU_SKIP_BOOT
         value: "1"
