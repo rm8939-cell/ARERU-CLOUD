@@ -325,6 +325,10 @@ details.race-acc[open]>.race-acc-body{display:block}
   .day-kpis{grid-template-columns:repeat(2,1fr);padding:0 10px 12px}
   .ai-eval-row{grid-template-columns:64px 1fr;padding:9px}
   .ai-score-pts{font-size:20px}.ai-score-stars{font-size:18px}
+  /* 狭い画面ではオッズ・指数を馬名の下段へ回して潰れを防ぐ */
+  #areru-pipeline .ap-row{grid-template-columns:34px 1fr;row-gap:2px}
+  #areru-pipeline .ap-nums{grid-column:2;text-align:left;display:flex;gap:10px;align-items:baseline}
+  #areru-pipeline .ap-index{margin-top:0}
 }
 /* ===== Predict dashboard (dark navy) ===== */
 body.mode-predict{
@@ -444,6 +448,9 @@ body.mode-predict .venue-back{color:var(--brand)}
   .buy-reasons-cat li{grid-template-columns:1fr;gap:4px}
   .horse-dash .hd-grid{grid-template-columns:repeat(2,1fr)}
   .top-board .tb-ev{font-size:18px}
+  #areru-pipeline .ap-row{grid-template-columns:38px 1fr auto;gap:8px;padding:10px 12px}
+  #areru-pipeline .ap-horse{font-size:14px}
+  #areru-pipeline .ap-odds{font-size:15px}
 }
 @media (min-width:900px){
   body.mode-predict .wrap{max-width:980px}
