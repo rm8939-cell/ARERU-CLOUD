@@ -1567,6 +1567,75 @@ def _filter_records_by_source(records, source):
     return out
 
 
+AREru_PREDICTIONS = DATA / 'predictions.csv'
+
+
+def build_areru_pipeline_board() -> dict:
+    """main.py（AREruパイプライン）の predictions.csv を表示用に読む。
+
+    表示専用で、既存の予想順位・BUY・EV には一切関与しない。ファイルや必須列が
+    無い場合は「あり=False」を返し、画面には何も出さない。
+    """
+    empty = {'あり': False, '行': [], '開催日': '', '更新': '', '件数': 0}
+    if not AREru_PREDICTIONS.exists():
+        return empty
+    try:
+        df = pd.read_csv(AREru_PREDICTIONS, encoding='utf-8-sig').fillna('')
+    except Exception as e:
+        print(f'[areru-pipeline] read fail: {e}', flush=True)
+        return empty
+    need = {'レース', '本命', '本命オッズ', '本命AREru指数', '判定'}
+    if need - set(df.columns):
+        return empty
+
+    from ev_analysis import safe_float, safe_int
+
+    def cell(v) -> str:
+        s = str(v if v is not None else '').strip()
+        return '' if s.lower() in ('nan', 'none', '—', '-') else s
+
+    rows: list[dict] = []
+    race_date = ''
+    for raw in df.to_dict('records'):
+        rno = safe_int(raw.get('レース'), None)
+        if rno is None:
+            continue
+        if not race_date:
+            # JRAの cname は末尾が 開催日(8桁)/チェック2桁
+            found = re.search(
+                r'(20\d{6})/[0-9A-Fa-f]{2}\s*$', str(raw.get('race_id') or '')
+            )
+            if found:
+                d = found.group(1)
+                race_date = f'{d[0:4]}-{d[4:6]}-{d[6:8]}'
+        rows.append({
+            'レース': rno,
+            '本命': cell(raw.get('本命')) or 'データなし',
+            '本命オッズ': safe_float(raw.get('本命オッズ'), None),
+            'AREru指数': safe_float(raw.get('本命AREru指数'), None),
+            '判定': cell(raw.get('判定')) or 'データなし',
+            '荒れ度': safe_float(raw.get('荒れ度'), None),
+        })
+    if not rows:
+        return empty
+    rows.sort(key=lambda x: x['レース'])
+
+    try:
+        updated = datetime.fromtimestamp(
+            AREru_PREDICTIONS.stat().st_mtime, JST
+        ).strftime('%m/%d %H:%M')
+    except Exception:
+        updated = ''
+
+    return {
+        'あり': True,
+        '行': rows,
+        '開催日': race_date or 'データなし',
+        '更新': updated,
+        '件数': len(rows),
+    }
+
+
 def _venue_meetings(records):
     """日付内の開催場一覧（レース数・S/A件数付き）。"""
     from netkeiba_client import normalize_venue_name
@@ -3546,7 +3615,8 @@ def index():
         today_date=today,
         day_stats=day_stats,data_status=data_status,
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
-        status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime)
+        status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime,
+        areru_pipeline=build_areru_pipeline_board())
 
 
 def attach_results(records, selected_date=''):

@@ -1,13 +1,13 @@
 ﻿race_id,レース,荒れ度,判定,本命,本命AREru指数,本命オッズ,穴候補
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060120260712/98,1,15.03,🟢 比較的平穏,ホーリーステップ,10.96,3.3,シャンデリュイーズ / ロージーキャンドル / アリディプラチノ
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060220260712/4D,2,22.46,🟢 比較的平穏,タガノプディング,20.48,2.1,ナブッコ / ペコリズム / シュタルク
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060320260712/02,3,18.34,🟢 比較的平穏,チェファルー,7.63,2.5,ダノンワンダー / ワンダーシャッフル / グレイイメル
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060420260712/B7,4,18.04,🟢 比較的平穏,ブランチアウト,12.21,4.1,フェブリノ / ゴリョウセイ
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde0110202602060520260712%2F8D,5,0.0,⚪ 過去走データ不足,エルドボルグ,0.0,1.5,該当なし
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060620260712/21,6,0.0,⚪ 過去走データ不足,アームズラムレイ,0.0,1.9,該当なし
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060720260712/D6,7,28.75,🟢 比較的平穏,コルヴァス,27.63,4.9,タマモスカイ / セルジュバローズ / エアフォースワン
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060820260712/8B,8,27.34,🟢 比較的平穏,ミリタリータトゥー,30.0,3.1,タマモヒロイン / ヴィーナスバブル / エレガンシア
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602060920260712/40,9,51.42,⚠️ 波乱注意,ホウショウルクス,19.62,13.3,トモジャザーン / タガノアニマシオン / テンエースワン
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602061020260712/35,10,18.37,🟢 比較的平穏,フォーチュンライド,17.12,2.5,オウケンボルト / コリカンチャ / オデット
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602061120260712/EA,11,40.97,⚠️ 波乱注意,モンブランミノル,27.21,7.1,ゴッドブルービー / メルキオル / レイナデアルシーラ
-https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1010202602061220260712/9F,12,26.91,🟢 比較的平穏,ベルファスト,15.29,7.4,ウォーターデライト / ジューンオアシス / ドルチェミスト
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080120260816/DD,1,23.94,🟢 比較的平穏,ルージュリヴィエラ,13.97,2.3,マスカルポーネ / ルナティックブルー / セントピュアベース
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080220260816/92,2,22.01,🟢 比較的平穏,タイフーンナイン,25.0,1.7,リアルクウカイ
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080320260816/47,3,39.43,🟢 比較的平穏,ハヤブササキチャン,19.71,2.6,クラシカルカイザー / レダアトミカ / ライフイズカラフル
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080420260816/FC,4,17.92,🟢 比較的平穏,アルジェンタム,10.58,2.2,ブライトエンジェル / パーシヴァル / メカニックバレエ
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080520260816/B1,5,0.0,⚪ 過去走データ不足,レジームチェンジ,0.0,2.3,該当なし
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080620260816/66,6,26.06,🟢 比較的平穏,ビタミンドロップ,18.24,7.7,タイセイアビリティ / マカニ / メイショウホダワラ
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080720260816/1B,7,18.68,🟢 比較的平穏,ミナヅキ,12.94,4.8,ヒメヒオウギ / ヤクジョ / デイズインザサン
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080820260816/D0,8,25.13,🟢 比較的平穏,グレイスフルマーチ,14.85,4.8,タイセイルビー / ファミーユウルーズ / カフジクロミエ
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601080920260816/85,9,28.33,🟢 比較的平穏,エコロハート,9.12,6.0,ラスベガスサイン / トーアサジタリウス / ダブルチャレンジ
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601081020260816/7A,10,41.24,⚠️ 波乱注意,ウーマンズパワー,23.68,5.4,キャリーグレイス / カッタッパ / キーガッツ
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601081120260816/2F,11,38.75,🟢 比較的平穏,サクラファレル,17.5,9.2,グランディア / ゼンダンハヤブサ / イガッチ
+https://www.jra.go.jp/JRADB/accessD.html?CNAME=pw01dde1001202601081220260816/E4,12,46.61,⚠️ 波乱注意,サラトガチップス,20.29,14.1,マイネルゼウス / レイデラティエラ / ラーシャローム
