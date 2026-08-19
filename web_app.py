@@ -4431,7 +4431,7 @@ def api_refresh_status():
 def healthz():
     """軽量ヘルスチェック。ジョブ起動なし（Render wake / GHA 用）。
 
-    デプロイ反映確認用に、配信中の予想データの最新日付と mtime も返す。
+    pandas で CSV 本文を開かない。重い / 描画と独立して 200 を返す必要がある。
     """
     today = _today_jst()
     latest_date = ''
@@ -4446,6 +4446,11 @@ def healthz():
             ).strftime('%Y-%m-%d %H:%M:%S%z')
     except Exception:
         pass
+    today_pred = ARCH / f'predictions_{today}.csv'
+    try:
+        today_present = today_pred.exists() and today_pred.stat().st_size >= 32
+    except OSError:
+        today_present = False
     return {
         'ok': True,
         'today': today,
@@ -4455,8 +4460,8 @@ def healthz():
         'latest_pred_date': latest_date,
         'latest_pred_mtime': latest_mtime,
         'today_ready': {
-            'nar': bool(_nar_pred_ready(today, 'nar')),
-            'jra': bool(_nar_pred_ready(today, 'jra')),
+            'nar': today_present,
+            'jra': today_present,
         },
         'commit': (
             os.environ.get('RENDER_GIT_COMMIT')
