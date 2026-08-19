@@ -1,0 +1,10 @@
+{
+  "date": "2026-08-20",
+  "sealed_at": "2026-08-20T00:46:45+09:00",
+  "deadline_hour": 8,
+  "sources": [
+    "nar"
+  ],
+  "mode": "morning",
+  "note": "gha_morning"
+}
