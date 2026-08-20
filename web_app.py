@@ -1088,6 +1088,28 @@ def _nar_pred_ready(date_str: str, source: str = 'nar') -> bool:
         return False
 
 
+def _today_card_source(preferred: str, today: str) -> str:
+    """本日の開催カードがある source を返す。
+
+    既定は JRA。JRA 非開催日に直近の土日へ落とすと、スマホでは開催日が古いままに見える。
+    本日の予想が他 source にあればそちらへ寄せる。土日の JRA はデータ未完成でも JRA を維持する。
+    """
+    pref = preferred if preferred in ('jra', 'nar') else 'jra'
+    day = str(today or '').strip()
+    if _nar_pred_ready(day, pref) or _runners_need_source(day, pref):
+        return pref
+    if pref == 'jra':
+        try:
+            if datetime.fromisoformat(day).date().weekday() >= 5:
+                return pref
+        except Exception:
+            pass
+    other = 'nar' if pref == 'jra' else 'jra'
+    if _nar_pred_ready(day, other):
+        return other
+    return pref
+
+
 def _nar_venues_from_runners(date_str: str) -> list:
     """予想CSV前でも runners から開催場一覧を出す（地方は毎日開催のため）。"""
     if not date_str or not RUNNERS.exists():
@@ -1603,22 +1625,29 @@ def _filter_records_by_source(records, source):
 AREru_PREDICTIONS = DATA / 'predictions.csv'
 
 
-def build_areru_pipeline_board() -> dict:
-    """main.py（AREruパイプライン）の predictions.csv を表示用に読む。
+def build_areru_pipeline_board(date_str: str = '', source: str = '') -> dict:
+    """表示中の開催日の predictions_YYYY-MM-DD.csv から本命一覧を読む。
 
-    表示専用で、既存の予想順位・BUY・EV には一切関与しない。ファイルや必須列が
-    無い場合は「あり=False」を返し、画面には何も出さない。
+    表示専用で、既存の予想順位・BUY・EV には関与しない。
+    data/predictions.csv（単発パイプラインの残り）は使わない。
     """
     empty = {'あり': False, '行': [], '開催日': '', '更新': '', '件数': 0}
-    if not AREru_PREDICTIONS.exists():
+    day = str(date_str or '').strip()
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', day):
+        return empty
+    path = ARCH / f'predictions_{day}.csv'
+    if not path.exists() or path.stat().st_size < 32:
         return empty
     try:
-        df = pd.read_csv(AREru_PREDICTIONS, encoding='utf-8-sig').fillna('')
+        df = pd.read_csv(path, encoding='utf-8-sig').fillna('')
     except Exception as e:
         print(f'[areru-pipeline] read fail: {e}', flush=True)
         return empty
+    src = source if source in ('jra', 'nar') else ''
+    if src and 'source' in df.columns:
+        df = df[df['source'].astype(str).str.lower() == src]
     need = {'レース', '本命', '本命オッズ', '本命AREru指数', '判定'}
-    if need - set(df.columns):
+    if df.empty or (need - set(df.columns)):
         return empty
 
     from ev_analysis import safe_float, safe_int
@@ -1628,42 +1657,33 @@ def build_areru_pipeline_board() -> dict:
         return '' if s.lower() in ('nan', 'none', '—', '-') else s
 
     rows: list[dict] = []
-    race_date = ''
     for raw in df.to_dict('records'):
         rno = safe_int(raw.get('レース'), None)
         if rno is None:
             continue
-        if not race_date:
-            # JRAの cname は末尾が 開催日(8桁)/チェック2桁
-            found = re.search(
-                r'(20\d{6})/[0-9A-Fa-f]{2}\s*$', str(raw.get('race_id') or '')
-            )
-            if found:
-                d = found.group(1)
-                race_date = f'{d[0:4]}-{d[4:6]}-{d[6:8]}'
+        venue = cell(raw.get('開催地'))
+        judge = cell(raw.get('判定')) or 'データなし'
         rows.append({
             'レース': rno,
             '本命': cell(raw.get('本命')) or 'データなし',
             '本命オッズ': safe_float(raw.get('本命オッズ'), None),
             'AREru指数': safe_float(raw.get('本命AREru指数'), None),
-            '判定': cell(raw.get('判定')) or 'データなし',
+            '判定': f'{venue} · {judge}' if venue else judge,
             '荒れ度': safe_float(raw.get('荒れ度'), None),
         })
     if not rows:
         return empty
-    rows.sort(key=lambda x: x['レース'])
+    rows.sort(key=lambda x: (str(x.get('判定') or ''), x['レース']))
 
     try:
-        updated = datetime.fromtimestamp(
-            AREru_PREDICTIONS.stat().st_mtime, JST
-        ).strftime('%m/%d %H:%M')
+        updated = datetime.fromtimestamp(path.stat().st_mtime, JST).strftime('%m/%d %H:%M')
     except Exception:
         updated = ''
 
     return {
         'あり': True,
         '行': rows,
-        '開催日': race_date or 'データなし',
+        '開催日': day,
         '更新': updated,
         '件数': len(rows),
     }
@@ -2937,6 +2957,20 @@ def index():
         source in ('nar', 'jra')
         and _force_calendar_today(explicit_date, want_today, mode, allow_past)
     )
+    # JRA非開催日は直近のJRAカードへ落とさず、本日開催がある source を出す
+    today_live_card = False
+    if (
+        source in ('jra', 'nar')
+        and not allow_past
+        and (want_today or force_cal_today or not explicit_date)
+    ):
+        live = _today_card_source(source, today)
+        if live != source:
+            print(f'[{source}-date] today card via {live} date={today}', flush=True)
+            source = live
+            today_live_card = True
+        elif want_today and _nar_pred_ready(today, source):
+            today_live_card = True
     try:
         if source in ('nar', 'jra'):
             _expire_stale_job(source)
@@ -3145,6 +3179,7 @@ def index():
                         source=='nar'
                         and mode in ('predict','result')
                         and not selected_venue
+                        and not today_live_card
                     )
                     if use_light:
                         light_rows=_read_predictions_for_venue_picker(pred_path, source)
@@ -3339,7 +3374,7 @@ def index():
                                 venues = _venue_meetings(races)
                                 venue_names = {v['name'] for v in venues}
                                 races_for_board = list(races)
-                                if source == 'nar' and mode in ('predict', 'result'):
+                                if source == 'nar' and mode in ('predict', 'result') and not today_live_card:
                                     show_venue_picker = True
                                     if selected_venue and selected_venue not in venue_names:
                                         selected_venue = ''
@@ -3649,7 +3684,7 @@ def index():
         day_stats=day_stats,data_status=data_status,
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
         status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime,
-        areru_pipeline=build_areru_pipeline_board())
+        areru_pipeline=build_areru_pipeline_board(selected, source))
 
 
 def attach_results(records, selected_date=''):
