@@ -2022,7 +2022,28 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
             print(f'[rank] skip race={r.get("race_id")}: {e}', flush=True)
             cleaned.append(r)
     try:
-        out = tighten_buy_selection(cleaned, by_venue=by_venue)
+        # JRA と NAR を同じ日次枠で厳選すると、全開催タブで地方の買いが消える。
+        # source ごとに既存ロジックを適用し、オブジェクトは元のリスト順のまま返す。
+        from collections import defaultdict
+        buckets = defaultdict(list)
+        for r in cleaned:
+            src = str(r.get('source') or '').strip().lower()
+            if src not in ('jra', 'nar'):
+                try:
+                    from areru_engine import source_from_race_id
+                    src = source_from_race_id(r.get('race_id', ''))
+                except Exception:
+                    src = ''
+            buckets[src if src in ('jra', 'nar') else '_'].append(r)
+        for src, chunk in buckets.items():
+            if src == 'nar':
+                venue_scope = True
+            elif src == 'jra':
+                venue_scope = False
+            else:
+                venue_scope = by_venue
+            tighten_buy_selection(chunk, by_venue=venue_scope)
+        out = cleaned
     except Exception as e:
         print(f'[rank] tighten fail: {e}', flush=True)
         out = cleaned
@@ -2979,7 +3000,12 @@ def index():
         source == 'nar'
         and not allow_past
         and _nar_pred_ready(today, source)
-        and (want_today or force_cal_today or not explicit_date)
+        and (
+            want_today
+            or force_cal_today
+            or not explicit_date
+            or explicit_date == today
+        )
     )
     try:
         if source in ('nar', 'jra'):
