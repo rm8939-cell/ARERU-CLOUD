@@ -1088,28 +1088,6 @@ def _nar_pred_ready(date_str: str, source: str = 'nar') -> bool:
         return False
 
 
-def _today_card_source(preferred: str, today: str) -> str:
-    """本日の開催カードがある source を返す。
-
-    既定は JRA。JRA 非開催日に直近の土日へ落とすと、スマホでは開催日が古いままに見える。
-    本日の予想が他 source にあればそちらへ寄せる。土日の JRA はデータ未完成でも JRA を維持する。
-    """
-    pref = preferred if preferred in ('jra', 'nar') else 'jra'
-    day = str(today or '').strip()
-    if _nar_pred_ready(day, pref) or _runners_need_source(day, pref):
-        return pref
-    if pref == 'jra':
-        try:
-            if datetime.fromisoformat(day).date().weekday() >= 5:
-                return pref
-        except Exception:
-            pass
-    other = 'nar' if pref == 'jra' else 'jra'
-    if _nar_pred_ready(day, other):
-        return other
-    return pref
-
-
 def _nar_venues_from_runners(date_str: str) -> list:
     """予想CSV前でも runners から開催場一覧を出す（地方は毎日開催のため）。"""
     if not date_str or not RUNNERS.exists():
@@ -2957,20 +2935,13 @@ def index():
         source in ('nar', 'jra')
         and _force_calendar_today(explicit_date, want_today, mode, allow_past)
     )
-    # JRA非開催日は直近のJRAカードへ落とさず、本日開催がある source を出す
-    today_live_card = False
-    if (
-        source in ('jra', 'nar')
+    # 地方の当日トップは開催場一覧ではなくカードを出す。JRAタブの source は書き換えない。
+    today_live_card = bool(
+        source == 'nar'
         and not allow_past
+        and _nar_pred_ready(today, source)
         and (want_today or force_cal_today or not explicit_date)
-    ):
-        live = _today_card_source(source, today)
-        if live != source:
-            print(f'[{source}-date] today card via {live} date={today}', flush=True)
-            source = live
-            today_live_card = True
-        elif want_today and _nar_pred_ready(today, source):
-            today_live_card = True
+    )
     try:
         if source in ('nar', 'jra'):
             _expire_stale_job(source)
