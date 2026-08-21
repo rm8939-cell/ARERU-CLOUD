@@ -1054,8 +1054,13 @@ def resolve_fetch_status(
         return 'error', '更新失敗' + (f'（{err}）' if err and len(err) < 80 else '')
 
     if selected_date == today and not today_ready:
-        if after_deadline and not source_is_race_day(src, today):
-            return 'ready', '本日は開催なし'
+        if _today_source_has_no_meeting(src, today) or (
+            after_deadline and not source_is_race_day(src, today)
+        ):
+            return 'ready', (
+                '本日はJRAの開催はありません' if src == 'jra'
+                else '本日は地方競馬の開催はありません'
+            )
         # 初回のみ取得中。ページからは起動しない（cron 待ち）
         if job_running or force_refresh:
             return 'generating', (msg or 'データ取得中')
@@ -1086,6 +1091,24 @@ def _nar_pred_ready(date_str: str, source: str = 'nar') -> bool:
         return True
     except Exception:
         return False
+
+
+def _stay_on_selected_calendar_day(selected: str | None) -> bool:
+    """カレンダー当日を見ているときは、別日の完成カードへフォールバックしない。
+
+    JRA非開催日に source=jra で前開催を出すと、タブが別日のJRAカードになる。
+    開催が無い日は空状態にする（地方データへも、前日JRAへも寄せない）。
+    """
+    return bool(selected) and selected == _today_jst()
+
+
+def _today_source_has_no_meeting(source: str, today: str) -> bool:
+    """当日この source の出走が無い。runners に行が無ければ開催なし。"""
+    if source not in ('jra', 'nar'):
+        return False
+    if _nar_pred_ready(today, source):
+        return False
+    return not _runners_need_source(today, source)
 
 
 def _nar_venues_from_runners(date_str: str) -> list:
@@ -1556,6 +1579,13 @@ def ensure_for_page(d, source='all'):
             ):
                 auto_seal_if_ready(str(d), src, True)
             return f, 'ready'
+        if (
+            src in ('jra', 'nar')
+            and not _nar_pred_ready(str(d), src)
+            and not _runners_need_source(str(d), src)
+        ):
+            # 他sourceのCSVがあっても、このsourceの開催カードではない
+            return None, 'ready'
         if f.exists() and not _need_regen(d, source):
             return f, 'ready'
         # キャッシュ無し → ページからは取得しない（cron 待ち）
@@ -2912,10 +2942,11 @@ def index():
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit_date)
         and explicit_date < today
     )
-    # キャッシュ優先: 当日未完成で、URL日付に完成予想があるならその日を閲覧許可
+    # 地方のみ: 当日未完成で、URL日付に完成予想があるならその日を閲覧許可
     # （会場リンクからレース一覧へ入れる。force_cal で venue を消さない）
+    # JRAは history=1 以外で前開催へ寄せない（非開催日に日曜カードが出るのを防ぐ）
     if (
-        source in ('nar', 'jra')
+        source == 'nar'
         and not allow_past
         and explicit_date
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit_date)
@@ -3000,9 +3031,12 @@ def index():
                         reason='fallback_av0', explicit=explicit_date or '-', 保存件数=0,
                     )
     # キャッシュ優先: 当日未完成なら最新完成予想日を即表示（履歴明示時以外）
-    # ページを開くたびに取得を始めず、「開いた瞬間に予想が見える」状態にする
+    # ただしカレンダー当日は別日へ飛ばさない（JRA非開催日は空状態）
     if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
-        if not _nar_pred_ready(selected or '', source):
+        if (
+            not _nar_pred_ready(selected or '', source)
+            and not _stay_on_selected_calendar_day(selected)
+        ):
             latest = _latest_ready_pred_date(source, on_or_before=today)
             if latest and latest != selected:
                 print(
@@ -3051,9 +3085,12 @@ def index():
         if today not in av:
             av=sorted(set(av)|{today}, reverse=True)
         selected=today
-    # 結果タブで当日未完成へ戻された場合も、最新キャッシュへ再寄せ
+    # 結果タブで当日未完成へ戻された場合も、最新キャッシュへ再寄せ（当日ビューは除く）
     if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
-        if not _nar_pred_ready(selected or '', source):
+        if (
+            not _nar_pred_ready(selected or '', source)
+            and not _stay_on_selected_calendar_day(selected)
+        ):
             latest = _latest_ready_pred_date(source, on_or_before=today)
             if latest and latest != selected:
                 print(
@@ -3120,7 +3157,10 @@ def index():
             data_status=page_status
             if pred_path is None:
                 # 初回のみ（キャッシュ無し）。ジョブは cron 側。
-                latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
+                # 当日ビューは別日カードへ飛ばさない（JRA非開催日は空状態）
+                latest = ''
+                if source in ('nar', 'jra') and not _stay_on_selected_calendar_day(selected):
+                    latest = _latest_ready_pred_date(source, on_or_before=today)
                 if latest and latest != selected:
                     selected = latest
                     if latest not in av:
@@ -3128,12 +3168,29 @@ def index():
                     pred_path, page_status = ensure_for_page(selected, source=source)
                     data_status = page_status if pred_path else 'generating'
                 if pred_path is None:
-                    data_status='generating' if page_status!='error' else 'error'
-                    message='データ取得中' if page_status!='error' else (
-                        '取得失敗' if source=='nar' else '通信エラー: 予想データの準備に失敗しました。再読み込みしてください。'
+                    no_meet = (
+                        source in ('nar', 'jra')
+                        and _stay_on_selected_calendar_day(selected)
+                        and (
+                            page_status == 'ready'
+                            or _today_source_has_no_meeting(source, selected or today)
+                        )
                     )
-                    races=[]; venues=[]; show_venue_picker=(source=='nar')
-                    races_for_board=[]; buy_candidates=[]; targets=[]; data_updated_at=''
+                    if no_meet:
+                        data_status = 'ready'
+                        message = (
+                            '本日はJRAの開催はありません' if source == 'jra'
+                            else '本日は地方競馬の開催はありません'
+                        )
+                        races=[]; venues=[]; show_venue_picker=False
+                        races_for_board=[]; buy_candidates=[]; targets=[]; data_updated_at=''
+                    else:
+                        data_status='generating' if page_status!='error' else 'error'
+                        message='データ取得中' if page_status!='error' else (
+                            '取得失敗' if source=='nar' else '通信エラー: 予想データの準備に失敗しました。再読み込みしてください。'
+                        )
+                        races=[]; venues=[]; show_venue_picker=(source=='nar')
+                        races_for_board=[]; buy_candidates=[]; targets=[]; data_updated_at=''
                 else:
                     data_status = 'ready'
             if pred_path is not None:
@@ -3415,42 +3472,64 @@ def index():
                                     else:
                                         message = f'{selected} / {label} / AI期待値分析'
         except FileNotFoundError as e:
-            latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
-            if latest:
-                selected = latest
+            if (
+                source in ('nar', 'jra')
+                and _stay_on_selected_calendar_day(selected)
+                and _today_source_has_no_meeting(source, today)
+            ):
                 data_status = 'ready'
-                message = f'{selected} / {label}'
+                message = (
+                    '本日はJRAの開催はありません' if source == 'jra'
+                    else '本日は地方競馬の開催はありません'
+                )
             else:
-                data_status='generating'
-                message='データ取得中' if source=='nar' else (str(e) or 'データ取得中です。完了後に再読み込みしてください。')
+                latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
+                if latest:
+                    selected = latest
+                    data_status = 'ready'
+                    message = f'{selected} / {label}'
+                else:
+                    data_status='generating'
+                    message='データ取得中' if source=='nar' else (str(e) or 'データ取得中です。完了後に再読み込みしてください。')
         except Exception as e:
             # 安定稼働: 表示クラッシュでもキャッシュを落とさない
             print(f'[index] render fail source={source} selected={selected}: {e}', flush=True)
-            latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
-            if latest:
-                selected = latest
-                try:
-                    pred = ARCH / f'predictions_{latest}.csv'
-                    if pred.exists() and source == 'nar':
-                        light_rows = _read_predictions_for_venue_picker(pred, source)
-                        light_rows = apply_display_ranks(light_rows, by_venue=True)
-                        venues = _venue_meetings(light_rows)
-                        show_venue_picker = True
-                        races = []
-                        data_status = 'ready'
-                        message = f'{selected} / {label} / 開催場 {len(venues)}場'
-                        if latest not in av:
-                            av = sorted(set(av) | {latest}, reverse=True)
-                    else:
+            if (
+                source in ('nar', 'jra')
+                and _stay_on_selected_calendar_day(selected)
+                and _today_source_has_no_meeting(source, today)
+            ):
+                data_status = 'ready'
+                message = (
+                    '本日はJRAの開催はありません' if source == 'jra'
+                    else '本日は地方競馬の開催はありません'
+                )
+            else:
+                latest = _latest_ready_pred_date(source, on_or_before=today) if source in ('nar', 'jra') else ''
+                if latest:
+                    selected = latest
+                    try:
+                        pred = ARCH / f'predictions_{latest}.csv'
+                        if pred.exists() and source == 'nar':
+                            light_rows = _read_predictions_for_venue_picker(pred, source)
+                            light_rows = apply_display_ranks(light_rows, by_venue=True)
+                            venues = _venue_meetings(light_rows)
+                            show_venue_picker = True
+                            races = []
+                            data_status = 'ready'
+                            message = f'{selected} / {label} / 開催場 {len(venues)}場'
+                            if latest not in av:
+                                av = sorted(set(av) | {latest}, reverse=True)
+                        else:
+                            data_status = 'ready'
+                            message = f'{selected} / {label}'
+                    except Exception as e2:
+                        print(f'[index] cache fallback fail: {e2}', flush=True)
                         data_status = 'ready'
                         message = f'{selected} / {label}'
-                except Exception as e2:
-                    print(f'[index] cache fallback fail: {e2}', flush=True)
-                    data_status = 'ready'
-                    message = f'{selected} / {label}'
-            else:
-                data_status = 'error'
-                message = f'通信エラー: {e}'
+                else:
+                    data_status = 'error'
+                    message = f'通信エラー: {e}'
     elif selected:
         if source in ('nar', 'jra'):
             latest = _latest_ready_pred_date(source, on_or_before=today)
@@ -3459,15 +3538,21 @@ def index():
                 message=f'{selected} / {label}'
                 if selected not in av:
                     av=sorted(set(av)|{selected}, reverse=True)
+            elif _stay_on_selected_calendar_day(selected) or _today_source_has_no_meeting(source, today):
+                data_status='ready'
+                message=(
+                    '本日はJRAの開催はありません' if source=='jra'
+                    else '本日は地方競馬の開催はありません'
+                ) if (selected == today) else f'{selected} / {label} のレースがありません'
             elif latest:
                 selected = latest
                 data_status='ready'
                 message=f'{selected} / {label}'
                 if latest not in av:
                     av=sorted(set(av)|{latest}, reverse=True)
-            elif selected == today and past_predict_deadline() and not source_is_race_day(source, today):
+            elif selected == today:
                 data_status='ready'
-                message='本日は開催なし' if source=='jra' else '本日は地方競馬の開催はありません'
+                message='本日はJRAの開催はありません' if source=='jra' else '本日は地方競馬の開催はありません'
             else:
                 data_status='generating'
                 message='データ取得中'
@@ -3481,6 +3566,15 @@ def index():
         if _nar_pred_ready(today, source):
             data_status='ready'
             message=f'{today} / {label}'
+        elif _today_source_has_no_meeting(source, today):
+            selected = today
+            data_status='ready'
+            message=(
+                '本日はJRAの開催はありません' if source=='jra'
+                else '本日は地方競馬の開催はありません'
+            )
+            if today not in av:
+                av=sorted(set(av)|{today}, reverse=True)
         elif latest:
             selected = latest
             data_status='ready'
@@ -3562,6 +3656,12 @@ def index():
                             )
                 except Exception as e:
                     print(f'[nar-venue] cache reload fail: {e}', flush=True)
+        elif selected == today and not selected_ok and (
+            _today_source_has_no_meeting(source, today)
+            or (past_predict_deadline() and not source_is_race_day(source, today))
+        ):
+            data_status='ready'
+            message=no_meet_label
         elif job_status=='timeout':
             data_status='timeout'
             message=job_msg or '更新タイムアウト'
@@ -3572,13 +3672,6 @@ def index():
             # 初回（キャッシュ無し）のみ
             data_status='generating'
             message=job_msg or 'データ取得中'
-        elif selected == today and not selected_ok:
-            if past_predict_deadline() and not source_is_race_day(source, today):
-                data_status='ready'
-                message=no_meet_label
-            else:
-                data_status='generating'
-                message=job_msg or 'データ取得中'
         else:
             if data_status == 'generating' and not selected_ok and not has_content:
                 pass
