@@ -1093,22 +1093,30 @@ def _nar_pred_ready(date_str: str, source: str = 'nar') -> bool:
         return False
 
 
-def _stay_on_selected_calendar_day(selected: str | None) -> bool:
-    """カレンダー当日を見ているときは、別日の完成カードへフォールバックしない。
+def _stay_on_selected_calendar_day(selected: str | None, source: str = '') -> bool:
+    """JRAのカレンダー当日は、別日の完成カードへフォールバックしない。
 
-    JRA非開催日に source=jra で前開催を出すと、タブが別日のJRAカードになる。
-    開催が無い日は空状態にする（地方データへも、前日JRAへも寄せない）。
+    地方は当日未完成なら最新の NAR 完成日を出してよい。
+    JRA非開催日に日曜カードを出すのは禁止。
     """
+    if str(source or '').lower() != 'jra':
+        return False
     return bool(selected) and selected == _today_jst()
 
 
 def _today_source_has_no_meeting(source: str, today: str) -> bool:
-    """当日この source の出走が無い。runners に行が無ければ開催なし。"""
+    """当日この source の開催カードが無いと確定できるか。
+
+    出走も予想も無い「あとで生成される土曜朝」は False（取得中）。
+    朝8時以降かつ runners にも行が無いときだけ開催なし。
+    """
     if source not in ('jra', 'nar'):
         return False
     if _nar_pred_ready(today, source):
         return False
-    return not _runners_need_source(today, source)
+    if _runners_need_source(today, source):
+        return False
+    return past_predict_deadline()
 
 
 def _nar_venues_from_runners(date_str: str) -> list:
@@ -3035,7 +3043,7 @@ def index():
     if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
         if (
             not _nar_pred_ready(selected or '', source)
-            and not _stay_on_selected_calendar_day(selected)
+            and not _stay_on_selected_calendar_day(selected, source)
         ):
             latest = _latest_ready_pred_date(source, on_or_before=today)
             if latest and latest != selected:
@@ -3048,7 +3056,7 @@ def index():
                     av = sorted(set(av) | {latest}, reverse=True)
         elif (
             not _nar_pred_ready(selected or '', source)
-            and _stay_on_selected_calendar_day(selected)
+            and _stay_on_selected_calendar_day(selected, source)
         ):
             print(
                 f'[{source}-date] keep calendar day {selected} empty (no cross-day fallback)',
@@ -3097,7 +3105,7 @@ def index():
     if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
         if (
             not _nar_pred_ready(selected or '', source)
-            and not _stay_on_selected_calendar_day(selected)
+            and not _stay_on_selected_calendar_day(selected, source)
         ):
             latest = _latest_ready_pred_date(source, on_or_before=today)
             if latest and latest != selected:
@@ -3167,7 +3175,7 @@ def index():
                 # 初回のみ（キャッシュ無し）。ジョブは cron 側。
                 # 当日ビューは別日カードへ飛ばさない（JRA非開催日は空状態）
                 latest = ''
-                if source in ('nar', 'jra') and not _stay_on_selected_calendar_day(selected):
+                if source in ('nar', 'jra') and not _stay_on_selected_calendar_day(selected, source):
                     latest = _latest_ready_pred_date(source, on_or_before=today)
                 if latest and latest != selected:
                     selected = latest
@@ -3178,11 +3186,8 @@ def index():
                 if pred_path is None:
                     no_meet = (
                         source in ('nar', 'jra')
-                        and _stay_on_selected_calendar_day(selected)
-                        and (
-                            page_status == 'ready'
-                            or _today_source_has_no_meeting(source, selected or today)
-                        )
+                        and _stay_on_selected_calendar_day(selected, source)
+                        and _today_source_has_no_meeting(source, selected or today)
                     )
                     if no_meet:
                         data_status = 'ready'
@@ -3482,7 +3487,7 @@ def index():
         except FileNotFoundError as e:
             if (
                 source in ('nar', 'jra')
-                and _stay_on_selected_calendar_day(selected)
+                and _stay_on_selected_calendar_day(selected, source)
                 and _today_source_has_no_meeting(source, today)
             ):
                 data_status = 'ready'
@@ -3504,7 +3509,7 @@ def index():
             print(f'[index] render fail source={source} selected={selected}: {e}', flush=True)
             if (
                 source in ('nar', 'jra')
-                and _stay_on_selected_calendar_day(selected)
+                and _stay_on_selected_calendar_day(selected, source)
                 and _today_source_has_no_meeting(source, today)
             ):
                 data_status = 'ready'
@@ -3546,7 +3551,7 @@ def index():
                 message=f'{selected} / {label}'
                 if selected not in av:
                     av=sorted(set(av)|{selected}, reverse=True)
-            elif _stay_on_selected_calendar_day(selected) or _today_source_has_no_meeting(source, today):
+            elif _stay_on_selected_calendar_day(selected, source) or _today_source_has_no_meeting(source, today):
                 data_status='ready'
                 message=(
                     '本日はJRAの開催はありません' if source=='jra'
