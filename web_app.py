@@ -3046,6 +3046,14 @@ def index():
                 selected = latest
                 if latest not in av:
                     av = sorted(set(av) | {latest}, reverse=True)
+        elif (
+            not _nar_pred_ready(selected or '', source)
+            and _stay_on_selected_calendar_day(selected)
+        ):
+            print(
+                f'[{source}-date] keep calendar day {selected} empty (no cross-day fallback)',
+                flush=True,
+            )
     # 当日完成時のみ「前日へ落とさない」。未完成は上で最新キャッシュへ寄せ済み
     block_stale_today=(
         source in ('nar', 'jra')
