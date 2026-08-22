@@ -2010,13 +2010,15 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
     CSV には build_predictions 時点で同じ基準が焼き込まれているが、
     表示時にも再適用して古いCSVやキャッシュ漏れを防ぐ。
     """
-    from ev_analysis import apply_ev_rank_and_labels, build_ai_buy_reasons, tighten_buy_selection
+    from ev_analysis import apply_ev_rank_and_labels, build_ai_buy_reasons, build_ai_risks, tighten_buy_selection
     cleaned = []
     for r in races or []:
         try:
             apply_ev_rank_and_labels(r)
             if not r.get('AI買い理由'):
                 r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
+            if not r.get('AIリスク'):
+                r['AIリスク'] = build_ai_risks(r, limit=3)
             cleaned.append(r)
         except Exception as e:
             print(f'[rank] skip race={r.get("race_id")}: {e}', flush=True)
@@ -2071,6 +2073,8 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
                     r['推奨馬券一覧'] = (main_tix + rest)[:8]
             if not r.get('AI買い理由'):
                 r['AI買い理由'] = build_ai_buy_reasons(r, limit=3)
+            if not r.get('AIリスク'):
+                r['AIリスク'] = build_ai_risks(r, limit=3)
         except Exception as e:
             print(f'[rank] ticket rebuild skip: {e}', flush=True)
     return out

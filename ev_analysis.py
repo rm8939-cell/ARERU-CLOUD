@@ -1399,6 +1399,40 @@ def build_ai_buy_reasons(record: dict, limit: int = 3) -> list[str]:
     return reasons[:limit]
 
 
+def build_ai_risks(record: dict, limit: int = 3) -> list[str]:
+    """BUYカード用のリスク要点。"""
+    risks: list[str] = []
+
+    def add(msg: str):
+        msg = str(msg or '').strip()
+        if msg and msg not in risks and len(risks) < limit:
+            risks.append(msg)
+
+    if record.get('S降格理由'):
+        add(str(record.get('S降格理由')))
+    for c in (record.get('ピックカード一覧') or [])[:1]:
+        if not isinstance(c, dict):
+            continue
+        for m in (c.get('不安材料一覧') or c.get('minus') or []):
+            add(str(m))
+    conf = record.get('レース信頼度スコア') or record.get('AI信頼度スコア')
+    try:
+        if conf is not None and float(conf) < 45:
+            add('信頼度がやや低い')
+    except (TypeError, ValueError):
+        pass
+    n = record.get('本命データ件数') or record.get('データ件数')
+    try:
+        if n is not None and int(float(n)) < 3:
+            add('過去走サンプル不足')
+    except (TypeError, ValueError):
+        pass
+    chaos = record.get('荒れクラス') or ''
+    if str(chaos).lower() in ('wave', 'storm', '荒れ'):
+        add('展開読みにくいレース')
+    return risks[:limit]
+
+
 def calc_expected_value(market_odds, fair_odds):
     """後方互換: 単純比。極端値は市場連動キャップで抑制。"""
     m = parse_odds_value(market_odds)

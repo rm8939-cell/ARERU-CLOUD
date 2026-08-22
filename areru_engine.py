@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, logging, re
+import json, logging, os, re
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -40,6 +40,13 @@ DEFAULT_RANK_THRESHOLDS={
 }
 
 def clean_name(x): return re.sub(r'[\s\u3000]+','',str(x)).strip()
+
+
+def legacy_score_enabled() -> bool:
+    """旧ロジック比較・バックテスト用。タイム/着差/馬場/騎手/馬体重補正を無効化。"""
+    return str(os.environ.get('ARERU_LEGACY_SCORE') or '').strip().lower() in ('1', 'true', 'yes')
+
+
 def parse_date(s):
     s=s.astype(str).str.strip().str.replace('年','-',regex=False).str.replace('月','-',regex=False).str.replace('日','',regex=False).str.replace('/','-',regex=False)
     return pd.to_datetime(s,errors='coerce')
@@ -347,6 +354,106 @@ def context_features(history, horse, target, target_source='jra'):
     if pd.notna(finish.iloc[0]) and pd.notna(pop.iloc[0]) and finish.iloc[0]+3<=pop.iloc[0]: reasons.append('前走人気以上')
     return {'context':clamp(score),'context_reason':reasons}
 
+
+def _margin_tightness(margin_str) -> float:
+    """着差文字列を 0〜3 のタイトさスコアへ（ハナ/クビほど高い）。"""
+    s = str(margin_str or '').strip()
+    if not s or s in ('--', '**', '-'):
+        return 0.0
+    if any(x in s for x in ('ハナ', 'クビ', 'アタマ', '同着', 'タイ')):
+        return 3.0
+    if '1/2' in s or '0.5' in s:
+        return 2.5
+    if '3/4' in s:
+        return 2.0
+    m = re.search(r'^(\d+(?:\.\d+)?)', s)
+    if m:
+        v = float(m.group(1))
+        if v <= 0.5:
+            return 2.5
+        if v <= 1.0:
+            return 2.0
+        if v <= 2.0:
+            return 1.2
+    return 0.0
+
+
+def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
+    """直近走のタイム・着差・馬場適性から加点（past_five / all_history 両対応）。"""
+    if legacy_score_enabled():
+        return 0.0, []
+    from race_sim import parse_time_sec
+
+    reasons: list[str] = []
+    bonus = 0.0
+    times: list[float] = []
+    margins: list[float] = []
+    tracks: list[str] = []
+
+    # runners 列（past_five_for_score 由来）
+    for i in range(1, 6):
+        t_raw = row.get(f'タイム{i}')
+        if t_raw not in (None, '', 'nan'):
+            ts = parse_time_sec(t_raw)
+            if not np.isnan(ts):
+                times.append(ts)
+        margins.append(_margin_tightness(row.get(f'着差{i}')))
+        trk = str(row.get(f'馬場{i}') or '').strip()
+        if trk:
+            tracks.append(trk)
+
+    horse = clean_name(row.get('馬名'))
+    if history is not None and not getattr(history, 'empty', True):
+        h = history[(history['_horse'] == horse) & (history['_date'] < target)]
+        h = h.sort_values('_date', ascending=False).head(5)
+        for _, xr in h.iterrows():
+            if not times:
+                ts = parse_time_sec(xr.get('タイム'))
+                if not np.isnan(ts):
+                    times.append(ts)
+            if not any(margins):
+                margins.append(_margin_tightness(xr.get('着差')))
+            if not tracks:
+                trk = str(xr.get('馬場') or '').strip()
+                if trk:
+                    tracks.append(trk)
+
+    if times:
+        # 近走タイムの改善（秒が小さいほど良い）→ 最大 +2.5
+        if len(times) >= 2 and times[0] < times[1]:
+            delta = times[1] - times[0]
+            if delta >= 0.8:
+                bonus += 2.5
+                reasons.append('タイム大幅改善')
+            elif delta >= 0.3:
+                bonus += 1.2
+                reasons.append('タイム改善')
+        elif len(times) == 1:
+            bonus += 0.4
+
+    tight = [m for m in margins if m >= 2.0]
+    if tight:
+        avg_t = float(np.mean(tight[:3]))
+        bonus += min(3.0, avg_t * 0.9)
+        if avg_t >= 2.5:
+            reasons.append('前走接戦好走')
+        else:
+            reasons.append('着差タイト')
+
+    if tracks:
+        heavy = sum(1 for t in tracks if any(x in t for x in ('重', '不良', '稍')))
+        good = sum(1 for t in tracks if '良' in t and '稍' not in t)
+        fin = num(row.get('着順1'))
+        if heavy >= 2 and pd.notna(fin) and fin <= 5:
+            bonus += 1.8
+            reasons.append('重馬場実績')
+        elif good >= 3:
+            bonus += 0.8
+            reasons.append('馬場状態安定')
+
+    return float(np.clip(bonus, 0, 5)), list(dict.fromkeys(reasons))[:3]
+
+
 def score_runner(row, history, target, weights):
     finishes=np.array([num(row.get(f'着順{i}')) for i in range(1,6)],dtype=float)
     pops=np.array([num(row.get(f'人気{i}')) for i in range(1,6)],dtype=float)
@@ -426,9 +533,10 @@ def score_runner(row, history, target, weights):
     elif n_valid < 2:
         value=clamp(min(value, 42.0))
     ctx=context_features(history,row['馬名'],target, target_source=target_source)
+    detail_adj, detail_reasons = history_detail_bonus(row, history, target)
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
-    score=sum(factors[k]*weights[k] for k in weights)
-    reasons=list(ctx['context_reason'])
+    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * 0.12
+    reasons=list(ctx['context_reason']) + detail_reasons
     if transfer_reason: reasons.insert(0, transfer_reason)
     if n_valid and n_valid<3: reasons.append('サンプル少')
     if upset>=65: reasons.append('人気以上に走る傾向')
@@ -497,6 +605,9 @@ def _cap_sim_win_rates(win_pct, max_win=SIM_WIN_MAX_PCT, min_fair=AI_FAIR_ODDS_M
 
 def simulate_race(g, runs=None, profiles=None, pace=None):
     """段階シミュレーション（デフォルト10万回）。profiles/pace が無い場合は指数ガウスにフォールバック。"""
+    if legacy_score_enabled():
+        profiles = None
+        pace = None
     from race_sim import SIM_RUNS, build_profiles, predict_pace, simulate_race_stages
     g=g.copy().reset_index(drop=True)
     runs=int(runs or SIM_RUNS)

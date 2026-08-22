@@ -359,10 +359,16 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-card .bc-horse{display:flex;align-items:center;gap:12px;margin:12px 0 14px}
 .buy-card .bc-ban{min-width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#1a7f4b,#0f5a38);color:#fff;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12)}
 .buy-card .bc-name{font-size:26px;font-weight:900;line-height:1.2;word-break:keep-all;overflow-wrap:anywhere}
-.buy-card .bc-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.buy-card .bc-metrics div{background:#f3faf6;border:1px solid #d5eadc;border-radius:14px;padding:12px 10px}
-.buy-card .bc-metrics b{display:block;font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;color:#145c37;line-height:1.1}
-.buy-card .bc-metrics small{display:block;margin-top:4px;font-size:11px;font-weight:800;color:#6a7682;letter-spacing:.04em}
+.buy-card .bc-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (min-width:560px){.buy-card .bc-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.buy-card .bc-metrics div{background:#f3faf6;border:1px solid #d5eadc;border-radius:14px;padding:10px 8px}
+.buy-card .bc-metrics b{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;color:#145c37;line-height:1.1}
+.buy-card .bc-metrics small{display:block;margin-top:4px;font-size:10px;font-weight:800;color:#6a7682;letter-spacing:.04em}
+.buy-card .bc-ai-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.buy-card .bc-ai-pill{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:850;background:#eef6f1;border:1px solid #cfe3d8;color:#145c37}
+.buy-card .bc-risk{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:#fff8f0;border:1px solid #f0dcc4;font-size:13px;line-height:1.55;color:#6a4a2a}
+.buy-card .bc-risk b{color:#9a5b00;font-weight:900}
+.buy-card .bc-reasons-title{margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 .buy-card .bc-reasons{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px}
 .buy-card .bc-reasons li{position:relative;padding:11px 12px 11px 34px;background:#f8fbf9;border:1px solid #e2eee6;border-radius:12px;font-size:15px;font-weight:750;line-height:1.45;color:#1f2a33}
 .buy-card .bc-reasons li:before{content:"◎";position:absolute;left:12px;top:11px;color:#1a7f4b;font-weight:900}
@@ -1008,29 +1014,54 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% elif not _reasons and t.get('本命理由') %}
     {% set _reasons = [t.get('本命理由')] %}
   {% endif %}
+  {% set _risks = t.get('AIリスク') if t.get('AIリスク') is sequence and t.get('AIリスク') else [] %}
+  {% if not _risks and _main_card.get('不安材料一覧') is sequence %}
+    {% set _risks = _main_card.get('不安材料一覧') %}
+  {% elif not _risks and t.get('S降格理由') %}
+    {% set _risks = [t.get('S降格理由')] %}
+  {% endif %}
   {% set _ban = t.get('本命馬番') or t.get('本命馬番表示') or '' %}
   {% set _horse = t.get('本命') or '—' %}
   {% set _ev_raw = t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') or '—' %}
   {% set _ev_disp = (_ev_raw ~ '')|replace('%','') %}
+  {% set _win_rate = t.get('シミュレーション勝率') or _main_card.get('勝率') %}
+  {% set _pop = t.get('本命人気') %}
+  {% set _ai_rank_num = namespace(v=None) %}
+  {% if _ai_rank.v != '—' %}
+    {% set _ai_rank_num.v = _ai_rank.v|int %}
+  {% endif %}
+  {% set _pop_gap = namespace(v='—') %}
+  {% if _pop is not none and _ai_rank_num.v is not none %}
+    {% set _pop_gap.v = (_pop|int - _ai_rank_num.v) %}
+  {% endif %}
+  {% set _ai_grade = t.get('勝負ランク') or t.get('相対ランク') or '—' %}
 <a class="buy-card" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
-<div class="bc-top"><span class="bc-badge">🔥 BUY</span></div>
+<div class="bc-top"><span class="bc-badge">🔥 BUY</span><span class="bc-ai-pill">AI {{_ai_grade}}</span></div>
 <div class="bc-race">{{t.get('開催地') or '—'}}{% if t.get('レース') is not none %}{{t['レース']|int}}R{% endif %}{% if t.get('レース名') %}　{{t.get('レース名')}}{% endif %}<small>タップで詳細</small></div>
 <div class="bc-horse">
 {% if _ban %}<span class="bc-ban">{{_ban}}</span>{% endif %}
 <span class="bc-name">{{_horse}}</span>
 </div>
 <div class="bc-metrics">
-<div><b>{{_ev_disp}}</b><small>期待値</small></div>
-<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+<div><b>{{_ev_disp}}{% if _ev_disp != '—' %}%{% endif %}</b><small>期待値</small></div>
+<div><b>{% if _win_rate is not none %}{{'%.1f'|format(_win_rate|float)}}%{% else %}—{% endif %}</b><small>推定勝率</small></div>
 <div><b>{% if t.get('本命オッズ') is not none %}{{t.get('本命オッズ')}}倍{% else %}—{% endif %}</b><small>オッズ</small></div>
+<div><b>{% if _pop is not none %}{{_pop|int}}番{% else %}—{% endif %}</b><small>人気</small></div>
+<div><b>{% if _pop_gap.v != '—' %}{% if _pop_gap.v > 0 %}+{% endif %}{{_pop_gap.v }}{% else %}—{% endif %}</b><small>人気との差</small></div>
 <div><b>{% if _ai_rank.v != '—' %}{{_ai_rank.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
+<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+<div><b>{% if t.get('勝負ランク') %}{{t.get('勝負ランク')}}{% else %}—{% endif %}</b><small>AI評価</small></div>
 </div>
 {% if _reasons %}
+<div class="bc-reasons-title">BUY理由</div>
 <ul class="bc-reasons">
 {% for tip in _reasons[:4] %}
 {% if (tip ~ '')|trim %}<li>{{(tip ~ '')|trim}}</li>{% endif %}
 {% endfor %}
 </ul>
+{% endif %}
+{% if _risks %}
+<div class="bc-risk"><b>リスク</b> {{ _risks[:3]|join(' · ') }}</div>
 {% endif %}
 <div class="bc-more">詳細予想を見る →</div>
 </a>

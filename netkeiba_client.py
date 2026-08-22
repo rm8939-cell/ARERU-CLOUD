@@ -35,6 +35,60 @@ NAR_VENUE_CODES = {
 VENUE_CODES = {**JRA_VENUE_CODES, **NAR_VENUE_CODES}
 _VENUE_NAME_SET = set(VENUE_CODES.values())
 
+# 戦績1行の既存キー（旧キャッシュもこの並び）
+HISTORY_BASE_KEYS = (
+    "年月日", "場", "レース", "レース名", "頭数", "人気", "着順",
+    "騎手", "斤量", "距離", "馬場",
+)
+# 追加取得する項目 → 戦績ページの見出し候補（見出しが無い場合は取得しない）
+HISTORY_EXTRA_HEADERS: dict[str, tuple[str, ...]] = {
+    "馬体重": ("馬体重",),
+    "タイム": ("タイム",),
+    "着差": ("着差",),
+    "通過": ("通過",),
+    "ペース": ("ペース",),
+    "上り": ("上り", "上がり", "後3F"),
+}
+HISTORY_EXTRA_KEYS = tuple(HISTORY_EXTRA_HEADERS.keys())
+HISTORY_ROW_KEYS = HISTORY_BASE_KEYS + HISTORY_EXTRA_KEYS
+
+
+def _history_extra_indexes(headers: list[str]) -> dict[str, int]:
+    """戦績テーブルの見出しから追加項目の列位置を引く。無い項目は返さない。"""
+    if not headers:
+        return {}
+    pos: dict[str, int] = {}
+    normalized = [str(h or "").strip() for h in headers]
+    for key, names in HISTORY_EXTRA_HEADERS.items():
+        for name in names:
+            if name in normalized:
+                pos[key] = normalized.index(name)
+                break
+    return pos
+
+
+def normalize_history_row(row: dict) -> dict:
+    """戦績1行を既定キーで補完（旧キャッシュ互換）。値は捏造しない。"""
+    if not isinstance(row, dict):
+        return {k: "" for k in HISTORY_ROW_KEYS}
+    out = {k: "" for k in HISTORY_ROW_KEYS}
+    out.update({k: ("" if v is None else v) for k, v in row.items()})
+    return out
+
+
+def normalize_history_rows(rows) -> list[dict]:
+    """戦績リストを正規化。壊れたキャッシュは空リストとして扱う。"""
+    if not isinstance(rows, list):
+        return []
+    return [normalize_history_row(r) for r in rows if isinstance(r, dict)]
+
+
+def history_row_has_extras(row: dict) -> bool:
+    """追加項目のいずれかに実データが入っているか（表示可否の判定用）。"""
+    if not isinstance(row, dict):
+        return False
+    return any(str(row.get(k) or "").strip() for k in HISTORY_EXTRA_KEYS)
+
 
 def normalize_venue_name(venue: str) -> str:
     """開催場名を正規化（帯広(ば) → 帯広 など）。マッチング用。"""
@@ -697,7 +751,7 @@ class NetkeibaClient:
         cache_path = CACHE / f"{horse_id}.json"
         if use_cache and cache_path.exists():
             try:
-                return json.loads(cache_path.read_text(encoding="utf-8"))
+                return normalize_history_rows(json.loads(cache_path.read_text(encoding="utf-8")))
             except Exception:
                 pass
         if cache_only:
@@ -709,6 +763,7 @@ class NetkeibaClient:
         hist = []
         if table:
             headers = [th.get_text(strip=True) for th in table.select("tr")[0].find_all(["th", "td"])] if table.select("tr") else []
+            extra_idx = _history_extra_indexes(headers)
             for tr in table.select("tr")[1:]:
                 cells = [td.get_text(strip=True) for td in tr.find_all("td")]
                 if len(cells) < 12:
@@ -733,7 +788,10 @@ class NetkeibaClient:
                         if re.match(r"^(芝|ダ|障)\d+", c):
                             row["距離"] = c
                             break
-                hist.append(row)
+                for key, idx in extra_idx.items():
+                    if 0 <= idx < len(cells):
+                        row[key] = cells[idx]
+                hist.append(normalize_history_row(row))
         cache_path.write_text(json.dumps(hist, ensure_ascii=False), encoding="utf-8")
         return hist
 
@@ -756,11 +814,17 @@ class NetkeibaClient:
                 out[f"人気{i}"] = _num_or_blank(row.get("人気"))
                 out[f"場{i}"] = str(row.get("場") or "").strip()
                 out[f"レース名{i}"] = str(row.get("レース名") or "").strip()
+                out[f"タイム{i}"] = str(row.get("タイム") or "").strip()
+                out[f"着差{i}"] = str(row.get("着差") or "").strip()
+                out[f"馬場{i}"] = str(row.get("馬場") or "").strip()
             else:
                 out[f"着順{i}"] = ""
                 out[f"人気{i}"] = ""
                 out[f"場{i}"] = ""
                 out[f"レース名{i}"] = ""
+                out[f"タイム{i}"] = ""
+                out[f"着差{i}"] = ""
+                out[f"馬場{i}"] = ""
         return out
 
 
