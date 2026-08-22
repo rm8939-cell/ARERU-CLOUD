@@ -43,11 +43,62 @@ def _json_safe(obj):
 
 
 def _load_history() -> pd.DataFrame:
-    h = pd.read_csv(DATA / 'all_history.csv', encoding='utf-8-sig')
-    from areru_engine import parse_date, clean_name, expand_scoring_history
-    h['_date'] = parse_date(h['年月日'])
-    h['_horse'] = h['馬名'].map(clean_name)
-    return expand_scoring_history(h)
+    from history_index import build_master_history
+    return build_master_history()
+
+
+def _evaluate_honmei(pred: pd.DataFrame, results: pd.DataFrame, date: str) -> dict:
+    """本命・3着内・平均オッズなどレース単位指標。"""
+    from areru_engine import clean_name
+    day_res = results[results['date'] == date]
+    win = top3 = matched = 0
+    pop_gaps: list[float] = []
+    odds_list: list[float] = []
+    for _, row in pred.iterrows():
+        rid = str(row.get('race_id', ''))
+        horse = str(row.get('本命', '')).strip()
+        rr = day_res[(day_res['race_id'] == rid) & (day_res['馬名'].map(clean_name) == clean_name(horse))]
+        if rr.empty:
+            continue
+        matched += 1
+        finish = pd.to_numeric(rr.iloc[0]['着順'], errors='coerce')
+        res_pop = pd.to_numeric(rr.iloc[0]['人気'], errors='coerce')
+        res_odds = pd.to_numeric(rr.iloc[0]['確定オッズ'], errors='coerce')
+        if pd.notna(finish) and finish == 1:
+            win += 1
+        if pd.notna(finish) and finish <= 3:
+            top3 += 1
+        pred_pop = pd.to_numeric(row.get('本命人気'), errors='coerce')
+        pop = pred_pop if pd.notna(pred_pop) else res_pop
+        if pd.notna(pop):
+            pop_gaps.append(float(pop))  # placeholder; AI rank gap computed separately
+        if pd.notna(res_odds):
+            odds_list.append(float(res_odds))
+    n = max(matched, 1)
+    return {
+        '照合レース数': matched,
+        '1着率': round(win / n * 100, 2),
+        '3着内率': round(top3 / n * 100, 2),
+        '平均オッズ': round(float(sum(odds_list) / len(odds_list)), 2) if odds_list else None,
+    }
+
+
+def _high_conf_bets(bets: list[dict], preds_by_date: dict[str, pd.DataFrame]) -> list[dict]:
+    """AI信頼度>=70 の BUY のみ抽出。"""
+    out = []
+    for b in bets:
+        d = b['date']
+        pred = preds_by_date.get(d)
+        if pred is None:
+            continue
+        rid = str(b['race_id'])
+        row = pred[pred['race_id'].astype(str) == rid]
+        if row.empty:
+            continue
+        conf = pd.to_numeric(row.iloc[0].get('AI信頼度スコア'), errors='coerce')
+        if pd.notna(conf) and float(conf) >= 70:
+            out.append(b)
+    return out
 
 
 def _load_results() -> pd.DataFrame:
@@ -219,6 +270,10 @@ def run_fair_backtest(dates: list[str], *, sim_runs: int = 5000, use_cache: bool
     old_races = 0
     new_races = 0
     daily = []
+    old_honmei = {'win': 0, 'top3': 0, 'matched': 0, 'odds': []}
+    new_honmei = {'win': 0, 'top3': 0, 'matched': 0, 'odds': []}
+    old_preds: dict[str, pd.DataFrame] = {}
+    new_preds: dict[str, pd.DataFrame] = {}
 
     for d in dates:
         print(f'[backtest] {d} ...', flush=True)
@@ -230,6 +285,10 @@ def run_fair_backtest(dates: list[str], *, sim_runs: int = 5000, use_cache: bool
             daily.append({'date': d, 'error': str(e)[:120]})
             continue
 
+        old_preds[d] = old_pred
+        new_preds[d] = new_pred
+        hm_old = _evaluate_honmei(old_pred, results, d)
+        hm_new = _evaluate_honmei(new_pred, results, d)
         ob = _evaluate_bets(old_pred, results, d, scores=old_scores)
         nb = _evaluate_bets(new_pred, results, d, scores=new_scores)
         old_bets.extend(ob)
@@ -238,24 +297,65 @@ def run_fair_backtest(dates: list[str], *, sim_runs: int = 5000, use_cache: bool
         new_races += len(new_pred)
         daily.append({
             'date': d,
-            '旧': _summarize(ob, len(old_pred)),
-            '新': _summarize(nb, len(new_pred)),
+            '旧': {**_summarize(ob, len(old_pred)), **hm_old},
+            '新': {**_summarize(nb, len(new_pred)), **hm_new},
         })
 
     old_sum = _summarize(old_bets, old_races)
     new_sum = _summarize(new_bets, new_races)
+    old_hi = _summarize(_high_conf_bets(old_bets, old_preds), old_races)
+    new_hi = _summarize(_high_conf_bets(new_bets, new_preds), new_races)
+    # 本命集計
+    for d in dates:
+        if d not in old_preds:
+            continue
+        for tag, preds, agg in (('old', old_preds, old_honmei), ('new', new_preds, new_honmei)):
+            hm = _evaluate_honmei(preds[d], results, d)
+            agg['matched'] += hm['照合レース数']
+            agg['win'] += int(hm['1着率'] * hm['照合レース数'] / 100)
+            agg['top3'] += int(hm['3着内率'] * hm['照合レース数'] / 100)
+
+    om = max(old_honmei['matched'], 1)
+    nm = max(new_honmei['matched'], 1)
+    old_sum['1着率'] = round(old_honmei['win'] / om * 100, 2)
+    old_sum['3着内率'] = round(old_honmei['top3'] / om * 100, 2)
+    new_sum['1着率'] = round(new_honmei['win'] / nm * 100, 2)
+    new_sum['3着内率'] = round(new_honmei['top3'] / nm * 100, 2)
+
     return {
         '検証日': dates,
         '検証日数': len(dates),
         'SIM_RUNS': sim_runs,
         '旧ロジック': old_sum,
         '新ロジック': new_sum,
+        '旧高信頼BUY': old_hi,
+        '新高信頼BUY': new_hi,
         'ROI改善幅': round((new_sum.get('ROI') or 0) - (old_sum.get('ROI') or 0), 2),
         '回収率改善幅': round((new_sum.get('回収率') or 0) - (old_sum.get('回収率') or 0), 2),
         '的中率改善幅': round((new_sum.get('的中率') or 0) - (old_sum.get('的中率') or 0), 2),
+        '1着率改善幅': round((new_sum.get('1着率') or 0) - (old_sum.get('1着率') or 0), 2),
         '日別': daily,
         '旧BUY詳細': old_bets,
         '新BUY詳細': new_bets,
+    }
+
+
+def _split_period(fair: dict, dates: list[str]) -> dict | None:
+    """fair 結果から指定期間の旧/新サマリーを抽出。"""
+    if not dates:
+        return None
+    old_bets = [b for b in fair.get('旧BUY詳細', []) if b.get('date') in dates]
+    new_bets = [b for b in fair.get('新BUY詳細', []) if b.get('date') in dates]
+    old_races = sum(d.get('旧', {}).get('予想件数', 0) for d in fair.get('日別', []) if d.get('date') in dates)
+    new_races = old_races
+    old_sum = _summarize(old_bets, old_races)
+    new_sum = _summarize(new_bets, new_races)
+    return {
+        '検証日': dates,
+        '旧ロジック': old_sum,
+        '新ロジック': new_sum,
+        'ROI改善幅': round((new_sum.get('ROI') or 0) - (old_sum.get('ROI') or 0), 2),
+        '的中率改善幅': round((new_sum.get('的中率') or 0) - (old_sum.get('的中率') or 0), 2),
     }
 
 
@@ -319,20 +419,38 @@ def main():
     print(f'[info] 検証日: {bt_dates}', flush=True)
 
     fair = run_fair_backtest(bt_dates, sim_runs=args.sim_runs, use_cache=not args.no_cache)
+    split = max(1, len(bt_dates) * 7 // 10)
+    train_dates = bt_dates[:split]
+    holdout_dates = bt_dates[split:]
+    train = _split_period(fair, train_dates)
+    holdout = _split_period(fair, holdout_dates)
+
+    feat_report = {}
+    fr = DATA / 'feature_coverage_report.json'
+    if fr.exists():
+        feat_report = json.loads(fr.read_text(encoding='utf-8'))
+
     report = _json_safe({
         'fair_backtest': fair,
+        'train_backtest': train,
+        'holdout_backtest': holdout,
+        'feature_coverage': feat_report,
         'compare': None if args.fair_only else compare_race(args.date, args.race_id or None),
     })
 
-    # サマリー出力（詳細BUYリストはファイルのみ）
     summary = {
         '検証日': bt_dates,
+        'train_dates': train_dates,
+        'holdout_dates': holdout_dates,
         '旧ロジック': fair['旧ロジック'],
         '新ロジック': fair['新ロジック'],
         'ROI改善幅': fair['ROI改善幅'],
-        '回収率改善幅': fair['回収率改善幅'],
+        'holdout_ROI改善幅': (holdout or {}).get('ROI改善幅'),
         '的中率改善幅': fair['的中率改善幅'],
-        '日別': fair['日別'],
+        '1着率改善幅': fair.get('1着率改善幅'),
+        '旧高信頼BUY': fair.get('旧高信頼BUY'),
+        '新高信頼BUY': fair.get('新高信頼BUY'),
+        'bonus_activation': feat_report.get('bonus_activation'),
     }
     OUT.write_text(json.dumps(_json_safe(report), ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(summary, ensure_ascii=False, indent=2))

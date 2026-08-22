@@ -1,0 +1,106 @@
+{
+  "runners_fill": {
+    "runners_rows": 21338,
+    "columns": {
+      "着順1": {
+        "filled": 18173,
+        "rate": 85.2
+      },
+      "人気1": {
+        "filled": 18198,
+        "rate": 85.3
+      },
+      "場1": {
+        "filled": 16867,
+        "rate": 79.0
+      },
+      "レース名1": {
+        "filled": 16867,
+        "rate": 79.0
+      },
+      "単勝オッズ": {
+        "filled": 20754,
+        "rate": 97.3
+      },
+      "人気": {
+        "filled": 20799,
+        "rate": 97.5
+      },
+      "騎手": {
+        "filled": 20492,
+        "rate": 96.0
+      },
+      "斤量": {
+        "filled": 20489,
+        "rate": 96.0
+      },
+      "枠": {
+        "filled": 20735,
+        "rate": 97.2
+      },
+      "タイム1": {
+        "filled": 525,
+        "rate": 2.5
+      },
+      "着差1": {
+        "filled": 368,
+        "rate": 1.7
+      },
+      "馬場1": {
+        "filled": 529,
+        "rate": 2.5
+      }
+    },
+    "slot_matched_detail_any": {
+      "filled": 525,
+      "rate": 2.5
+    },
+    "jockey_in_index": {
+      "filled": 1887,
+      "rate": 8.8
+    },
+    "history_horses": 4682
+  },
+  "bonus_activation": {
+    "legacy": {
+      "n": 3226,
+      "detail": 0,
+      "margin": 0,
+      "time": 0,
+      "track": 0,
+      "jockey": 0,
+      "detail_rate": 0.0,
+      "margin_rate": 0.0,
+      "time_rate": 0.0,
+      "track_rate": 0.0,
+      "jockey_rate": 0.0
+    },
+    "new": {
+      "n": 3226,
+      "detail": 197,
+      "margin": 79,
+      "time": 80,
+      "track": 24,
+      "jockey": 657,
+      "detail_rate": 6.11,
+      "margin_rate": 2.45,
+      "time_rate": 2.48,
+      "track_rate": 0.74,
+      "jockey_rate": 20.37
+    }
+  },
+  "train_dates": [
+    "2026-06-25",
+    "2026-07-04",
+    "2026-07-05",
+    "2026-07-11",
+    "2026-07-12",
+    "2026-07-15",
+    "2026-07-16"
+  ],
+  "holdout_dates": [
+    "2026-07-17",
+    "2026-07-18",
+    "2026-07-19"
+  ]
+}

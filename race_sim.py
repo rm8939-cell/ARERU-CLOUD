@@ -162,19 +162,22 @@ def jockey_bonus(history: pd.DataFrame | None, jockey: str, venue: str, target) 
     from areru_engine import legacy_score_enabled
     if legacy_score_enabled():
         return 0.0
-    if history is None or getattr(history, "empty", True) or not str(jockey or "").strip():
+    if history is not None and not getattr(history, "empty", True) and str(jockey or "").strip():
+        j = clean_name(jockey)
+        h = history[(history["_date"] < target) & (history["騎手"].map(clean_name) == j)].tail(40)
+        if len(h) >= 3:
+            fin = num(h["着順"])
+            place = float((fin <= 3).mean())
+            bonus = (place - 0.22) * 18
+            same = h[h["場"].astype(str) == str(venue)]
+            if len(same) >= 2:
+                bonus += (float((num(same["着順"]) <= 3).mean()) - 0.22) * 8
+            return float(np.clip(bonus, -6, 8))
+    try:
+        from history_index import jockey_bonus_from_index
+        return jockey_bonus_from_index(jockey, venue)
+    except Exception:
         return 0.0
-    j = clean_name(jockey)
-    h = history[(history["_date"] < target) & (history["騎手"].map(clean_name) == j)].tail(40)
-    if len(h) < 5:
-        return 0.0
-    fin = num(h["着順"])
-    place = float((fin <= 3).mean())
-    bonus = (place - 0.22) * 18
-    same = h[h["場"].astype(str) == str(venue)]
-    if len(same) >= 4:
-        bonus += (float((num(same["着順"]) <= 3).mean()) - 0.22) * 8
-    return float(np.clip(bonus, -6, 8))
 
 
 def gate_bias(venue: str, waku, n_horses: int, surface: str) -> float:

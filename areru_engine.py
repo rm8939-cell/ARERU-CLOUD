@@ -487,23 +487,9 @@ def expand_scoring_history(history: pd.DataFrame | None = None) -> pd.DataFrame:
 
 
 def enrich_runner_history_fields(row, history: pd.DataFrame | None, target) -> dict:
-    """all_history から runners 行へ タイム/着差/馬場 を補完（列が空のときのみ）。"""
-    out = row.to_dict() if hasattr(row, 'to_dict') else dict(row)
-    if history is None or getattr(history, 'empty', True):
-        return out
-    horse = clean_name(out.get('馬名'))
-    h = history[(history['_horse'] == horse) & (history['_date'] < target)]
-    h = h.sort_values('_date', ascending=False).head(5)
-    for i, (_, xr) in enumerate(h.iterrows(), start=1):
-        for col, key in (('タイム', 'タイム'), ('着差', '着差'), ('馬場', '馬場')):
-            field = f'{col}{i}'
-            cur = str(out.get(field) or '').strip()
-            if cur and cur.lower() not in ('nan', '--'):
-                continue
-            val = xr.get(key)
-            if val is not None and str(val).strip() and str(val).lower() != 'nan':
-                out[field] = val
-    return out
+    """runners 行へ タイム/着差/馬場 をスロットマッチで補完（history_index に委譲）。"""
+    from history_index import enrich_runner_history_fields as _enrich
+    return _enrich(row, history, target)
 
 
 def _margin_tightness(margin_str) -> float:
@@ -702,8 +688,14 @@ def score_runner(row, history, target, weights):
     ctx_run = context_features_from_runners(row, target_venue, target_source=target_source)
     ctx = _merge_context_scores(ctx_hist, ctx_run, n_valid)
     detail_adj, detail_reasons = history_detail_bonus(row, history, target)
+    has_real_detail = any(
+        str(row.get(f'タイム{i}') or '').strip() not in ('', 'nan', '--')
+        and str(row.get(f'着差{i}') or '').strip() not in ('', 'nan', '--')
+        for i in range(1, 3)
+    )
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
-    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * 0.15
+    detail_w = 0.28 if (detail_adj >= 1.0 and has_real_detail) else (0.20 if detail_adj >= 1.0 else 0.15)
+    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * detail_w
     reasons=list(ctx['context_reason']) + detail_reasons
     if transfer_reason: reasons.insert(0, transfer_reason)
     if n_valid and n_valid<3: reasons.append('サンプル少')
