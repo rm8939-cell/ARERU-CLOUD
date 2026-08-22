@@ -455,8 +455,53 @@ def _popular_overbet_factor(
     return _clamp(factor, 0.35, 1.0)
 
 
+def _buy_quality_score(record: dict) -> float:
+    """BUY総合品質スコア 0-100（EV・確率・信頼度・モデル根拠の合成）。"""
+    adj = safe_float(record.get('補正勝率'), None)
+    impl = safe_float(record.get('市場暗示勝率'), None)
+    if impl is None:
+        market = parse_odds_value(record.get('本命オッズ') or record.get('現在オッズ'))
+        impl = 100.0 / market if market and market > 0 else None
+    edge = _edge_pp(adj, impl)
+    conf = safe_float(record.get('AI信頼度スコア'), 50.0) or 50.0
+    repro = safe_float(record.get('シミュレーション再現率'), 50.0) or 50.0
+    ability = safe_float(record.get('能力差スコア'), None)
+    if ability is None:
+        ability = _ability_gap_score(record)
+    n = safe_int(record.get('データ件数'), _count_past_races(record))
+    pop = _parse_pop(record.get('本命人気'))
+    sim = safe_float(record.get('シミュレーション勝率'), None)
+    idx = safe_float(record.get('本命AREru指数'), None)
+
+    score = 0.0
+    score += min(38.0, max(0.0, float(edge or 0)) * 9.0)
+    score += conf * 0.22
+    score += repro * 0.14
+    score += float(ability or 45) * 0.10
+    if adj is not None:
+        score += min(12.0, max(0.0, adj - 6.0) * 0.9)
+    score += min(10.0, n * 2.2)
+    if idx is not None and idx >= 65:
+        score += 4.0
+    if pop is not None and pop >= 5 and edge is not None and edge >= 2.5:
+        score += 5.0
+    if edge is not None and edge < 1.0:
+        score -= 28.0
+    elif edge is not None and edge < 1.8:
+        score -= 12.0
+    if pop is not None and pop <= 2 and edge is not None and edge < 2.5:
+        score -= 14.0
+    if pop is not None and pop <= 3 and sim and impl and sim > impl * 1.40 and (edge or 0) < 3.0:
+        score -= 10.0
+    if n <= 1:
+        score -= 12.0
+    elif n == 2:
+        score -= 5.0
+    return round(_clamp(score, 0, 100), 1)
+
+
 def _buy_quality_ok(record: dict) -> tuple[bool, str]:
-    """BUY品質ゲート: 実エッジ・補正勝率・過剰人気を確認。"""
+    """BUY品質ゲート: 実エッジ＋総合品質スコア＋不確実性。"""
     adj = safe_float(record.get('補正勝率'), None)
     impl = safe_float(record.get('市場暗示勝率'), None)
     if adj is None or impl is None:
@@ -465,32 +510,36 @@ def _buy_quality_ok(record: dict) -> tuple[bool, str]:
             impl = 100.0 / market
         else:
             return False, 'オッズ不足'
-    edge = _edge_pp(adj, impl)
+    edge = round(_edge_pp(adj, impl), 2)
+    qscore = _buy_quality_score(record)
+    record['BUY品質スコア'] = qscore
+
     src = str(record.get('source') or 'jra').lower()
     market = parse_odds_value(record.get('本命オッズ') or record.get('現在オッズ'))
     min_edge = _min_buy_edge_pp(market, src)
-    if edge < min_edge:
-        return False, f'実エッジ不足（{edge:+.1f}pp < {min_edge:.1f}pp）'
-
     pop = _parse_pop(record.get('本命人気'))
-    if pop is not None and pop <= 2:
-        rel_need = impl * 0.14
-        if edge < max(min_edge, rel_need):
-            return False, f'1〜2番人気はエッジ{max(min_edge, rel_need):.1f}pp以上必要'
-        if adj is not None and adj < impl * 1.08:
-            return False, '過剰人気（補正勝率≦市場）'
-
+    conf = safe_float(record.get('AI信頼度スコア'), 0.0) or 0.0
+    repro = safe_float(record.get('シミュレーション再現率'), 0.0) or 0.0
+    n = safe_int(record.get('データ件数'), _count_past_races(record))
     odds = safe_float(market, 10.0) or 10.0
-    min_adj = 5.0 if odds >= 20 else (6.5 if odds >= 10 else 8.0)
-    if adj is not None and adj < min_adj:
-        return False, f'補正勝率不足（{adj:.1f}% < {min_adj:.1f}%）'
 
-    sim = safe_float(record.get('シミュレーション勝率'), None)
-    if pop is not None and pop <= 3 and sim and impl and sim > impl * 1.45:
-        if edge < min_edge + 1.5:
-            return False, 'SIM過大×人気上位（エッジ不足）'
+    if edge < 0.8:
+        return False, f'実エッジ不足（{edge:+.1f}pp）'
+    if pop is not None and pop <= 2 and adj is not None and adj < impl * 1.04:
+        return False, '過剰人気（補正≦市場）'
+    if n <= 1 and odds >= 20 and conf < 55:
+        return False, 'サンプル不足×大穴'
 
-    return True, ''
+    if edge >= min_edge and qscore >= 52:
+        return True, ''
+    if edge >= min_edge * 0.90 and qscore >= 58 and conf >= 60 and repro >= 55:
+        return True, ''
+    if edge >= 2.2 and qscore >= 55 and conf >= 58 and n >= 2:
+        return True, ''
+    if edge >= 3.5 and qscore >= 50 and repro >= 50:
+        return True, ''
+
+    return False, f'品質不足（edge={edge:+.1f}pp score={qscore:.0f}）'
 
 
 def _ability_gap_score(record: dict) -> float:
@@ -1084,13 +1133,17 @@ def _buy_score(record: dict) -> float:
             safe_float(record.get('市場暗示勝率'), None),
         )
     edge_bonus = max(0.0, float(edge_pp or 0)) * 2.8
+    qscore = safe_float(record.get('BUY品質スコア'), None)
+    if qscore is None:
+        qscore = _buy_quality_score(record)
+    q_bonus = max(0.0, float(qscore or 0) - 45.0) * 0.35
     pop = _parse_pop(record.get('本命人気'))
     pop_pen = 0.0
     if pop is not None and pop <= 2 and (edge_pp or 0) < 4.0:
         pop_pen = 12.0
     adj = safe_float(record.get('補正勝率'), 0.0) or 0.0
     adj_bonus = min(8.0, max(0.0, adj - 8.0) * 0.4)
-    return rc * 0.45 + edge_bonus + adj_bonus + max(0.0, ev - 100.0) * 0.6 + rank_bonus - pop_pen
+    return rc * 0.40 + edge_bonus + q_bonus + adj_bonus + max(0.0, ev - 100.0) * 0.5 + rank_bonus - pop_pen
 
 
 def _scope_key(record: dict, by_venue: bool) -> str:
@@ -1255,7 +1308,7 @@ _FINALIZE_PERSIST_COLS = (
     'レース信頼度スコア', '能力差スコア', '展開読みやすさ',
     'データ件数スコア', 'シミュレーション一致率', '競馬場バイアス一致率',
     '補正勝率', '市場暗示勝率', '実エッジpp', 'AI勝率採用',
-    'BUY品質判定', 'BUY品質理由',
+    'BUY品質判定', 'BUY品質理由', 'BUY品質スコア',
     'S降格', 'S降格理由',
 )
 
@@ -1574,11 +1627,14 @@ def build_buy_rationale(record: dict) -> dict:
         minus_items.append('SIM勝率が市場より過大')
 
     ok_q, q_reason = _buy_quality_ok(record)
+    qscore = record.get('BUY品質スコア')
     return {
         'ランク': rk,
+        'AI評価': safe_float(record.get('本命AREru指数'), None),
         '補正勝率': adj,
         '市場暗示勝率': impl,
         '実エッジpp': edge_pp,
+        'BUY品質スコア': qscore,
         '人気': int(pop) if pop else None,
         'プラス': plus_items[:4],
         'マイナス': minus_items[:3],
@@ -1607,6 +1663,12 @@ def build_ai_buy_reasons(record: dict, limit: int = 4) -> list[str]:
         add(f'実エッジ＋{edge_pp:.1f}pp（想定{adj:.0f}% / 市場{impl:.0f}%）')
     elif edge_pp is not None:
         add(f'実エッジ＋{edge_pp:.1f}pp')
+    qs = pack.get('BUY品質スコア')
+    if qs is not None and float(qs) >= 55:
+        add(f'品質スコア{float(qs):.0f}')
+    ai_idx = pack.get('AI評価')
+    if ai_idx is not None and float(ai_idx) >= 62:
+        add(f'AI指数{float(ai_idx):.0f}')
 
     ev = record.get('期待値')
     try:

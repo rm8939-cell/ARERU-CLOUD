@@ -240,7 +240,7 @@ def lap_aptitude(style: float, pace_label: str) -> tuple[float, str]:
     return clamp(fit), label
 
 
-def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue: str, race_dist: str = "") -> list[dict[str, Any]]:
+def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue: str, race_dist: str = "", field_kg_mean: float | None = None) -> list[dict[str, Any]]:
     n = len(g)
     surface = surface_of(race_dist) or _guess_surface(g, history, target)
     dist_m = dist_meters(race_dist)
@@ -269,6 +269,25 @@ def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue:
         adj = 0.0
         plus: list[str] = []
         minus: list[str] = []
+        # 当日斤量（フィールド平均比）
+        try:
+            kg = float(num(row.get("斤量")))
+        except (TypeError, ValueError):
+            kg = float("nan")
+        if field_kg_mean is not None and not np.isnan(kg):
+            delta = kg - float(field_kg_mean)
+            if delta >= 3.0:
+                adj -= 2.0
+                minus.append("斤量過多")
+            elif delta >= 1.5:
+                adj -= 1.0
+                minus.append("斤量やや重い")
+            elif delta <= -2.0:
+                adj += 1.2
+                plus.append("斤量軽量")
+            elif delta <= -1.0:
+                adj += 0.6
+                plus.append("斤量やや軽い")
         if jbonus >= 2.5:
             adj += jbonus
             plus.append("騎手補正+")

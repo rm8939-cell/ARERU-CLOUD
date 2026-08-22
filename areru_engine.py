@@ -313,6 +313,103 @@ def enrich_runners_past_venues(runners: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def context_features_from_runners(row, target_venue: str = '', target_source: str = 'jra') -> dict:
+    """runners行の過去5走から適性スコア（all_history 未登録馬向け）。"""
+    finishes = np.array([num(row.get(f'着順{i}')) for i in range(1, 6)], dtype=float)
+    pops = np.array([num(row.get(f'人気{i}')) for i in range(1, 6)], dtype=float)
+    venues = [str(row.get(f'場{i}') or '').strip() for i in range(1, 6)]
+    rnames = [str(row.get(f'レース名{i}') or '').strip() for i in range(1, 6)]
+    valid = ~np.isnan(finishes)
+    n_valid = int(valid.sum())
+    if n_valid == 0:
+        return {'context': 45.0, 'context_reason': ['履歴少']}
+
+    score = 50.0
+    reasons: list[str] = []
+    tv = str(target_venue or '').strip()
+
+    # 同開催場
+    if tv:
+        same_i = [i for i in range(5) if valid[i] and venues[i] and venues[i] == tv]
+        if len(same_i) >= 2:
+            rate = sum(1 for i in same_i if finishes[i] <= 5) / len(same_i)
+            score += (rate - 0.35) * 22
+            if rate >= 0.5:
+                reasons.append(f'{tv}実績')
+
+    # 芝/ダ適性（レース名から推定）
+    surfaces = []
+    for i in range(5):
+        if not valid[i]:
+            continue
+        rn = rnames[i]
+        if 'ダ' in rn or re.search(r'ダート|ダ\s*\d', rn):
+            surfaces.append('ダ')
+        elif '芝' in rn or re.search(r'芝\s*\d', rn):
+            surfaces.append('芝')
+    if surfaces:
+        dom = max(set(surfaces), key=surfaces.count)
+        same_s = [i for i in range(5) if valid[i] and dom in rnames[i]]
+        if len(same_s) >= 2:
+            rate = sum(1 for i in same_s if finishes[i] <= 5) / len(same_s)
+            score += (rate - 0.35) * 18
+            if rate >= 0.55:
+                reasons.append(f'{dom}適性')
+
+    # クラス条件
+    if n_valid >= 2:
+        cls = [class_level(rnames[i], venues[i]) for i in range(5) if valid[i] and rnames[i]]
+        if len(cls) >= 2 and cls[0] < cls[1]:
+            score += 4
+            reasons.append('クラス条件好転')
+
+    # 人気以上に走る（最新走）
+    if valid[0] and not np.isnan(pops[0]) and finishes[0] + 3 <= pops[0]:
+        reasons.append('前走人気以上')
+
+    if str(target_source) == 'jra':
+        nar_n = sum(1 for i in range(5) if valid[i] and venues[i] and is_nar_venue(venues[i]))
+        if nar_n >= max(2, n_valid * 0.6):
+            score -= 10
+            reasons.append('地方実績中心')
+
+    return {'context': clamp(score), 'context_reason': reasons}
+
+
+def _merge_context_scores(ctx_hist: dict, ctx_run: dict, n_valid: int) -> dict:
+    """history ベースと runners ベースの context を合成。"""
+    h = float(ctx_hist.get('context') or 50)
+    r = float(ctx_run.get('context') or 50)
+    if h <= 46 and r > h:
+        w_h, w_r = 0.25, 0.75
+    elif n_valid >= 3:
+        w_h, w_r = 0.55, 0.45
+    else:
+        w_h, w_r = 0.35, 0.65
+    merged = clamp(h * w_h + r * w_r)
+    reasons = list(dict.fromkeys(
+        list(ctx_run.get('context_reason') or []) + list(ctx_hist.get('context_reason') or [])
+    ))[:5]
+    return {'context': merged, 'context_reason': reasons}
+
+
+def _kg_context_adjust(row, field_kg_mean: float | None) -> tuple[float, list[str]]:
+    """当日斤量の相対負担（フィールド平均比）。"""
+    kg = num(row.get('斤量'))
+    if pd.isna(kg) or field_kg_mean is None or pd.isna(field_kg_mean):
+        return 0.0, []
+    delta = float(kg) - float(field_kg_mean)
+    if delta >= 3.0:
+        return -4.0, ['斤量過多']
+    if delta >= 1.5:
+        return -2.0, ['斤量やや重い']
+    if delta <= -2.0:
+        return 2.5, ['斤量軽量']
+    if delta <= -1.0:
+        return 1.0, ['斤量やや軽い']
+    return 0.0, []
+
+
 def context_features(history, horse, target, target_source='jra'):
     if history is None or history.empty: return {'context':50,'context_reason':[]}
     h=history[(history['_horse']==clean_name(horse)) & (history['_date']<target)].sort_values('_date',ascending=False).head(8).copy()
@@ -420,12 +517,22 @@ def score_runner(row, history, target, weights):
             market_boost=clamp(np.log10(max(market_odds,1.0))*28, 0, 35)
             if pd.notna(market_pop) and market_pop>=8:
                 market_boost=min(40, market_boost+6)
+        # 近走実績が弱い馬へのオッズ妙味加点を抑制（人気・オッズ偏重を防ぐ）
+        if perf < 42:
+            market_boost *= 0.35
+        elif perf < 50:
+            market_boost *= 0.60
+        if cons < 40:
+            market_boost *= 0.75
         value=clamp(0.65*value + 0.35*(50+market_boost))
-        if 12<=market_odds<50 and not (pd.notna(market_pop) and market_pop>=12):
+        if 12<=market_odds<50 and not (pd.notna(market_pop) and market_pop>=12) and market_boost >= 8:
             market_reason='市場オッズ妙味'
     elif n_valid < 2:
         value=clamp(min(value, 42.0))
-    ctx=context_features(history,row['馬名'],target, target_source=target_source)
+    target_venue = venue_from_race_id(row.get('race_id', ''))
+    ctx_hist = context_features(history, row['馬名'], target, target_source=target_source)
+    ctx_run = context_features_from_runners(row, target_venue, target_source=target_source)
+    ctx = _merge_context_scores(ctx_hist, ctx_run, n_valid)
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
     score=sum(factors[k]*weights[k] for k in weights)
     reasons=list(ctx['context_reason'])
@@ -837,6 +944,33 @@ def load_ticket_odds(race_id, fetch_if_missing=True):
         return {}
 
 
+def _infer_race_distance(g: pd.DataFrame, history, target) -> str:
+    """レース距離を馬キャッシュ/history から推定。"""
+    for _, row in g.iterrows():
+        horse = clean_name(row.get('馬名', ''))
+        if history is not None and not history.empty:
+            hh = history[(history['_horse'] == horse) & (history['_date'] < target)]
+            if not hh.empty:
+                d = str(hh.sort_values('_date', ascending=False).iloc[0].get('距離') or '').strip()
+                if d and re.search(r'(芝|ダ|障)\d+', d):
+                    return d
+        # 馬キャッシュ
+        if HORSE_CACHE_DIR.exists():
+            for path in HORSE_CACHE_DIR.glob('*.json'):
+                try:
+                    hist = json.loads(path.read_text(encoding='utf-8'))
+                except Exception:
+                    continue
+                if not isinstance(hist, list):
+                    continue
+                for h in hist[:3]:
+                    if clean_name(h.get('馬名', '')) == horse:
+                        d = str(h.get('距離') or '').strip()
+                        if d and re.search(r'(芝|ダ|障)\d+', d):
+                            return d
+    return ''
+
+
 def build_predictions(target_str, runners, history=None, weights=None, fetch_ticket_odds=True):
     target=pd.Timestamp(target_str); weights=weights or load_weights(); r=runners.copy()
     r['_date']=parse_date(r['日付']); r=r[r['_date'].dt.normalize()==target.normalize()].copy()
@@ -857,7 +991,10 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
     for race_id,g0 in sd.groupby('race_id',sort=False):
         venue=venue_from_race_id(race_id)
         g_base=g0.sort_values('AREru指数',ascending=False).reset_index(drop=True)
-        profiles=build_profiles(g_base, history, target, venue)
+        kg_vals=pd.to_numeric(g_base.get('斤量'), errors='coerce')
+        field_kg=float(kg_vals.mean()) if kg_vals.notna().any() else None
+        race_dist=_infer_race_distance(g_base, history, target)
+        profiles=build_profiles(g_base, history, target, venue, race_dist=race_dist, field_kg_mean=field_kg)
         pace=predict_pace(profiles)
         # ラップ適性を個別に付与
         for i,p in enumerate(profiles):

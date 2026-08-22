@@ -1027,6 +1027,8 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') %}
   {% set _impl = _buy_pack.get('市場暗示勝率') or t.get('市場暗示勝率') %}
   {% set _edge_pp = _buy_pack.get('実エッジpp') or t.get('実エッジpp') %}
+  {% set _ai_idx = _buy_pack.get('AI評価') or t.get('本命AREru指数') %}
+  {% set _qscore = _buy_pack.get('BUY品質スコア') or t.get('BUY品質スコア') %}
   {% set _pop = _buy_pack.get('人気') or t.get('本命人気') %}
   {% set _plus = _buy_pack.get('プラス') if _buy_pack.get('プラス') is sequence else [] %}
   {% set _minus = _buy_pack.get('マイナス') if _buy_pack.get('マイナス') is sequence else [] %}
@@ -1042,6 +1044,8 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div><b>{% if _adj is not none %}{{'%g'|format(_adj|float)}}%{% else %}—{% endif %}</b><small>想定勝率</small></div>
 <div><b>{% if _impl is not none %}{{'%g'|format(_impl|float)}}%{% else %}—{% endif %}</b><small>市場暗示</small></div>
 <div><b>{% if t.get('本命オッズ') is not none %}{{t.get('本命オッズ')}}倍{% else %}—{% endif %}</b><small>オッズ</small></div>
+<div><b>{% if _ai_idx is not none %}{{'%g'|format(_ai_idx|float)}}{% else %}—{% endif %}</b><small>AI指数</small></div>
+<div><b>{% if _qscore is not none %}{{'%g'|format(_qscore|float)}}{% else %}—{% endif %}</b><small>品質</small></div>
 <div><b>{% if _pop is not none %}{{_pop|int}}番{% else %}—{% endif %}</b><small>人気</small></div>
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 </div>
