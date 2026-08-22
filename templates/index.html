@@ -360,6 +360,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-card .bc-ban{min-width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#1a7f4b,#0f5a38);color:#fff;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12)}
 .buy-card .bc-name{font-size:26px;font-weight:900;line-height:1.2;word-break:keep-all;overflow-wrap:anywhere}
 .buy-card .bc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:560px){.buy-card .bc-metrics{grid-template-columns:repeat(4,1fr)}}
 .buy-card .bc-metrics div{background:#f3faf6;border:1px solid #d5eadc;border-radius:14px;padding:10px 8px}
 .buy-card .bc-metrics b{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;color:#145c37;line-height:1.1}
 .buy-card .bc-metrics small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:#6a7682;letter-spacing:.04em}
@@ -373,6 +374,9 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-card .bc-plus:before{content:"+";position:absolute;left:10px;top:8px;color:#1a7f4b;font-weight:900}
 .buy-card .bc-minus{background:#fff8f6;border:1px solid #f0ddd8;color:#8a4a3a}
 .buy-card .bc-minus:before{content:"−";position:absolute;left:10px;top:8px;color:#c45a3a;font-weight:900}
+.buy-card .bc-risk{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:#fff8f0;border:1px solid #f0dcc4;font-size:13px;line-height:1.55;color:#6a4a2a}
+.buy-card .bc-risk b{color:#9a5b00;font-weight:900}
+.buy-card .bc-reasons-title{margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 .buy-card .bc-reasons{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px}
 .buy-card .bc-reasons li{position:relative;padding:11px 12px 11px 34px;background:#f8fbf9;border:1px solid #e2eee6;border-radius:12px;font-size:15px;font-weight:750;line-height:1.45;color:#1f2a33}
 .buy-card .bc-reasons li:before{content:"◎";position:absolute;left:12px;top:11px;color:#1a7f4b;font-weight:900}
@@ -1019,12 +1023,18 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% elif not _reasons and t.get('本命理由') %}
     {% set _reasons = [t.get('本命理由')] %}
   {% endif %}
+  {% set _risks = t.get('AIリスク') if t.get('AIリスク') is sequence and t.get('AIリスク') else [] %}
+  {% if not _risks and _main_card.get('不安材料一覧') is sequence %}
+    {% set _risks = _main_card.get('不安材料一覧') %}
+  {% elif not _risks and t.get('S降格理由') %}
+    {% set _risks = [t.get('S降格理由')] %}
+  {% endif %}
   {% set _ban = t.get('本命馬番') or t.get('本命馬番表示') or '' %}
   {% set _horse = t.get('本命') or '—' %}
   {% set _ev_raw = t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') or '—' %}
   {% set _ev_disp = (_ev_raw ~ '')|replace('%','') %}
   {% set _rk = t.get('勝負ランク') or _buy_pack.get('ランク') or '' %}
-  {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') %}
+  {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') or t.get('シミュレーション勝率') or _main_card.get('勝率') %}
   {% set _impl = _buy_pack.get('市場暗示勝率') or t.get('市場暗示勝率') %}
   {% set _edge_pp = _buy_pack.get('実エッジpp') or t.get('実エッジpp') %}
   {% set _ai_idx = _buy_pack.get('AI評価') or t.get('本命AREru指数') %}
@@ -1032,6 +1042,10 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% set _pop = _buy_pack.get('人気') or t.get('本命人気') %}
   {% set _plus = _buy_pack.get('プラス') if _buy_pack.get('プラス') is sequence else [] %}
   {% set _minus = _buy_pack.get('マイナス') if _buy_pack.get('マイナス') is sequence else [] %}
+  {% set _pop_gap = namespace(v='—') %}
+  {% if _pop is not none and _ai_rank.v != '—' %}
+    {% set _pop_gap.v = (_pop|int - _ai_rank.v|int) %}
+  {% endif %}
 <a class="buy-card" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
 <div class="bc-top"><span class="bc-badge">🔥 BUY</span>{% if _rk %}<span class="bc-rank-badge rank-{{_rk|lower}}">{{_rk}}</span>{% endif %}</div>
 <div class="bc-race">{{t.get('開催地') or '—'}}{% if t.get('レース') is not none %}{{t['レース']|int}}R{% endif %}{% if t.get('レース名') %}　{{t.get('レース名')}}{% endif %}<small>タップで詳細</small></div>
@@ -1041,18 +1055,19 @@ details.race-acc[open]>.race-acc-body{display:block}
 </div>
 <div class="bc-metrics">
 <div><b>{{_ev_disp}}%</b><small>期待値</small></div>
-<div><b>{% if _adj is not none %}{{'%g'|format(_adj|float)}}%{% else %}—{% endif %}</b><small>想定勝率</small></div>
-<div><b>{% if _impl is not none %}{{'%g'|format(_impl|float)}}%{% else %}—{% endif %}</b><small>市場暗示</small></div>
+<div><b>{% if _adj is not none %}{{'%g'|format(_adj|float)}}%{% else %}—{% endif %}</b><small>推定勝率</small></div>
 <div><b>{% if t.get('本命オッズ') is not none %}{{t.get('本命オッズ')}}倍{% else %}—{% endif %}</b><small>オッズ</small></div>
-<div><b>{% if _ai_idx is not none %}{{'%g'|format(_ai_idx|float)}}{% else %}—{% endif %}</b><small>AI指数</small></div>
-<div><b>{% if _qscore is not none %}{{'%g'|format(_qscore|float)}}{% else %}—{% endif %}</b><small>品質</small></div>
 <div><b>{% if _pop is not none %}{{_pop|int}}番{% else %}—{% endif %}</b><small>人気</small></div>
+<div><b>{% if _pop_gap.v != '—' %}{% if _pop_gap.v > 0 %}+{% endif %}{{_pop_gap.v}}{% else %}—{% endif %}</b><small>人気との差</small></div>
+<div><b>{% if _ai_rank.v != '—' %}{{_ai_rank.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
+<div><b>{% if _rk %}{{_rk}}{% elif _ai_idx is not none %}{{'%g'|format(_ai_idx|float)}}{% else %}—{% endif %}</b><small>AI評価</small></div>
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 </div>
 {% if _edge_pp is not none %}
 <div class="bc-edge">実エッジ <b>+{{'%g'|format(_edge_pp|float)}}pp</b>（補正勝率が市場より高い）</div>
 {% endif %}
 {% if _reasons %}
+<div class="bc-reasons-title">BUY理由</div>
 <ul class="bc-reasons">
 {% for tip in _reasons[:4] %}
 {% if (tip ~ '')|trim %}<li>{{(tip ~ '')|trim}}</li>{% endif %}
@@ -1064,6 +1079,9 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% for p in _plus[:2] %}<div class="bc-plus">{{p}}</div>{% endfor %}
 {% for m in _minus[:2] %}<div class="bc-minus">{{m}}</div>{% endfor %}
 </div>
+{% endif %}
+{% if _risks %}
+<div class="bc-risk"><b>リスク</b> {{ _risks[:3]|join(' · ') }}</div>
 {% endif %}
 <div class="bc-more">詳細予想を見る →</div>
 </a>

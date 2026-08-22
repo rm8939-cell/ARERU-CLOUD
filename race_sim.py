@@ -143,6 +143,9 @@ def layoff_days(history: pd.DataFrame | None, horse: str, target) -> float:
 
 def weight_delta(history: pd.DataFrame | None, horse: str, target) -> float:
     """直近2走の馬体重差（kg）。増減が大きいと減点寄り。"""
+    from areru_engine import legacy_score_enabled
+    if legacy_score_enabled():
+        return float("nan")
     if history is None or getattr(history, "empty", True):
         return float("nan")
     h = history[(history["_horse"] == clean_name(horse)) & (history["_date"] < target)]
@@ -156,6 +159,9 @@ def weight_delta(history: pd.DataFrame | None, horse: str, target) -> float:
 
 
 def jockey_bonus(history: pd.DataFrame | None, jockey: str, venue: str, target) -> float:
+    from areru_engine import legacy_score_enabled
+    if legacy_score_enabled():
+        return 0.0
     if history is None or getattr(history, "empty", True) or not str(jockey or "").strip():
         return 0.0
     j = clean_name(jockey)
@@ -240,6 +246,78 @@ def lap_aptitude(style: float, pace_label: str) -> tuple[float, str]:
     return clamp(fit), label
 
 
+
+def track_condition_bonus(history: pd.DataFrame | None, horse: str, target) -> tuple[float, list[str]]:
+    """直近走の馬場状態適性（重・稍重での好走など）。"""
+    from areru_engine import legacy_score_enabled
+    if legacy_score_enabled() or history is None or getattr(history, "empty", True):
+        return 0.0, []
+    h = history[(history["_horse"] == clean_name(horse)) & (history["_date"] < target)]
+    h = h.sort_values("_date", ascending=False).head(6)
+    if h.empty:
+        return 0.0, []
+    plus: list[str] = []
+    adj = 0.0
+    tracks = h["馬場"].astype(str).tolist() if "馬場" in h.columns else []
+    fin = num(h["着順"]) if "着順" in h.columns else pd.Series(dtype=float)
+    heavy_mask = [any(x in str(t) for x in ("重", "不良", "稍")) for t in tracks]
+    if sum(heavy_mask) >= 2 and len(fin.dropna()) >= 2:
+        heavy_fin = fin[heavy_mask[: len(fin)]]
+        if len(heavy_fin) and float((heavy_fin <= 5).mean()) >= 0.5:
+            adj += 1.5
+            plus.append("重馬場適性")
+    return adj, plus
+
+
+def margin_bonus_from_row(row) -> tuple[float, list[str]]:
+    """runners 列の着差1..5 から接戦ボーナス。"""
+    from areru_engine import legacy_score_enabled
+    if legacy_score_enabled():
+        return 0.0, []
+    scores = []
+    for i in range(1, 6):
+        s = str(row.get(f"着差{i}") or "").strip()
+        if not s:
+            continue
+        if any(x in s for x in ("ハナ", "クビ", "アタマ", "同着")):
+            scores.append(2.5)
+        elif "1/2" in s:
+            scores.append(2.0)
+        elif re.match(r"^[12](?:\.\d)?$", s):
+            scores.append(1.5)
+    if not scores:
+        return 0.0, []
+    avg = float(np.mean(scores[:3]))
+    return min(2.5, avg * 0.85), (["前走接戦"] if avg >= 2.0 else [])
+
+
+def time_trend_bonus(row, history: pd.DataFrame | None, horse: str, target) -> tuple[float, list[str]]:
+    """タイム改善トレンド。"""
+    from areru_engine import legacy_score_enabled
+    if legacy_score_enabled():
+        return 0.0, []
+    times: list[float] = []
+    for i in range(1, 6):
+        ts = parse_time_sec(row.get(f"タイム{i}"))
+        if not np.isnan(ts):
+            times.append(ts)
+    if len(times) < 2 and history is not None and not getattr(history, "empty", True):
+        h = history[(history["_horse"] == clean_name(horse)) & (history["_date"] < target)]
+        h = h.sort_values("_date", ascending=False).head(5)
+        for _, xr in h.iterrows():
+            ts = parse_time_sec(xr.get("タイム"))
+            if not np.isnan(ts):
+                times.append(ts)
+    if len(times) < 2:
+        return 0.0, []
+    if times[0] + 0.25 < times[1]:
+        delta = times[1] - times[0]
+        if delta >= 0.8:
+            return 2.0, ["タイム大幅改善"]
+        return 1.0, ["タイム改善"]
+    return 0.0, []
+
+
 def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue: str, race_dist: str = "", field_kg_mean: float | None = None) -> list[dict[str, Any]]:
     n = len(g)
     surface = surface_of(race_dist) or _guess_surface(g, history, target)
@@ -263,6 +341,9 @@ def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue:
         lay = layoff_days(history, row.get("馬名"), target)
         wdelta = weight_delta(history, row.get("馬名"), target)
         jbonus = jockey_bonus(history, row.get("騎手"), venue, target)
+        tbonus, tplus = time_trend_bonus(row, history, row.get("馬名"), target)
+        mbonus, mplus = margin_bonus_from_row(row)
+        trbonus, trplus = track_condition_bonus(history, row.get("馬名"), target)
         gbias = gate_bias(venue, row.get("枠"), n, surface)
         cfit, c_reasons = course_distance_fit(history, row.get("馬名"), target, venue, dist_m, surface)
 
@@ -330,6 +411,15 @@ def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue:
         elif l3 <= 40:
             adj -= 1.2
             minus.append("上がり物足りず")
+        if tbonus >= 1.0:
+            adj += tbonus
+            plus.extend(tplus)
+        if mbonus >= 1.0:
+            adj += mbonus
+            plus.extend(mplus)
+        if trbonus >= 1.0:
+            adj += trbonus
+            plus.extend(trplus)
         adj += cfit
         for r in c_reasons:
             plus.append(r)
