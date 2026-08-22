@@ -1,0 +1,1949 @@
+{
+  "purpose": "地方Sのみ 2条件（4-5人気 / オッズ8-12）をS→A仮想降格したバックテスト（コード変更なし）",
+  "rules": {
+    "target": "地方 (nar) のみ。JRAは一切変更しない",
+    "conditions_OR": [
+      "本命人気が4-5人気",
+      "本命オッズが 8 < odds <= 12（帯ラベル 8-12）"
+    ],
+    "action": "該当Sを仮想的にAへ降格",
+    "metric": "本命単勝",
+    "split": {
+      "train": "<= 2026-07-28",
+      "test": "> 2026-07-28"
+    }
+  },
+  "implement_now": false,
+  "scopes": {
+    "地方_全期間": {
+      "label": "地方_全期間",
+      "n_rows": 539,
+      "demoted_n": 55,
+      "demoted_hits": 0,
+      "demoted_recovery": 0.0,
+      "demote_reasons": {
+        "4-5人気": 23,
+        "4-5人気+オッズ8-12": 20,
+        "オッズ8-12": 12
+      },
+      "original": {
+        "S": {
+          "n": 108,
+          "hits": 6,
+          "hit_rate": 5.6,
+          "recovery": 52.8,
+          "avg_ev": 115.1,
+          "avg_odds": 14.88,
+          "avg_pop": 4.92,
+          "payout": 5700,
+          "investment": 10800
+        },
+        "A": {
+          "n": 168,
+          "hits": 20,
+          "hit_rate": 11.9,
+          "recovery": 94.1,
+          "avg_ev": 110.6,
+          "avg_odds": 23.21,
+          "avg_pop": 4.77,
+          "payout": 15810,
+          "investment": 16800
+        },
+        "B": {
+          "n": 263,
+          "hits": 46,
+          "hit_rate": 17.5,
+          "recovery": 74.7,
+          "avg_ev": 105.8,
+          "avg_odds": 13.65,
+          "avg_pop": 3.98,
+          "payout": 19640,
+          "investment": 26300
+        },
+        "S+A": {
+          "n": 276,
+          "hits": 26,
+          "hit_rate": 9.4,
+          "recovery": 77.9,
+          "avg_ev": 112.4
+        },
+        "S+A+B": {
+          "n": 539,
+          "hits": 72,
+          "hit_rate": 13.4,
+          "recovery": 76.3,
+          "avg_ev": 109.2
+        }
+      },
+      "virtual": {
+        "S": {
+          "n": 53,
+          "hits": 6,
+          "hit_rate": 11.3,
+          "recovery": 107.5,
+          "avg_ev": 112.4,
+          "avg_odds": 18.15,
+          "avg_pop": 5.49,
+          "payout": 5700,
+          "investment": 5300
+        },
+        "A": {
+          "n": 223,
+          "hits": 20,
+          "hit_rate": 9.0,
+          "recovery": 70.9,
+          "avg_ev": 112.4,
+          "avg_odds": 20.38,
+          "avg_pop": 4.67,
+          "payout": 15810,
+          "investment": 22300
+        },
+        "B": {
+          "n": 263,
+          "hits": 46,
+          "hit_rate": 17.5,
+          "recovery": 74.7,
+          "avg_ev": 105.8,
+          "avg_odds": 13.65,
+          "avg_pop": 3.98,
+          "payout": 19640,
+          "investment": 26300
+        },
+        "S+A": {
+          "n": 276,
+          "hits": 26,
+          "hit_rate": 9.4,
+          "recovery": 77.9,
+          "avg_ev": 112.4
+        },
+        "S+A+B": {
+          "n": 539,
+          "hits": 72,
+          "hit_rate": 13.4,
+          "recovery": 76.3,
+          "avg_ev": 109.2
+        }
+      },
+      "delta_virt_minus_orig": {
+        "S": {
+          "n": -55,
+          "hits": 0,
+          "hit_rate": 5.7,
+          "recovery": 54.7,
+          "avg_ev": -2.7,
+          "avg_odds": 3.3,
+          "avg_pop": 0.6
+        },
+        "B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        },
+        "A": {
+          "n": 55,
+          "hits": 0,
+          "hit_rate": -2.9,
+          "recovery": -23.2,
+          "avg_ev": 1.8,
+          "avg_odds": -2.8,
+          "avg_pop": -0.1
+        },
+        "S+A+B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        }
+      }
+    },
+    "地方_学習": {
+      "label": "地方_学習",
+      "n_rows": 274,
+      "demoted_n": 26,
+      "demoted_hits": 0,
+      "demoted_recovery": 0.0,
+      "demote_reasons": {
+        "4-5人気": 12,
+        "4-5人気+オッズ8-12": 8,
+        "オッズ8-12": 6
+      },
+      "original": {
+        "S": {
+          "n": 50,
+          "hits": 3,
+          "hit_rate": 6.0,
+          "recovery": 93.4,
+          "avg_ev": 115.5,
+          "avg_odds": 15.55,
+          "avg_pop": 4.84,
+          "payout": 4670,
+          "investment": 5000
+        },
+        "A": {
+          "n": 78,
+          "hits": 12,
+          "hit_rate": 15.4,
+          "recovery": 93.6,
+          "avg_ev": 108.9,
+          "avg_odds": 22.47,
+          "avg_pop": 4.27,
+          "payout": 7300,
+          "investment": 7800
+        },
+        "B": {
+          "n": 146,
+          "hits": 32,
+          "hit_rate": 21.9,
+          "recovery": 104.3,
+          "avg_ev": 104.1,
+          "avg_odds": 13.41,
+          "avg_pop": 3.69,
+          "payout": 15230,
+          "investment": 14600
+        },
+        "S+A": {
+          "n": 128,
+          "hits": 15,
+          "hit_rate": 11.7,
+          "recovery": 93.5,
+          "avg_ev": 111.5
+        },
+        "S+A+B": {
+          "n": 274,
+          "hits": 47,
+          "hit_rate": 17.2,
+          "recovery": 99.3,
+          "avg_ev": 107.6
+        }
+      },
+      "virtual": {
+        "S": {
+          "n": 24,
+          "hits": 3,
+          "hit_rate": 12.5,
+          "recovery": 194.6,
+          "avg_ev": 114.0,
+          "avg_odds": 19.66,
+          "avg_pop": 5.58,
+          "payout": 4670,
+          "investment": 2400
+        },
+        "A": {
+          "n": 104,
+          "hits": 12,
+          "hit_rate": 11.5,
+          "recovery": 70.2,
+          "avg_ev": 110.9,
+          "avg_odds": 19.79,
+          "avg_pop": 4.24,
+          "payout": 7300,
+          "investment": 10400
+        },
+        "B": {
+          "n": 146,
+          "hits": 32,
+          "hit_rate": 21.9,
+          "recovery": 104.3,
+          "avg_ev": 104.1,
+          "avg_odds": 13.41,
+          "avg_pop": 3.69,
+          "payout": 15230,
+          "investment": 14600
+        },
+        "S+A": {
+          "n": 128,
+          "hits": 15,
+          "hit_rate": 11.7,
+          "recovery": 93.5,
+          "avg_ev": 111.5
+        },
+        "S+A+B": {
+          "n": 274,
+          "hits": 47,
+          "hit_rate": 17.2,
+          "recovery": 99.3,
+          "avg_ev": 107.6
+        }
+      },
+      "delta_virt_minus_orig": {
+        "S": {
+          "n": -26,
+          "hits": 0,
+          "hit_rate": 6.5,
+          "recovery": 101.2,
+          "avg_ev": -1.5,
+          "avg_odds": 4.1,
+          "avg_pop": 0.7
+        },
+        "B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        },
+        "A": {
+          "n": 26,
+          "hits": 0,
+          "hit_rate": -3.9,
+          "recovery": -23.4,
+          "avg_ev": 2.0,
+          "avg_odds": -2.7,
+          "avg_pop": -0.0
+        },
+        "S+A+B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        }
+      }
+    },
+    "地方_検証": {
+      "label": "地方_検証",
+      "n_rows": 265,
+      "demoted_n": 29,
+      "demoted_hits": 0,
+      "demoted_recovery": 0.0,
+      "demote_reasons": {
+        "4-5人気+オッズ8-12": 12,
+        "4-5人気": 11,
+        "オッズ8-12": 6
+      },
+      "original": {
+        "S": {
+          "n": 58,
+          "hits": 3,
+          "hit_rate": 5.2,
+          "recovery": 17.8,
+          "avg_ev": 114.8,
+          "avg_odds": 14.29,
+          "avg_pop": 4.98,
+          "payout": 1030,
+          "investment": 5800
+        },
+        "A": {
+          "n": 90,
+          "hits": 8,
+          "hit_rate": 8.9,
+          "recovery": 94.6,
+          "avg_ev": 112.1,
+          "avg_odds": 23.85,
+          "avg_pop": 5.21,
+          "payout": 8510,
+          "investment": 9000
+        },
+        "B": {
+          "n": 117,
+          "hits": 14,
+          "hit_rate": 12.0,
+          "recovery": 37.7,
+          "avg_ev": 108.0,
+          "avg_odds": 13.94,
+          "avg_pop": 4.33,
+          "payout": 4410,
+          "investment": 11700
+        },
+        "S+A": {
+          "n": 148,
+          "hits": 11,
+          "hit_rate": 7.4,
+          "recovery": 64.5,
+          "avg_ev": 113.2
+        },
+        "S+A+B": {
+          "n": 265,
+          "hits": 25,
+          "hit_rate": 9.4,
+          "recovery": 52.6,
+          "avg_ev": 110.9
+        }
+      },
+      "virtual": {
+        "S": {
+          "n": 29,
+          "hits": 3,
+          "hit_rate": 10.3,
+          "recovery": 35.5,
+          "avg_ev": 111.0,
+          "avg_odds": 16.89,
+          "avg_pop": 5.41,
+          "payout": 1030,
+          "investment": 2900
+        },
+        "A": {
+          "n": 119,
+          "hits": 8,
+          "hit_rate": 6.7,
+          "recovery": 71.5,
+          "avg_ev": 113.7,
+          "avg_odds": 20.89,
+          "avg_pop": 5.05,
+          "payout": 8510,
+          "investment": 11900
+        },
+        "B": {
+          "n": 117,
+          "hits": 14,
+          "hit_rate": 12.0,
+          "recovery": 37.7,
+          "avg_ev": 108.0,
+          "avg_odds": 13.94,
+          "avg_pop": 4.33,
+          "payout": 4410,
+          "investment": 11700
+        },
+        "S+A": {
+          "n": 148,
+          "hits": 11,
+          "hit_rate": 7.4,
+          "recovery": 64.5,
+          "avg_ev": 113.2
+        },
+        "S+A+B": {
+          "n": 265,
+          "hits": 25,
+          "hit_rate": 9.4,
+          "recovery": 52.6,
+          "avg_ev": 110.9
+        }
+      },
+      "delta_virt_minus_orig": {
+        "S": {
+          "n": -29,
+          "hits": 0,
+          "hit_rate": 5.1,
+          "recovery": 17.7,
+          "avg_ev": -3.8,
+          "avg_odds": 2.6,
+          "avg_pop": 0.4
+        },
+        "B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        },
+        "A": {
+          "n": 29,
+          "hits": 0,
+          "hit_rate": -2.2,
+          "recovery": -23.1,
+          "avg_ev": 1.6,
+          "avg_odds": -3.0,
+          "avg_pop": -0.2
+        },
+        "S+A+B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        }
+      }
+    },
+    "全体_全期間": {
+      "label": "全体_全期間",
+      "n_rows": 652,
+      "demoted_n": 55,
+      "demoted_hits": 0,
+      "demoted_recovery": 0.0,
+      "demote_reasons": {
+        "4-5人気": 23,
+        "4-5人気+オッズ8-12": 20,
+        "オッズ8-12": 12
+      },
+      "original": {
+        "S": {
+          "n": 118,
+          "hits": 8,
+          "hit_rate": 6.8,
+          "recovery": 60.9,
+          "avg_ev": 115.4,
+          "avg_odds": 15.03,
+          "avg_pop": 5.08,
+          "payout": 7190,
+          "investment": 11800
+        },
+        "A": {
+          "n": 201,
+          "hits": 24,
+          "hit_rate": 11.9,
+          "recovery": 105.3,
+          "avg_ev": 111.4,
+          "avg_odds": 21.86,
+          "avg_pop": 4.92,
+          "payout": 21160,
+          "investment": 20100
+        },
+        "B": {
+          "n": 333,
+          "hits": 55,
+          "hit_rate": 16.5,
+          "recovery": 70.0,
+          "avg_ev": 106.2,
+          "avg_odds": 13.07,
+          "avg_pop": 3.98,
+          "payout": 23300,
+          "investment": 33300
+        },
+        "S+A": {
+          "n": 319,
+          "hits": 32,
+          "hit_rate": 10.0,
+          "recovery": 88.9,
+          "avg_ev": 112.9
+        },
+        "S+A+B": {
+          "n": 652,
+          "hits": 87,
+          "hit_rate": 13.3,
+          "recovery": 79.2,
+          "avg_ev": 109.5
+        }
+      },
+      "virtual": {
+        "S": {
+          "n": 63,
+          "hits": 8,
+          "hit_rate": 12.7,
+          "recovery": 114.1,
+          "avg_ev": 113.3,
+          "avg_odds": 17.91,
+          "avg_pop": 5.71,
+          "payout": 7190,
+          "investment": 6300
+        },
+        "A": {
+          "n": 256,
+          "hits": 24,
+          "hit_rate": 9.4,
+          "recovery": 82.7,
+          "avg_ev": 112.8,
+          "avg_odds": 19.69,
+          "avg_pop": 4.8,
+          "payout": 21160,
+          "investment": 25600
+        },
+        "B": {
+          "n": 333,
+          "hits": 55,
+          "hit_rate": 16.5,
+          "recovery": 70.0,
+          "avg_ev": 106.2,
+          "avg_odds": 13.07,
+          "avg_pop": 3.98,
+          "payout": 23300,
+          "investment": 33300
+        },
+        "S+A": {
+          "n": 319,
+          "hits": 32,
+          "hit_rate": 10.0,
+          "recovery": 88.9,
+          "avg_ev": 112.9
+        },
+        "S+A+B": {
+          "n": 652,
+          "hits": 87,
+          "hit_rate": 13.3,
+          "recovery": 79.2,
+          "avg_ev": 109.5
+        }
+      },
+      "delta_virt_minus_orig": {
+        "S": {
+          "n": -55,
+          "hits": 0,
+          "hit_rate": 5.9,
+          "recovery": 53.2,
+          "avg_ev": -2.1,
+          "avg_odds": 2.9,
+          "avg_pop": 0.6
+        },
+        "B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        },
+        "A": {
+          "n": 55,
+          "hits": 0,
+          "hit_rate": -2.5,
+          "recovery": -22.6,
+          "avg_ev": 1.4,
+          "avg_odds": -2.2,
+          "avg_pop": -0.1
+        },
+        "S+A+B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        }
+      }
+    },
+    "全体_学習": {
+      "label": "全体_学習",
+      "n_rows": 347,
+      "demoted_n": 26,
+      "demoted_hits": 0,
+      "demoted_recovery": 0.0,
+      "demote_reasons": {
+        "4-5人気": 12,
+        "4-5人気+オッズ8-12": 8,
+        "オッズ8-12": 6
+      },
+      "original": {
+        "S": {
+          "n": 56,
+          "hits": 4,
+          "hit_rate": 7.1,
+          "recovery": 99.5,
+          "avg_ev": 115.9,
+          "avg_odds": 15.52,
+          "avg_pop": 5.0,
+          "payout": 5570,
+          "investment": 5600
+        },
+        "A": {
+          "n": 99,
+          "hits": 15,
+          "hit_rate": 15.2,
+          "recovery": 119.3,
+          "avg_ev": 110.1,
+          "avg_odds": 20.83,
+          "avg_pop": 4.53,
+          "payout": 11810,
+          "investment": 9900
+        },
+        "B": {
+          "n": 192,
+          "hits": 38,
+          "hit_rate": 19.8,
+          "recovery": 91.7,
+          "avg_ev": 104.5,
+          "avg_odds": 12.61,
+          "avg_pop": 3.63,
+          "payout": 17600,
+          "investment": 19200
+        },
+        "S+A": {
+          "n": 155,
+          "hits": 19,
+          "hit_rate": 12.3,
+          "recovery": 112.1,
+          "avg_ev": 112.2
+        },
+        "S+A+B": {
+          "n": 347,
+          "hits": 57,
+          "hit_rate": 16.4,
+          "recovery": 100.8,
+          "avg_ev": 107.9
+        }
+      },
+      "virtual": {
+        "S": {
+          "n": 30,
+          "hits": 4,
+          "hit_rate": 13.3,
+          "recovery": 185.7,
+          "avg_ev": 115.0,
+          "avg_odds": 18.78,
+          "avg_pop": 5.73,
+          "payout": 5570,
+          "investment": 3000
+        },
+        "A": {
+          "n": 125,
+          "hits": 15,
+          "hit_rate": 12.0,
+          "recovery": 94.5,
+          "avg_ev": 111.5,
+          "avg_odds": 18.94,
+          "avg_pop": 4.45,
+          "payout": 11810,
+          "investment": 12500
+        },
+        "B": {
+          "n": 192,
+          "hits": 38,
+          "hit_rate": 19.8,
+          "recovery": 91.7,
+          "avg_ev": 104.5,
+          "avg_odds": 12.61,
+          "avg_pop": 3.63,
+          "payout": 17600,
+          "investment": 19200
+        },
+        "S+A": {
+          "n": 155,
+          "hits": 19,
+          "hit_rate": 12.3,
+          "recovery": 112.1,
+          "avg_ev": 112.2
+        },
+        "S+A+B": {
+          "n": 347,
+          "hits": 57,
+          "hit_rate": 16.4,
+          "recovery": 100.8,
+          "avg_ev": 107.9
+        }
+      },
+      "delta_virt_minus_orig": {
+        "S": {
+          "n": -26,
+          "hits": 0,
+          "hit_rate": 6.2,
+          "recovery": 86.2,
+          "avg_ev": -0.9,
+          "avg_odds": 3.3,
+          "avg_pop": 0.7
+        },
+        "B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        },
+        "A": {
+          "n": 26,
+          "hits": 0,
+          "hit_rate": -3.2,
+          "recovery": -24.8,
+          "avg_ev": 1.4,
+          "avg_odds": -1.9,
+          "avg_pop": -0.1
+        },
+        "S+A+B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        }
+      }
+    },
+    "全体_検証": {
+      "label": "全体_検証",
+      "n_rows": 305,
+      "demoted_n": 29,
+      "demoted_hits": 0,
+      "demoted_recovery": 0.0,
+      "demote_reasons": {
+        "4-5人気+オッズ8-12": 12,
+        "4-5人気": 11,
+        "オッズ8-12": 6
+      },
+      "original": {
+        "S": {
+          "n": 62,
+          "hits": 4,
+          "hit_rate": 6.5,
+          "recovery": 26.1,
+          "avg_ev": 115.0,
+          "avg_odds": 14.58,
+          "avg_pop": 5.16,
+          "payout": 1620,
+          "investment": 6200
+        },
+        "A": {
+          "n": 102,
+          "hits": 9,
+          "hit_rate": 8.8,
+          "recovery": 91.7,
+          "avg_ev": 112.6,
+          "avg_odds": 22.87,
+          "avg_pop": 5.3,
+          "payout": 9350,
+          "investment": 10200
+        },
+        "B": {
+          "n": 141,
+          "hits": 17,
+          "hit_rate": 12.1,
+          "recovery": 40.4,
+          "avg_ev": 108.5,
+          "avg_odds": 13.69,
+          "avg_pop": 4.45,
+          "payout": 5700,
+          "investment": 14100
+        },
+        "S+A": {
+          "n": 164,
+          "hits": 13,
+          "hit_rate": 7.9,
+          "recovery": 66.9,
+          "avg_ev": 113.5
+        },
+        "S+A+B": {
+          "n": 305,
+          "hits": 30,
+          "hit_rate": 9.8,
+          "recovery": 54.7,
+          "avg_ev": 111.2
+        }
+      },
+      "virtual": {
+        "S": {
+          "n": 33,
+          "hits": 4,
+          "hit_rate": 12.1,
+          "recovery": 49.1,
+          "avg_ev": 111.8,
+          "avg_odds": 17.12,
+          "avg_pop": 5.7,
+          "payout": 1620,
+          "investment": 3300
+        },
+        "A": {
+          "n": 131,
+          "hits": 9,
+          "hit_rate": 6.9,
+          "recovery": 71.4,
+          "avg_ev": 113.9,
+          "avg_odds": 20.4,
+          "avg_pop": 5.14,
+          "payout": 9350,
+          "investment": 13100
+        },
+        "B": {
+          "n": 141,
+          "hits": 17,
+          "hit_rate": 12.1,
+          "recovery": 40.4,
+          "avg_ev": 108.5,
+          "avg_odds": 13.69,
+          "avg_pop": 4.45,
+          "payout": 5700,
+          "investment": 14100
+        },
+        "S+A": {
+          "n": 164,
+          "hits": 13,
+          "hit_rate": 7.9,
+          "recovery": 66.9,
+          "avg_ev": 113.5
+        },
+        "S+A+B": {
+          "n": 305,
+          "hits": 30,
+          "hit_rate": 9.8,
+          "recovery": 54.7,
+          "avg_ev": 111.2
+        }
+      },
+      "delta_virt_minus_orig": {
+        "S": {
+          "n": -29,
+          "hits": 0,
+          "hit_rate": 5.6,
+          "recovery": 23.0,
+          "avg_ev": -3.2,
+          "avg_odds": 2.5,
+          "avg_pop": 0.5
+        },
+        "B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        },
+        "A": {
+          "n": 29,
+          "hits": 0,
+          "hit_rate": -1.9,
+          "recovery": -20.3,
+          "avg_ev": 1.3,
+          "avg_odds": -2.5,
+          "avg_pop": -0.2
+        },
+        "S+A+B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        }
+      }
+    },
+    "JRA_全期間_対照": {
+      "label": "JRA_全期間_対照",
+      "n_rows": 100,
+      "demoted_n": 0,
+      "demoted_hits": 0,
+      "demoted_recovery": null,
+      "demote_reasons": {},
+      "original": {
+        "S": {
+          "n": 10,
+          "hits": 2,
+          "hit_rate": 20.0,
+          "recovery": 149.0,
+          "avg_ev": 118.5,
+          "avg_odds": 16.66,
+          "avg_pop": 6.9,
+          "payout": 1490,
+          "investment": 1000
+        },
+        "A": {
+          "n": 30,
+          "hits": 4,
+          "hit_rate": 13.3,
+          "recovery": 178.3,
+          "avg_ev": 115.6,
+          "avg_odds": 15.8,
+          "avg_pop": 5.87,
+          "payout": 5350,
+          "investment": 3000
+        },
+        "B": {
+          "n": 60,
+          "hits": 9,
+          "hit_rate": 15.0,
+          "recovery": 61.0,
+          "avg_ev": 109.0,
+          "avg_odds": 11.19,
+          "avg_pop": 4.18,
+          "payout": 3660,
+          "investment": 6000
+        },
+        "S+A": {
+          "n": 40,
+          "hits": 6,
+          "hit_rate": 15.0,
+          "recovery": 171.0,
+          "avg_ev": 116.3
+        },
+        "S+A+B": {
+          "n": 100,
+          "hits": 15,
+          "hit_rate": 15.0,
+          "recovery": 105.0,
+          "avg_ev": 111.9
+        }
+      },
+      "virtual": {
+        "S": {
+          "n": 10,
+          "hits": 2,
+          "hit_rate": 20.0,
+          "recovery": 149.0,
+          "avg_ev": 118.5,
+          "avg_odds": 16.66,
+          "avg_pop": 6.9,
+          "payout": 1490,
+          "investment": 1000
+        },
+        "A": {
+          "n": 30,
+          "hits": 4,
+          "hit_rate": 13.3,
+          "recovery": 178.3,
+          "avg_ev": 115.6,
+          "avg_odds": 15.8,
+          "avg_pop": 5.87,
+          "payout": 5350,
+          "investment": 3000
+        },
+        "B": {
+          "n": 60,
+          "hits": 9,
+          "hit_rate": 15.0,
+          "recovery": 61.0,
+          "avg_ev": 109.0,
+          "avg_odds": 11.19,
+          "avg_pop": 4.18,
+          "payout": 3660,
+          "investment": 6000
+        },
+        "S+A": {
+          "n": 40,
+          "hits": 6,
+          "hit_rate": 15.0,
+          "recovery": 171.0,
+          "avg_ev": 116.3
+        },
+        "S+A+B": {
+          "n": 100,
+          "hits": 15,
+          "hit_rate": 15.0,
+          "recovery": 105.0,
+          "avg_ev": 111.9
+        }
+      },
+      "delta_virt_minus_orig": {
+        "S": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        },
+        "A": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": 0.0,
+          "avg_pop": 0.0
+        },
+        "S+A+B": {
+          "n": 0,
+          "hits": 0,
+          "hit_rate": 0.0,
+          "recovery": 0.0,
+          "avg_ev": 0.0,
+          "avg_odds": null,
+          "avg_pop": null
+        }
+      }
+    }
+  },
+  "demoted_cases": [
+    {
+      "date": "2026-07-19",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635071910",
+      "honmei": "ウイニングライブ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 5.6,
+      "EV": 113.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-20",
+      "period": "train",
+      "venue": "佐賀",
+      "race_id": "202655072006",
+      "honmei": "ミコノオンガエシ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 17.7,
+      "EV": 117.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-20",
+      "period": "train",
+      "venue": "大井",
+      "race_id": "202644072005",
+      "honmei": "キミヲコイシタウ",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 3.0,
+      "オッズ": 11.0,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-20",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635072005",
+      "honmei": "ノアシルヴィ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 5.4,
+      "EV": 109.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-20",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635072006",
+      "honmei": "ライクアストリーク",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 8.7,
+      "EV": 114.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-20",
+      "period": "train",
+      "venue": "笠松",
+      "race_id": "202647072007",
+      "honmei": "ココロエ",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 3.0,
+      "オッズ": 10.6,
+      "EV": 120.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-20",
+      "period": "train",
+      "venue": "笠松",
+      "race_id": "202647072011",
+      "honmei": "タヤスアメリカン",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 19.1,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-20",
+      "period": "train",
+      "venue": "金沢",
+      "race_id": "202646072008",
+      "honmei": "タマハガネ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 6.1,
+      "EV": 96.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-21",
+      "period": "train",
+      "venue": "大井",
+      "race_id": "202644072108",
+      "honmei": "ユウユウスターリー",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 7.1,
+      "EV": 117.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-21",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635072106",
+      "honmei": "アイルビーゼア",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 3.0,
+      "オッズ": 10.2,
+      "EV": 116.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-21",
+      "period": "train",
+      "venue": "門別",
+      "race_id": "202630072103",
+      "honmei": "バブリーダッシュ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 10.7,
+      "EV": 116.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-23",
+      "period": "train",
+      "venue": "園田",
+      "race_id": "202650072305",
+      "honmei": "ウルティマン",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 11.1,
+      "EV": 117.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-23",
+      "period": "train",
+      "venue": "園田",
+      "race_id": "202650072308",
+      "honmei": "ユナピンクゴールド",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 12.2,
+      "EV": 120.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-23",
+      "period": "train",
+      "venue": "大井",
+      "race_id": "202644072304",
+      "honmei": "テールヴェール",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 3.0,
+      "オッズ": 8.9,
+      "EV": 122.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-23",
+      "period": "train",
+      "venue": "門別",
+      "race_id": "202630072301",
+      "honmei": "フロアガリノビール",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 8.3,
+      "EV": 122.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-25",
+      "period": "train",
+      "venue": "高知",
+      "race_id": "202654072501",
+      "honmei": "ダイシンゲキ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 22.4,
+      "EV": 117.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-26",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635072601",
+      "honmei": "ミヤビノオウザ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 18.9,
+      "EV": 117.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-26",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635072611",
+      "honmei": "マナホクレア",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 2.0,
+      "オッズ": 9.3,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-26",
+      "period": "train",
+      "venue": "金沢",
+      "race_id": "202646072606",
+      "honmei": "ナギサノバルコニー",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 6.0,
+      "オッズ": 9.4,
+      "EV": 120.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-27",
+      "period": "train",
+      "venue": "川崎",
+      "race_id": "202645072701",
+      "honmei": "エーテルノカゼ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 20.1,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-27",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635072710",
+      "honmei": "メイショウメイスイ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 9.2,
+      "EV": 121.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-27",
+      "period": "train",
+      "venue": "金沢",
+      "race_id": "202646072709",
+      "honmei": "ソウルユニバンス",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 11.0,
+      "EV": 121.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-28",
+      "period": "train",
+      "venue": "名古屋",
+      "race_id": "202648072805",
+      "honmei": "マッサーノ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 10.3,
+      "EV": 121.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-28",
+      "period": "train",
+      "venue": "川崎",
+      "race_id": "202645072805",
+      "honmei": "カネトシライパー",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 17.2,
+      "EV": 114.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-28",
+      "period": "train",
+      "venue": "盛岡",
+      "race_id": "202635072808",
+      "honmei": "ウインイルネージュ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 8.5,
+      "EV": 123.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-28",
+      "period": "train",
+      "venue": "金沢",
+      "race_id": "202646072809",
+      "honmei": "ドンタカーミ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 16.9,
+      "EV": 115.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-29",
+      "period": "test",
+      "venue": "名古屋",
+      "race_id": "202648072905",
+      "honmei": "ブルーノザビーチ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 9.1,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-29",
+      "period": "test",
+      "venue": "川崎",
+      "race_id": "202645072903",
+      "honmei": "マイボンド",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 19.8,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-29",
+      "period": "test",
+      "venue": "門別",
+      "race_id": "202630072908",
+      "honmei": "ブレイブアモーレ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 14.7,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-30",
+      "period": "test",
+      "venue": "園田",
+      "race_id": "202650073009",
+      "honmei": "ファンシンレディー",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 3.0,
+      "オッズ": 9.9,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-30",
+      "period": "test",
+      "venue": "川崎",
+      "race_id": "202645073005",
+      "honmei": "ウインプリームス",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 11.3,
+      "EV": 117.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-31",
+      "period": "test",
+      "venue": "名古屋",
+      "race_id": "202648073112",
+      "honmei": "フォギーレーン",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 6.0,
+      "オッズ": 11.2,
+      "EV": 121.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-31",
+      "period": "test",
+      "venue": "園田",
+      "race_id": "202650073104",
+      "honmei": "スマートクイーン",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 6.2,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-07-31",
+      "period": "test",
+      "venue": "園田",
+      "race_id": "202650073105",
+      "honmei": "ヴァイスリヒト",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 8.9,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-01",
+      "period": "test",
+      "venue": "高知",
+      "race_id": "202654080110",
+      "honmei": "ムサシフウジン",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 6.0,
+      "オッズ": 11.8,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-01",
+      "period": "test",
+      "venue": "高知",
+      "race_id": "202654080111",
+      "honmei": "フランフィズ",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 6.0,
+      "オッズ": 10.6,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-02",
+      "period": "test",
+      "venue": "盛岡",
+      "race_id": "202635080206",
+      "honmei": "ラペイエ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 14.0,
+      "EV": 117.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-02",
+      "period": "test",
+      "venue": "盛岡",
+      "race_id": "202635080207",
+      "honmei": "エイカイソフィア",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 8.2,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-02",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080212",
+      "honmei": "マッドネスカズ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 8.6,
+      "EV": 122.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-03",
+      "period": "test",
+      "venue": "盛岡",
+      "race_id": "202635080306",
+      "honmei": "ノアシルヴィ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 17.8,
+      "EV": 115.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-03",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080307",
+      "honmei": "イッシンフラン",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 12.0,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-03",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080310",
+      "honmei": "ラップランド",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 8.9,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-03",
+      "period": "test",
+      "venue": "金沢",
+      "race_id": "202646080305",
+      "honmei": "ナックステート",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 2.0,
+      "オッズ": 11.1,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-03",
+      "period": "test",
+      "venue": "金沢",
+      "race_id": "202646080310",
+      "honmei": "セラフィナイト",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 8.1,
+      "EV": 121.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-04",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080409",
+      "honmei": "フォーチュンテラー",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 9.3,
+      "EV": 122.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-04",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080411",
+      "honmei": "タイセイバンクール",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 6.7,
+      "EV": 120.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-04",
+      "period": "test",
+      "venue": "金沢",
+      "race_id": "202646080405",
+      "honmei": "シシリアンキッス",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 11.8,
+      "EV": 118.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-04",
+      "period": "test",
+      "venue": "門別",
+      "race_id": "202630080409",
+      "honmei": "グラティアエ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 14.2,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-05",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080502",
+      "honmei": "マイビリーブ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 10.1,
+      "EV": 120.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-05",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080506",
+      "honmei": "キャッスルエール",
+      "reason": "オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 6.0,
+      "オッズ": 10.0,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-06",
+      "period": "test",
+      "venue": "園田",
+      "race_id": "202650080608",
+      "honmei": "セイパレル",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 13.4,
+      "EV": 120.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-06",
+      "period": "test",
+      "venue": "船橋",
+      "race_id": "202643080606",
+      "honmei": "シェルヴァレイ",
+      "reason": "4-5人気+オッズ8-12",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 8.6,
+      "EV": 123.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-06",
+      "period": "test",
+      "venue": "門別",
+      "race_id": "202630080611",
+      "honmei": "スマイルシエラ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 5.0,
+      "オッズ": 19.2,
+      "EV": 112.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-07",
+      "period": "test",
+      "venue": "園田",
+      "race_id": "202650080712",
+      "honmei": "スターアイセーラ",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 27.6,
+      "EV": 111.0,
+      "from": "S",
+      "to": "A"
+    },
+    {
+      "date": "2026-08-07",
+      "period": "test",
+      "venue": "浦和",
+      "race_id": "202642080704",
+      "honmei": "ゲットデザイアー",
+      "reason": "4-5人気",
+      "hit": 0,
+      "payout": 0.0,
+      "人気": 4.0,
+      "オッズ": 6.0,
+      "EV": 119.0,
+      "from": "S",
+      "to": "A"
+    }
+  ],
+  "demoted_summary": {
+    "all": 55,
+    "train": 26,
+    "test": 29,
+    "hits_all": 0,
+    "hits_train": 0,
+    "hits_test": 0
+  }
+}

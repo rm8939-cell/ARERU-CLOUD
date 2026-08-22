@@ -1,0 +1,731 @@
+{
+  "flow": {
+    "pipeline": [
+      "1. areru_engine / build_predictions: 本命・勝率・適正オッズ・相対ランク・買い目候補を生成",
+      "2. apply_expected_value / score_horse_ev: 補正勝率と期待値(EV)を算出",
+      "3. apply_ev_rank_and_labels: レース信頼度→暫定S/A/B、decide_buy_skipで暫定買い",
+      "4. finalize_prediction_records → tighten_buy_selection: 最終S/A割当＋買いキャップ",
+      "5. 表示時 web_app._apply_rank_and_buy: tighten再適用、買いのみ本命軸チケット再生成"
+    ],
+    "provisional_buy_gates_decide_buy_skip": {
+      "EV": ">=100",
+      "AI信頼度": ">=58",
+      "レース信頼度": ">=58",
+      "再現率": ">=40",
+      "能力差": ">=65 (BUY_ABILITY_FLOOR; 能力差≥80とは別)",
+      "本命オッズ": "<=50 or missing"
+    },
+    "final_buy_gates_tighten": {
+      "rank": "S or A only",
+      "same_gates_as_provisional": true,
+      "cap": "JRA: day slots S+A相当 / NAR: venue slots (2-4)",
+      "sort": "_buy_score (ability-weighted)"
+    },
+    "ticket_generation": {
+      "note": "投資判定=買いのレースに対し本命軸の単勝/馬連/ワイド等を生成。見送りは買い目を出さない/弱める",
+      "important": "ランク判定と買い判定は別。買い目の広さは買い判定ゲート自体には未使用"
+    },
+    "not_used_in_buy_gate": [
+      "複勝オッズ",
+      "ワイド/馬連の合成オッズ",
+      "能力差≥80 (under_validation)",
+      "S/A/B条件の追加最適化（停止中）"
+    ]
+  },
+  "classification": {
+    "JRA": {
+      "A": {
+        "n": 4,
+        "hit_rate": 100.0,
+        "place_rate": 100.0,
+        "recovery": 672.5,
+        "avg_odds": 8.73,
+        "avg_ev": 120.5,
+        "avg_winpct": 25.2
+      },
+      "B": {
+        "n": 16,
+        "hit_rate": 0.0,
+        "place_rate": 18.8,
+        "recovery": 0.0,
+        "avg_odds": 13.48,
+        "avg_ev": 116.8,
+        "avg_winpct": 20.3
+      },
+      "C": {
+        "n": 4,
+        "hit_rate": 0.0,
+        "place_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 31.55,
+        "avg_ev": 112.5,
+        "avg_winpct": 13.7
+      },
+      "D": {
+        "n": 6,
+        "hit_rate": 0.0,
+        "place_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 14.57,
+        "avg_ev": 118.3,
+        "avg_winpct": 22.0
+      }
+    },
+    "地方": {
+      "A": {
+        "n": 10,
+        "hit_rate": 100.0,
+        "place_rate": 100.0,
+        "recovery": 1047.0,
+        "avg_odds": 12.21,
+        "avg_ev": 112.4,
+        "avg_winpct": 23.2
+      },
+      "B": {
+        "n": 94,
+        "hit_rate": 0.0,
+        "place_rate": 31.9,
+        "recovery": 0.0,
+        "avg_odds": 11.47,
+        "avg_ev": 115.5,
+        "avg_winpct": 20.5
+      },
+      "C": {
+        "n": 21,
+        "hit_rate": 0.0,
+        "place_rate": 14.3,
+        "recovery": 0.0,
+        "avg_odds": 36.95,
+        "avg_ev": 111.7,
+        "avg_winpct": 11.4
+      },
+      "D": {
+        "n": 1,
+        "hit_rate": 0.0,
+        "place_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 13.5,
+        "avg_ev": 113.0,
+        "avg_winpct": 19.8
+      }
+    },
+    "全体": {
+      "A": {
+        "n": 14,
+        "hit_rate": 100.0,
+        "place_rate": 100.0,
+        "recovery": 940.0,
+        "avg_odds": 11.21,
+        "avg_ev": 114.7,
+        "avg_winpct": 23.8
+      },
+      "B": {
+        "n": 110,
+        "hit_rate": 0.0,
+        "place_rate": 30.0,
+        "recovery": 0.0,
+        "avg_odds": 11.76,
+        "avg_ev": 115.7,
+        "avg_winpct": 20.5
+      },
+      "C": {
+        "n": 25,
+        "hit_rate": 0.0,
+        "place_rate": 12.0,
+        "recovery": 0.0,
+        "avg_odds": 36.09,
+        "avg_ev": 111.8,
+        "avg_winpct": 11.8
+      },
+      "D": {
+        "n": 7,
+        "hit_rate": 0.0,
+        "place_rate": 0.0,
+        "recovery": 0.0,
+        "avg_odds": 14.41,
+        "avg_ev": 117.6,
+        "avg_winpct": 21.7
+      }
+    }
+  },
+  "by_source": {
+    "JRA": {
+      "buy": {
+        "label": "buy",
+        "n": 24,
+        "hit_rate": 16.7,
+        "place_rate": 29.2,
+        "recovery": 112.1,
+        "avg_odds": 15.7,
+        "avg_ev": 116.7,
+        "avg_tickets_proxy": 62.08,
+        "profit": 290
+      },
+      "skip": {
+        "label": "skip",
+        "n": 156,
+        "hit_rate": 13.5,
+        "place_rate": 37.8,
+        "recovery": 75.2,
+        "avg_odds": 16.03,
+        "avg_ev": 106.5,
+        "avg_tickets_proxy": 72.99,
+        "profit": -3870
+      },
+      "buy_all_period_n": 30,
+      "skip_all_period_n": 186
+    },
+    "地方": {
+      "buy": {
+        "label": "buy",
+        "n": 125,
+        "hit_rate": 8.0,
+        "place_rate": 34.4,
+        "recovery": 83.8,
+        "avg_odds": 15.81,
+        "avg_ev": 114.6,
+        "avg_tickets_proxy": 317.14,
+        "profit": -2030
+      },
+      "skip": {
+        "label": "skip",
+        "n": 716,
+        "hit_rate": 11.3,
+        "place_rate": 35.6,
+        "recovery": 57.6,
+        "avg_odds": 19.69,
+        "avg_ev": 104.5,
+        "avg_tickets_proxy": 233.28,
+        "profit": -30330
+      },
+      "buy_all_period_n": 126,
+      "skip_all_period_n": 727
+    }
+  },
+  "exclusion_candidates": [],
+  "oos": [
+    {
+      "source": "JRA",
+      "rule": "odds<=2.0",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "odds<=2.5",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "odds<=3.0 & win%>=30",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "odds<=3.0 & EV>=115",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "odds>=25",
+      "train_cut_n": 2,
+      "train_cut_rec": 0.0,
+      "test_cut_n": 2,
+      "test_cut_rec": 0.0,
+      "train_keep_n": 10,
+      "train_keep_rec": 210.0,
+      "test_keep_n": 10,
+      "test_keep_rec": 59.0,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "odds>=20",
+      "train_cut_n": 2,
+      "train_cut_rec": 0.0,
+      "test_cut_n": 3,
+      "test_cut_rec": 0.0,
+      "train_keep_n": 10,
+      "train_keep_rec": 210.0,
+      "test_keep_n": 9,
+      "test_keep_rec": 65.6,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "EV>=118",
+      "train_cut_n": 7,
+      "train_cut_rec": 300.0,
+      "test_cut_n": 6,
+      "test_cut_rec": 98.3,
+      "train_keep_n": 5,
+      "train_keep_rec": 0.0,
+      "test_keep_n": 6,
+      "test_keep_rec": 0.0,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "EV>=120",
+      "train_cut_n": 4,
+      "train_cut_rec": 380.0,
+      "test_cut_n": 3,
+      "test_cut_rec": 196.7,
+      "train_keep_n": 8,
+      "train_keep_rec": 72.5,
+      "test_keep_n": 9,
+      "test_keep_rec": 0.0,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "win%>=35",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "pop==1 & odds<=2.5",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "ability<70",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "JRA",
+      "rule": "ability 65-69.9",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 12,
+      "train_keep_rec": 175.0,
+      "test_keep_n": 12,
+      "test_keep_rec": 49.2,
+      "train_base_rec": 175.0,
+      "test_base_rec": 49.2,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "odds<=2.0",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 67,
+      "train_keep_rec": 143.9,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "odds<=2.5",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 67,
+      "train_keep_rec": 143.9,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "odds<=3.0 & win%>=30",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 67,
+      "train_keep_rec": 143.9,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "odds<=3.0 & EV>=115",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 67,
+      "train_keep_rec": 143.9,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "odds>=25",
+      "train_cut_n": 12,
+      "train_cut_rec": 183.3,
+      "test_cut_n": 10,
+      "test_cut_rec": 0.0,
+      "train_keep_n": 55,
+      "train_keep_rec": 135.3,
+      "test_keep_n": 48,
+      "test_keep_rec": 17.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "期間間で傾向不一致"
+    },
+    {
+      "source": "地方",
+      "rule": "odds>=20",
+      "train_cut_n": 17,
+      "train_cut_rec": 273.5,
+      "test_cut_n": 12,
+      "test_cut_rec": 0.0,
+      "train_keep_n": 50,
+      "train_keep_rec": 99.8,
+      "test_keep_n": 46,
+      "test_keep_rec": 18.0,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "期間間で傾向不一致"
+    },
+    {
+      "source": "地方",
+      "rule": "EV>=118",
+      "train_cut_n": 20,
+      "train_cut_rec": 122.5,
+      "test_cut_n": 24,
+      "test_cut_rec": 16.7,
+      "train_keep_n": 47,
+      "train_keep_rec": 153.0,
+      "test_keep_n": 34,
+      "test_keep_rec": 12.6,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "期間間で傾向不一致"
+    },
+    {
+      "source": "地方",
+      "rule": "EV>=120",
+      "train_cut_n": 11,
+      "train_cut_rec": 0.0,
+      "test_cut_n": 9,
+      "test_cut_rec": 44.4,
+      "train_keep_n": 56,
+      "train_keep_rec": 172.1,
+      "test_keep_n": 49,
+      "test_keep_rec": 8.8,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "期間間で傾向不一致"
+    },
+    {
+      "source": "地方",
+      "rule": "win%>=35",
+      "train_cut_n": 1,
+      "train_cut_rec": 440.0,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 66,
+      "train_keep_rec": 139.4,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "pop==1 & odds<=2.5",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 67,
+      "train_keep_rec": 143.9,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "ability<70",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 67,
+      "train_keep_rec": 143.9,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    },
+    {
+      "source": "地方",
+      "rule": "ability 65-69.9",
+      "train_cut_n": 0,
+      "train_cut_rec": null,
+      "test_cut_n": 0,
+      "test_cut_rec": null,
+      "train_keep_n": 67,
+      "train_keep_rec": 143.9,
+      "test_keep_n": 58,
+      "test_keep_rec": 14.3,
+      "train_base_rec": 143.9,
+      "test_base_rec": 14.3,
+      "consistent_bad": false,
+      "note": "件数不足"
+    }
+  ],
+  "recommendation": {
+    "implement_now": false,
+    "reason": "両期間一貫の除外条件が確認できず。買いフィルター追加は見送り",
+    "next": "データ蓄積後に再検証。現時点で買いフィルター追加は行わない（データ不足/未再現）"
+  },
+  "c_features": {
+    "JRA": {
+      "status": "データ不足",
+      "n": 4
+    },
+    "地方": {
+      "odds<=2": {
+        "share_in_C": 0.0,
+        "share_in_AB": 0.0,
+        "lift": null,
+        "buy_n": 0,
+        "buy_rec": null
+      },
+      "odds<=3": {
+        "share_in_C": 0.0,
+        "share_in_AB": 0.0,
+        "lift": null,
+        "buy_n": 0,
+        "buy_rec": null
+      },
+      "odds 3-8": {
+        "share_in_C": 0.0,
+        "share_in_AB": 35.6,
+        "lift": 0.0,
+        "buy_n": 37,
+        "buy_rec": 65.4
+      },
+      "odds>=25": {
+        "share_in_C": 100.0,
+        "share_in_AB": 1.0,
+        "lift": 104.0,
+        "buy_n": 22,
+        "buy_rec": 100.0
+      },
+      "EV>=115": {
+        "share_in_C": 23.8,
+        "share_in_AB": 65.4,
+        "lift": 0.36,
+        "buy_n": 73,
+        "buy_rec": 68.9
+      },
+      "EV>=118": {
+        "share_in_C": 0.0,
+        "share_in_AB": 42.3,
+        "lift": 0.0,
+        "buy_n": 44,
+        "buy_rec": 64.8
+      },
+      "win%>=30": {
+        "share_in_C": 0.0,
+        "share_in_AB": 7.7,
+        "lift": 0.0,
+        "buy_n": 8,
+        "buy_rec": 178.8
+      },
+      "win%>=35": {
+        "share_in_C": 0.0,
+        "share_in_AB": 1.0,
+        "lift": 0.0,
+        "buy_n": 1,
+        "buy_rec": 440.0
+      },
+      "ability<70": {
+        "share_in_C": 0.0,
+        "share_in_AB": 0.0,
+        "lift": null,
+        "buy_n": 0,
+        "buy_rec": null
+      },
+      "ability>=80": {
+        "share_in_C": 42.9,
+        "share_in_AB": 45.2,
+        "lift": 0.95,
+        "buy_n": 56,
+        "buy_rec": 141.1
+      },
+      "rank S": {
+        "share_in_C": 66.7,
+        "share_in_AB": 68.3,
+        "lift": 0.98,
+        "buy_n": 85,
+        "buy_rec": 64.7
+      },
+      "rank A": {
+        "share_in_C": 33.3,
+        "share_in_AB": 31.7,
+        "lift": 1.05,
+        "buy_n": 41,
+        "buy_rec": 121.2
+      },
+      "pop<=1": {
+        "share_in_C": 0.0,
+        "share_in_AB": 0.0,
+        "lift": null,
+        "buy_n": 0,
+        "buy_rec": null
+      },
+      "pop<=2": {
+        "share_in_C": 0.0,
+        "share_in_AB": 12.5,
+        "lift": 0.0,
+        "buy_n": 13,
+        "buy_rec": 110.0
+      },
+      "ticket_wideish>=6": {
+        "share_in_C": 100.0,
+        "share_in_AB": 100.0,
+        "lift": 1.0,
+        "buy_n": 126,
+        "buy_rec": 83.1
+      }
+    }
+  },
+  "step6_decision": {
+    "code_change": false,
+    "reason": "JRA/地方とも、学習・検証の両期間で一貫して悪い買い除外条件を、十分な件数で確認できなかった。地方 odds≥25 は検証期間では0%だが学習期間は183%で、除外すると学習側を毀損し期間間不一致。JRA買い自体が train/test 各12件でデータ不足。したがって買いフィルター追加は行わず「データ不足/未再現」とする。",
+    "preserved": [
+      "予想ロジック",
+      "S/A/B条件",
+      "能力差≥80はunder_validationのまま",
+      "本命/買い目生成本体",
+      "データ取得",
+      "自動更新",
+      "JRA/地方UI"
+    ]
+  },
+  "key_findings": [
+    "最終「買い」は decide_buy_skip の暫定ゲート後、tighten_buy_selection で S/A かつ日次/場次キャップ上位のみ。",
+    "買いゲートは EV≥100, AI/レース信頼度≥58, 再現≥40, 能力差≥65, 本命オッズ≤50, かつランクS/A。",
+    "能力差≥80 は買い条件にも正式採用していない（BUY_ABILITY_FLOOR=65）。",
+    "JRA買い n=30（結果あり24）はサンプル不足。地方買い n=126。",
+    "C（明らかに不要）は地方で主に本命オッズ≥25の不的中に対応するが、同帯は学習期間回収183%で除外不可。",
+    "現時点で再現性のある「削ってよい条件」は未確認。"
+  ]
+}

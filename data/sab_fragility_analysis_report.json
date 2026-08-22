@@ -1,0 +1,4906 @@
+{
+  "purpose": "S/A/Bの検証期間での崩れやすい条件分析（実装なし）",
+  "split": {
+    "train": "<= 2026-07-28",
+    "test": "> 2026-07-28"
+  },
+  "min_n": {
+    "train": 12,
+    "test": 10
+  },
+  "metric": "本命単勝",
+  "by_rank_source": {
+    "JRA/S": {
+      "baseline": {
+        "train": {
+          "n": 6,
+          "hits": 1,
+          "hit_rate": 16.7,
+          "recovery": 150.0,
+          "avg_odds": 15.25,
+          "avg_ev": 118.7,
+          "avg_pop": 6.33
+        },
+        "test": {
+          "n": 4,
+          "hits": 1,
+          "hit_rate": 25.0,
+          "recovery": 147.5,
+          "avg_odds": 18.77,
+          "avg_ev": 118.2,
+          "avg_pop": 7.75
+        },
+        "all": {
+          "n": 10,
+          "hits": 2,
+          "hit_rate": 20.0,
+          "recovery": 149.0,
+          "avg_odds": 16.66,
+          "avg_ev": 118.5,
+          "avg_pop": 6.9
+        }
+      },
+      "slices": {
+        "odds_band": {},
+        "pop_band": {},
+        "ev_band": {},
+        "win_band": {
+          "15-25": {
+            "band": "15-25",
+            "train": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 150.0,
+              "avg_odds": 15.25,
+              "avg_ev": 118.7,
+              "avg_pop": 6.33
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 147.5,
+              "avg_odds": 18.77,
+              "avg_ev": 118.2,
+              "avg_pop": 7.75
+            },
+            "all": {
+              "n": 10,
+              "hits": 2,
+              "hit_rate": 20.0,
+              "recovery": 149.0,
+              "avg_odds": 16.66,
+              "avg_ev": 118.5,
+              "avg_pop": 6.9
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "ability_band": {},
+        "venue": {},
+        "surface": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 150.0,
+              "avg_odds": 15.25,
+              "avg_ev": 118.7,
+              "avg_pop": 6.33
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 147.5,
+              "avg_odds": 18.77,
+              "avg_ev": 118.2,
+              "avg_pop": 7.75
+            },
+            "all": {
+              "n": 10,
+              "hits": 2,
+              "hit_rate": 20.0,
+              "recovery": 149.0,
+              "avg_odds": 16.66,
+              "avg_ev": 118.5,
+              "avg_pop": 6.9
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "dist_band": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 150.0,
+              "avg_odds": 15.25,
+              "avg_ev": 118.7,
+              "avg_pop": 6.33
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 147.5,
+              "avg_odds": 18.77,
+              "avg_ev": 118.2,
+              "avg_pop": 7.75
+            },
+            "all": {
+              "n": 10,
+              "hits": 2,
+              "hit_rate": 20.0,
+              "recovery": 149.0,
+              "avg_odds": 16.66,
+              "avg_ev": 118.5,
+              "avg_pop": 6.9
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        }
+      }
+    },
+    "地方/S": {
+      "baseline": {
+        "train": {
+          "n": 50,
+          "hits": 3,
+          "hit_rate": 6.0,
+          "recovery": 93.4,
+          "avg_odds": 15.55,
+          "avg_ev": 115.5,
+          "avg_pop": 4.84
+        },
+        "test": {
+          "n": 59,
+          "hits": 3,
+          "hit_rate": 5.1,
+          "recovery": 17.5,
+          "avg_odds": 14.25,
+          "avg_ev": 114.9,
+          "avg_pop": 5.0
+        },
+        "all": {
+          "n": 109,
+          "hits": 6,
+          "hit_rate": 5.5,
+          "recovery": 52.3,
+          "avg_odds": 14.85,
+          "avg_ev": 115.2,
+          "avg_pop": 4.93
+        }
+      },
+      "slices": {
+        "odds_band": {
+          "12-20": {
+            "band": "12-20",
+            "train": {
+              "n": 10,
+              "hits": 1,
+              "hit_rate": 10.0,
+              "recovery": 166.0,
+              "avg_odds": 16.8,
+              "avg_ev": 116.3,
+              "avg_pop": 5.2
+            },
+            "test": {
+              "n": 21,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 16.77,
+              "avg_ev": 117.0,
+              "avg_pop": 6.0
+            },
+            "all": {
+              "n": 31,
+              "hits": 1,
+              "hit_rate": 3.2,
+              "recovery": 53.5,
+              "avg_odds": 16.78,
+              "avg_ev": 116.8,
+              "avg_pop": 5.74
+            },
+            "edge_train": 72.6,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "20-50": {
+            "band": "20-50",
+            "train": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 204.2,
+              "avg_odds": 32.25,
+              "avg_ev": 114.2,
+              "avg_pop": 7.42
+            },
+            "test": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 34.07,
+              "avg_ev": 112.0,
+              "avg_pop": 6.71
+            },
+            "all": {
+              "n": 19,
+              "hits": 1,
+              "hit_rate": 5.3,
+              "recovery": 128.9,
+              "avg_odds": 32.92,
+              "avg_ev": 113.4,
+              "avg_pop": 7.16
+            },
+            "edge_train": 110.8,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "5-8": {
+            "band": "5-8",
+            "train": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 46.7,
+              "avg_odds": 6.4,
+              "avg_ev": 113.8,
+              "avg_pop": 3.58
+            },
+            "test": {
+              "n": 6,
+              "hits": 2,
+              "hit_rate": 33.3,
+              "recovery": 138.3,
+              "avg_odds": 6.18,
+              "avg_ev": 116.7,
+              "avg_pop": 3.5
+            },
+            "all": {
+              "n": 18,
+              "hits": 3,
+              "hit_rate": 16.7,
+              "recovery": 77.2,
+              "avg_odds": 6.33,
+              "avg_ev": 114.7,
+              "avg_pop": 3.56
+            },
+            "edge_train": -46.7,
+            "edge_test": 120.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "8-12": {
+            "band": "8-12",
+            "train": {
+              "n": 14,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 9.8,
+              "avg_ev": 119.2,
+              "avg_pop": 3.86
+            },
+            "test": {
+              "n": 19,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 10.07,
+              "avg_ev": 119.4,
+              "avg_pop": 4.63
+            },
+            "all": {
+              "n": 33,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 9.95,
+              "avg_ev": 119.3,
+              "avg_pop": 4.3
+            },
+            "edge_train": -93.4,
+            "edge_test": -17.5,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          }
+        },
+        "pop_band": {
+          "2-3人気": {
+            "band": "2-3人気",
+            "train": {
+              "n": 15,
+              "hits": 1,
+              "hit_rate": 6.7,
+              "recovery": 37.3,
+              "avg_odds": 8.1,
+              "avg_ev": 115.2,
+              "avg_pop": 2.73
+            },
+            "test": {
+              "n": 12,
+              "hits": 3,
+              "hit_rate": 25.0,
+              "recovery": 85.8,
+              "avg_odds": 7.59,
+              "avg_ev": 107.5,
+              "avg_pop": 2.58
+            },
+            "all": {
+              "n": 27,
+              "hits": 4,
+              "hit_rate": 14.8,
+              "recovery": 58.9,
+              "avg_odds": 7.87,
+              "avg_ev": 111.8,
+              "avg_pop": 2.67
+            },
+            "edge_train": -56.1,
+            "edge_test": 68.3,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "4-5人気": {
+            "band": "4-5人気",
+            "train": {
+              "n": 20,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 12.32,
+              "avg_ev": 116.3,
+              "avg_pop": 4.4
+            },
+            "test": {
+              "n": 23,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 11.93,
+              "avg_ev": 118.6,
+              "avg_pop": 4.48
+            },
+            "all": {
+              "n": 43,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 12.12,
+              "avg_ev": 117.5,
+              "avg_pop": 4.44
+            },
+            "edge_train": -93.4,
+            "edge_test": -17.5,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          },
+          "6-9人気": {
+            "band": "6-9人気",
+            "train": {
+              "n": 13,
+              "hits": 2,
+              "hit_rate": 15.4,
+              "recovery": 316.2,
+              "avg_odds": 26.44,
+              "avg_ev": 115.3,
+              "avg_pop": 7.08
+            },
+            "test": {
+              "n": 23,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 20.53,
+              "avg_ev": 116.0,
+              "avg_pop": 6.96
+            },
+            "all": {
+              "n": 36,
+              "hits": 2,
+              "hit_rate": 5.6,
+              "recovery": 114.2,
+              "avg_odds": 22.67,
+              "avg_ev": 115.8,
+              "avg_pop": 7.0
+            },
+            "edge_train": 222.8,
+            "edge_test": -17.5,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          }
+        },
+        "ev_band": {
+          "108-115": {
+            "band": "108-115",
+            "train": {
+              "n": 14,
+              "hits": 2,
+              "hit_rate": 14.3,
+              "recovery": 158.6,
+              "avg_odds": 16.65,
+              "avg_ev": 112.1,
+              "avg_pop": 4.64
+            },
+            "test": {
+              "n": 9,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 26.96,
+              "avg_ev": 111.7,
+              "avg_pop": 6.33
+            },
+            "all": {
+              "n": 23,
+              "hits": 2,
+              "hit_rate": 8.7,
+              "recovery": 96.5,
+              "avg_odds": 20.68,
+              "avg_ev": 111.9,
+              "avg_pop": 5.3
+            },
+            "edge_train": 65.2,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "115-120": {
+            "band": "115-120",
+            "train": {
+              "n": 20,
+              "hits": 1,
+              "hit_rate": 5.0,
+              "recovery": 122.5,
+              "avg_odds": 18.57,
+              "avg_ev": 116.7,
+              "avg_pop": 5.3
+            },
+            "test": {
+              "n": 34,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 14.03,
+              "avg_ev": 117.7,
+              "avg_pop": 5.26
+            },
+            "all": {
+              "n": 54,
+              "hits": 1,
+              "hit_rate": 1.9,
+              "recovery": 45.4,
+              "avg_odds": 15.71,
+              "avg_ev": 117.3,
+              "avg_pop": 5.28
+            },
+            "edge_train": 29.1,
+            "edge_test": -17.5,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          },
+          ">=120": {
+            "band": ">=120",
+            "train": {
+              "n": 13,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 8.9,
+              "avg_ev": 121.2,
+              "avg_pop": 4.15
+            },
+            "test": {
+              "n": 10,
+              "hits": 1,
+              "hit_rate": 10.0,
+              "recovery": 40.0,
+              "avg_odds": 9.66,
+              "avg_ev": 120.9,
+              "avg_pop": 4.6
+            },
+            "all": {
+              "n": 23,
+              "hits": 1,
+              "hit_rate": 4.3,
+              "recovery": 17.4,
+              "avg_odds": 9.23,
+              "avg_ev": 121.0,
+              "avg_pop": 4.35
+            },
+            "edge_train": -93.4,
+            "edge_test": 22.5,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          }
+        },
+        "win_band": {
+          "15-25": {
+            "band": "15-25",
+            "train": {
+              "n": 33,
+              "hits": 2,
+              "hit_rate": 6.1,
+              "recovery": 91.2,
+              "avg_odds": 12.91,
+              "avg_ev": 115.9,
+              "avg_pop": 4.52
+            },
+            "test": {
+              "n": 32,
+              "hits": 2,
+              "hit_rate": 6.2,
+              "recovery": 19.7,
+              "avg_odds": 12.18,
+              "avg_ev": 116.6,
+              "avg_pop": 4.81
+            },
+            "all": {
+              "n": 65,
+              "hits": 4,
+              "hit_rate": 6.2,
+              "recovery": 56.0,
+              "avg_odds": 12.55,
+              "avg_ev": 116.2,
+              "avg_pop": 4.66
+            },
+            "edge_train": -2.2,
+            "edge_test": 2.2,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "25-35": {
+            "band": "25-35",
+            "train": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 7.42,
+              "avg_ev": 119.8,
+              "avg_pop": 4.17
+            },
+            "test": {
+              "n": 13,
+              "hits": 1,
+              "hit_rate": 7.7,
+              "recovery": 30.8,
+              "avg_odds": 6.59,
+              "avg_ev": 112.2,
+              "avg_pop": 3.69
+            },
+            "all": {
+              "n": 19,
+              "hits": 1,
+              "hit_rate": 5.3,
+              "recovery": 21.1,
+              "avg_odds": 6.85,
+              "avg_ev": 114.6,
+              "avg_pop": 3.84
+            },
+            "edge_train": -93.4,
+            "edge_test": 13.3,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "<15": {
+            "band": "<15",
+            "train": {
+              "n": 11,
+              "hits": 1,
+              "hit_rate": 9.1,
+              "recovery": 150.9,
+              "avg_odds": 27.92,
+              "avg_ev": 112.0,
+              "avg_pop": 6.18
+            },
+            "test": {
+              "n": 14,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 26.1,
+              "avg_ev": 113.5,
+              "avg_pop": 6.64
+            },
+            "all": {
+              "n": 25,
+              "hits": 1,
+              "hit_rate": 4.0,
+              "recovery": 66.4,
+              "avg_odds": 26.9,
+              "avg_ev": 112.8,
+              "avg_pop": 6.44
+            },
+            "edge_train": 57.5,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "ability_band": {
+          "51-70": {
+            "band": "51-70",
+            "train": {
+              "n": 2,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 10.7,
+              "avg_ev": 119.0,
+              "avg_pop": 4.5
+            },
+            "test": {
+              "n": 11,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 11.8,
+              "avg_ev": 118.5,
+              "avg_pop": 4.55
+            },
+            "all": {
+              "n": 13,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 11.63,
+              "avg_ev": 118.5,
+              "avg_pop": 4.54
+            },
+            "edge_train": -93.4,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "71-80": {
+            "band": "71-80",
+            "train": {
+              "n": 17,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 17.4,
+              "avg_ev": 115.6,
+              "avg_pop": 5.06
+            },
+            "test": {
+              "n": 25,
+              "hits": 2,
+              "hit_rate": 8.0,
+              "recovery": 33.2,
+              "avg_odds": 14.58,
+              "avg_ev": 114.4,
+              "avg_pop": 5.2
+            },
+            "all": {
+              "n": 42,
+              "hits": 2,
+              "hit_rate": 4.8,
+              "recovery": 19.8,
+              "avg_odds": 15.72,
+              "avg_ev": 114.9,
+              "avg_pop": 5.14
+            },
+            "edge_train": -93.4,
+            "edge_test": 15.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          ">=80": {
+            "band": ">=80",
+            "train": {
+              "n": 29,
+              "hits": 3,
+              "hit_rate": 10.3,
+              "recovery": 161.0,
+              "avg_odds": 14.98,
+              "avg_ev": 115.0,
+              "avg_pop": 4.76
+            },
+            "test": {
+              "n": 21,
+              "hits": 1,
+              "hit_rate": 4.8,
+              "recovery": 9.5,
+              "avg_odds": 15.17,
+              "avg_ev": 113.1,
+              "avg_pop": 4.81
+            },
+            "all": {
+              "n": 50,
+              "hits": 4,
+              "hit_rate": 8.0,
+              "recovery": 97.4,
+              "avg_odds": 15.06,
+              "avg_ev": 114.2,
+              "avg_pop": 4.78
+            },
+            "edge_train": 67.6,
+            "edge_test": -8.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        },
+        "venue": {
+          "園田": {
+            "band": "園田",
+            "train": {
+              "n": 2,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 11.65,
+              "avg_ev": 118.5,
+              "avg_pop": 4.5
+            },
+            "test": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 14.36,
+              "avg_ev": 114.2,
+              "avg_pop": 4.17
+            },
+            "all": {
+              "n": 14,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 13.97,
+              "avg_ev": 114.9,
+              "avg_pop": 4.21
+            },
+            "edge_train": -93.4,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "川崎": {
+            "band": "川崎",
+            "train": {
+              "n": 4,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.67,
+              "avg_ev": 117.2,
+              "avg_pop": 5.5
+            },
+            "test": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 19.73,
+              "avg_ev": 115.7,
+              "avg_pop": 7.0
+            },
+            "all": {
+              "n": 10,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 18.11,
+              "avg_ev": 116.3,
+              "avg_pop": 6.4
+            },
+            "edge_train": -93.4,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "盛岡": {
+            "band": "盛岡",
+            "train": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 46.7,
+              "avg_odds": 12.51,
+              "avg_ev": 115.3,
+              "avg_pop": 4.17
+            },
+            "test": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 18.9,
+              "avg_ev": 116.0,
+              "avg_pop": 5.83
+            },
+            "all": {
+              "n": 18,
+              "hits": 1,
+              "hit_rate": 5.6,
+              "recovery": 31.1,
+              "avg_odds": 14.64,
+              "avg_ev": 115.6,
+              "avg_pop": 4.72
+            },
+            "edge_train": -46.7,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "船橋": {
+            "band": "船橋",
+            "train": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "recovery": null,
+              "avg_odds": null,
+              "avg_ev": null,
+              "avg_pop": null
+            },
+            "test": {
+              "n": 10,
+              "hits": 1,
+              "hit_rate": 10.0,
+              "recovery": 40.0,
+              "avg_odds": 8.22,
+              "avg_ev": 117.3,
+              "avg_pop": 4.3
+            },
+            "all": {
+              "n": 10,
+              "hits": 1,
+              "hit_rate": 10.0,
+              "recovery": 40.0,
+              "avg_odds": 8.22,
+              "avg_ev": 117.3,
+              "avg_pop": 4.3
+            },
+            "edge_train": null,
+            "edge_test": 22.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "金沢": {
+            "band": "金沢",
+            "train": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 16.24,
+              "avg_ev": 113.9,
+              "avg_pop": 4.29
+            },
+            "test": {
+              "n": 4,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 17.0,
+              "avg_ev": 117.2,
+              "avg_pop": 4.25
+            },
+            "all": {
+              "n": 11,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 16.52,
+              "avg_ev": 115.1,
+              "avg_pop": 4.27
+            },
+            "edge_train": -93.4,
+            "edge_test": -17.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "門別": {
+            "band": "門別",
+            "train": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 408.3,
+              "avg_odds": 16.77,
+              "avg_ev": 112.0,
+              "avg_pop": 5.17
+            },
+            "test": {
+              "n": 10,
+              "hits": 1,
+              "hit_rate": 10.0,
+              "recovery": 43.0,
+              "avg_odds": 13.3,
+              "avg_ev": 110.6,
+              "avg_pop": 4.5
+            },
+            "all": {
+              "n": 16,
+              "hits": 2,
+              "hit_rate": 12.5,
+              "recovery": 180.0,
+              "avg_odds": 14.6,
+              "avg_ev": 111.1,
+              "avg_pop": 4.75
+            },
+            "edge_train": 314.9,
+            "edge_test": 25.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "surface": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 50,
+              "hits": 3,
+              "hit_rate": 6.0,
+              "recovery": 93.4,
+              "avg_odds": 15.55,
+              "avg_ev": 115.5,
+              "avg_pop": 4.84
+            },
+            "test": {
+              "n": 59,
+              "hits": 3,
+              "hit_rate": 5.1,
+              "recovery": 17.5,
+              "avg_odds": 14.25,
+              "avg_ev": 114.9,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 109,
+              "hits": 6,
+              "hit_rate": 5.5,
+              "recovery": 52.3,
+              "avg_odds": 14.85,
+              "avg_ev": 115.2,
+              "avg_pop": 4.93
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        },
+        "dist_band": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 50,
+              "hits": 3,
+              "hit_rate": 6.0,
+              "recovery": 93.4,
+              "avg_odds": 15.55,
+              "avg_ev": 115.5,
+              "avg_pop": 4.84
+            },
+            "test": {
+              "n": 59,
+              "hits": 3,
+              "hit_rate": 5.1,
+              "recovery": 17.5,
+              "avg_odds": 14.25,
+              "avg_ev": 114.9,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 109,
+              "hits": 6,
+              "hit_rate": 5.5,
+              "recovery": 52.3,
+              "avg_odds": 14.85,
+              "avg_ev": 115.2,
+              "avg_pop": 4.93
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        }
+      }
+    },
+    "JRA/A": {
+      "baseline": {
+        "train": {
+          "n": 18,
+          "hits": 3,
+          "hit_rate": 16.7,
+          "recovery": 250.6,
+          "avg_odds": 15.98,
+          "avg_ev": 115.2,
+          "avg_pop": 5.78
+        },
+        "test": {
+          "n": 12,
+          "hits": 1,
+          "hit_rate": 8.3,
+          "recovery": 70.0,
+          "avg_odds": 15.53,
+          "avg_ev": 116.2,
+          "avg_pop": 6.0
+        },
+        "all": {
+          "n": 30,
+          "hits": 4,
+          "hit_rate": 13.3,
+          "recovery": 178.3,
+          "avg_odds": 15.8,
+          "avg_ev": 115.6,
+          "avg_pop": 5.87
+        }
+      },
+      "slices": {
+        "odds_band": {
+          "12-20": {
+            "band": "12-20",
+            "train": {
+              "n": 5,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 17.04,
+              "avg_ev": 116.8,
+              "avg_pop": 7.0
+            },
+            "test": {
+              "n": 5,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.58,
+              "avg_ev": 113.8,
+              "avg_pop": 6.6
+            },
+            "all": {
+              "n": 10,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 16.31,
+              "avg_ev": 115.3,
+              "avg_pop": 6.8
+            },
+            "edge_train": -250.6,
+            "edge_test": -70.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "pop_band": {
+          "6-9人気": {
+            "band": "6-9人気",
+            "train": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 22.16,
+              "avg_ev": 116.4,
+              "avg_pop": 7.29
+            },
+            "test": {
+              "n": 4,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 21.33,
+              "avg_ev": 112.8,
+              "avg_pop": 8.0
+            },
+            "all": {
+              "n": 11,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 21.85,
+              "avg_ev": 115.1,
+              "avg_pop": 7.55
+            },
+            "edge_train": -250.6,
+            "edge_test": -70.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "ev_band": {
+          "108-115": {
+            "band": "108-115",
+            "train": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 17.93,
+              "avg_ev": 111.5,
+              "avg_pop": 5.5
+            },
+            "test": {
+              "n": 5,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 23.14,
+              "avg_ev": 112.4,
+              "avg_pop": 8.2
+            },
+            "all": {
+              "n": 11,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 20.3,
+              "avg_ev": 111.9,
+              "avg_pop": 6.73
+            },
+            "edge_train": -250.6,
+            "edge_test": -70.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "115-120": {
+            "band": "115-120",
+            "train": {
+              "n": 8,
+              "hits": 1,
+              "hit_rate": 12.5,
+              "recovery": 72.5,
+              "avg_odds": 15.11,
+              "avg_ev": 116.6,
+              "avg_pop": 6.0
+            },
+            "test": {
+              "n": 4,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 11.32,
+              "avg_ev": 116.8,
+              "avg_pop": 4.75
+            },
+            "all": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 48.3,
+              "avg_odds": 13.85,
+              "avg_ev": 116.7,
+              "avg_pop": 5.58
+            },
+            "edge_train": -178.1,
+            "edge_test": -70.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "win_band": {
+          "15-25": {
+            "band": "15-25",
+            "train": {
+              "n": 10,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 16.35,
+              "avg_ev": 115.2,
+              "avg_pop": 6.0
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 210.0,
+              "avg_odds": 13.55,
+              "avg_ev": 116.2,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 14,
+              "hits": 1,
+              "hit_rate": 7.1,
+              "recovery": 60.0,
+              "avg_odds": 15.55,
+              "avg_ev": 115.5,
+              "avg_pop": 5.71
+            },
+            "edge_train": -250.6,
+            "edge_test": 140.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "ability_band": {
+          "51-70": {
+            "band": "51-70",
+            "train": {
+              "n": 11,
+              "hits": 1,
+              "hit_rate": 9.1,
+              "recovery": 300.9,
+              "avg_odds": 17.85,
+              "avg_ev": 115.2,
+              "avg_pop": 5.91
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 210.0,
+              "avg_odds": 12.42,
+              "avg_ev": 116.8,
+              "avg_pop": 4.5
+            },
+            "all": {
+              "n": 15,
+              "hits": 2,
+              "hit_rate": 13.3,
+              "recovery": 276.7,
+              "avg_odds": 16.41,
+              "avg_ev": 115.6,
+              "avg_pop": 5.53
+            },
+            "edge_train": 50.3,
+            "edge_test": 140.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "71-80": {
+            "band": "71-80",
+            "train": {
+              "n": 6,
+              "hits": 2,
+              "hit_rate": 33.3,
+              "recovery": 200.0,
+              "avg_odds": 12.25,
+              "avg_ev": 114.7,
+              "avg_pop": 5.0
+            },
+            "test": {
+              "n": 8,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 17.09,
+              "avg_ev": 116.0,
+              "avg_pop": 6.75
+            },
+            "all": {
+              "n": 14,
+              "hits": 2,
+              "hit_rate": 14.3,
+              "recovery": 85.7,
+              "avg_odds": 15.01,
+              "avg_ev": 115.4,
+              "avg_pop": 6.0
+            },
+            "edge_train": -50.6,
+            "edge_test": -70.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "venue": {
+          "中京": {
+            "band": "中京",
+            "train": {
+              "n": 5,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 18.02,
+              "avg_ev": 112.6,
+              "avg_pop": 5.2
+            },
+            "test": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.06,
+              "avg_ev": 117.4,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 16.29,
+              "avg_ev": 115.4,
+              "avg_pop": 5.08
+            },
+            "edge_train": -250.6,
+            "edge_test": -70.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "surface": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 18,
+              "hits": 3,
+              "hit_rate": 16.7,
+              "recovery": 250.6,
+              "avg_odds": 15.98,
+              "avg_ev": 115.2,
+              "avg_pop": 5.78
+            },
+            "test": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 70.0,
+              "avg_odds": 15.53,
+              "avg_ev": 116.2,
+              "avg_pop": 6.0
+            },
+            "all": {
+              "n": 30,
+              "hits": 4,
+              "hit_rate": 13.3,
+              "recovery": 178.3,
+              "avg_odds": 15.8,
+              "avg_ev": 115.6,
+              "avg_pop": 5.87
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        },
+        "dist_band": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 18,
+              "hits": 3,
+              "hit_rate": 16.7,
+              "recovery": 250.6,
+              "avg_odds": 15.98,
+              "avg_ev": 115.2,
+              "avg_pop": 5.78
+            },
+            "test": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 70.0,
+              "avg_odds": 15.53,
+              "avg_ev": 116.2,
+              "avg_pop": 6.0
+            },
+            "all": {
+              "n": 30,
+              "hits": 4,
+              "hit_rate": 13.3,
+              "recovery": 178.3,
+              "avg_odds": 15.8,
+              "avg_ev": 115.6,
+              "avg_pop": 5.87
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        }
+      }
+    },
+    "地方/A": {
+      "baseline": {
+        "train": {
+          "n": 78,
+          "hits": 11,
+          "hit_rate": 14.1,
+          "recovery": 90.8,
+          "avg_odds": 22.47,
+          "avg_ev": 108.9,
+          "avg_pop": 4.27
+        },
+        "test": {
+          "n": 90,
+          "hits": 8,
+          "hit_rate": 8.9,
+          "recovery": 94.6,
+          "avg_odds": 23.85,
+          "avg_ev": 112.1,
+          "avg_pop": 5.21
+        },
+        "all": {
+          "n": 168,
+          "hits": 19,
+          "hit_rate": 11.3,
+          "recovery": 92.8,
+          "avg_odds": 23.21,
+          "avg_ev": 110.6,
+          "avg_pop": 4.77
+        }
+      },
+      "slices": {
+        "odds_band": {
+          "12-20": {
+            "band": "12-20",
+            "train": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.07,
+              "avg_ev": 116.5,
+              "avg_pop": 5.33
+            },
+            "test": {
+              "n": 19,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.21,
+              "avg_ev": 116.4,
+              "avg_pop": 5.84
+            },
+            "all": {
+              "n": 31,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.15,
+              "avg_ev": 116.4,
+              "avg_pop": 5.65
+            },
+            "edge_train": -90.8,
+            "edge_test": -94.6,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          },
+          "20-50": {
+            "band": "20-50",
+            "train": {
+              "n": 16,
+              "hits": 1,
+              "hit_rate": 6.2,
+              "recovery": 137.5,
+              "avg_odds": 29.88,
+              "avg_ev": 113.2,
+              "avg_pop": 6.06
+            },
+            "test": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 33.11,
+              "avg_ev": 112.6,
+              "avg_pop": 8.33
+            },
+            "all": {
+              "n": 28,
+              "hits": 1,
+              "hit_rate": 3.6,
+              "recovery": 78.6,
+              "avg_odds": 31.26,
+              "avg_ev": 113.0,
+              "avg_pop": 7.04
+            },
+            "edge_train": 46.7,
+            "edge_test": -94.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          },
+          "3-5": {
+            "band": "3-5",
+            "train": {
+              "n": 15,
+              "hits": 5,
+              "hit_rate": 33.3,
+              "recovery": 114.0,
+              "avg_odds": 3.9,
+              "avg_ev": 102.1,
+              "avg_pop": 2.2
+            },
+            "test": {
+              "n": 10,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 4.09,
+              "avg_ev": 103.1,
+              "avg_pop": 2.5
+            },
+            "all": {
+              "n": 25,
+              "hits": 5,
+              "hit_rate": 20.0,
+              "recovery": 68.4,
+              "avg_odds": 3.98,
+              "avg_ev": 102.5,
+              "avg_pop": 2.32
+            },
+            "edge_train": 23.2,
+            "edge_test": -94.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          },
+          "5-8": {
+            "band": "5-8",
+            "train": {
+              "n": 10,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 6.07,
+              "avg_ev": 109.3,
+              "avg_pop": 2.7
+            },
+            "test": {
+              "n": 13,
+              "hits": 3,
+              "hit_rate": 23.1,
+              "recovery": 135.4,
+              "avg_odds": 6.52,
+              "avg_ev": 115.8,
+              "avg_pop": 3.38
+            },
+            "all": {
+              "n": 23,
+              "hits": 3,
+              "hit_rate": 13.0,
+              "recovery": 76.5,
+              "avg_odds": 6.33,
+              "avg_ev": 113.0,
+              "avg_pop": 3.09
+            },
+            "edge_train": -90.8,
+            "edge_test": 40.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "8-12": {
+            "band": "8-12",
+            "train": {
+              "n": 9,
+              "hits": 2,
+              "hit_rate": 22.2,
+              "recovery": 286.7,
+              "avg_odds": 9.96,
+              "avg_ev": 117.1,
+              "avg_pop": 3.89
+            },
+            "test": {
+              "n": 20,
+              "hits": 3,
+              "hit_rate": 15.0,
+              "recovery": 306.0,
+              "avg_odds": 9.7,
+              "avg_ev": 116.0,
+              "avg_pop": 4.8
+            },
+            "all": {
+              "n": 29,
+              "hits": 5,
+              "hit_rate": 17.2,
+              "recovery": 300.0,
+              "avg_odds": 9.78,
+              "avg_ev": 116.3,
+              "avg_pop": 4.52
+            },
+            "edge_train": 195.9,
+            "edge_test": 211.4,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "<=3": {
+            "band": "<=3",
+            "train": {
+              "n": 8,
+              "hits": 3,
+              "hit_rate": 37.5,
+              "recovery": 73.8,
+              "avg_odds": 2.38,
+              "avg_ev": 88.5,
+              "avg_pop": 1.5
+            },
+            "test": {
+              "n": 6,
+              "hits": 2,
+              "hit_rate": 33.3,
+              "recovery": 105.0,
+              "avg_odds": 2.45,
+              "avg_ev": 92.3,
+              "avg_pop": 1.33
+            },
+            "all": {
+              "n": 14,
+              "hits": 5,
+              "hit_rate": 35.7,
+              "recovery": 87.1,
+              "avg_odds": 2.41,
+              "avg_ev": 90.1,
+              "avg_pop": 1.43
+            },
+            "edge_train": -17.0,
+            "edge_test": 10.4,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          ">50": {
+            "band": ">50",
+            "train": {
+              "n": 8,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 108.21,
+              "avg_ev": 112.2,
+              "avg_pop": 8.12
+            },
+            "test": {
+              "n": 10,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 112.6,
+              "avg_ev": 111.7,
+              "avg_pop": 8.5
+            },
+            "all": {
+              "n": 18,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 110.65,
+              "avg_ev": 111.9,
+              "avg_pop": 8.33
+            },
+            "edge_train": -90.8,
+            "edge_test": -94.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "pop_band": {
+          "2-3人気": {
+            "band": "2-3人気",
+            "train": {
+              "n": 31,
+              "hits": 7,
+              "hit_rate": 22.6,
+              "recovery": 91.0,
+              "avg_odds": 5.12,
+              "avg_ev": 103.8,
+              "avg_pop": 2.35
+            },
+            "test": {
+              "n": 21,
+              "hits": 4,
+              "hit_rate": 19.0,
+              "recovery": 96.2,
+              "avg_odds": 5.27,
+              "avg_ev": 108.1,
+              "avg_pop": 2.48
+            },
+            "all": {
+              "n": 52,
+              "hits": 11,
+              "hit_rate": 21.2,
+              "recovery": 93.1,
+              "avg_odds": 5.18,
+              "avg_ev": 105.6,
+              "avg_pop": 2.4
+            },
+            "edge_train": 0.2,
+            "edge_test": 1.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "4-5人気": {
+            "band": "4-5人気",
+            "train": {
+              "n": 20,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 20.64,
+              "avg_ev": 115.7,
+              "avg_pop": 4.55
+            },
+            "test": {
+              "n": 30,
+              "hits": 3,
+              "hit_rate": 10.0,
+              "recovery": 204.0,
+              "avg_odds": 14.71,
+              "avg_ev": 115.3,
+              "avg_pop": 4.53
+            },
+            "all": {
+              "n": 50,
+              "hits": 3,
+              "hit_rate": 6.0,
+              "recovery": 122.4,
+              "avg_odds": 17.08,
+              "avg_ev": 115.4,
+              "avg_pop": 4.54
+            },
+            "edge_train": -90.8,
+            "edge_test": 109.4,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "6-9人気": {
+            "band": "6-9人気",
+            "train": {
+              "n": 21,
+              "hits": 2,
+              "hit_rate": 9.5,
+              "recovery": 187.6,
+              "avg_odds": 41.13,
+              "avg_ev": 113.5,
+              "avg_pop": 7.14
+            },
+            "test": {
+              "n": 27,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 32.61,
+              "avg_ev": 114.6,
+              "avg_pop": 7.07
+            },
+            "all": {
+              "n": 48,
+              "hits": 2,
+              "hit_rate": 4.2,
+              "recovery": 82.1,
+              "avg_odds": 36.34,
+              "avg_ev": 114.1,
+              "avg_pop": 7.1
+            },
+            "edge_train": 96.8,
+            "edge_test": -94.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          }
+        },
+        "ev_band": {
+          "100-108": {
+            "band": "100-108",
+            "train": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 36.7,
+              "avg_odds": 4.85,
+              "avg_ev": 103.8,
+              "avg_pop": 2.5
+            },
+            "test": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 7.7,
+              "avg_ev": 104.5,
+              "avg_pop": 3.33
+            },
+            "all": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 18.3,
+              "avg_odds": 6.27,
+              "avg_ev": 104.2,
+              "avg_pop": 2.92
+            },
+            "edge_train": -54.1,
+            "edge_test": -94.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "108-115": {
+            "band": "108-115",
+            "train": {
+              "n": 26,
+              "hits": 3,
+              "hit_rate": 11.5,
+              "recovery": 131.2,
+              "avg_odds": 45.16,
+              "avg_ev": 111.6,
+              "avg_pop": 5.69
+            },
+            "test": {
+              "n": 29,
+              "hits": 2,
+              "hit_rate": 6.9,
+              "recovery": 87.9,
+              "avg_odds": 50.78,
+              "avg_ev": 110.9,
+              "avg_pop": 6.86
+            },
+            "all": {
+              "n": 55,
+              "hits": 5,
+              "hit_rate": 9.1,
+              "recovery": 108.4,
+              "avg_odds": 48.13,
+              "avg_ev": 111.2,
+              "avg_pop": 6.31
+            },
+            "edge_train": 40.4,
+            "edge_test": -6.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "115-120": {
+            "band": "115-120",
+            "train": {
+              "n": 27,
+              "hits": 3,
+              "hit_rate": 11.1,
+              "recovery": 94.4,
+              "avg_odds": 17.25,
+              "avg_ev": 116.4,
+              "avg_pop": 4.85
+            },
+            "test": {
+              "n": 37,
+              "hits": 3,
+              "hit_rate": 8.1,
+              "recovery": 134.3,
+              "avg_odds": 13.96,
+              "avg_ev": 117.0,
+              "avg_pop": 5.38
+            },
+            "all": {
+              "n": 64,
+              "hits": 6,
+              "hit_rate": 9.4,
+              "recovery": 117.5,
+              "avg_odds": 15.35,
+              "avg_ev": 116.8,
+              "avg_pop": 5.16
+            },
+            "edge_train": 3.6,
+            "edge_test": 39.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "<100": {
+            "band": "<100",
+            "train": {
+              "n": 16,
+              "hits": 4,
+              "hit_rate": 25.0,
+              "recovery": 56.2,
+              "avg_odds": 3.15,
+              "avg_ev": 91.3,
+              "avg_pop": 1.75
+            },
+            "test": {
+              "n": 9,
+              "hits": 2,
+              "hit_rate": 22.2,
+              "recovery": 70.0,
+              "avg_odds": 2.8,
+              "avg_ev": 92.4,
+              "avg_pop": 1.56
+            },
+            "all": {
+              "n": 25,
+              "hits": 6,
+              "hit_rate": 24.0,
+              "recovery": 61.2,
+              "avg_odds": 3.02,
+              "avg_ev": 91.7,
+              "avg_pop": 1.68
+            },
+            "edge_train": -34.6,
+            "edge_test": -24.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          ">=120": {
+            "band": ">=120",
+            "train": {
+              "n": 3,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 10.97,
+              "avg_ev": 121.7,
+              "avg_pop": 3.67
+            },
+            "test": {
+              "n": 9,
+              "hits": 1,
+              "hit_rate": 11.1,
+              "recovery": 40.0,
+              "avg_odds": 9.53,
+              "avg_ev": 120.4,
+              "avg_pop": 4.11
+            },
+            "all": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 30.0,
+              "avg_odds": 9.89,
+              "avg_ev": 120.8,
+              "avg_pop": 4.0
+            },
+            "edge_train": -90.8,
+            "edge_test": -54.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "win_band": {
+          "15-25": {
+            "band": "15-25",
+            "train": {
+              "n": 28,
+              "hits": 3,
+              "hit_rate": 10.7,
+              "recovery": 101.8,
+              "avg_odds": 14.29,
+              "avg_ev": 111.0,
+              "avg_pop": 4.0
+            },
+            "test": {
+              "n": 42,
+              "hits": 5,
+              "hit_rate": 11.9,
+              "recovery": 179.0,
+              "avg_odds": 13.9,
+              "avg_ev": 114.1,
+              "avg_pop": 4.74
+            },
+            "all": {
+              "n": 70,
+              "hits": 8,
+              "hit_rate": 11.4,
+              "recovery": 148.1,
+              "avg_odds": 14.05,
+              "avg_ev": 112.8,
+              "avg_pop": 4.44
+            },
+            "edge_train": 11.0,
+            "edge_test": 84.4,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "25-35": {
+            "band": "25-35",
+            "train": {
+              "n": 19,
+              "hits": 5,
+              "hit_rate": 26.3,
+              "recovery": 75.3,
+              "avg_odds": 3.86,
+              "avg_ev": 102.6,
+              "avg_pop": 2.05
+            },
+            "test": {
+              "n": 15,
+              "hits": 2,
+              "hit_rate": 13.3,
+              "recovery": 48.7,
+              "avg_odds": 5.09,
+              "avg_ev": 111.3,
+              "avg_pop": 3.0
+            },
+            "all": {
+              "n": 34,
+              "hits": 7,
+              "hit_rate": 20.6,
+              "recovery": 63.5,
+              "avg_odds": 4.4,
+              "avg_ev": 106.4,
+              "avg_pop": 2.47
+            },
+            "edge_train": -15.5,
+            "edge_test": -45.9,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間で同ランクベースラインより悪化"
+          },
+          "<15": {
+            "band": "<15",
+            "train": {
+              "n": 27,
+              "hits": 1,
+              "hit_rate": 3.7,
+              "recovery": 81.5,
+              "avg_odds": 46.73,
+              "avg_ev": 112.0,
+              "avg_pop": 6.48
+            },
+            "test": {
+              "n": 29,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 50.94,
+              "avg_ev": 112.4,
+              "avg_pop": 7.59
+            },
+            "all": {
+              "n": 56,
+              "hits": 1,
+              "hit_rate": 1.8,
+              "recovery": 39.3,
+              "avg_odds": 48.91,
+              "avg_ev": 112.2,
+              "avg_pop": 7.05
+            },
+            "edge_train": -9.3,
+            "edge_test": -94.6,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間で同ランクベースラインより悪化"
+          }
+        },
+        "ability_band": {
+          "51-70": {
+            "band": "51-70",
+            "train": {
+              "n": 25,
+              "hits": 1,
+              "hit_rate": 4.0,
+              "recovery": 14.8,
+              "avg_odds": 33.35,
+              "avg_ev": 112.1,
+              "avg_pop": 4.72
+            },
+            "test": {
+              "n": 31,
+              "hits": 3,
+              "hit_rate": 9.7,
+              "recovery": 72.3,
+              "avg_odds": 27.15,
+              "avg_ev": 114.0,
+              "avg_pop": 5.68
+            },
+            "all": {
+              "n": 56,
+              "hits": 4,
+              "hit_rate": 7.1,
+              "recovery": 46.6,
+              "avg_odds": 29.92,
+              "avg_ev": 113.1,
+              "avg_pop": 5.25
+            },
+            "edge_train": -76.0,
+            "edge_test": -22.3,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間で同ランクベースラインより悪化"
+          },
+          "71-80": {
+            "band": "71-80",
+            "train": {
+              "n": 25,
+              "hits": 2,
+              "hit_rate": 8.0,
+              "recovery": 82.0,
+              "avg_odds": 22.72,
+              "avg_ev": 107.2,
+              "avg_pop": 4.44
+            },
+            "test": {
+              "n": 20,
+              "hits": 1,
+              "hit_rate": 5.0,
+              "recovery": 18.5,
+              "avg_odds": 37.91,
+              "avg_ev": 109.0,
+              "avg_pop": 5.15
+            },
+            "all": {
+              "n": 45,
+              "hits": 3,
+              "hit_rate": 6.7,
+              "recovery": 53.8,
+              "avg_odds": 29.47,
+              "avg_ev": 108.0,
+              "avg_pop": 4.76
+            },
+            "edge_train": -8.8,
+            "edge_test": -76.1,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間で同ランクベースラインより悪化"
+          },
+          "<=50": {
+            "band": "<=50",
+            "train": {
+              "n": 14,
+              "hits": 1,
+              "hit_rate": 7.1,
+              "recovery": 60.0,
+              "avg_odds": 17.85,
+              "avg_ev": 114.2,
+              "avg_pop": 4.86
+            },
+            "test": {
+              "n": 31,
+              "hits": 3,
+              "hit_rate": 9.7,
+              "recovery": 181.9,
+              "avg_odds": 14.5,
+              "avg_ev": 115.5,
+              "avg_pop": 5.13
+            },
+            "all": {
+              "n": 45,
+              "hits": 4,
+              "hit_rate": 8.9,
+              "recovery": 144.0,
+              "avg_odds": 15.54,
+              "avg_ev": 115.1,
+              "avg_pop": 5.04
+            },
+            "edge_train": -30.8,
+            "edge_test": 87.3,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          ">=80": {
+            "band": ">=80",
+            "train": {
+              "n": 14,
+              "hits": 7,
+              "hit_rate": 50.0,
+              "recovery": 272.9,
+              "avg_odds": 7.2,
+              "avg_ev": 100.9,
+              "avg_pop": 2.57
+            },
+            "test": {
+              "n": 8,
+              "hits": 1,
+              "hit_rate": 12.5,
+              "recovery": 32.5,
+              "avg_odds": 12.14,
+              "avg_ev": 99.1,
+              "avg_pop": 3.88
+            },
+            "all": {
+              "n": 22,
+              "hits": 8,
+              "hit_rate": 36.4,
+              "recovery": 185.5,
+              "avg_odds": 9.0,
+              "avg_ev": 100.2,
+              "avg_pop": 3.05
+            },
+            "edge_train": 182.1,
+            "edge_test": -62.1,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "venue": {
+          "名古屋": {
+            "band": "名古屋",
+            "train": {
+              "n": 3,
+              "hits": 1,
+              "hit_rate": 33.3,
+              "recovery": 53.3,
+              "avg_odds": 5.07,
+              "avg_ev": 92.7,
+              "avg_pop": 2.0
+            },
+            "test": {
+              "n": 9,
+              "hits": 1,
+              "hit_rate": 11.1,
+              "recovery": 205.6,
+              "avg_odds": 32.43,
+              "avg_ev": 111.1,
+              "avg_pop": 7.44
+            },
+            "all": {
+              "n": 12,
+              "hits": 2,
+              "hit_rate": 16.7,
+              "recovery": 167.5,
+              "avg_odds": 25.59,
+              "avg_ev": 106.5,
+              "avg_pop": 6.08
+            },
+            "edge_train": -37.5,
+            "edge_test": 111.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "園田": {
+            "band": "園田",
+            "train": {
+              "n": 3,
+              "hits": 1,
+              "hit_rate": 33.3,
+              "recovery": 123.3,
+              "avg_odds": 12.73,
+              "avg_ev": 118.3,
+              "avg_pop": 4.33
+            },
+            "test": {
+              "n": 18,
+              "hits": 3,
+              "hit_rate": 16.7,
+              "recovery": 73.3,
+              "avg_odds": 13.4,
+              "avg_ev": 112.9,
+              "avg_pop": 4.44
+            },
+            "all": {
+              "n": 21,
+              "hits": 4,
+              "hit_rate": 19.0,
+              "recovery": 80.5,
+              "avg_odds": 13.3,
+              "avg_ev": 113.7,
+              "avg_pop": 4.43
+            },
+            "edge_train": 32.5,
+            "edge_test": -21.3,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "川崎": {
+            "band": "川崎",
+            "train": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 27.62,
+              "avg_ev": 113.5,
+              "avg_pop": 5.5
+            },
+            "test": {
+              "n": 9,
+              "hits": 1,
+              "hit_rate": 11.1,
+              "recovery": 77.8,
+              "avg_odds": 20.4,
+              "avg_ev": 116.3,
+              "avg_pop": 5.78
+            },
+            "all": {
+              "n": 15,
+              "hits": 1,
+              "hit_rate": 6.7,
+              "recovery": 46.7,
+              "avg_odds": 23.29,
+              "avg_ev": 115.2,
+              "avg_pop": 5.67
+            },
+            "edge_train": -90.8,
+            "edge_test": -16.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "盛岡": {
+            "band": "盛岡",
+            "train": {
+              "n": 18,
+              "hits": 3,
+              "hit_rate": 16.7,
+              "recovery": 52.8,
+              "avg_odds": 13.21,
+              "avg_ev": 107.8,
+              "avg_pop": 3.94
+            },
+            "test": {
+              "n": 9,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 24.6,
+              "avg_ev": 113.8,
+              "avg_pop": 4.11
+            },
+            "all": {
+              "n": 27,
+              "hits": 3,
+              "hit_rate": 11.1,
+              "recovery": 35.2,
+              "avg_odds": 17.01,
+              "avg_ev": 109.8,
+              "avg_pop": 4.0
+            },
+            "edge_train": -38.0,
+            "edge_test": -94.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "船橋": {
+            "band": "船橋",
+            "train": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "recovery": null,
+              "avg_odds": null,
+              "avg_ev": null,
+              "avg_pop": null
+            },
+            "test": {
+              "n": 15,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 22.5,
+              "avg_ev": 114.0,
+              "avg_pop": 5.67
+            },
+            "all": {
+              "n": 15,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 22.5,
+              "avg_ev": 114.0,
+              "avg_pop": 5.67
+            },
+            "edge_train": null,
+            "edge_test": -94.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "金沢": {
+            "band": "金沢",
+            "train": {
+              "n": 12,
+              "hits": 2,
+              "hit_rate": 16.7,
+              "recovery": 253.3,
+              "avg_odds": 18.58,
+              "avg_ev": 110.2,
+              "avg_pop": 3.92
+            },
+            "test": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 29.67,
+              "avg_ev": 114.7,
+              "avg_pop": 7.0
+            },
+            "all": {
+              "n": 18,
+              "hits": 2,
+              "hit_rate": 11.1,
+              "recovery": 168.9,
+              "avg_odds": 22.28,
+              "avg_ev": 111.7,
+              "avg_pop": 4.94
+            },
+            "edge_train": 162.5,
+            "edge_test": -94.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "門別": {
+            "band": "門別",
+            "train": {
+              "n": 9,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 8.83,
+              "avg_ev": 104.0,
+              "avg_pop": 3.33
+            },
+            "test": {
+              "n": 15,
+              "hits": 2,
+              "hit_rate": 13.3,
+              "recovery": 103.3,
+              "avg_odds": 22.69,
+              "avg_ev": 106.2,
+              "avg_pop": 3.87
+            },
+            "all": {
+              "n": 24,
+              "hits": 2,
+              "hit_rate": 8.3,
+              "recovery": 64.6,
+              "avg_odds": 17.5,
+              "avg_ev": 105.4,
+              "avg_pop": 3.67
+            },
+            "edge_train": -90.8,
+            "edge_test": 8.7,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "高知": {
+            "band": "高知",
+            "train": {
+              "n": 9,
+              "hits": 2,
+              "hit_rate": 22.2,
+              "recovery": 73.3,
+              "avg_odds": 46.27,
+              "avg_ev": 109.2,
+              "avg_pop": 5.56
+            },
+            "test": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 515.0,
+              "avg_odds": 55.23,
+              "avg_ev": 111.2,
+              "avg_pop": 6.17
+            },
+            "all": {
+              "n": 15,
+              "hits": 3,
+              "hit_rate": 20.0,
+              "recovery": 250.0,
+              "avg_odds": 49.85,
+              "avg_ev": 110.0,
+              "avg_pop": 5.8
+            },
+            "edge_train": -17.5,
+            "edge_test": 420.4,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "surface": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 78,
+              "hits": 11,
+              "hit_rate": 14.1,
+              "recovery": 90.8,
+              "avg_odds": 22.47,
+              "avg_ev": 108.9,
+              "avg_pop": 4.27
+            },
+            "test": {
+              "n": 90,
+              "hits": 8,
+              "hit_rate": 8.9,
+              "recovery": 94.6,
+              "avg_odds": 23.85,
+              "avg_ev": 112.1,
+              "avg_pop": 5.21
+            },
+            "all": {
+              "n": 168,
+              "hits": 19,
+              "hit_rate": 11.3,
+              "recovery": 92.8,
+              "avg_odds": 23.21,
+              "avg_ev": 110.6,
+              "avg_pop": 4.77
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        },
+        "dist_band": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 78,
+              "hits": 11,
+              "hit_rate": 14.1,
+              "recovery": 90.8,
+              "avg_odds": 22.47,
+              "avg_ev": 108.9,
+              "avg_pop": 4.27
+            },
+            "test": {
+              "n": 90,
+              "hits": 8,
+              "hit_rate": 8.9,
+              "recovery": 94.6,
+              "avg_odds": 23.85,
+              "avg_ev": 112.1,
+              "avg_pop": 5.21
+            },
+            "all": {
+              "n": 168,
+              "hits": 19,
+              "hit_rate": 11.3,
+              "recovery": 92.8,
+              "avg_odds": 23.21,
+              "avg_ev": 110.6,
+              "avg_pop": 4.77
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        }
+      }
+    },
+    "JRA/B": {
+      "baseline": {
+        "train": {
+          "n": 36,
+          "hits": 6,
+          "hit_rate": 16.7,
+          "recovery": 65.8,
+          "avg_odds": 10.33,
+          "avg_ev": 107.8,
+          "avg_pop": 3.64
+        },
+        "test": {
+          "n": 24,
+          "hits": 3,
+          "hit_rate": 12.5,
+          "recovery": 53.8,
+          "avg_odds": 12.48,
+          "avg_ev": 110.8,
+          "avg_pop": 5.0
+        },
+        "all": {
+          "n": 60,
+          "hits": 9,
+          "hit_rate": 15.0,
+          "recovery": 61.0,
+          "avg_odds": 11.19,
+          "avg_ev": 109.0,
+          "avg_pop": 4.18
+        }
+      },
+      "slices": {
+        "odds_band": {
+          "3-5": {
+            "band": "3-5",
+            "train": {
+              "n": 10,
+              "hits": 3,
+              "hit_rate": 30.0,
+              "recovery": 113.0,
+              "avg_odds": 4.07,
+              "avg_ev": 100.7,
+              "avg_pop": 1.8
+            },
+            "test": {
+              "n": 5,
+              "hits": 2,
+              "hit_rate": 40.0,
+              "recovery": 94.0,
+              "avg_odds": 4.04,
+              "avg_ev": 103.8,
+              "avg_pop": 1.6
+            },
+            "all": {
+              "n": 15,
+              "hits": 5,
+              "hit_rate": 33.3,
+              "recovery": 106.7,
+              "avg_odds": 4.06,
+              "avg_ev": 101.7,
+              "avg_pop": 1.73
+            },
+            "edge_train": 47.2,
+            "edge_test": 40.2,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "5-8": {
+            "band": "5-8",
+            "train": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 6.3,
+              "avg_ev": 116.0,
+              "avg_pop": 3.0
+            },
+            "test": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 136.7,
+              "avg_odds": 6.38,
+              "avg_ev": 115.3,
+              "avg_pop": 3.67
+            },
+            "all": {
+              "n": 13,
+              "hits": 1,
+              "hit_rate": 7.7,
+              "recovery": 63.1,
+              "avg_odds": 6.34,
+              "avg_ev": 115.7,
+              "avg_pop": 3.31
+            },
+            "edge_train": -65.8,
+            "edge_test": 82.9,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "pop_band": {
+          "1人気": {
+            "band": "1人気",
+            "train": {
+              "n": 8,
+              "hits": 2,
+              "hit_rate": 25.0,
+              "recovery": 58.8,
+              "avg_odds": 2.98,
+              "avg_ev": 96.6,
+              "avg_pop": 1.0
+            },
+            "test": {
+              "n": 5,
+              "hits": 1,
+              "hit_rate": 20.0,
+              "recovery": 38.0,
+              "avg_odds": 3.04,
+              "avg_ev": 95.6,
+              "avg_pop": 1.0
+            },
+            "all": {
+              "n": 13,
+              "hits": 3,
+              "hit_rate": 23.1,
+              "recovery": 50.8,
+              "avg_odds": 3.0,
+              "avg_ev": 96.2,
+              "avg_pop": 1.0
+            },
+            "edge_train": -7.0,
+            "edge_test": -15.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "2-3人気": {
+            "band": "2-3人気",
+            "train": {
+              "n": 13,
+              "hits": 3,
+              "hit_rate": 23.1,
+              "recovery": 86.9,
+              "avg_odds": 4.99,
+              "avg_ev": 104.4,
+              "avg_pop": 2.31
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 70.0,
+              "avg_odds": 5.4,
+              "avg_ev": 111.2,
+              "avg_pop": 2.75
+            },
+            "all": {
+              "n": 17,
+              "hits": 4,
+              "hit_rate": 23.5,
+              "recovery": 82.9,
+              "avg_odds": 5.09,
+              "avg_ev": 106.0,
+              "avg_pop": 2.41
+            },
+            "edge_train": 21.1,
+            "edge_test": 16.2,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "4-5人気": {
+            "band": "4-5人気",
+            "train": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 10.27,
+              "avg_ev": 117.7,
+              "avg_pop": 4.57
+            },
+            "test": {
+              "n": 6,
+              "hits": 1,
+              "hit_rate": 16.7,
+              "recovery": 136.7,
+              "avg_odds": 8.23,
+              "avg_ev": 118.7,
+              "avg_pop": 4.17
+            },
+            "all": {
+              "n": 13,
+              "hits": 1,
+              "hit_rate": 7.7,
+              "recovery": 63.1,
+              "avg_odds": 9.33,
+              "avg_ev": 118.2,
+              "avg_pop": 4.38
+            },
+            "edge_train": -65.8,
+            "edge_test": 82.9,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "6-9人気": {
+            "band": "6-9人気",
+            "train": {
+              "n": 7,
+              "hits": 1,
+              "hit_rate": 14.3,
+              "recovery": 110.0,
+              "avg_odds": 18.87,
+              "avg_ev": 115.9,
+              "avg_pop": 6.71
+            },
+            "test": {
+              "n": 5,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 16.52,
+              "avg_ev": 114.8,
+              "avg_pop": 7.0
+            },
+            "all": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 64.2,
+              "avg_odds": 17.89,
+              "avg_ev": 115.4,
+              "avg_pop": 6.83
+            },
+            "edge_train": 44.2,
+            "edge_test": -53.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "ev_band": {
+          "108-115": {
+            "band": "108-115",
+            "train": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.68,
+              "avg_ev": 112.0,
+              "avg_pop": 4.5
+            },
+            "test": {
+              "n": 9,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 18.12,
+              "avg_ev": 111.0,
+              "avg_pop": 6.56
+            },
+            "all": {
+              "n": 15,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 17.15,
+              "avg_ev": 111.4,
+              "avg_pop": 5.73
+            },
+            "edge_train": -65.8,
+            "edge_test": -53.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "115-120": {
+            "band": "115-120",
+            "train": {
+              "n": 11,
+              "hits": 1,
+              "hit_rate": 9.1,
+              "recovery": 70.0,
+              "avg_odds": 17.41,
+              "avg_ev": 116.4,
+              "avg_pop": 5.55
+            },
+            "test": {
+              "n": 7,
+              "hits": 1,
+              "hit_rate": 14.3,
+              "recovery": 40.0,
+              "avg_odds": 13.89,
+              "avg_ev": 116.7,
+              "avg_pop": 6.29
+            },
+            "all": {
+              "n": 18,
+              "hits": 2,
+              "hit_rate": 11.1,
+              "recovery": 58.3,
+              "avg_odds": 16.04,
+              "avg_ev": 116.5,
+              "avg_pop": 5.83
+            },
+            "edge_train": 4.2,
+            "edge_test": -13.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "<100": {
+            "band": "<100",
+            "train": {
+              "n": 11,
+              "hits": 5,
+              "hit_rate": 45.5,
+              "recovery": 145.5,
+              "avg_odds": 3.17,
+              "avg_ev": 93.6,
+              "avg_pop": 1.45
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 47.5,
+              "avg_odds": 2.8,
+              "avg_ev": 92.8,
+              "avg_pop": 1.0
+            },
+            "all": {
+              "n": 15,
+              "hits": 6,
+              "hit_rate": 40.0,
+              "recovery": 119.3,
+              "avg_odds": 3.07,
+              "avg_ev": 93.4,
+              "avg_pop": 1.33
+            },
+            "edge_train": 79.7,
+            "edge_test": -6.3,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "win_band": {
+          "15-25": {
+            "band": "15-25",
+            "train": {
+              "n": 18,
+              "hits": 2,
+              "hit_rate": 11.1,
+              "recovery": 70.6,
+              "avg_odds": 13.46,
+              "avg_ev": 112.9,
+              "avg_pop": 4.72
+            },
+            "test": {
+              "n": 10,
+              "hits": 1,
+              "hit_rate": 10.0,
+              "recovery": 82.0,
+              "avg_odds": 9.6,
+              "avg_ev": 112.0,
+              "avg_pop": 4.7
+            },
+            "all": {
+              "n": 28,
+              "hits": 3,
+              "hit_rate": 10.7,
+              "recovery": 74.6,
+              "avg_odds": 12.08,
+              "avg_ev": 112.6,
+              "avg_pop": 4.71
+            },
+            "edge_train": 4.8,
+            "edge_test": 28.2,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "25-35": {
+            "band": "25-35",
+            "train": {
+              "n": 11,
+              "hits": 3,
+              "hit_rate": 27.3,
+              "recovery": 76.4,
+              "avg_odds": 3.65,
+              "avg_ev": 101.7,
+              "avg_pop": 1.82
+            },
+            "test": {
+              "n": 9,
+              "hits": 2,
+              "hit_rate": 22.2,
+              "recovery": 52.2,
+              "avg_odds": 5.54,
+              "avg_ev": 108.2,
+              "avg_pop": 2.78
+            },
+            "all": {
+              "n": 20,
+              "hits": 5,
+              "hit_rate": 25.0,
+              "recovery": 65.5,
+              "avg_odds": 4.51,
+              "avg_ev": 104.7,
+              "avg_pop": 2.25
+            },
+            "edge_train": 10.6,
+            "edge_test": -1.6,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "ability_band": {
+          "51-70": {
+            "band": "51-70",
+            "train": {
+              "n": 9,
+              "hits": 4,
+              "hit_rate": 44.4,
+              "recovery": 137.8,
+              "avg_odds": 3.52,
+              "avg_ev": 96.7,
+              "avg_pop": 1.56
+            },
+            "test": {
+              "n": 8,
+              "hits": 1,
+              "hit_rate": 12.5,
+              "recovery": 23.8,
+              "avg_odds": 5.09,
+              "avg_ev": 104.2,
+              "avg_pop": 2.5
+            },
+            "all": {
+              "n": 17,
+              "hits": 5,
+              "hit_rate": 29.4,
+              "recovery": 84.1,
+              "avg_odds": 4.26,
+              "avg_ev": 100.2,
+              "avg_pop": 2.0
+            },
+            "edge_train": 72.0,
+            "edge_test": -30.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "<=50": {
+            "band": "<=50",
+            "train": {
+              "n": 21,
+              "hits": 2,
+              "hit_rate": 9.5,
+              "recovery": 53.8,
+              "avg_odds": 15.18,
+              "avg_ev": 114.6,
+              "avg_pop": 5.14
+            },
+            "test": {
+              "n": 15,
+              "hits": 2,
+              "hit_rate": 13.3,
+              "recovery": 73.3,
+              "avg_odds": 17.09,
+              "avg_ev": 115.5,
+              "avg_pop": 6.6
+            },
+            "all": {
+              "n": 36,
+              "hits": 4,
+              "hit_rate": 11.1,
+              "recovery": 61.9,
+              "avg_odds": 15.98,
+              "avg_ev": 115.0,
+              "avg_pop": 5.75
+            },
+            "edge_train": -12.0,
+            "edge_test": 19.5,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          }
+        },
+        "venue": {
+          "中京": {
+            "band": "中京",
+            "train": {
+              "n": 8,
+              "hits": 1,
+              "hit_rate": 12.5,
+              "recovery": 32.5,
+              "avg_odds": 8.79,
+              "avg_ev": 109.1,
+              "avg_pop": 3.75
+            },
+            "test": {
+              "n": 9,
+              "hits": 3,
+              "hit_rate": 33.3,
+              "recovery": 143.3,
+              "avg_odds": 10.88,
+              "avg_ev": 113.1,
+              "avg_pop": 5.22
+            },
+            "all": {
+              "n": 17,
+              "hits": 4,
+              "hit_rate": 23.5,
+              "recovery": 91.2,
+              "avg_odds": 9.89,
+              "avg_ev": 111.2,
+              "avg_pop": 4.53
+            },
+            "edge_train": -33.3,
+            "edge_test": 89.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "新潟": {
+            "band": "新潟",
+            "train": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 18.64,
+              "avg_ev": 114.3,
+              "avg_pop": 4.86
+            },
+            "test": {
+              "n": 5,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.18,
+              "avg_ev": 108.4,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 17.2,
+              "avg_ev": 111.8,
+              "avg_pop": 4.92
+            },
+            "edge_train": -65.8,
+            "edge_test": -53.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "札幌": {
+            "band": "札幌",
+            "train": {
+              "n": 9,
+              "hits": 2,
+              "hit_rate": 22.2,
+              "recovery": 63.3,
+              "avg_odds": 4.09,
+              "avg_ev": 98.3,
+              "avg_pop": 2.0
+            },
+            "test": {
+              "n": 10,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 12.57,
+              "avg_ev": 110.0,
+              "avg_pop": 4.8
+            },
+            "all": {
+              "n": 19,
+              "hits": 2,
+              "hit_rate": 10.5,
+              "recovery": 30.0,
+              "avg_odds": 8.55,
+              "avg_ev": 104.5,
+              "avg_pop": 3.47
+            },
+            "edge_train": -2.5,
+            "edge_test": -53.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "surface": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 36,
+              "hits": 6,
+              "hit_rate": 16.7,
+              "recovery": 65.8,
+              "avg_odds": 10.33,
+              "avg_ev": 107.8,
+              "avg_pop": 3.64
+            },
+            "test": {
+              "n": 24,
+              "hits": 3,
+              "hit_rate": 12.5,
+              "recovery": 53.8,
+              "avg_odds": 12.48,
+              "avg_ev": 110.8,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 60,
+              "hits": 9,
+              "hit_rate": 15.0,
+              "recovery": 61.0,
+              "avg_odds": 11.19,
+              "avg_ev": 109.0,
+              "avg_pop": 4.18
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          }
+        },
+        "dist_band": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 36,
+              "hits": 6,
+              "hit_rate": 16.7,
+              "recovery": 65.8,
+              "avg_odds": 10.33,
+              "avg_ev": 107.8,
+              "avg_pop": 3.64
+            },
+            "test": {
+              "n": 24,
+              "hits": 3,
+              "hit_rate": 12.5,
+              "recovery": 53.8,
+              "avg_odds": 12.48,
+              "avg_ev": 110.8,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 60,
+              "hits": 9,
+              "hit_rate": 15.0,
+              "recovery": 61.0,
+              "avg_odds": 11.19,
+              "avg_ev": 109.0,
+              "avg_pop": 4.18
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          }
+        }
+      }
+    },
+    "地方/B": {
+      "baseline": {
+        "train": {
+          "n": 143,
+          "hits": 16,
+          "hit_rate": 11.2,
+          "recovery": 61.1,
+          "avg_odds": 13.41,
+          "avg_ev": 104.1,
+          "avg_pop": 3.69
+        },
+        "test": {
+          "n": 117,
+          "hits": 14,
+          "hit_rate": 12.0,
+          "recovery": 37.7,
+          "avg_odds": 13.94,
+          "avg_ev": 108.0,
+          "avg_pop": 4.33
+        },
+        "all": {
+          "n": 260,
+          "hits": 30,
+          "hit_rate": 11.5,
+          "recovery": 50.6,
+          "avg_odds": 13.65,
+          "avg_ev": 105.8,
+          "avg_pop": 3.98
+        }
+      },
+      "slices": {
+        "odds_band": {
+          "12-20": {
+            "band": "12-20",
+            "train": {
+              "n": 17,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 15.52,
+              "avg_ev": 113.5,
+              "avg_pop": 5.76
+            },
+            "test": {
+              "n": 21,
+              "hits": 1,
+              "hit_rate": 4.8,
+              "recovery": 18.6,
+              "avg_odds": 15.34,
+              "avg_ev": 115.4,
+              "avg_pop": 6.0
+            },
+            "all": {
+              "n": 38,
+              "hits": 1,
+              "hit_rate": 2.6,
+              "recovery": 10.3,
+              "avg_odds": 15.42,
+              "avg_ev": 114.5,
+              "avg_pop": 5.89
+            },
+            "edge_train": -61.1,
+            "edge_test": -19.1,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          },
+          "20-50": {
+            "band": "20-50",
+            "train": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 349.2,
+              "avg_odds": 31.97,
+              "avg_ev": 112.3,
+              "avg_pop": 6.58
+            },
+            "test": {
+              "n": 18,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 30.07,
+              "avg_ev": 112.8,
+              "avg_pop": 6.44
+            },
+            "all": {
+              "n": 30,
+              "hits": 1,
+              "hit_rate": 3.3,
+              "recovery": 139.7,
+              "avg_odds": 30.83,
+              "avg_ev": 112.6,
+              "avg_pop": 6.5
+            },
+            "edge_train": 288.1,
+            "edge_test": -37.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          },
+          "3-5": {
+            "band": "3-5",
+            "train": {
+              "n": 29,
+              "hits": 7,
+              "hit_rate": 24.1,
+              "recovery": 82.8,
+              "avg_odds": 3.98,
+              "avg_ev": 100.4,
+              "avg_pop": 2.21
+            },
+            "test": {
+              "n": 17,
+              "hits": 4,
+              "hit_rate": 23.5,
+              "recovery": 61.2,
+              "avg_odds": 4.19,
+              "avg_ev": 100.6,
+              "avg_pop": 2.35
+            },
+            "all": {
+              "n": 46,
+              "hits": 11,
+              "hit_rate": 23.9,
+              "recovery": 74.8,
+              "avg_odds": 4.06,
+              "avg_ev": 100.5,
+              "avg_pop": 2.26
+            },
+            "edge_train": 21.7,
+            "edge_test": 23.5,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "5-8": {
+            "band": "5-8",
+            "train": {
+              "n": 32,
+              "hits": 3,
+              "hit_rate": 9.4,
+              "recovery": 38.4,
+              "avg_odds": 6.37,
+              "avg_ev": 105.1,
+              "avg_pop": 3.28
+            },
+            "test": {
+              "n": 24,
+              "hits": 3,
+              "hit_rate": 12.5,
+              "recovery": 55.4,
+              "avg_odds": 6.64,
+              "avg_ev": 109.9,
+              "avg_pop": 3.42
+            },
+            "all": {
+              "n": 56,
+              "hits": 6,
+              "hit_rate": 10.7,
+              "recovery": 45.7,
+              "avg_odds": 6.48,
+              "avg_ev": 107.2,
+              "avg_pop": 3.34
+            },
+            "edge_train": -22.7,
+            "edge_test": 17.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          "8-12": {
+            "band": "8-12",
+            "train": {
+              "n": 19,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 10.0,
+              "avg_ev": 109.1,
+              "avg_pop": 4.47
+            },
+            "test": {
+              "n": 17,
+              "hits": 1,
+              "hit_rate": 5.9,
+              "recovery": 48.2,
+              "avg_odds": 9.88,
+              "avg_ev": 114.9,
+              "avg_pop": 4.65
+            },
+            "all": {
+              "n": 36,
+              "hits": 1,
+              "hit_rate": 2.8,
+              "recovery": 22.8,
+              "avg_odds": 9.94,
+              "avg_ev": 111.8,
+              "avg_pop": 4.56
+            },
+            "edge_train": -61.1,
+            "edge_test": 10.5,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          "<=3": {
+            "band": "<=3",
+            "train": {
+              "n": 27,
+              "hits": 5,
+              "hit_rate": 18.5,
+              "recovery": 34.1,
+              "avg_odds": 2.11,
+              "avg_ev": 92.0,
+              "avg_pop": 1.33
+            },
+            "test": {
+              "n": 15,
+              "hits": 5,
+              "hit_rate": 33.3,
+              "recovery": 55.3,
+              "avg_odds": 2.13,
+              "avg_ev": 88.7,
+              "avg_pop": 1.27
+            },
+            "all": {
+              "n": 42,
+              "hits": 10,
+              "hit_rate": 23.8,
+              "recovery": 41.7,
+              "avg_odds": 2.11,
+              "avg_ev": 90.8,
+              "avg_pop": 1.31
+            },
+            "edge_train": -27.0,
+            "edge_test": 17.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          ">50": {
+            "band": ">50",
+            "train": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 100.54,
+              "avg_ev": 109.9,
+              "avg_pop": 8.71
+            },
+            "test": {
+              "n": 5,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 67.34,
+              "avg_ev": 110.6,
+              "avg_pop": 9.0
+            },
+            "all": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 86.71,
+              "avg_ev": 110.2,
+              "avg_pop": 8.83
+            },
+            "edge_train": -61.1,
+            "edge_test": -37.7,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "pop_band": {
+          "1人気": {
+            "band": "1人気",
+            "train": {
+              "n": 21,
+              "hits": 4,
+              "hit_rate": 19.0,
+              "recovery": 47.6,
+              "avg_odds": 2.1,
+              "avg_ev": 91.0,
+              "avg_pop": 1.0
+            },
+            "test": {
+              "n": 12,
+              "hits": 4,
+              "hit_rate": 33.3,
+              "recovery": 48.3,
+              "avg_odds": 2.07,
+              "avg_ev": 87.9,
+              "avg_pop": 1.0
+            },
+            "all": {
+              "n": 33,
+              "hits": 8,
+              "hit_rate": 24.2,
+              "recovery": 47.9,
+              "avg_odds": 2.08,
+              "avg_ev": 89.9,
+              "avg_pop": 1.0
+            },
+            "edge_train": -13.5,
+            "edge_test": 10.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          "2-3人気": {
+            "band": "2-3人気",
+            "train": {
+              "n": 63,
+              "hits": 10,
+              "hit_rate": 15.9,
+              "recovery": 47.8,
+              "avg_odds": 5.62,
+              "avg_ev": 101.6,
+              "avg_pop": 2.52
+            },
+            "test": {
+              "n": 36,
+              "hits": 8,
+              "hit_rate": 22.2,
+              "recovery": 72.8,
+              "avg_odds": 5.44,
+              "avg_ev": 103.9,
+              "avg_pop": 2.53
+            },
+            "all": {
+              "n": 99,
+              "hits": 18,
+              "hit_rate": 18.2,
+              "recovery": 56.9,
+              "avg_odds": 5.55,
+              "avg_ev": 102.5,
+              "avg_pop": 2.53
+            },
+            "edge_train": -13.3,
+            "edge_test": 35.1,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "4-5人気": {
+            "band": "4-5人気",
+            "train": {
+              "n": 28,
+              "hits": 1,
+              "hit_rate": 3.6,
+              "recovery": 19.3,
+              "avg_odds": 11.09,
+              "avg_ev": 109.9,
+              "avg_pop": 4.36
+            },
+            "test": {
+              "n": 35,
+              "hits": 2,
+              "hit_rate": 5.7,
+              "recovery": 34.6,
+              "avg_odds": 12.44,
+              "avg_ev": 113.8,
+              "avg_pop": 4.51
+            },
+            "all": {
+              "n": 63,
+              "hits": 3,
+              "hit_rate": 4.8,
+              "recovery": 27.8,
+              "avg_odds": 11.84,
+              "avg_ev": 112.0,
+              "avg_pop": 4.44
+            },
+            "edge_train": -41.8,
+            "edge_test": -3.1,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          },
+          "6-9人気": {
+            "band": "6-9人気",
+            "train": {
+              "n": 27,
+              "hits": 1,
+              "hit_rate": 3.7,
+              "recovery": 155.2,
+              "avg_odds": 28.84,
+              "avg_ev": 112.7,
+              "avg_pop": 6.89
+            },
+            "test": {
+              "n": 33,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 27.88,
+              "avg_ev": 113.7,
+              "avg_pop": 7.12
+            },
+            "all": {
+              "n": 60,
+              "hits": 1,
+              "hit_rate": 1.7,
+              "recovery": 69.8,
+              "avg_odds": 28.32,
+              "avg_ev": 113.3,
+              "avg_pop": 7.02
+            },
+            "edge_train": 94.1,
+            "edge_test": -37.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          }
+        },
+        "ev_band": {
+          "100-108": {
+            "band": "100-108",
+            "train": {
+              "n": 53,
+              "hits": 5,
+              "hit_rate": 9.4,
+              "recovery": 28.3,
+              "avg_odds": 8.7,
+              "avg_ev": 102.2,
+              "avg_pop": 3.3
+            },
+            "test": {
+              "n": 27,
+              "hits": 6,
+              "hit_rate": 22.2,
+              "recovery": 76.3,
+              "avg_odds": 11.51,
+              "avg_ev": 103.8,
+              "avg_pop": 3.63
+            },
+            "all": {
+              "n": 80,
+              "hits": 11,
+              "hit_rate": 13.8,
+              "recovery": 44.5,
+              "avg_odds": 9.65,
+              "avg_ev": 102.7,
+              "avg_pop": 3.41
+            },
+            "edge_train": -32.8,
+            "edge_test": 38.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "108-115": {
+            "band": "108-115",
+            "train": {
+              "n": 26,
+              "hits": 1,
+              "hit_rate": 3.8,
+              "recovery": 161.2,
+              "avg_odds": 37.08,
+              "avg_ev": 110.5,
+              "avg_pop": 6.0
+            },
+            "test": {
+              "n": 30,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 22.12,
+              "avg_ev": 111.3,
+              "avg_pop": 5.77
+            },
+            "all": {
+              "n": 56,
+              "hits": 1,
+              "hit_rate": 1.8,
+              "recovery": 74.8,
+              "avg_odds": 29.07,
+              "avg_ev": 111.0,
+              "avg_pop": 5.88
+            },
+            "edge_train": 100.1,
+            "edge_test": -37.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          },
+          "115-120": {
+            "band": "115-120",
+            "train": {
+              "n": 22,
+              "hits": 1,
+              "hit_rate": 4.5,
+              "recovery": 24.5,
+              "avg_odds": 15.94,
+              "avg_ev": 116.6,
+              "avg_pop": 5.5
+            },
+            "test": {
+              "n": 31,
+              "hits": 1,
+              "hit_rate": 3.2,
+              "recovery": 26.5,
+              "avg_odds": 16.66,
+              "avg_ev": 117.1,
+              "avg_pop": 5.42
+            },
+            "all": {
+              "n": 53,
+              "hits": 2,
+              "hit_rate": 3.8,
+              "recovery": 25.7,
+              "avg_odds": 16.36,
+              "avg_ev": 116.9,
+              "avg_pop": 5.45
+            },
+            "edge_train": -36.6,
+            "edge_test": -11.2,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          },
+          "<100": {
+            "band": "<100",
+            "train": {
+              "n": 38,
+              "hits": 9,
+              "hit_rate": 23.7,
+              "recovery": 66.1,
+              "avg_odds": 2.73,
+              "avg_ev": 93.2,
+              "avg_pop": 1.55
+            },
+            "test": {
+              "n": 21,
+              "hits": 6,
+              "hit_rate": 28.6,
+              "recovery": 54.3,
+              "avg_odds": 2.8,
+              "avg_ev": 90.5,
+              "avg_pop": 1.52
+            },
+            "all": {
+              "n": 59,
+              "hits": 15,
+              "hit_rate": 25.4,
+              "recovery": 61.9,
+              "avg_odds": 2.75,
+              "avg_ev": 92.3,
+              "avg_pop": 1.54
+            },
+            "edge_train": 5.0,
+            "edge_test": 16.6,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          ">=120": {
+            "band": ">=120",
+            "train": {
+              "n": 4,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 9.5,
+              "avg_ev": 120.8,
+              "avg_pop": 4.25
+            },
+            "test": {
+              "n": 8,
+              "hits": 1,
+              "hit_rate": 12.5,
+              "recovery": 48.8,
+              "avg_odds": 10.09,
+              "avg_ev": 120.9,
+              "avg_pop": 4.5
+            },
+            "all": {
+              "n": 12,
+              "hits": 1,
+              "hit_rate": 8.3,
+              "recovery": 32.5,
+              "avg_odds": 9.89,
+              "avg_ev": 120.8,
+              "avg_pop": 4.42
+            },
+            "edge_train": -61.1,
+            "edge_test": 11.1,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "win_band": {
+          "15-25": {
+            "band": "15-25",
+            "train": {
+              "n": 56,
+              "hits": 2,
+              "hit_rate": 3.6,
+              "recovery": 7.5,
+              "avg_odds": 7.86,
+              "avg_ev": 104.5,
+              "avg_pop": 3.39
+            },
+            "test": {
+              "n": 53,
+              "hits": 7,
+              "hit_rate": 13.2,
+              "recovery": 58.1,
+              "avg_odds": 8.47,
+              "avg_ev": 109.9,
+              "avg_pop": 3.74
+            },
+            "all": {
+              "n": 109,
+              "hits": 9,
+              "hit_rate": 8.3,
+              "recovery": 32.1,
+              "avg_odds": 8.16,
+              "avg_ev": 107.1,
+              "avg_pop": 3.56
+            },
+            "edge_train": -53.6,
+            "edge_test": 20.4,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          "25-35": {
+            "band": "25-35",
+            "train": {
+              "n": 42,
+              "hits": 9,
+              "hit_rate": 21.4,
+              "recovery": 75.5,
+              "avg_odds": 4.13,
+              "avg_ev": 99.9,
+              "avg_pop": 2.26
+            },
+            "test": {
+              "n": 15,
+              "hits": 3,
+              "hit_rate": 20.0,
+              "recovery": 48.0,
+              "avg_odds": 3.77,
+              "avg_ev": 100.6,
+              "avg_pop": 2.13
+            },
+            "all": {
+              "n": 57,
+              "hits": 12,
+              "hit_rate": 21.1,
+              "recovery": 68.2,
+              "avg_odds": 4.04,
+              "avg_ev": 100.1,
+              "avg_pop": 2.23
+            },
+            "edge_train": 14.4,
+            "edge_test": 10.3,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "<15": {
+            "band": "<15",
+            "train": {
+              "n": 38,
+              "hits": 3,
+              "hit_rate": 7.9,
+              "recovery": 128.2,
+              "avg_odds": 33.79,
+              "avg_ev": 109.7,
+              "avg_pop": 6.08
+            },
+            "test": {
+              "n": 41,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 27.1,
+              "avg_ev": 112.5,
+              "avg_pop": 6.54
+            },
+            "all": {
+              "n": 79,
+              "hits": 3,
+              "hit_rate": 3.8,
+              "recovery": 61.6,
+              "avg_odds": 30.32,
+              "avg_ev": 111.2,
+              "avg_pop": 6.32
+            },
+            "edge_train": 67.1,
+            "edge_test": -37.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "検証で崩れ（学習は悪くない）→過学習/不安定"
+          },
+          ">=35": {
+            "band": ">=35",
+            "train": {
+              "n": 7,
+              "hits": 2,
+              "hit_rate": 28.6,
+              "recovery": 40.0,
+              "avg_odds": 2.81,
+              "avg_ev": 94.3,
+              "avg_pop": 1.71
+            },
+            "test": {
+              "n": 8,
+              "hits": 4,
+              "hit_rate": 50.0,
+              "recovery": 76.2,
+              "avg_odds": 1.76,
+              "avg_ev": 87.0,
+              "avg_pop": 1.12
+            },
+            "all": {
+              "n": 15,
+              "hits": 6,
+              "hit_rate": 40.0,
+              "recovery": 59.3,
+              "avg_odds": 2.25,
+              "avg_ev": 90.4,
+              "avg_pop": 1.4
+            },
+            "edge_train": -21.1,
+            "edge_test": 38.5,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "ability_band": {
+          "51-70": {
+            "band": "51-70",
+            "train": {
+              "n": 22,
+              "hits": 5,
+              "hit_rate": 22.7,
+              "recovery": 256.8,
+              "avg_odds": 14.95,
+              "avg_ev": 104.0,
+              "avg_pop": 3.27
+            },
+            "test": {
+              "n": 20,
+              "hits": 2,
+              "hit_rate": 10.0,
+              "recovery": 30.5,
+              "avg_odds": 13.2,
+              "avg_ev": 102.3,
+              "avg_pop": 3.85
+            },
+            "all": {
+              "n": 42,
+              "hits": 7,
+              "hit_rate": 16.7,
+              "recovery": 149.0,
+              "avg_odds": 14.11,
+              "avg_ev": 103.2,
+              "avg_pop": 3.55
+            },
+            "edge_train": 195.7,
+            "edge_test": -7.2,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "71-80": {
+            "band": "71-80",
+            "train": {
+              "n": 13,
+              "hits": 5,
+              "hit_rate": 38.5,
+              "recovery": 105.4,
+              "avg_odds": 6.08,
+              "avg_ev": 97.8,
+              "avg_pop": 2.85
+            },
+            "test": {
+              "n": 16,
+              "hits": 5,
+              "hit_rate": 31.2,
+              "recovery": 59.4,
+              "avg_odds": 6.69,
+              "avg_ev": 97.2,
+              "avg_pop": 2.38
+            },
+            "all": {
+              "n": 29,
+              "hits": 10,
+              "hit_rate": 34.5,
+              "recovery": 80.0,
+              "avg_odds": 6.42,
+              "avg_ev": 97.4,
+              "avg_pop": 2.59
+            },
+            "edge_train": 44.3,
+            "edge_test": 21.7,
+            "n_ok": true,
+            "fragile": false,
+            "status": "悪化再現なし"
+          },
+          "<=50": {
+            "band": "<=50",
+            "train": {
+              "n": 105,
+              "hits": 5,
+              "hit_rate": 4.8,
+              "recovery": 15.1,
+              "avg_odds": 14.3,
+              "avg_ev": 105.1,
+              "avg_pop": 3.94
+            },
+            "test": {
+              "n": 80,
+              "hits": 7,
+              "hit_rate": 8.8,
+              "recovery": 35.6,
+              "avg_odds": 15.73,
+              "avg_ev": 112.0,
+              "avg_pop": 4.89
+            },
+            "all": {
+              "n": 185,
+              "hits": 12,
+              "hit_rate": 6.5,
+              "recovery": 24.0,
+              "avg_odds": 14.92,
+              "avg_ev": 108.1,
+              "avg_pop": 4.35
+            },
+            "edge_train": -46.0,
+            "edge_test": -2.1,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          }
+        },
+        "venue": {
+          "名古屋": {
+            "band": "名古屋",
+            "train": {
+              "n": 11,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 8.55,
+              "avg_ev": 103.9,
+              "avg_pop": 3.91
+            },
+            "test": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 13.73,
+              "avg_ev": 110.8,
+              "avg_pop": 5.0
+            },
+            "all": {
+              "n": 23,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 11.25,
+              "avg_ev": 107.5,
+              "avg_pop": 4.48
+            },
+            "edge_train": -61.1,
+            "edge_test": -37.7,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "園田": {
+            "band": "園田",
+            "train": {
+              "n": 17,
+              "hits": 1,
+              "hit_rate": 5.9,
+              "recovery": 9.4,
+              "avg_odds": 8.87,
+              "avg_ev": 98.2,
+              "avg_pop": 2.59
+            },
+            "test": {
+              "n": 23,
+              "hits": 2,
+              "hit_rate": 8.7,
+              "recovery": 13.5,
+              "avg_odds": 14.15,
+              "avg_ev": 106.7,
+              "avg_pop": 4.04
+            },
+            "all": {
+              "n": 40,
+              "hits": 3,
+              "hit_rate": 7.5,
+              "recovery": 11.8,
+              "avg_odds": 11.91,
+              "avg_ev": 103.1,
+              "avg_pop": 3.42
+            },
+            "edge_train": -51.7,
+            "edge_test": -24.2,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          },
+          "大井": {
+            "band": "大井",
+            "train": {
+              "n": 12,
+              "hits": 2,
+              "hit_rate": 16.7,
+              "recovery": 60.8,
+              "avg_odds": 22.79,
+              "avg_ev": 110.4,
+              "avg_pop": 5.42
+            },
+            "test": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "recovery": null,
+              "avg_odds": null,
+              "avg_ev": null,
+              "avg_pop": null
+            },
+            "all": {
+              "n": 12,
+              "hits": 2,
+              "hit_rate": 16.7,
+              "recovery": 60.8,
+              "avg_odds": 22.79,
+              "avg_ev": 110.4,
+              "avg_pop": 5.42
+            },
+            "edge_train": -0.3,
+            "edge_test": null,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "川崎": {
+            "band": "川崎",
+            "train": {
+              "n": 7,
+              "hits": 4,
+              "hit_rate": 57.1,
+              "recovery": 752.9,
+              "avg_odds": 10.2,
+              "avg_ev": 103.4,
+              "avg_pop": 3.43
+            },
+            "test": {
+              "n": 12,
+              "hits": 2,
+              "hit_rate": 16.7,
+              "recovery": 61.7,
+              "avg_odds": 14.59,
+              "avg_ev": 110.4,
+              "avg_pop": 4.33
+            },
+            "all": {
+              "n": 19,
+              "hits": 6,
+              "hit_rate": 31.6,
+              "recovery": 316.3,
+              "avg_odds": 12.97,
+              "avg_ev": 107.8,
+              "avg_pop": 4.0
+            },
+            "edge_train": 691.8,
+            "edge_test": 24.0,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "浦和": {
+            "band": "浦和",
+            "train": {
+              "n": 7,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 6.47,
+              "avg_ev": 101.0,
+              "avg_pop": 2.71
+            },
+            "test": {
+              "n": 4,
+              "hits": 1,
+              "hit_rate": 25.0,
+              "recovery": 97.5,
+              "avg_odds": 22.45,
+              "avg_ev": 112.5,
+              "avg_pop": 6.0
+            },
+            "all": {
+              "n": 11,
+              "hits": 1,
+              "hit_rate": 9.1,
+              "recovery": 35.5,
+              "avg_odds": 12.28,
+              "avg_ev": 105.2,
+              "avg_pop": 3.91
+            },
+            "edge_train": -61.1,
+            "edge_test": 59.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "盛岡": {
+            "band": "盛岡",
+            "train": {
+              "n": 22,
+              "hits": 2,
+              "hit_rate": 9.1,
+              "recovery": 34.1,
+              "avg_odds": 14.01,
+              "avg_ev": 108.3,
+              "avg_pop": 4.0
+            },
+            "test": {
+              "n": 12,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 9.68,
+              "avg_ev": 108.2,
+              "avg_pop": 3.75
+            },
+            "all": {
+              "n": 34,
+              "hits": 2,
+              "hit_rate": 5.9,
+              "recovery": 22.1,
+              "avg_odds": 12.48,
+              "avg_ev": 108.3,
+              "avg_pop": 3.91
+            },
+            "edge_train": -27.0,
+            "edge_test": -37.7,
+            "n_ok": true,
+            "fragile": true,
+            "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+          },
+          "船橋": {
+            "band": "船橋",
+            "train": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "recovery": null,
+              "avg_odds": null,
+              "avg_ev": null,
+              "avg_pop": null
+            },
+            "test": {
+              "n": 20,
+              "hits": 4,
+              "hit_rate": 20.0,
+              "recovery": 76.5,
+              "avg_odds": 14.53,
+              "avg_ev": 107.0,
+              "avg_pop": 4.35
+            },
+            "all": {
+              "n": 20,
+              "hits": 4,
+              "hit_rate": 20.0,
+              "recovery": 76.5,
+              "avg_odds": 14.53,
+              "avg_ev": 107.0,
+              "avg_pop": 4.35
+            },
+            "edge_train": null,
+            "edge_test": 38.8,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "金沢": {
+            "band": "金沢",
+            "train": {
+              "n": 11,
+              "hits": 2,
+              "hit_rate": 18.2,
+              "recovery": 36.4,
+              "avg_odds": 19.04,
+              "avg_ev": 105.9,
+              "avg_pop": 4.0
+            },
+            "test": {
+              "n": 6,
+              "hits": 0,
+              "hit_rate": 0.0,
+              "recovery": 0.0,
+              "avg_odds": 23.55,
+              "avg_ev": 113.3,
+              "avg_pop": 5.67
+            },
+            "all": {
+              "n": 17,
+              "hits": 2,
+              "hit_rate": 11.8,
+              "recovery": 23.5,
+              "avg_odds": 20.63,
+              "avg_ev": 108.5,
+              "avg_pop": 4.59
+            },
+            "edge_train": -24.7,
+            "edge_test": -37.7,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          },
+          "門別": {
+            "band": "門別",
+            "train": {
+              "n": 28,
+              "hits": 1,
+              "hit_rate": 3.6,
+              "recovery": 10.7,
+              "avg_odds": 14.4,
+              "avg_ev": 102.1,
+              "avg_pop": 3.46
+            },
+            "test": {
+              "n": 20,
+              "hits": 4,
+              "hit_rate": 20.0,
+              "recovery": 48.5,
+              "avg_odds": 10.78,
+              "avg_ev": 105.0,
+              "avg_pop": 3.7
+            },
+            "all": {
+              "n": 48,
+              "hits": 5,
+              "hit_rate": 10.4,
+              "recovery": 26.5,
+              "avg_odds": 12.89,
+              "avg_ev": 103.3,
+              "avg_pop": 3.56
+            },
+            "edge_train": -50.4,
+            "edge_test": 10.8,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          },
+          "高知": {
+            "band": "高知",
+            "train": {
+              "n": 11,
+              "hits": 1,
+              "hit_rate": 9.1,
+              "recovery": 47.3,
+              "avg_odds": 20.06,
+              "avg_ev": 105.0,
+              "avg_pop": 4.55
+            },
+            "test": {
+              "n": 8,
+              "hits": 1,
+              "hit_rate": 12.5,
+              "recovery": 58.8,
+              "avg_odds": 13.96,
+              "avg_ev": 107.9,
+              "avg_pop": 4.75
+            },
+            "all": {
+              "n": 19,
+              "hits": 2,
+              "hit_rate": 10.5,
+              "recovery": 52.1,
+              "avg_odds": 17.49,
+              "avg_ev": 106.2,
+              "avg_pop": 4.63
+            },
+            "edge_train": -13.8,
+            "edge_test": 21.1,
+            "n_ok": false,
+            "fragile": false,
+            "status": "件数不足"
+          }
+        },
+        "surface": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 143,
+              "hits": 16,
+              "hit_rate": 11.2,
+              "recovery": 61.1,
+              "avg_odds": 13.41,
+              "avg_ev": 104.1,
+              "avg_pop": 3.69
+            },
+            "test": {
+              "n": 117,
+              "hits": 14,
+              "hit_rate": 12.0,
+              "recovery": 37.7,
+              "avg_odds": 13.94,
+              "avg_ev": 108.0,
+              "avg_pop": 4.33
+            },
+            "all": {
+              "n": 260,
+              "hits": 30,
+              "hit_rate": 11.5,
+              "recovery": 50.6,
+              "avg_odds": 13.65,
+              "avg_ev": 105.8,
+              "avg_pop": 3.98
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          }
+        },
+        "dist_band": {
+          "不明": {
+            "band": "不明",
+            "train": {
+              "n": 143,
+              "hits": 16,
+              "hit_rate": 11.2,
+              "recovery": 61.1,
+              "avg_odds": 13.41,
+              "avg_ev": 104.1,
+              "avg_pop": 3.69
+            },
+            "test": {
+              "n": 117,
+              "hits": 14,
+              "hit_rate": 12.0,
+              "recovery": 37.7,
+              "avg_odds": 13.94,
+              "avg_ev": 108.0,
+              "avg_pop": 4.33
+            },
+            "all": {
+              "n": 260,
+              "hits": 30,
+              "hit_rate": 11.5,
+              "recovery": 50.6,
+              "avg_odds": 13.65,
+              "avg_ev": 105.8,
+              "avg_pop": 3.98
+            },
+            "edge_train": 0.0,
+            "edge_test": 0.0,
+            "n_ok": true,
+            "fragile": false,
+            "status": "両期間絶対回収<70だがベース比は要確認"
+          }
+        }
+      }
+    }
+  },
+  "fragile_candidates": [
+    {
+      "source": "地方",
+      "rank": "S",
+      "slice": "odds_band",
+      "band": "8-12",
+      "train_n": 14,
+      "train_rec": 0.0,
+      "train_hit": 0.0,
+      "train_odds": 9.8,
+      "test_n": 19,
+      "test_rec": 0.0,
+      "test_hit": 0.0,
+      "test_odds": 10.07,
+      "edge_train": -93.4,
+      "edge_test": -17.5,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "S",
+      "slice": "pop_band",
+      "band": "4-5人気",
+      "train_n": 20,
+      "train_rec": 0.0,
+      "train_hit": 0.0,
+      "train_odds": 12.32,
+      "test_n": 23,
+      "test_rec": 0.0,
+      "test_hit": 0.0,
+      "test_odds": 11.93,
+      "edge_train": -93.4,
+      "edge_test": -17.5,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "A",
+      "slice": "odds_band",
+      "band": "12-20",
+      "train_n": 12,
+      "train_rec": 0.0,
+      "train_hit": 0.0,
+      "train_odds": 15.07,
+      "test_n": 19,
+      "test_rec": 0.0,
+      "test_hit": 0.0,
+      "test_odds": 15.21,
+      "edge_train": -90.8,
+      "edge_test": -94.6,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "A",
+      "slice": "win_band",
+      "band": "25-35",
+      "train_n": 19,
+      "train_rec": 75.3,
+      "train_hit": 26.3,
+      "train_odds": 3.86,
+      "test_n": 15,
+      "test_rec": 48.7,
+      "test_hit": 13.3,
+      "test_odds": 5.09,
+      "edge_train": -15.5,
+      "edge_test": -45.9,
+      "status": "両期間で同ランクベースラインより悪化"
+    },
+    {
+      "source": "地方",
+      "rank": "A",
+      "slice": "win_band",
+      "band": "<15",
+      "train_n": 27,
+      "train_rec": 81.5,
+      "train_hit": 3.7,
+      "train_odds": 46.73,
+      "test_n": 29,
+      "test_rec": 0.0,
+      "test_hit": 0.0,
+      "test_odds": 50.94,
+      "edge_train": -9.3,
+      "edge_test": -94.6,
+      "status": "両期間で同ランクベースラインより悪化"
+    },
+    {
+      "source": "地方",
+      "rank": "A",
+      "slice": "ability_band",
+      "band": "51-70",
+      "train_n": 25,
+      "train_rec": 14.8,
+      "train_hit": 4.0,
+      "train_odds": 33.35,
+      "test_n": 31,
+      "test_rec": 72.3,
+      "test_hit": 9.7,
+      "test_odds": 27.15,
+      "edge_train": -76.0,
+      "edge_test": -22.3,
+      "status": "両期間で同ランクベースラインより悪化"
+    },
+    {
+      "source": "地方",
+      "rank": "A",
+      "slice": "ability_band",
+      "band": "71-80",
+      "train_n": 25,
+      "train_rec": 82.0,
+      "train_hit": 8.0,
+      "train_odds": 22.72,
+      "test_n": 20,
+      "test_rec": 18.5,
+      "test_hit": 5.0,
+      "test_odds": 37.91,
+      "edge_train": -8.8,
+      "edge_test": -76.1,
+      "status": "両期間で同ランクベースラインより悪化"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "odds_band",
+      "band": "12-20",
+      "train_n": 17,
+      "train_rec": 0.0,
+      "train_hit": 0.0,
+      "train_odds": 15.52,
+      "test_n": 21,
+      "test_rec": 18.6,
+      "test_hit": 4.8,
+      "test_odds": 15.34,
+      "edge_train": -61.1,
+      "edge_test": -19.1,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "pop_band",
+      "band": "4-5人気",
+      "train_n": 28,
+      "train_rec": 19.3,
+      "train_hit": 3.6,
+      "train_odds": 11.09,
+      "test_n": 35,
+      "test_rec": 34.6,
+      "test_hit": 5.7,
+      "test_odds": 12.44,
+      "edge_train": -41.8,
+      "edge_test": -3.1,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "ev_band",
+      "band": "115-120",
+      "train_n": 22,
+      "train_rec": 24.5,
+      "train_hit": 4.5,
+      "train_odds": 15.94,
+      "test_n": 31,
+      "test_rec": 26.5,
+      "test_hit": 3.2,
+      "test_odds": 16.66,
+      "edge_train": -36.6,
+      "edge_test": -11.2,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "ability_band",
+      "band": "<=50",
+      "train_n": 105,
+      "train_rec": 15.1,
+      "train_hit": 4.8,
+      "train_odds": 14.3,
+      "test_n": 80,
+      "test_rec": 35.6,
+      "test_hit": 8.8,
+      "test_odds": 15.73,
+      "edge_train": -46.0,
+      "edge_test": -2.1,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "venue",
+      "band": "園田",
+      "train_n": 17,
+      "train_rec": 9.4,
+      "train_hit": 5.9,
+      "train_odds": 8.87,
+      "test_n": 23,
+      "test_rec": 13.5,
+      "test_hit": 8.7,
+      "test_odds": 14.15,
+      "edge_train": -51.7,
+      "edge_test": -24.2,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "venue",
+      "band": "盛岡",
+      "train_n": 22,
+      "train_rec": 34.1,
+      "train_hit": 9.1,
+      "train_odds": 14.01,
+      "test_n": 12,
+      "test_rec": 0.0,
+      "test_hit": 0.0,
+      "test_odds": 9.68,
+      "edge_train": -27.0,
+      "edge_test": -37.7,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    }
+  ],
+  "improvement_candidates": [
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "venue",
+      "band": "園田",
+      "train_n": 17,
+      "train_rec": 9.4,
+      "train_hit": 5.9,
+      "train_odds": 8.87,
+      "test_n": 23,
+      "test_rec": 13.5,
+      "test_hit": 8.7,
+      "test_odds": 14.15,
+      "edge_train": -51.7,
+      "edge_test": -24.2,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "ev_band",
+      "band": "115-120",
+      "train_n": 22,
+      "train_rec": 24.5,
+      "train_hit": 4.5,
+      "train_odds": 15.94,
+      "test_n": 31,
+      "test_rec": 26.5,
+      "test_hit": 3.2,
+      "test_odds": 16.66,
+      "edge_train": -36.6,
+      "edge_test": -11.2,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "pop_band",
+      "band": "4-5人気",
+      "train_n": 28,
+      "train_rec": 19.3,
+      "train_hit": 3.6,
+      "train_odds": 11.09,
+      "test_n": 35,
+      "test_rec": 34.6,
+      "test_hit": 5.7,
+      "test_odds": 12.44,
+      "edge_train": -41.8,
+      "edge_test": -3.1,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "B",
+      "slice": "ability_band",
+      "band": "<=50",
+      "train_n": 105,
+      "train_rec": 15.1,
+      "train_hit": 4.8,
+      "train_odds": 14.3,
+      "test_n": 80,
+      "test_rec": 35.6,
+      "test_hit": 8.8,
+      "test_odds": 15.73,
+      "edge_train": -46.0,
+      "edge_test": -2.1,
+      "status": "両期間でベースより悪化かつ絶対回収<70（再現性ありの悪化条件）"
+    },
+    {
+      "source": "地方",
+      "rank": "A",
+      "slice": "win_band",
+      "band": "25-35",
+      "train_n": 19,
+      "train_rec": 75.3,
+      "train_hit": 26.3,
+      "train_odds": 3.86,
+      "test_n": 15,
+      "test_rec": 48.7,
+      "test_hit": 13.3,
+      "test_odds": 5.09,
+      "edge_train": -15.5,
+      "edge_test": -45.9,
+      "status": "両期間で同ランクベースラインより悪化"
+    },
+    {
+      "source": "地方",
+      "rank": "A",
+      "slice": "ability_band",
+      "band": "51-70",
+      "train_n": 25,
+      "train_rec": 14.8,
+      "train_hit": 4.0,
+      "train_odds": 33.35,
+      "test_n": 31,
+      "test_rec": 72.3,
+      "test_hit": 9.7,
+      "test_odds": 27.15,
+      "edge_train": -76.0,
+      "edge_test": -22.3,
+      "status": "両期間で同ランクベースラインより悪化"
+    }
+  ],
+  "conclusion": {
+    "implement_now": false,
+    "reason": "分析のみ。再現性のある悪化条件が十分件数で出たものだけ候補提示。未提示の条件は採用しない。",
+    "candidates_count": 6,
+    "note_surface_distance": "馬場・距離は列欠損が多く「不明」が多い場合あり。その帯は採用不可。"
+  }
+}
