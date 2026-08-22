@@ -297,11 +297,6 @@ def calc_ai_confidence(record: dict, pick: dict | None = None, repro: float | No
         score -= 8
     # 結果検証に基づく軽い補正（自己学習ではなく固定テーブル）
     score += _result_correction_delta(record)
-    rank = str(record.get('勝負ランク') or '').upper()
-    if rank == 'S':
-        score += 4
-    elif rank == 'C':
-        score -= 4
     return round(_clamp(score, 5, 95), 1)
 
 
@@ -401,8 +396,105 @@ def _result_correction_delta(record: dict) -> float:
     return round(_clamp(delta, -8.0, 8.0), 2)
 
 
+def _parse_pop(v) -> float | None:
+    """人気番号を float 化。欠損は None。"""
+    x = safe_float(v, None)
+    if x is None or x <= 0 or x > 18:
+        return None
+    return x
+
+
+def _edge_pp(adj_win_pct: float | None, implied_pct: float | None) -> float:
+    """補正勝率と市場暗示勝率の差（ポイント）。"""
+    if adj_win_pct is None or implied_pct is None:
+        return 0.0
+    return float(adj_win_pct) - float(implied_pct)
+
+
+def _min_buy_edge_pp(market_odds: float | None, source: str = 'jra') -> float:
+    """BUYに必要な最低エッジ（pp）。オッズ帯・ソースで緩和。"""
+    src = str(source or 'jra').lower()
+    odds = safe_float(market_odds, 10.0) or 10.0
+    if src == 'nar':
+        if odds >= 25:
+            return 1.8
+        if odds >= 15:
+            return 2.2
+        return 2.8
+    if odds >= 20:
+        return 2.0
+    if odds >= 10:
+        return 2.5
+    return 3.0
+
+
+def _popular_overbet_factor(
+    market_pop: float | None,
+    market_odds: float | None,
+    ai_p: float,
+    implied: float,
+) -> float:
+    """1〜3番人気の過大評価を抑制する係数（1.0=抑制なし、小さいほど強い抑制）。"""
+    pop = _parse_pop(market_pop)
+    if pop is None or implied <= 0:
+        return 1.0
+    ratio = ai_p / max(implied, 0.01)
+    factor = 1.0
+    if pop <= 2:
+        if ratio > 1.35:
+            factor *= 0.55
+        elif ratio > 1.20:
+            factor *= 0.72
+        if market_odds is not None and market_odds < 5.0 and ratio > 1.10:
+            factor *= 0.80
+    elif pop <= 3:
+        if ratio > 1.45:
+            factor *= 0.68
+        elif ratio > 1.30:
+            factor *= 0.82
+    return _clamp(factor, 0.35, 1.0)
+
+
+def _buy_quality_ok(record: dict) -> tuple[bool, str]:
+    """BUY品質ゲート: 実エッジ・補正勝率・過剰人気を確認。"""
+    adj = safe_float(record.get('補正勝率'), None)
+    impl = safe_float(record.get('市場暗示勝率'), None)
+    if adj is None or impl is None:
+        market = parse_odds_value(record.get('本命オッズ') or record.get('現在オッズ'))
+        if market and market > 0:
+            impl = 100.0 / market
+        else:
+            return False, 'オッズ不足'
+    edge = _edge_pp(adj, impl)
+    src = str(record.get('source') or 'jra').lower()
+    market = parse_odds_value(record.get('本命オッズ') or record.get('現在オッズ'))
+    min_edge = _min_buy_edge_pp(market, src)
+    if edge < min_edge:
+        return False, f'実エッジ不足（{edge:+.1f}pp < {min_edge:.1f}pp）'
+
+    pop = _parse_pop(record.get('本命人気'))
+    if pop is not None and pop <= 2:
+        rel_need = impl * 0.14
+        if edge < max(min_edge, rel_need):
+            return False, f'1〜2番人気はエッジ{max(min_edge, rel_need):.1f}pp以上必要'
+        if adj is not None and adj < impl * 1.08:
+            return False, '過剰人気（補正勝率≦市場）'
+
+    odds = safe_float(market, 10.0) or 10.0
+    min_adj = 5.0 if odds >= 20 else (6.5 if odds >= 10 else 8.0)
+    if adj is not None and adj < min_adj:
+        return False, f'補正勝率不足（{adj:.1f}% < {min_adj:.1f}%）'
+
+    sim = safe_float(record.get('シミュレーション勝率'), None)
+    if pop is not None and pop <= 3 and sim and impl and sim > impl * 1.45:
+        if edge < min_edge + 1.5:
+            return False, 'SIM過大×人気上位（エッジ不足）'
+
+    return True, ''
+
+
 def _ability_gap_score(record: dict) -> float:
-    """本命と対抗の能力差 0-100（差が大きいほど読みやすい）。"""
+    """本命と対抗の能力差 0-100（指数差＋SIM勝率差を合成）。"""
     cards = [c for c in (record.get('ピックカード一覧') or []) if isinstance(c, dict)]
     main = next((c for c in cards if c.get('役割') == '本命'), None)
     rival = next((c for c in cards if c.get('役割') == '対抗'), None)
@@ -420,25 +512,59 @@ def _ability_gap_score(record: dict) -> float:
                 continue
         return None
 
+    def _sim(c):
+        return parse_odds_value(c.get('勝率'))
+
     m = _idx(main)
-    if m is None:
-        return 45.0
-    if not rival:
-        return _clamp(50.0 + (m - 50.0) * 0.4)
-    r = _idx(rival)
-    if r is None:
-        return _clamp(50.0 + (m - 50.0) * 0.3)
-    gap = m - r
-    # 指数順位なら既にスケール済み。評価差 8〜25 が理想帯
-    if gap >= 18:
-        return 88.0
-    if gap >= 10:
-        return 75.0
-    if gap >= 5:
-        return 62.0
-    if gap >= 0:
-        return 48.0
-    return 32.0
+    idx_score = 45.0
+    if m is not None:
+        if not rival:
+            idx_score = _clamp(50.0 + (m - 50.0) * 0.4)
+        else:
+            r = _idx(rival)
+            if r is None:
+                idx_score = _clamp(50.0 + (m - 50.0) * 0.3)
+            else:
+                gap = m - r
+                if gap >= 18:
+                    idx_score = 88.0
+                elif gap >= 10:
+                    idx_score = 75.0
+                elif gap >= 5:
+                    idx_score = 62.0
+                elif gap >= 0:
+                    idx_score = 48.0
+                else:
+                    idx_score = 32.0
+
+    # SIM勝率差（本命 vs 対抗 or 2位）
+    main_sim = _sim(main) or parse_odds_value(record.get('シミュレーション勝率'))
+    rival_sim = _sim(rival) if rival else None
+    if rival_sim is None and cards:
+        others = sorted(
+            (_sim(c) for c in cards if c.get('役割') != '本命' and _sim(c)),
+            reverse=True,
+        )
+        rival_sim = others[0] if others else None
+    sim_score = 45.0
+    if main_sim is not None and rival_sim is not None:
+        sg = main_sim - rival_sim
+        if sg >= 12:
+            sim_score = 85.0
+        elif sg >= 7:
+            sim_score = 72.0
+        elif sg >= 4:
+            sim_score = 60.0
+        elif sg >= 1:
+            sim_score = 48.0
+        else:
+            sim_score = 35.0
+    elif main_sim is not None and main_sim >= 22:
+        sim_score = 68.0
+    elif main_sim is not None and main_sim >= 15:
+        sim_score = 58.0
+
+    return round(_clamp(idx_score * 0.45 + sim_score * 0.55), 1)
 
 
 def _pace_clarity_score(record: dict) -> float:
@@ -649,8 +775,18 @@ def finalize_race_rank(record: dict, provisional: str | None = None) -> str:
     return rk if rk in ('S', 'A', 'B', 'C', 'D') else 'D'
 
 
-def _edge_take_rate(conf: float, repro: float, n: int, apt: float, market: float, reasons: str) -> float:
-    """AIが主張するエッジのうち、期待値に取り込む割合（0〜0.55）。"""
+def _edge_take_rate(
+    conf: float,
+    repro: float,
+    n: int,
+    apt: float,
+    market: float,
+    reasons: str,
+    market_pop: float | None = None,
+    ai_p: float | None = None,
+    implied: float | None = None,
+) -> float:
+    """AIが主張するエッジのうち、期待値に取り込む割合（0〜0.62）。"""
     take = (
         (conf / 100.0) ** 1.15
         * (max(8.0, repro) / 100.0) ** 0.65
@@ -674,10 +810,20 @@ def _edge_take_rate(conf: float, repro: float, n: int, apt: float, market: float
         take *= 0.70
     if 'サンプル少' in reasons or '履歴少' in reasons:
         take *= 0.72
+    if ai_p is not None and implied is not None and implied > 0:
+        take *= _popular_overbet_factor(market_pop, market, ai_p, implied)
     return _clamp(take, 0.04, 0.62)
 
 
-def _claimable_ai_prob(ai_p: float, implied: float, conf: float, repro: float, n: int) -> float:
+def _claimable_ai_prob(
+    ai_p: float,
+    implied: float,
+    conf: float,
+    repro: float,
+    n: int,
+    market_pop: float | None = None,
+    market_odds: float | None = None,
+) -> float:
     """市場から大きく離れたAI勝率は、信頼度に応じてだけ認める。"""
     abs_cap = 0.08 + 0.34 * (conf / 100.0)  # 8%〜42%
     rel_cap = implied * (
@@ -685,7 +831,16 @@ def _claimable_ai_prob(ai_p: float, implied: float, conf: float, repro: float, n
     )
     max_pp = 0.015 + 0.14 * (conf / 100.0) * (repro / 100.0) * min(1.0, n / 4.0)
     pp_cap = implied + max_pp
-    return _clamp(min(ai_p, abs_cap, rel_cap, pp_cap), 0.002, 0.55)
+    capped = _clamp(min(ai_p, abs_cap, rel_cap, pp_cap), 0.002, 0.55)
+    pop = _parse_pop(market_pop)
+    if pop is not None and pop <= 3 and implied > 0:
+        ratio = capped / implied
+        if pop <= 2 and ratio > 1.25:
+            capped = implied + (capped - implied) * 0.55
+        elif ratio > 1.35:
+            capped = implied + (capped - implied) * 0.65
+        capped = _clamp(capped, 0.002, 0.55)
+    return capped
 
 
 def _soft_display_ev(raw_ev: float) -> int:
@@ -710,13 +865,15 @@ def score_horse_ev(
     n: int,
     apt: float,
     reasons: str = '',
+    market_pop: float | None = None,
 ) -> dict:
     """単頭の信頼度補正期待値。100%＝現在オッズと同値の勝率想定。"""
     empty = {
         '期待値': None, '期待値生': None, '期待値表示': '—', '期待値エッジ': None,
         '期待値トーン': 'ev-none', '期待値ラベル': '—', '期待値コメント': '—',
         '期待値あり': False, '補正勝率': None, 'ブレンド係数': None,
-        'AI適正オッズ補正': None,
+        'AI適正オッズ補正': None, '市場暗示勝率': None, 'AI勝率採用': None,
+        '実エッジpp': None,
     }
     market = parse_odds_value(market)
     if market is None or market <= 0:
@@ -730,8 +887,8 @@ def score_horse_ev(
         return empty
 
     implied = 1.0 / market  # 100% EV の基準（控除は別途信頼度で織り込み）
-    ai_eff = _claimable_ai_prob(ai_p, implied, conf, repro, n)
-    take = _edge_take_rate(conf, repro, n, apt, market, reasons)
+    ai_eff = _claimable_ai_prob(ai_p, implied, conf, repro, n, market_pop, market)
+    take = _edge_take_rate(conf, repro, n, apt, market, reasons, market_pop, ai_eff, implied)
     edge_p = ai_eff - implied
     adj_p = implied + edge_p * take
     adj_p = _clamp(adj_p, 0.002, 0.55)
@@ -739,6 +896,7 @@ def score_horse_ev(
     raw_ev = market * adj_p * 100.0
     display_ev = _soft_display_ev(raw_ev)
     fair_adj = max(AI_FAIR_ODDS_MIN, 1.0 / max(adj_p, 1e-6))
+    edge_pp = round((adj_p - implied) * 100.0, 1)
 
     return {
         '期待値': display_ev,
@@ -754,6 +912,7 @@ def score_horse_ev(
         'AI適正オッズ補正': round(fair_adj, 1),
         'AI勝率採用': round(ai_eff * 100, 1),
         '市場暗示勝率': round(implied * 100, 1),
+        '実エッジpp': edge_pp,
     }
 
 
@@ -772,6 +931,7 @@ def calc_confidence_adjusted_ev(record: dict) -> dict:
     conf = calc_ai_confidence(record, pick, repro=repro)
     apt, apt_detail = _aptitude_score(record, pick)
     reasons = str(record.get('本命理由') or '') + ' / ' + str(pick.get('不安材料') or '')
+    market_pop = _parse_pop(record.get('本命人気') or pick.get('人気'))
 
     base = {
         'AI信頼度スコア': conf,
@@ -780,7 +940,7 @@ def calc_confidence_adjusted_ev(record: dict) -> dict:
         '適性内訳': apt_detail,
         'データ件数': n,
     }
-    scored = score_horse_ev(market, win_pct, fair, conf, repro, n, apt, reasons)
+    scored = score_horse_ev(market, win_pct, fair, conf, repro, n, apt, reasons, market_pop)
     scored.update(base)
     return scored
 
@@ -909,15 +1069,28 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
 
 
 def _buy_score(record: dict) -> float:
-    """厳選時の並び用スコア。"""
+    """厳選時の並び用スコア（実エッジppを最重視）。"""
     ev = safe_float(record.get('期待値'), 0.0) or 0.0
     rc = safe_float(record.get('レース信頼度スコア'), None)
     if rc is None:
         rc = safe_float(record.get('AI信頼度スコア'), 0.0) or 0.0
-    rank_bonus = {'S': 12, 'A': 8, 'B': 3, 'C': 0, 'D': -4}.get(
+    rank_bonus = {'S': 10, 'A': 6, 'B': 2, 'C': 0, 'D': -6}.get(
         str(record.get('勝負ランク') or '').upper(), 0
     )
-    return rc * 0.65 + max(0.0, ev - 100.0) * 1.8 + rank_bonus
+    edge_pp = safe_float(record.get('実エッジpp'), None)
+    if edge_pp is None:
+        edge_pp = _edge_pp(
+            safe_float(record.get('補正勝率'), None),
+            safe_float(record.get('市場暗示勝率'), None),
+        )
+    edge_bonus = max(0.0, float(edge_pp or 0)) * 2.8
+    pop = _parse_pop(record.get('本命人気'))
+    pop_pen = 0.0
+    if pop is not None and pop <= 2 and (edge_pp or 0) < 4.0:
+        pop_pen = 12.0
+    adj = safe_float(record.get('補正勝率'), 0.0) or 0.0
+    adj_bonus = min(8.0, max(0.0, adj - 8.0) * 0.4)
+    return rc * 0.45 + edge_bonus + adj_bonus + max(0.0, ev - 100.0) * 0.6 + rank_bonus - pop_pen
 
 
 def _scope_key(record: dict, by_venue: bool) -> str:
@@ -1027,7 +1200,7 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
             r['BET判定'] = RANK_LABELS.get(rk, '')
             r['BETクラス'] = RANK_CLASSES.get(rk, '')
 
-        # 買い候補: S/A かつ EV・信頼度ゲート通過
+        # 買い候補: S/A かつ EV・信頼度・実エッジゲート通過
         candidates = []
         for idx, r in items:
             rk = str(r.get('勝負ランク') or '')
@@ -1041,6 +1214,11 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
             if not has_odds or ev is None:
                 continue
             if ev < BUY_EV_FLOOR or conf < BUY_CONF_FLOOR or rc < BUY_CONF_FLOOR or repro < 40:
+                continue
+            ok_q, q_reason = _buy_quality_ok(r)
+            r['BUY品質判定'] = ok_q
+            r['BUY品質理由'] = q_reason if not ok_q else ''
+            if not ok_q:
                 continue
             candidates.append((idx, r))
 
@@ -1076,6 +1254,8 @@ _FINALIZE_PERSIST_COLS = (
     'AI信頼度スコア', 'シミュレーション再現率', 'データ件数',
     'レース信頼度スコア', '能力差スコア', '展開読みやすさ',
     'データ件数スコア', 'シミュレーション一致率', '競馬場バイアス一致率',
+    '補正勝率', '市場暗示勝率', '実エッジpp', 'AI勝率採用',
+    'BUY品質判定', 'BUY品質理由',
     'S降格', 'S降格理由',
 )
 
@@ -1345,57 +1525,107 @@ def _write_rank_perf(payload: dict) -> None:
         print(f'[rank-perf] write fail: {e}', flush=True)
 
 
-def build_ai_buy_reasons(record: dict, limit: int = 3) -> list[str]:
-    """詳細用の短い買い理由（最大3）。"""
+def build_buy_rationale(record: dict) -> dict:
+    """BUYカード向けの根拠パック（プラス/マイナス/数値）。"""
+    pick = _main_pick_card(record)
+    plus_items: list[str] = []
+    minus_items: list[str] = []
+
+    edge_pp = safe_float(record.get('実エッジpp'), None)
+    adj = safe_float(record.get('補正勝率'), None)
+    impl = safe_float(record.get('市場暗示勝率'), None)
+    pop = _parse_pop(record.get('本命人気'))
+    rk = str(record.get('勝負ランク') or '')
+
+    for src in (pick.get('プラス材料一覧') or [], str(pick.get('プラス材料') or '').split(' / ')):
+        for p in src:
+            s = str(p or '').strip()
+            if s and s not in plus_items:
+                plus_items.append(s)
+
+    for src in (pick.get('マイナス材料一覧') or [], str(pick.get('不安材料') or '').split(' / ')):
+        for m in src:
+            s = str(m or '').strip()
+            if s and s not in minus_items:
+                minus_items.append(s)
+
+    if edge_pp is not None and edge_pp >= 2.5:
+        plus_items.insert(0, f'実エッジ＋{edge_pp:.1f}pp（補正{adj:.0f}% vs 市場{impl:.0f}%）')
+    elif edge_pp is not None and edge_pp < 2.0:
+        minus_items.append(f'実エッジ僅差（{edge_pp:+.1f}pp）')
+
+    repro = safe_float(record.get('シミュレーション再現率'), None)
+    if repro is not None and repro >= 75:
+        plus_items.append(f'再現性{repro:.0f}%')
+    elif repro is not None and repro < 55:
+        minus_items.append(f'再現性低め（{repro:.0f}%）')
+
+    n = safe_int(record.get('データ件数'), 0)
+    if n >= 4:
+        plus_items.append(f'過去{n}走データ')
+    elif n <= 2:
+        minus_items.append('サンプル少')
+
+    if pop is not None and pop <= 3:
+        minus_items.append(f'{int(pop)}番人気（過剰人気リスク）')
+
+    sim = safe_float(record.get('シミュレーション勝率'), None)
+    if sim and impl and sim > impl * 1.35 and pop and pop <= 3:
+        minus_items.append('SIM勝率が市場より過大')
+
+    ok_q, q_reason = _buy_quality_ok(record)
+    return {
+        'ランク': rk,
+        '補正勝率': adj,
+        '市場暗示勝率': impl,
+        '実エッジpp': edge_pp,
+        '人気': int(pop) if pop else None,
+        'プラス': plus_items[:4],
+        'マイナス': minus_items[:3],
+        '品質OK': ok_q,
+        '品質理由': q_reason,
+    }
+
+
+def build_ai_buy_reasons(record: dict, limit: int = 4) -> list[str]:
+    """BUYカード用の短い根拠（実エッジ・適性・指数根拠）。"""
     reasons: list[str] = []
+    pack = build_buy_rationale(record)
 
     def add(msg: str):
         msg = str(msg or '').strip()
         if msg and msg not in reasons and len(reasons) < limit:
             reasons.append(msg)
 
+    edge_pp = pack.get('実エッジpp')
+    adj = pack.get('補正勝率')
+    impl = pack.get('市場暗示勝率')
+    rk = pack.get('ランク')
+    if rk:
+        add(f'勝負ランク{rk}')
+    if edge_pp is not None and adj is not None and impl is not None:
+        add(f'実エッジ＋{edge_pp:.1f}pp（想定{adj:.0f}% / 市場{impl:.0f}%）')
+    elif edge_pp is not None:
+        add(f'実エッジ＋{edge_pp:.1f}pp')
+
     ev = record.get('期待値')
     try:
-        edge = int(round(float(ev) - 100)) if ev is not None else None
+        disp_edge = int(round(float(ev) - 100)) if ev is not None else None
     except (TypeError, ValueError):
-        edge = None
-    if edge is not None and edge > 0:
-        add(f'単勝期待値＋{edge}%')
-    elif edge is not None and edge < 0:
-        add(f'単勝期待値{edge}%')
+        disp_edge = None
+    if disp_edge is not None and disp_edge >= 8 and len(reasons) < limit:
+        add(f'表示期待値＋{disp_edge}%')
 
-    for pick in (record.get('予想馬') or [])[:1]:
-        for tip in (pick.get('要点') or [])[:2]:
-            add(str(tip))
-    if not reasons:
-        for c in (record.get('ピックカード一覧') or [])[:1]:
-            if not isinstance(c, dict):
-                continue
-            try:
-                idx = int(float(c.get('近走指数順位')))
-                if idx == 1:
-                    add('近走指数トップ')
-                elif idx <= 3:
-                    add(f'近走指数{idx}位')
-            except (TypeError, ValueError):
-                pass
-            mo = c.get('単勝オッズ')
-            fo = c.get('AI適正オッズ')
-            try:
-                if mo and fo and float(mo) > float(fo) * 1.15:
-                    add('人気との乖離が大きい')
-            except (TypeError, ValueError):
-                pass
-            for p in (c.get('プラス材料一覧') or []):
-                add(str(p))
-                if len(reasons) >= limit:
-                    break
-    while len(reasons) < min(2, limit) and record.get('投資判定') == '買い':
-        for filler in ('条件面のバランスが良い', '相手関係でも残せる', '再現性のある評価'):
-            add(filler)
-            if len(reasons) >= min(2, limit):
-                break
-        break
+    for p in pack.get('プラス') or []:
+        if '実エッジ' not in p:
+            add(p)
+        if len(reasons) >= limit:
+            break
+
+    pop = pack.get('人気')
+    if pop and pop >= 5 and len(reasons) < limit:
+        add(f'{pop}番人気の妙味')
+
     return reasons[:limit]
 
 
@@ -1474,6 +1704,7 @@ def _rescore_pick_cards(record: dict, conf: float, repro: float, n: int, apt: fl
         # 既存CSVでも【AI信頼度】【理由】【コメント】を埋める
         enrich_pick_card(card, record)
         horse_conf = float(card.get('AI信頼度スコア') or conf)
+        card_pop = _parse_pop(card.get('人気'))
         scored = score_horse_ev(
             card.get('単勝オッズ'),
             card.get('勝率'),
@@ -1483,6 +1714,7 @@ def _rescore_pick_cards(record: dict, conf: float, repro: float, n: int, apt: fl
             n,
             apt,
             reasons + ' / ' + str(card.get('不安材料') or ''),
+            card_pop,
         )
         if scored.get('期待値あり'):
             card['期待値'] = scored['期待値']
@@ -1508,6 +1740,7 @@ def _rescore_pick_cards(record: dict, conf: float, repro: float, n: int, apt: fl
 
 def apply_expected_value(record: dict) -> dict:
     """信頼度補正期待値・AI信頼度・再現率・買い判定を一括付与。"""
+    _hydrate_record_for_finalize(record)
     normalize_fair_odds_fields(record)
     fair = parse_odds_value(record.get('AI適正オッズ'))
     market = parse_odds_value(record.get('本命オッズ'))
@@ -1531,6 +1764,9 @@ def apply_expected_value(record: dict) -> dict:
     record['補正勝率'] = ev.get('補正勝率')
     record['データ件数'] = ev.get('データ件数')
     record['ブレンド係数'] = ev.get('ブレンド係数')
+    record['市場暗示勝率'] = ev.get('市場暗示勝率')
+    record['AI勝率採用'] = ev.get('AI勝率採用')
+    record['実エッジpp'] = ev.get('実エッジpp')
     if ev.get('AI適正オッズ補正') is not None:
         record['AI適正オッズ表示'] = ev['AI適正オッズ補正']
     record['AI信頼度'] = stars_for_score(safe_int(ev.get('AI信頼度スコア'), 50))
@@ -1563,7 +1799,8 @@ def apply_expected_value(record: dict) -> dict:
 
     # ランク＝レース信頼度、買い＝厳選前の暫定（一覧は apply_display_ranks で最終確定）
     apply_ev_rank_and_labels(record)
-    record['AI買い理由'] = build_ai_buy_reasons(record, limit=3)
+    record['AI買い理由'] = build_ai_buy_reasons(record, limit=4)
+    record['BUY根拠'] = build_buy_rationale(record)
 
     if ev.get('期待値あり') and (ev.get('期待値生') or 0) >= 160:
         import logging

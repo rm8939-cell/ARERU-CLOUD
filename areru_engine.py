@@ -550,6 +550,14 @@ def simulate_race(g, runs=None, profiles=None, pace=None):
             # SIMが市場より強いほど市場寄りへ（長穴の37%勝ち等を潰す）
             ratio=np.maximum(win, 0.01)/np.maximum(impl, 0.05)
             sim_w=np.clip(0.58 - 0.12*np.log1p(np.maximum(ratio-1.0, 0.0)), 0.28, 0.62)
+            # 1〜3番人気でSIMが市場を大きく上回る場合はさらに市場寄り
+            if "人気" in g.columns:
+                pop_arr=pd.to_numeric(g["人気"], errors="coerce").to_numpy(dtype=float)
+                pop_hot=np.isfinite(pop_arr) & (pop_arr <= 3) & valid
+                if pop_hot.any():
+                    hot_ratio=ratio[pop_hot]
+                    extra=np.clip(0.22 - 0.08*np.log1p(np.maximum(hot_ratio-1.0, 0.0)), 0.08, 0.22)
+                    sim_w[pop_hot]=np.minimum(sim_w[pop_hot], 0.62 - extra)
             win=sim_w*win+(1.0-sim_w)*impl
             win=_cap_sim_win_rates(win)
             # 合計100%へ再正規化
