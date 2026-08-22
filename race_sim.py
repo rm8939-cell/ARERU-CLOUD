@@ -143,8 +143,8 @@ def layoff_days(history: pd.DataFrame | None, horse: str, target) -> float:
 
 def weight_delta(history: pd.DataFrame | None, horse: str, target) -> float:
     """直近2走の馬体重差（kg）。増減が大きいと減点寄り。"""
-    from areru_engine import legacy_score_enabled
-    if legacy_score_enabled():
+    from areru_engine import ablation_enabled
+    if not ablation_enabled('weight'):
         return float("nan")
     if history is None or getattr(history, "empty", True):
         return float("nan")
@@ -159,8 +159,8 @@ def weight_delta(history: pd.DataFrame | None, horse: str, target) -> float:
 
 
 def jockey_bonus(history: pd.DataFrame | None, jockey: str, venue: str, target) -> float:
-    from areru_engine import legacy_score_enabled
-    if legacy_score_enabled():
+    from areru_engine import ablation_enabled
+    if not ablation_enabled('jockey'):
         return 0.0
     if history is not None and not getattr(history, "empty", True) and str(jockey or "").strip():
         j = clean_name(jockey)
@@ -204,7 +204,10 @@ def gate_bias(venue: str, waku, n_horses: int, surface: str) -> float:
 
 
 def course_distance_fit(history: pd.DataFrame | None, horse: str, target, venue: str, dist_m: float, surface: str) -> tuple[float, list[str]]:
+    from areru_engine import ablation_enabled
     reasons: list[str] = []
+    if not ablation_enabled('course'):
+        return 0.0, reasons
     if history is None or getattr(history, "empty", True) or np.isnan(dist_m):
         return 0.0, reasons
     h = history[(history["_horse"] == clean_name(horse)) & (history["_date"] < target)].sort_values("_date", ascending=False).head(12)
@@ -252,8 +255,8 @@ def lap_aptitude(style: float, pace_label: str) -> tuple[float, str]:
 
 def track_condition_bonus(history: pd.DataFrame | None, horse: str, target) -> tuple[float, list[str]]:
     """直近走の馬場状態適性（重・稍重での好走など）。"""
-    from areru_engine import legacy_score_enabled
-    if legacy_score_enabled() or history is None or getattr(history, "empty", True):
+    from areru_engine import ablation_enabled
+    if not ablation_enabled('track') or history is None or getattr(history, "empty", True):
         return 0.0, []
     h = history[(history["_horse"] == clean_name(horse)) & (history["_date"] < target)]
     h = h.sort_values("_date", ascending=False).head(6)
@@ -274,8 +277,8 @@ def track_condition_bonus(history: pd.DataFrame | None, horse: str, target) -> t
 
 def margin_bonus_from_row(row) -> tuple[float, list[str]]:
     """runners 列の着差1..5 から接戦ボーナス。"""
-    from areru_engine import legacy_score_enabled
-    if legacy_score_enabled():
+    from areru_engine import ablation_enabled
+    if not ablation_enabled('margin'):
         return 0.0, []
     scores = []
     for i in range(1, 6):
@@ -296,8 +299,8 @@ def margin_bonus_from_row(row) -> tuple[float, list[str]]:
 
 def time_trend_bonus(row, history: pd.DataFrame | None, horse: str, target) -> tuple[float, list[str]]:
     """タイム改善トレンド。"""
-    from areru_engine import legacy_score_enabled
-    if legacy_score_enabled():
+    from areru_engine import ablation_enabled
+    if not ablation_enabled('time'):
         return 0.0, []
     times: list[float] = []
     for i in range(1, 6):

@@ -27,6 +27,9 @@ services:
       # Render は配信専用。データは GitHub Actions が生成して commit する。
       - key: ARERU_ENABLE_GENERATION
         value: "0"
+      # 新ロジックが旧を上回るまで本番は旧スコア基準（アブレーション検証済みまで）
+      - key: ARERU_LEGACY_SCORE
+        value: "1"
 # データ生成: .github/workflows/nar-daily-data.yml
 #   Actions 上で runners/predictions を作り main に commit → Render が再デプロイ。
 #   モードは「当日 predictions があるか」で決める（schedule は数時間遅延するため）。
