@@ -125,7 +125,7 @@ def _eligible_dates(all_dates: list[str]) -> list[str]:
     return [d for d in all_dates if d in have]
 
 
-def _predict_for_date(target: str, legacy: bool, history: pd.DataFrame, *, sim_runs: int, use_cache: bool) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+def _predict_for_date(target: str, legacy: bool, history: pd.DataFrame, *, sim_runs: int, use_cache: bool, respect_env: bool = False) -> tuple[pd.DataFrame, pd.DataFrame | None]:
     """1日分の predictions + scores を生成（キャッシュ可）。"""
     CACHE.mkdir(parents=True, exist_ok=True)
     tag = 'legacy' if legacy else 'new'
@@ -135,7 +135,8 @@ def _predict_for_date(target: str, legacy: bool, history: pd.DataFrame, *, sim_r
         scores = pd.read_csv(cache_scores, encoding='utf-8-sig') if cache_scores.exists() else None
         return pd.read_csv(cache_pred, encoding='utf-8-sig'), scores
 
-    os.environ['ARERU_LEGACY_SCORE'] = '1' if legacy else '0'
+    if not respect_env:
+        os.environ['ARERU_LEGACY_SCORE'] = '1' if legacy else '0'
     os.environ['ARERU_SIM_RUNS'] = str(sim_runs)
     from replay_predict import load_runners, run_date
     runners = load_runners()

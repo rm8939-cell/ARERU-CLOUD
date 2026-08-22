@@ -47,6 +47,34 @@ def legacy_score_enabled() -> bool:
     return str(os.environ.get('ARERU_LEGACY_SCORE') or '').strip().lower() in ('1', 'true', 'yes')
 
 
+_ABLATION_FEATURES = frozenset({'jockey', 'course', 'time', 'margin', 'track', 'weight', 'enrich'})
+
+
+def ablation_enabled(feature: str) -> bool:
+    """特徴量アブレーション用 ON/OFF。
+
+    - ARERU_LEGACY_SCORE=1 かつ ARERU_ABL_* 未指定 → 全 OFF（距離/コースのみ従来どおり ON）
+    - ARERU_ABL_<FEAT>=1 → 旧ベースでも当該特徴のみ ON
+    - ARERU_LEGACY_SCORE=0 → 全 ON（新ロジック / H）
+    """
+    feat = str(feature or '').strip().lower()
+    if feat not in _ABLATION_FEATURES:
+        return False
+    key = f'ARERU_ABL_{feat.upper()}'
+    explicit = os.environ.get(key)
+    if explicit is not None:
+        return str(explicit).strip().lower() in ('1', 'true', 'yes')
+    if legacy_score_enabled():
+        # 旧ロジックでも race_sim の距離/コース適性は従来から有効
+        return feat == 'course'
+    return True
+
+
+def scoring_enrich_enabled() -> bool:
+    """runners 行への タイム/着差/馬場 enrich が必要か。"""
+    return ablation_enabled('enrich') or any(ablation_enabled(x) for x in ('time', 'margin', 'track'))
+
+
 def parse_date(s):
     s=s.astype(str).str.strip().str.replace('年','-',regex=False).str.replace('月','-',regex=False).str.replace('日','',regex=False).str.replace('/','-',regex=False)
     return pd.to_datetime(s,errors='coerce')
@@ -517,7 +545,10 @@ def _margin_tightness(margin_str) -> float:
 
 def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
     """直近走のタイム・着差・馬場適性から加点（past_five / all_history 両対応）。"""
-    if legacy_score_enabled():
+    use_time = ablation_enabled('time')
+    use_margin = ablation_enabled('margin')
+    use_track = ablation_enabled('track')
+    if not (use_time or use_margin or use_track):
         return 0.0, []
     from race_sim import parse_time_sec
 
@@ -527,43 +558,43 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
     margins: list[float] = []
     tracks: list[str] = []
 
-    has_margin_cols = any(str(row.get(f'着差{i}') or '').strip() not in ('', 'nan', '--') for i in range(1, 6))
+    has_margin_cols = use_margin and any(str(row.get(f'着差{i}') or '').strip() not in ('', 'nan', '--') for i in range(1, 6))
 
-    # runners 列（past_five_for_score / enrich_runner_history_fields 由来）
     for i in range(1, 6):
-        t_raw = row.get(f'タイム{i}')
-        if t_raw not in (None, '', 'nan'):
-            ts = parse_time_sec(t_raw)
-            if not np.isnan(ts):
-                times.append(ts)
+        if use_time:
+            t_raw = row.get(f'タイム{i}')
+            if t_raw not in (None, '', 'nan'):
+                ts = parse_time_sec(t_raw)
+                if not np.isnan(ts):
+                    times.append(ts)
         if has_margin_cols:
             ms = _margin_tightness(row.get(f'着差{i}'))
             if ms > 0:
                 margins.append(ms)
-        trk = str(row.get(f'馬場{i}') or '').strip()
-        if trk and trk.lower() not in ('nan', '--'):
-            tracks.append(trk)
+        if use_track:
+            trk = str(row.get(f'馬場{i}') or '').strip()
+            if trk and trk.lower() not in ('nan', '--'):
+                tracks.append(trk)
 
     horse = clean_name(row.get('馬名'))
     if history is not None and not getattr(history, 'empty', True):
         h = history[(history['_horse'] == horse) & (history['_date'] < target)]
         h = h.sort_values('_date', ascending=False).head(5)
         for _, xr in h.iterrows():
-            if not times:
+            if use_time and not times:
                 ts = parse_time_sec(xr.get('タイム'))
                 if not np.isnan(ts):
                     times.append(ts)
-            if not margins:
+            if use_margin and not margins:
                 ms = _margin_tightness(xr.get('着差'))
                 if ms > 0:
                     margins.append(ms)
-            if not tracks:
+            if use_track and not tracks:
                 trk = str(xr.get('馬場') or '').strip()
                 if trk and trk.lower() not in ('nan', '--'):
                     tracks.append(trk)
 
-    if times:
-        # 近走タイムの改善（秒が小さいほど良い）→ 最大 +2.5
+    if use_time and times:
         if len(times) >= 2 and times[0] < times[1]:
             delta = times[1] - times[0]
             if delta >= 0.8:
@@ -575,16 +606,17 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
         elif len(times) == 1:
             bonus += 0.4
 
-    tight = [m for m in margins if m >= 2.0]
-    if tight:
-        avg_t = float(np.mean(tight[:3]))
-        bonus += min(3.0, avg_t * 0.9)
-        if avg_t >= 2.5:
-            reasons.append('前走接戦好走')
-        else:
-            reasons.append('着差タイト')
+    if use_margin:
+        tight = [m for m in margins if m >= 2.0]
+        if tight:
+            avg_t = float(np.mean(tight[:3]))
+            bonus += min(3.0, avg_t * 0.9)
+            if avg_t >= 2.5:
+                reasons.append('前走接戦好走')
+            else:
+                reasons.append('着差タイト')
 
-    if tracks:
+    if use_track and tracks:
         heavy = sum(1 for t in tracks if any(x in t for x in ('重', '不良', '稍')))
         good = sum(1 for t in tracks if '良' in t and '稍' not in t)
         fin = num(row.get('着順1'))
@@ -1144,10 +1176,9 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         SIM_RUNS, build_profiles, predict_pace, lap_aptitude, style_label,
         circle_ban, stars_from_ev,
     )
-    use_new = not legacy_score_enabled()
     scored=[]
     for _,row in r.iterrows():
-        work = enrich_runner_history_fields(row, history, target) if use_new else row.to_dict()
+        work = enrich_runner_history_fields(row, history, target) if scoring_enrich_enabled() else row.to_dict()
         work_row = pd.Series(work)
         s,f,why=score_runner(work_row,history,target,weights)
         x=dict(work); x.update({'AREru指数':round(s,2),**{f'因子_{k}':round(v,1) for k,v in f.items()},'理由':' / '.join(dict.fromkeys(why[:4])) or '総合評価'})
