@@ -452,6 +452,46 @@ def context_features(history, horse, target, target_source='jra'):
     return {'context':clamp(score),'context_reason':reasons}
 
 
+def expand_scoring_history(history: pd.DataFrame | None = None) -> pd.DataFrame:
+    """all_history + results.csv を統合し、スコアリング用履歴を拡張する。"""
+    parts: list[pd.DataFrame] = []
+    if history is not None and not getattr(history, 'empty', True):
+        parts.append(history.copy())
+    results_path = DATA_DIR / 'results.csv'
+    if results_path.exists():
+        try:
+            r = pd.read_csv(results_path, encoding='utf-8-sig')
+        except Exception:
+            r = pd.DataFrame()
+        if not r.empty and 'date' in r.columns:
+            rr = pd.DataFrame({
+                '馬名': r['馬名'],
+                '年月日': r['date'].astype(str),
+                '場': r.get('開催地', ''),
+                'レース名': r.get('レース', ''),
+                '着順': r.get('着順'),
+                '人気': r.get('人気'),
+            })
+            rr['_date'] = parse_date(rr['年月日'])
+            rr['_horse'] = rr['馬名'].map(clean_name)
+            parts.append(rr)
+    if not parts:
+        return pd.DataFrame()
+    out = pd.concat(parts, ignore_index=True)
+    out['_date'] = parse_date(out.get('年月日', out.get('_date')))
+    if '_horse' not in out.columns:
+        out['_horse'] = out['馬名'].map(clean_name)
+    out = out.dropna(subset=['_date'])
+    out = out.sort_values('_date').drop_duplicates(subset=['_horse', '_date'], keep='last')
+    return out
+
+
+def enrich_runner_history_fields(row, history: pd.DataFrame | None, target) -> dict:
+    """runners 行へ タイム/着差/馬場 をスロットマッチで補完（history_index に委譲）。"""
+    from history_index import enrich_runner_history_fields as _enrich
+    return _enrich(row, history, target)
+
+
 def _margin_tightness(margin_str) -> float:
     """着差文字列を 0〜3 のタイトさスコアへ（ハナ/クビほど高い）。"""
     s = str(margin_str or '').strip()
@@ -487,16 +527,21 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
     margins: list[float] = []
     tracks: list[str] = []
 
-    # runners 列（past_five_for_score 由来）
+    has_margin_cols = any(str(row.get(f'着差{i}') or '').strip() not in ('', 'nan', '--') for i in range(1, 6))
+
+    # runners 列（past_five_for_score / enrich_runner_history_fields 由来）
     for i in range(1, 6):
         t_raw = row.get(f'タイム{i}')
         if t_raw not in (None, '', 'nan'):
             ts = parse_time_sec(t_raw)
             if not np.isnan(ts):
                 times.append(ts)
-        margins.append(_margin_tightness(row.get(f'着差{i}')))
+        if has_margin_cols:
+            ms = _margin_tightness(row.get(f'着差{i}'))
+            if ms > 0:
+                margins.append(ms)
         trk = str(row.get(f'馬場{i}') or '').strip()
-        if trk:
+        if trk and trk.lower() not in ('nan', '--'):
             tracks.append(trk)
 
     horse = clean_name(row.get('馬名'))
@@ -508,11 +553,13 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
                 ts = parse_time_sec(xr.get('タイム'))
                 if not np.isnan(ts):
                     times.append(ts)
-            if not any(margins):
-                margins.append(_margin_tightness(xr.get('着差')))
+            if not margins:
+                ms = _margin_tightness(xr.get('着差'))
+                if ms > 0:
+                    margins.append(ms)
             if not tracks:
                 trk = str(xr.get('馬場') or '').strip()
-                if trk:
+                if trk and trk.lower() not in ('nan', '--'):
                     tracks.append(trk)
 
     if times:
@@ -641,8 +688,14 @@ def score_runner(row, history, target, weights):
     ctx_run = context_features_from_runners(row, target_venue, target_source=target_source)
     ctx = _merge_context_scores(ctx_hist, ctx_run, n_valid)
     detail_adj, detail_reasons = history_detail_bonus(row, history, target)
+    has_real_detail = any(
+        str(row.get(f'タイム{i}') or '').strip() not in ('', 'nan', '--')
+        and str(row.get(f'着差{i}') or '').strip() not in ('', 'nan', '--')
+        for i in range(1, 3)
+    )
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
-    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * 0.12
+    detail_w = 0.28 if (detail_adj >= 1.0 and has_real_detail) else (0.20 if detail_adj >= 1.0 else 0.15)
+    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * detail_w
     reasons=list(ctx['context_reason']) + detail_reasons
     if transfer_reason: reasons.insert(0, transfer_reason)
     if n_valid and n_valid<3: reasons.append('サンプル少')
@@ -712,9 +765,6 @@ def _cap_sim_win_rates(win_pct, max_win=SIM_WIN_MAX_PCT, min_fair=AI_FAIR_ODDS_M
 
 def simulate_race(g, runs=None, profiles=None, pace=None):
     """段階シミュレーション（デフォルト10万回）。profiles/pace が無い場合は指数ガウスにフォールバック。"""
-    if legacy_score_enabled():
-        profiles = None
-        pace = None
     from race_sim import SIM_RUNS, build_profiles, predict_pace, simulate_race_stages
     g=g.copy().reset_index(drop=True)
     runs=int(runs or SIM_RUNS)
@@ -1089,14 +1139,18 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
     r=enrich_runners_past_venues(r)
     if history is not None:
         history=history.copy(); history['_date']=parse_date(history['年月日']); history['_horse']=history['馬名'].map(clean_name)
+        history=expand_scoring_history(history)
     from race_sim import (
         SIM_RUNS, build_profiles, predict_pace, lap_aptitude, style_label,
         circle_ban, stars_from_ev,
     )
+    use_new = not legacy_score_enabled()
     scored=[]
     for _,row in r.iterrows():
-        s,f,why=score_runner(row,history,target,weights)
-        x=row.to_dict(); x.update({'AREru指数':round(s,2),**{f'因子_{k}':round(v,1) for k,v in f.items()},'理由':' / '.join(dict.fromkeys(why[:4])) or '総合評価'})
+        work = enrich_runner_history_fields(row, history, target) if use_new else row.to_dict()
+        work_row = pd.Series(work)
+        s,f,why=score_runner(work_row,history,target,weights)
+        x=dict(work); x.update({'AREru指数':round(s,2),**{f'因子_{k}':round(v,1) for k,v in f.items()},'理由':' / '.join(dict.fromkeys(why[:4])) or '総合評価'})
         scored.append(x)
     sd=pd.DataFrame(scored); out=[]
     for race_id,g0 in sd.groupby('race_id',sort=False):
