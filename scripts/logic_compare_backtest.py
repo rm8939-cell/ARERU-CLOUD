@@ -105,7 +105,16 @@ def _load_results() -> pd.DataFrame:
     p = DATA / 'results.csv'
     if not p.exists():
         raise FileNotFoundError('data/results.csv がありません')
-    r = pd.read_csv(p, encoding='utf-8-sig')
+    last_err = None
+    for _ in range(5):
+        try:
+            r = pd.read_csv(p, encoding='utf-8-sig', low_memory=False)
+            break
+        except Exception as e:
+            last_err = e
+            import time; time.sleep(1.0)
+    else:
+        raise last_err
     r['race_id'] = r['race_id'].astype(str)
     r['date'] = r['date'].astype(str)
     r['馬名'] = r['馬名'].astype(str).str.strip()

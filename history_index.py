@@ -44,6 +44,51 @@ def build_master_history(base: pd.DataFrame | None = None) -> pd.DataFrame:
     return expand_scoring_history(base)
 
 
+def _candidate_history_rows(
+    horse: str,
+    finish,
+    pop,
+    venue: str,
+    history: pd.DataFrame,
+    target,
+) -> list[pd.Series]:
+    """着順×人気×場の候補行（詳細欠損行を後回し）。"""
+    if history is None or history.empty:
+        return []
+    fin_i = _safe_int(finish)
+    pop_i = _safe_int(pop)
+    if fin_i is None:
+        return []
+    h = history[(history['_horse'] == horse) & (history['_date'] < target)]
+    if h.empty:
+        return []
+    strict: list[pd.Series] = []
+    loose: list[pd.Series] = []
+    for _, row in h.iterrows():
+        rf = _safe_int(row.get('着順'))
+        if rf != fin_i:
+            continue
+        rp = _safe_int(row.get('人気'))
+        rv = str(row.get('場') or '').strip()
+        venue_ok = (not venue) or (not rv) or (venue in rv) or (rv in venue)
+        pop_ok = not (pop_i is not None and rp is not None and rp != pop_i)
+        has_detail = any(not _blank(row.get(k)) for k in ('タイム', '着差', '馬場'))
+        if venue_ok and pop_ok:
+            (strict if has_detail else loose).append(row)
+        elif venue_ok or pop_ok:
+            if has_detail:
+                loose.append(row)
+    if strict or loose:
+        return strict + loose
+    # 着順のみフォールバック（詳細あり優先）
+    only_fin = []
+    for _, row in h.iterrows():
+        if _safe_int(row.get('着順')) == fin_i:
+            only_fin.append(row)
+    only_fin.sort(key=lambda r: 0 if any(not _blank(r.get(k)) for k in ('タイム', '着差', '馬場')) else 1)
+    return only_fin
+
+
 def _slot_match_row(
     horse: str,
     finish,
@@ -52,36 +97,16 @@ def _slot_match_row(
     history: pd.DataFrame,
     target,
 ) -> pd.Series | None:
-    """着順×人気×場 で履歴1行を特定。"""
-    if history is None or history.empty:
-        return None
-    fin_i = _safe_int(finish)
-    pop_i = _safe_int(pop)
-    if fin_i is None:
-        return None
-    h = history[(history['_horse'] == horse) & (history['_date'] < target)]
-    if h.empty:
-        return None
-    for _, row in h.iterrows():
-        rf = _safe_int(row.get('着順'))
-        rp = _safe_int(row.get('人気'))
-        rv = str(row.get('場') or '').strip()
-        if rf != fin_i:
-            continue
-        if pop_i is not None and rp is not None and rp != pop_i:
-            continue
-        if venue and rv and venue not in rv and rv not in venue:
-            continue
-        return row
-    # 着順のみフォールバック
-    for _, row in h.iterrows():
-        if _safe_int(row.get('着順')) == fin_i:
-            return row
-    return None
+    """着順×人気×場 で履歴1行を特定（詳細データ優先）。"""
+    cands = _candidate_history_rows(horse, finish, pop, venue, history, target)
+    return cands[0] if cands else None
 
 
 def enrich_runner_history_fields(row, history: pd.DataFrame | None, target) -> dict:
-    """runners 行の past1..5 スロットに タイム/着差/馬場 をスロットマッチで補完。"""
+    """runners 行の past1..5 スロットに タイム/着差/馬場 をスロットマッチで補完。
+
+    results 由来の詳細欠損行に当たっても、詳細がある候補を優先して埋める。
+    """
     out = row.to_dict() if hasattr(row, 'to_dict') else dict(row)
     if history is None or getattr(history, 'empty', True):
         return out
@@ -92,23 +117,32 @@ def enrich_runner_history_fields(row, history: pd.DataFrame | None, target) -> d
             continue
         pop = out.get(f'人気{i}')
         venue = str(out.get(f'場{i}') or '').strip()
-        matched = _slot_match_row(horse, fin, pop, venue, history, target)
-        if matched is None:
+        cands = _candidate_history_rows(horse, fin, pop, venue, history, target)
+        if not cands:
             continue
-        for col, key in (('タイム', 'タイム'), ('着差', '着差'), ('馬場', '馬場')):
+        for col in ('タイム', '着差', '馬場'):
             field = f'{col}{i}'
             if not _blank(out.get(field)):
                 continue
-            val = matched.get(key)
-            if not _blank(val):
-                out[field] = val
+            for matched in cands:
+                val = matched.get(col)
+                if not _blank(val):
+                    out[field] = val
+                    break
     return out
 
 
 def backfill_runners_past_detail(runners: pd.DataFrame, history: pd.DataFrame | None = None) -> pd.DataFrame:
-    """runners.csv 全体に タイム/着差/馬場 をスロットマッチで一括補完。"""
+    """runners.csv 全体に タイム/着差/馬場 をスロットマッチで一括補完。
+
+    詳細フィールドが揃っている raw all_history を優先し、不足分を master で補う。
+    """
+    raw = load_raw_all_history()
     if history is None:
         history = build_master_history()
+    # raw（タイム充填率高）を先に、master を後に連結（候補探索で詳細あり優先）
+    if raw is not None and not raw.empty:
+        history = pd.concat([raw, history], ignore_index=True, sort=False)
     df = runners.copy()
     for c in PAST_DETAIL_COLS:
         if c not in df.columns:
