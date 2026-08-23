@@ -90,7 +90,19 @@ def _load_config():
 
 def load_weights():
     cfg=_load_config()
-    return {**DEFAULT_WEIGHTS,**cfg.get('weights',{})} if cfg else DEFAULT_WEIGHTS.copy()
+    base = {**DEFAULT_WEIGHTS, **(cfg.get('weights',{}) if cfg else {})}
+    # v4: 新ロジックは的中増でも短いオッズ偏重でROI悪化したため、value/upset を厚くする
+    if not legacy_score_enabled():
+        base = {
+            **base,
+            'performance': 0.24,
+            'upset': 0.27,
+            'consistency': 0.11,
+            'trend': 0.11,
+            'value': 0.17,
+            'context': 0.10,
+        }
+    return base
 
 def load_rank_thresholds():
     """ランク閾値をconfigから読み込む。未設定時はDEFAULTを返す。"""
@@ -727,14 +739,24 @@ def score_runner(row, history, target, weights):
         for i in range(1, 3)
     )
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
-    # 実タイム+着差があるときのみ detail を強めに。単発タイム加点は過大評価しやすいので抑制
-    if detail_adj >= 1.0 and has_real_detail:
+    # v4: 単発タイム加点は本命の短人気偏重を増やすため、タイム+着差が揃うときだけ採用
+    if not legacy_score_enabled():
+        detail_w = 0.18 if (detail_adj >= 1.0 and has_real_detail) else 0.0
+    elif detail_adj >= 1.0 and has_real_detail:
         detail_w = 0.22
     elif detail_adj >= 1.0:
         detail_w = 0.12
     else:
         detail_w = 0.08
     score=sum(factors[k]*weights[k] for k in weights) + detail_adj * detail_w
+    # v4: 1-2番人気への過度な本命化を抑制（差分レースで的中↑・回収↓だったため）
+    if not legacy_score_enabled() and pd.notna(market_pop):
+        if market_pop <= 1.5 and (not pd.notna(market_odds) or market_odds < 3.5):
+            score = clamp(score - 3.0)
+        elif market_pop <= 2.5 and value < 55:
+            score = clamp(score - 1.5)
+        elif market_pop >= 4 and value >= 60 and perf >= 48:
+            score = clamp(score + 1.8)
     reasons=list(ctx['context_reason']) + detail_reasons
     if transfer_reason: reasons.insert(0, transfer_reason)
     if n_valid and n_valid<3: reasons.append('サンプル少')

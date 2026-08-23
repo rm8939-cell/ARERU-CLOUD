@@ -530,19 +530,19 @@ def _buy_quality_ok(record: dict) -> tuple[bool, str]:
     if n <= 1 and odds >= 20 and conf < 55:
         return False, 'サンプル不足×大穴'
 
-    # v3: バックテストで 7番人気以下 BUY が ROI -100% だったため、新ロジックのみ厳格化
+    # v4: 大穴は厳格化。一方で 2-3人気の薄いエッジは希釈を招くため追加ゲート
     try:
         from areru_engine import legacy_score_enabled
-        v3 = not legacy_score_enabled()
+        v4 = not legacy_score_enabled()
     except Exception:
-        v3 = True
-    if v3:
-        if pop is not None and pop >= 7 and (edge < 4.0 or qscore < 62):
+        v4 = True
+    if v4:
+        if pop is not None and pop >= 7 and (edge < 3.5 or qscore < 60):
             return False, f'大穴品質不足（{int(pop)}番人気 edge={edge:+.1f}pp）'
-        if pop is not None and pop >= 5 and (edge < 2.5 or qscore < 55):
-            return False, f'中穴品質不足（{int(pop)}番人気 edge={edge:+.1f}pp）'
-        if odds >= 25 and edge < 3.0:
+        if odds >= 30 and edge < 3.0:
             return False, f'高オッズ品質不足（{odds:.1f}倍 edge={edge:+.1f}pp）'
+        if pop is not None and 2 <= pop <= 3 and (edge < 2.2 or qscore < 56):
+            return False, f'人気帯希釈防止（{int(pop)}番人気 edge={edge:+.1f}pp）'
 
     if edge >= min_edge and qscore >= 52:
         return True, ''
