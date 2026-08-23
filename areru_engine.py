@@ -53,9 +53,10 @@ _ABLATION_FEATURES = frozenset({'jockey', 'course', 'time', 'margin', 'track', '
 def ablation_enabled(feature: str) -> bool:
     """特徴量アブレーション用 ON/OFF。
 
-    - ARERU_LEGACY_SCORE=1 かつ ARERU_ABL_* 未指定 → 全 OFF（距離/コースのみ従来どおり ON）
-    - ARERU_ABL_<FEAT>=1 → 旧ベースでも当該特徴のみ ON
-    - ARERU_LEGACY_SCORE=0 → 全 ON（新ロジック / H）
+    - ARERU_LEGACY_SCORE=1 かつ ARERU_ABL_* 未指定 → 距離/コースのみ ON
+    - ARERU_ABL_<FEAT>=1/0 → 明示上書き
+    - ARERU_LEGACY_SCORE=0（新/v3）→ 実データ系（enrich/time/margin/track）+ course のみ。
+      騎手・馬体重は検証で ROI 改善に寄与しなかったため既定 OFF。
     """
     feat = str(feature or '').strip().lower()
     if feat not in _ABLATION_FEATURES:
@@ -65,9 +66,9 @@ def ablation_enabled(feature: str) -> bool:
     if explicit is not None:
         return str(explicit).strip().lower() in ('1', 'true', 'yes')
     if legacy_score_enabled():
-        # 旧ロジックでも race_sim の距離/コース適性は従来から有効
         return feat == 'course'
-    return True
+    # 新ロジック既定: 実データ特徴のみ（jockey/weight は除外）
+    return feat in ('course', 'enrich', 'time', 'margin', 'track')
 
 
 def scoring_enrich_enabled() -> bool:
@@ -726,7 +727,13 @@ def score_runner(row, history, target, weights):
         for i in range(1, 3)
     )
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
-    detail_w = 0.28 if (detail_adj >= 1.0 and has_real_detail) else (0.20 if detail_adj >= 1.0 else 0.15)
+    # 実タイム+着差があるときのみ detail を強めに。単発タイム加点は過大評価しやすいので抑制
+    if detail_adj >= 1.0 and has_real_detail:
+        detail_w = 0.22
+    elif detail_adj >= 1.0:
+        detail_w = 0.12
+    else:
+        detail_w = 0.08
     score=sum(factors[k]*weights[k] for k in weights) + detail_adj * detail_w
     reasons=list(ctx['context_reason']) + detail_reasons
     if transfer_reason: reasons.insert(0, transfer_reason)

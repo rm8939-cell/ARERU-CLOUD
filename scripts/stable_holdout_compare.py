@@ -139,7 +139,7 @@ def _summarize(bets: list[dict], label: str) -> dict:
             'label': label, 'BUY件数': 0, '的中件数': 0, '的中率': 0.0,
             '3着内件数': 0, '3着内率': 0.0, '投資額': 0, '払戻': 0.0,
             'ROI': 0.0, '回収率': 0.0, '平均オッズ': None, '平均人気': None,
-            '照合率': 0.0,
+            '照合率': 0.0, '最大連敗': 0, '平均期待値': None, '1レース期待値': None,
         }
     hits = sum(1 for b in bets if b.get('的中'))
     top3 = sum(1 for b in bets if b.get('3着内'))
@@ -147,8 +147,19 @@ def _summarize(bets: list[dict], label: str) -> dict:
     ret = float(sum(b.get('払戻') or 0 for b in bets))
     odds = [b['オッズ'] for b in bets if b.get('オッズ') is not None]
     pops = [b['人気'] for b in bets if b.get('人気') is not None]
+    evs = [b['期待値'] for b in bets if b.get('期待値') is not None]
     matched = sum(1 for b in bets if b.get('照合'))
     roi_pct = (ret / invest * 100) if invest else 0.0
+    # 最大連敗（日付→race_id 順）
+    ordered = sorted(bets, key=lambda b: (str(b.get('date') or ''), str(b.get('race_id') or '')))
+    max_lose = cur = 0
+    for b in ordered:
+        if b.get('的中'):
+            cur = 0
+        else:
+            cur += 1
+            max_lose = max(max_lose, cur)
+    avg_ev = round(sum(evs) / len(evs), 2) if evs else None
     return {
         'label': label,
         'BUY件数': n,
@@ -163,6 +174,9 @@ def _summarize(bets: list[dict], label: str) -> dict:
         '平均オッズ': round(sum(odds) / len(odds), 2) if odds else None,
         '平均人気': round(sum(pops) / len(pops), 2) if pops else None,
         '照合率': round(matched / n * 100, 1),
+        '最大連敗': max_lose,
+        '平均期待値': avg_ev,
+        '1レース期待値': avg_ev,
     }
 
 
@@ -211,6 +225,10 @@ def _adoption_gate(full: dict, train: dict, holdout: dict) -> dict:
     if tn['ROI'] <= to['ROI']:
         ok = False
         reasons.append(f"train ROI が旧以下（新{tn['ROI']} / 旧{to['ROI']}）")
+    # 全期間でも意味のある差（+5pp超）かつ holdout で非負の差を要求
+    if full['ROI差'] < 5.0:
+        ok = False
+        reasons.append(f"全期間ROI差が小さい（{full['ROI差']}pp < 5）")
     if hn['的中率'] + 0.5 < ho['的中率'] and hn['ROI'] < ho['ROI'] + 15:
         ok = False
         reasons.append('holdout 的中率が旧より悪化しROI優位も弱い')
@@ -325,7 +343,10 @@ def main():
     sh = report['strict_buy']['holdout']
     st = report['strict_buy']['train']
     ah = report['all_honmei']['full']
-    metric_keys = ('BUY件数', '的中率', '3着内率', 'ROI', '回収率', '平均オッズ', '平均人気')
+    metric_keys = (
+        'BUY件数', '的中率', '3着内率', 'ROI', '回収率',
+        '平均オッズ', '平均人気', '最大連敗', '平均期待値', '1レース期待値',
+    )
     summary = {
         '厳格BUY_全期間': {
             '旧': {k: sf['旧'][k] for k in metric_keys},
