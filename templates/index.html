@@ -367,6 +367,8 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-card .bc-ai-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
 .buy-card .bc-ai-pill{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:850;background:#eef6f1;border:1px solid #cfe3d8;color:#145c37}
 .buy-card .bc-risk{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:#fff8f0;border:1px solid #f0dcc4;font-size:13px;line-height:1.55;color:#6a4a2a}
+.buy-card .bc-edge{margin:10px 0 0;font-size:12px;font-weight:750;color:#2f5d45}
+.buy-card .bc-edge b{font-weight:900;color:#145c37}
 .buy-card .bc-risk b{color:#9a5b00;font-weight:900}
 .buy-card .bc-reasons-title{margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 .buy-card .bc-reasons{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px}
@@ -1024,7 +1026,8 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% set _horse = t.get('本命') or '—' %}
   {% set _ev_raw = t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') or '—' %}
   {% set _ev_disp = (_ev_raw ~ '')|replace('%','') %}
-  {% set _win_rate = t.get('シミュレーション勝率') or _main_card.get('勝率') %}
+  {% set _win_rate = t.get('補正勝率') or t.get('シミュレーション勝率') or _main_card.get('勝率') %}
+  {% set _edge_pp = t.get('実エッジpp') %}
   {% set _pop = t.get('本命人気') %}
   {% set _ai_rank_num = namespace(v=None) %}
   {% if _ai_rank.v != '—' %}
@@ -1052,6 +1055,9 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 <div><b>{% if t.get('勝負ランク') %}{{t.get('勝負ランク')}}{% else %}—{% endif %}</b><small>AI評価</small></div>
 </div>
+{% if _edge_pp is not none %}
+<div class="bc-edge">実エッジ <b>{{'%+.1f'|format(_edge_pp|float)}}pp</b>（補正勝率と市場暗示の差）</div>
+{% endif %}
 {% if _reasons %}
 <div class="bc-reasons-title">BUY理由</div>
 <ul class="bc-reasons">

@@ -1,0 +1,98 @@
+{
+  "結論": {
+    "best": "NEW",
+    "adopt": true,
+    "ROI改善_旧→新_pp": 6.19,
+    "holdout_ROI改善_pp": 11.83,
+    "train_ROI改善_pp": 2.89,
+    "本番設定": "ARERU_LEGACY_SCORE=0"
+  },
+  "なぜ以前の継ぎ足し修正(v3/v4)は悪化したか": [
+    "v4人気抑制・value傾きは本命的中を下げ厳格BUY ROIを旧比-15ppまで悪化",
+    "穴ゲート/希釈防止はスコア歪みを補償できない",
+    "本検証は継ぎ足し前のフル特徴NEWを同一条件で再測定し旧を上回った"
+  ],
+  "旧vs新スコア差": {
+    "AREru指数差は小さいが本命不一致は大きい（SIM段階が主因）": {
+      "date": "2026-08-02",
+      "旧BUY": 15,
+      "新BUY": 15,
+      "score_delta": {
+        "mean": 0.027,
+        "std": 0.104,
+        "pct_changed_gt_1": 0.0,
+        "pct_changed_gt_3": 0.0
+      },
+      "本命不一致レース": 35,
+      "本命不一致率": 42.17
+    },
+    "旧": "6因子+ガウスSIM",
+    "新": "6因子+detail加点+段階SIM(騎手/馬体重/タイム/着差/馬場/コース/枠等)"
+  },
+  "特徴量寄与": {
+    "A_コースのみ": {
+      "ROI差_full": -1.49,
+      "判定": "不採用"
+    },
+    "B_SIM実データ_スコア加点なし": {
+      "ROI差_full": -0.66,
+      "判定": "train非優位"
+    },
+    "C_厳密detail": {
+      "ROI差_full": -0.66,
+      "判定": "Bと同値付近"
+    },
+    "NEW_フル": {
+      "ROI差_full": 6.19,
+      "判定": "唯一採用"
+    },
+    "示唆": "B/C≪NEW → 騎手・馬体重を含むフルSIMが優位の主因。detail単独(C≈B)はほぼ無寄与。コースのみ(A)は不十分。"
+  },
+  "データ使用状況": {
+    "使用中": {
+      "着順1-5": "score_runner performance/upset/consistency/trend",
+      "人気1-5": "score_runner upset/value",
+      "場1-5 / レース名1-5": "NAR→JRA scale + context",
+      "単勝オッズ / 人気": "value 市場補正 + BUY/EV",
+      "タイム1-5": "history_detail_bonus + race_sim time (新のみ)",
+      "着差1-5": "history_detail_bonus + race_sim margin (新のみ)",
+      "馬場1-5": "history_detail_bonus + race_sim track (新のみ)",
+      "枠": "race_sim gate_bias",
+      "騎手": "race_sim jockey_bonus (新のみ)",
+      "source / race_id": "会場・JRA/NAR判定"
+    },
+    "未使用": [
+      "runners.斤量",
+      "runners.実着順（結果検証用・スコア未使用）",
+      "runners.オッズ更新日時",
+      "all_history.斤量",
+      "all_history.今回レース",
+      "horse_cache.通過 / ペース / 上り（キャッシュがある場合）"
+    ],
+    "history_fill": {
+      "タイム": 98.56,
+      "着差": 96.21,
+      "馬場": 99.81,
+      "頭数": 100.0,
+      "騎手": 100.0,
+      "馬体重": 99.99,
+      "距離": 100.0,
+      "斤量": 97.63
+    },
+    "runners_detail_fill_approx_pct": 10.3
+  },
+  "リーク検査": {
+    "history_filter_contract": "_date < target（score_runner / history_detail / race_sim）",
+    "same_day_history_rows_on_last5_runner_dates": 184,
+    "実着順_fill_pct": 24.11,
+    "実着順_used_in_score": false,
+    "market_odds_note": "当日単勝オッズは意図的特徴。確定オッズ混入時は軽微リークになり得る",
+    "issues": []
+  },
+  "ボトルネック残": [
+    "絶対ROIはなおマイナス（NEW -47.15%）",
+    "本命全体的中 旧15.04%→新13.07%（BUY選別でROI改善）",
+    "タイム/着差/馬場のrunners fill約10%でdetail再現性は限定的",
+    "斤量・通過・ペース・上りは未使用"
+  ]
+}
