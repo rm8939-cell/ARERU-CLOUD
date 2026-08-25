@@ -1,0 +1,106 @@
+{
+  "inventory": {
+    "runners_rows": 20857,
+    "history_rows": 66174,
+    "runner_detail_cols_present": [],
+    "runner_fill_pct": {
+      "race_id": 100.0,
+      "日付": 100.0,
+      "レース": 100.0,
+      "馬名": 100.0,
+      "馬番": 98.3,
+      "枠": 97.11,
+      "騎手": 95.89,
+      "斤量": 95.87,
+      "実着順": 24.11,
+      "着順1": 85.1,
+      "人気1": 85.22,
+      "場1": 78.66,
+      "レース名1": 78.66,
+      "着順2": 81.52,
+      "人気2": 81.61,
+      "場2": 75.35,
+      "レース名2": 75.35,
+      "着順3": 77.93,
+      "人気3": 78.05,
+      "場3": 72.34,
+      "レース名3": 72.34,
+      "着順4": 74.43,
+      "人気4": 74.59,
+      "場4": 69.25,
+      "レース名4": 69.25,
+      "着順5": 70.91,
+      "人気5": 71.05,
+      "場5": 66.14,
+      "レース名5": 66.14,
+      "単勝オッズ": 97.36,
+      "人気": 97.36,
+      "オッズ更新日時": 24.75,
+      "source": 100.0
+    },
+    "history_fill_pct": {
+      "今回レース": 2.37,
+      "馬名": 100.0,
+      "年月日": 100.0,
+      "場": 100.0,
+      "レース名": 100.0,
+      "距離": 100.0,
+      "馬場": 99.81,
+      "頭数": 100.0,
+      "人気": 98.66,
+      "着順": 99.46,
+      "騎手": 100.0,
+      "斤量": 97.63,
+      "馬体重": 99.99,
+      "タイム": 98.56,
+      "着差": 96.21
+    },
+    "used_in_score_runner_or_sim": {
+      "着順1-5": "score_runner performance/upset/consistency/trend",
+      "人気1-5": "score_runner upset/value",
+      "場1-5 / レース名1-5": "NAR→JRA scale + context",
+      "単勝オッズ / 人気": "value 市場補正 + BUY/EV",
+      "タイム1-5": "history_detail_bonus + race_sim time (新のみ)",
+      "着差1-5": "history_detail_bonus + race_sim margin (新のみ)",
+      "馬場1-5": "history_detail_bonus + race_sim track (新のみ)",
+      "枠": "race_sim gate_bias",
+      "騎手": "race_sim jockey_bonus (新のみ)",
+      "source / race_id": "会場・JRA/NAR判定"
+    },
+    "used_in_all_history": {
+      "年月日/馬名": "日付フィルタ (_date < target)",
+      "距離/場": "course_distance_fit + context",
+      "頭数": "context field-size",
+      "着順/人気": "context + jockey stats",
+      "騎手": "jockey_bonus",
+      "馬体重": "weight_delta (新のみ)",
+      "タイム/着差/馬場": "detail bonus + SIM",
+      "斤量": "未使用（取得のみ）",
+      "通過/ペース/上り": "馬キャッシュにあれば未使用"
+    },
+    "acquired_but_unused": [
+      "runners.斤量",
+      "runners.実着順（結果検証用・スコア未使用）",
+      "runners.オッズ更新日時",
+      "all_history.斤量",
+      "all_history.今回レース",
+      "horse_cache.通過 / ペース / 上り（キャッシュがある場合）"
+    ],
+    "old_vs_new_score_diff": {
+      "旧": "6因子のみ + ガウスSIM（追加特徴OFF）",
+      "新": "6因子 + history_detail_bonus*0.12 + 段階SIM(騎手/馬体重/タイム/着差/馬場/コース/枠/休み)",
+      "共通": "context_features / NAR換算 / 市場オッズvalue補正"
+    }
+  },
+  "leak_checks": {
+    "history_filter_contract": "_date < target（score_runner / history_detail / race_sim）",
+    "same_day_history_rows_on_last5_runner_dates": 184,
+    "実着順_fill_pct": 24.11,
+    "実着順_used_in_score": false,
+    "market_odds_note": "当日単勝オッズは意図的特徴。確定オッズ混入時は軽微リークになり得る",
+    "issues": []
+  },
+  "score_delta_sample": {
+    "error": "cannot import name 'expand_scoring_history' from 'areru_engine' (/workspace/areru_engine.py)"
+  }
+}

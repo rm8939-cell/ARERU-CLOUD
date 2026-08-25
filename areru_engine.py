@@ -47,6 +47,44 @@ def legacy_score_enabled() -> bool:
     return str(os.environ.get('ARERU_LEGACY_SCORE') or '').strip().lower() in ('1', 'true', 'yes')
 
 
+_ABLATION_FEATURES = frozenset({'jockey', 'course', 'time', 'margin', 'track', 'weight', 'enrich', 'detail'})
+
+
+def ablation_enabled(feature: str) -> bool:
+    """特徴量アブレーション用 ON/OFF。
+
+    - ARERU_ABL_<FEAT>=1/0 → 明示上書き
+    - ARERU_LEGACY_SCORE=1 → 追加特徴は全て OFF（真の旧ロジック）
+    - ARERU_LEGACY_SCORE=0 → 全特徴 ON（現行新ロジック）
+    - ARERU_LOGIC_PRESET=A|B|C → 改善案プリセット
+    """
+    feat = str(feature or '').strip().lower()
+    if feat not in _ABLATION_FEATURES:
+        return False
+    key = f'ARERU_ABL_{feat.upper()}'
+    explicit = os.environ.get(key)
+    if explicit is not None:
+        return str(explicit).strip().lower() in ('1', 'true', 'yes')
+    preset = str(os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper()
+    if preset == 'A':
+        # 改善案A: 旧ベース + 距離/コースのみ（SIMプロファイル最小）
+        return feat == 'course'
+    if preset == 'B':
+        # 改善案B: 新SIMだがスコア詳細加点なし（detail OFF）+ jockey/weight OFF
+        return feat in ('course', 'enrich', 'time', 'margin', 'track')
+    if preset == 'C':
+        # 改善案C: 実データ詳細のみ（タイム+着差が揃うとき）+ course。騎手/馬体重なし
+        return feat in ('course', 'enrich', 'time', 'margin', 'track', 'detail')
+    if legacy_score_enabled():
+        return False
+    # 現行新: 全 ON
+    return True
+
+
+def scoring_enrich_enabled() -> bool:
+    return ablation_enabled('enrich') or any(ablation_enabled(x) for x in ('time', 'margin', 'track'))
+
+
 def parse_date(s):
     s=s.astype(str).str.strip().str.replace('年','-',regex=False).str.replace('月','-',regex=False).str.replace('日','',regex=False).str.replace('/','-',regex=False)
     return pd.to_datetime(s,errors='coerce')
@@ -320,6 +358,40 @@ def enrich_runners_past_venues(runners: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def expand_scoring_history(history: pd.DataFrame | None = None) -> pd.DataFrame:
+    """all_history + results.csv を統合し、スコアリング用履歴を拡張する。"""
+    parts: list[pd.DataFrame] = []
+    if history is not None and not getattr(history, 'empty', True):
+        parts.append(history.copy())
+    results_path = DATA_DIR / 'results.csv'
+    if results_path.exists():
+        try:
+            r = pd.read_csv(results_path, encoding='utf-8-sig')
+        except Exception:
+            r = pd.DataFrame()
+        if not r.empty and 'date' in r.columns:
+            rr = pd.DataFrame({
+                '馬名': r['馬名'],
+                '年月日': r['date'].astype(str),
+                '場': r.get('開催地', ''),
+                'レース名': r.get('レース', ''),
+                '着順': r.get('着順'),
+                '人気': r.get('人気'),
+            })
+            rr['_date'] = parse_date(rr['年月日'])
+            rr['_horse'] = rr['馬名'].map(clean_name)
+            parts.append(rr)
+    if not parts:
+        return pd.DataFrame()
+    out = pd.concat(parts, ignore_index=True)
+    out['_date'] = parse_date(out.get('年月日', out.get('_date')))
+    if '_horse' not in out.columns:
+        out['_horse'] = out['馬名'].map(clean_name)
+    out = out.dropna(subset=['_date'])
+    out = out.sort_values('_date').drop_duplicates(subset=['_horse', '_date'], keep='last')
+    return out
+
+
 def context_features(history, horse, target, target_source='jra'):
     if history is None or history.empty: return {'context':50,'context_reason':[]}
     h=history[(history['_horse']==clean_name(horse)) & (history['_date']<target)].sort_values('_date',ascending=False).head(8).copy()
@@ -380,7 +452,18 @@ def _margin_tightness(margin_str) -> float:
 
 def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
     """直近走のタイム・着差・馬場適性から加点（past_five / all_history 両対応）。"""
-    if legacy_score_enabled():
+    import os as _os
+    preset = str(_os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper()
+    use_time = ablation_enabled('time')
+    use_margin = ablation_enabled('margin')
+    use_track = ablation_enabled('track')
+    # 改善案B: SIM特徴は使うがスコア詳細加点はしない
+    if preset == 'B':
+        return 0.0, []
+    # 改善案C: detail フラグ必須
+    if preset == 'C' and not ablation_enabled('detail'):
+        return 0.0, []
+    if not (use_time or use_margin or use_track):
         return 0.0, []
     from race_sim import parse_time_sec
 
@@ -418,7 +501,7 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
                 if trk:
                     tracks.append(trk)
 
-    if times:
+    if use_time and times:
         # 近走タイムの改善（秒が小さいほど良い）→ 最大 +2.5
         if len(times) >= 2 and times[0] < times[1]:
             delta = times[1] - times[0]
@@ -428,19 +511,21 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
             elif delta >= 0.3:
                 bonus += 1.2
                 reasons.append('タイム改善')
-        elif len(times) == 1:
+        elif len(times) == 1 and preset != 'C':
+            # 単発タイム加点はノイズになりやすい（改善案Cでは除外）
             bonus += 0.4
 
-    tight = [m for m in margins if m >= 2.0]
-    if tight:
-        avg_t = float(np.mean(tight[:3]))
-        bonus += min(3.0, avg_t * 0.9)
-        if avg_t >= 2.5:
-            reasons.append('前走接戦好走')
-        else:
-            reasons.append('着差タイト')
+    if use_margin:
+        tight = [m for m in margins if m >= 2.0]
+        if tight:
+            avg_t = float(np.mean(tight[:3]))
+            bonus += min(3.0, avg_t * 0.9)
+            if avg_t >= 2.5:
+                reasons.append('前走接戦好走')
+            else:
+                reasons.append('着差タイト')
 
-    if tracks:
+    if use_track and tracks:
         heavy = sum(1 for t in tracks if any(x in t for x in ('重', '不良', '稍')))
         good = sum(1 for t in tracks if '良' in t and '稍' not in t)
         fin = num(row.get('着順1'))
@@ -450,6 +535,16 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
         elif good >= 3:
             bonus += 0.8
             reasons.append('馬場状態安定')
+
+    # 改善案C: タイム+着差が揃わない薄い加点は捨てる
+    if preset == 'C':
+        has_real = any(
+            str(row.get(f'タイム{i}') or '').strip() not in ('', 'nan', '--')
+            and str(row.get(f'着差{i}') or '').strip() not in ('', 'nan', '--')
+            for i in range(1, 3)
+        )
+        if not has_real and not (times and any(m >= 2.0 for m in margins)):
+            return 0.0, []
 
     return float(np.clip(bonus, 0, 5)), list(dict.fromkeys(reasons))[:3]
 
@@ -535,7 +630,11 @@ def score_runner(row, history, target, weights):
     ctx=context_features(history,row['馬名'],target, target_source=target_source)
     detail_adj, detail_reasons = history_detail_bonus(row, history, target)
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
-    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * 0.12
+    # 詳細加点の重み: 改善案Cは抑制、通常新は 0.12
+    import os as _os
+    _preset = str(_os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper()
+    detail_w = 0.08 if _preset == 'C' else 0.12
+    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * detail_w
     reasons=list(ctx['context_reason']) + detail_reasons
     if transfer_reason: reasons.insert(0, transfer_reason)
     if n_valid and n_valid<3: reasons.append('サンプル少')
@@ -605,7 +704,11 @@ def _cap_sim_win_rates(win_pct, max_win=SIM_WIN_MAX_PCT, min_fair=AI_FAIR_ODDS_M
 
 def simulate_race(g, runs=None, profiles=None, pace=None):
     """段階シミュレーション（デフォルト10万回）。profiles/pace が無い場合は指数ガウスにフォールバック。"""
-    if legacy_score_enabled():
+    # 純旧ロジックのみガウス。アブレーションで特徴をONにした旧ベースは段階SIMを使う
+    use_stage = (not legacy_score_enabled()) or any(
+        ablation_enabled(f) for f in ('jockey', 'course', 'time', 'margin', 'track', 'weight')
+    )
+    if not use_stage:
         profiles = None
         pace = None
     from race_sim import SIM_RUNS, build_profiles, predict_pace, simulate_race_stages
@@ -944,7 +1047,14 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
     target=pd.Timestamp(target_str); weights=weights or load_weights(); r=runners.copy()
     r['_date']=parse_date(r['日付']); r=r[r['_date'].dt.normalize()==target.normalize()].copy()
     if r.empty: raise ValueError(f'{target_str} の出走データがありません')
+    # 場名補完は旧新共通。タイム/着差/馬場の埋込は enrich 特徴が ON のときのみ
     r=enrich_runners_past_venues(r)
+    if scoring_enrich_enabled():
+        try:
+            from history_index import backfill_runners_past_detail
+            r = backfill_runners_past_detail(r, history if history is not None else None)
+        except Exception:
+            pass
     if history is not None:
         history=history.copy(); history['_date']=parse_date(history['年月日']); history['_horse']=history['馬名'].map(clean_name)
     from race_sim import (
