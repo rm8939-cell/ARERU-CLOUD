@@ -186,18 +186,83 @@ def _pays(bets: list[dict]) -> list[float]:
     return [float(b.get('払戻') or 0) for b in bets]
 
 
+def _one_day(payload: dict) -> list[dict]:
+    """1日分を生成（プロセスプール用）。history はワーカー側で読む。"""
+    logic = payload['logic']
+    d = payload['date']
+    sim_runs = payload['sim_runs']
+    no_cache = payload['no_cache']
+    xsel = payload.get('xsel') or ''
+    hold_set = set(payload['holdout'])
+    cache_path = Path(payload['cache_path'])
+    _apply(logic, xsel)
+    os.environ['ARERU_SIM_RUNS'] = str(sim_runs)
+    os.environ['ARERU_FAST_GAUSS'] = '1'
+    from scripts.logic_compare_backtest import _load_history, _load_results, _predict_for_date
+    from scripts.stable_holdout_compare import _race_rows
+    period = 'holdout' if d in hold_set else 'train'
+    if cache_path.exists() and not no_cache:
+        pred = pd.read_csv(cache_path, encoding='utf-8-sig')
+    else:
+        history = _load_history()
+        pred, _ = _predict_for_date(
+            d, legacy=(logic != 'NEW'), history=history,
+            sim_runs=sim_runs, use_cache=False, respect_env=True,
+        )
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        pred.to_csv(cache_path, index=False, encoding='utf-8-sig')
+    results = _load_results()
+    day_rows = _race_rows(pred, results, d)
+    for r in day_rows:
+        r['period'] = period
+        r['logic'] = logic
+    return day_rows
+
+
+def _collect_logic(logic: str, dates: list[str], holdout_dates: list[str], *,
+                   sim_runs: int, no_cache: bool, xsel: str = '', workers: int = 4) -> list[dict]:
+    payloads = []
+    for d in dates:
+        if logic == 'XSEL':
+            tag = 'xsel_' + xsel.replace(',', '-')
+            cache_path = EXTRA_CACHE / f'pred_{tag}_{d}.csv'
+        else:
+            cache_path = _cache_path(logic, d)
+        payloads.append({
+            'logic': logic, 'date': d, 'sim_runs': sim_runs, 'no_cache': no_cache,
+            'xsel': xsel, 'holdout': holdout_dates, 'cache_path': str(cache_path),
+        })
+    # キャッシュ済みなら逐次の方が速い
+    need_gen = [p for p in payloads if no_cache or not Path(p['cache_path']).exists()]
+    use_pool = workers > 1 and len(need_gen) >= 2
+    print(f'[{logic}] dates={len(dates)} generate={len(need_gen)} pool={use_pool}', flush=True)
+    rows: list[dict] = []
+    if not use_pool:
+        for p in payloads:
+            print(f'[{logic}] {p["date"]} ...', flush=True)
+            rows.extend(_one_day(p))
+        return rows
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        futs = {ex.submit(_one_day, p): p['date'] for p in payloads}
+        for fut in as_completed(futs):
+            d = futs[fut]
+            part = fut.result()
+            print(f'[{logic}] done {d} races={len(part)}', flush=True)
+            rows.extend(part)
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--sim-runs', type=int, default=2500)
     ap.add_argument('--logics', default='OLD,NEW,X,BURDEN,GATE,WEIGHT,JOCKEY,LAYOFF,STYLE,FIELD')
     ap.add_argument('--no-cache', action='store_true')
     ap.add_argument('--skip-individuals', action='store_true')
+    ap.add_argument('--workers', type=int, default=4)
     args = ap.parse_args()
 
-    from scripts.logic_compare_backtest import (
-        _eligible_dates, _load_history, _load_results, _predict_for_date,
-    )
-    from scripts.stable_holdout_compare import _race_rows
+    from scripts.logic_compare_backtest import _eligible_dates, _load_history, _load_results
     from replay_predict import available_dates, load_runners
 
     runners = load_runners()
@@ -205,16 +270,14 @@ def main():
     split = max(1, int(len(dates) * 0.70))
     train_dates = dates[:split]
     holdout_dates = dates[split:]
-    train_set, hold_set = set(train_dates), set(holdout_dates)
-    history = _load_history()
-    results = _load_results()
+    results = _load_results()  # noqa: F841  # 存在確認
     logics = [x.strip() for x in args.logics.split(',') if x.strip()]
     if args.skip_individuals:
         logics = [x for x in logics if x not in INDIVIDUALS]
 
     print(
         f'[feat-search] days={len(dates)} train={len(train_dates)} '
-        f'holdout={len(holdout_dates)} logics={logics}',
+        f'holdout={len(holdout_dates)} logics={logics} workers={args.workers}',
         flush=True,
     )
 
@@ -222,28 +285,10 @@ def main():
     for logic in logics:
         if logic == 'XSEL':
             continue
-        _apply(logic)
-        os.environ['ARERU_SIM_RUNS'] = str(args.sim_runs)
-        rows: list[dict] = []
-        for d in dates:
-            period = 'holdout' if d in hold_set else 'train'
-            cache_path = _cache_path(logic, d)
-            print(f'[{logic}] {d} ({period}) ...', flush=True)
-            if cache_path.exists() and not args.no_cache:
-                pred = pd.read_csv(cache_path, encoding='utf-8-sig')
-            else:
-                pred, _ = _predict_for_date(
-                    d, legacy=(logic != 'NEW'), history=history,
-                    sim_runs=args.sim_runs, use_cache=False, respect_env=True,
-                )
-                cache_path.parent.mkdir(parents=True, exist_ok=True)
-                pred.to_csv(cache_path, index=False, encoding='utf-8-sig')
-            day_rows = _race_rows(pred, results, d)
-            for r in day_rows:
-                r['period'] = period
-                r['logic'] = logic
-            rows.extend(day_rows)
-        rows_by[logic] = rows
+        rows_by[logic] = _collect_logic(
+            logic, dates, holdout_dates,
+            sim_runs=args.sim_runs, no_cache=args.no_cache, workers=args.workers,
+        )
 
     def scopes(all_rows):
         buys = [r for r in all_rows if r.get('strict_buy')]
@@ -309,28 +354,11 @@ def main():
     report['xsel_features'] = xsel_feats
     if xsel_feats:
         logic = 'XSEL'
-        _apply(logic, xsel_feats)
-        os.environ['ARERU_SIM_RUNS'] = str(args.sim_runs)
-        rows = []
-        for d in dates:
-            period = 'holdout' if d in hold_set else 'train'
-            tag = 'xsel_' + xsel_feats.replace(',', '-')
-            cache_path = EXTRA_CACHE / f'pred_{tag}_{d}.csv'
-            print(f'[XSEL:{xsel_feats}] {d} ({period}) ...', flush=True)
-            if cache_path.exists() and not args.no_cache:
-                pred = pd.read_csv(cache_path, encoding='utf-8-sig')
-            else:
-                pred, _ = _predict_for_date(
-                    d, legacy=True, history=history,
-                    sim_runs=args.sim_runs, use_cache=False, respect_env=True,
-                )
-                cache_path.parent.mkdir(parents=True, exist_ok=True)
-                pred.to_csv(cache_path, index=False, encoding='utf-8-sig')
-            day_rows = _race_rows(pred, results, d)
-            for r in day_rows:
-                r['period'] = period
-                r['logic'] = logic
-            rows.extend(day_rows)
+        rows = _collect_logic(
+            logic, dates, holdout_dates,
+            sim_runs=args.sim_runs, no_cache=args.no_cache,
+            xsel=xsel_feats, workers=args.workers,
+        )
         rows_by[logic] = rows
         sc = scopes(rows)
         report['strict_buy'][logic] = {k: _summarize(v, f'{logic}/{k}') for k, v in sc.items()}

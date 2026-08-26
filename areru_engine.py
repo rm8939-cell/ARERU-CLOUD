@@ -1087,8 +1087,19 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         venue=venue_from_race_id(race_id)
         g_base=_apply_unused(g0, history, target, venue)
         g_base=g_base.sort_values('AREru指数',ascending=False).reset_index(drop=True)
-        profiles=build_profiles(g_base, history, target, venue)
-        pace=predict_pace(profiles)
+        use_stage = (not legacy_score_enabled()) or any(
+            ablation_enabled(f) for f in ('jockey', 'course', 'time', 'margin', 'track', 'weight')
+        )
+        fast_gauss = str(os.environ.get('ARERU_FAST_GAUSS') or '').strip().lower() in ('1', 'true', 'yes')
+        if use_stage or not fast_gauss:
+            profiles=build_profiles(g_base, history, target, venue)
+            pace=predict_pace(profiles)
+        else:
+            # ガウスSIMでは profiles を捨てる。バックテスト時は構築を省略して ROI 比較を速くする。
+            profiles=[{
+                'style': 0.5, 'plus': [], 'minus': [], 'last3f': 50.0, 'surface': '',
+            } for _ in range(len(g_base))]
+            pace={'想定ペース': 'ミドル', '荒れ指数': 50}
         # ラップ適性を個別に付与
         for i,p in enumerate(profiles):
             fit, lab=lap_aptitude(p['style'], pace['想定ペース'])
