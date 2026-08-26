@@ -48,6 +48,14 @@ def legacy_score_enabled() -> bool:
     return str(os.environ.get('ARERU_LEGACY_SCORE') or '').strip().lower() in ('1', 'true', 'yes')
 
 
+def calib_v2_enabled() -> bool:
+    """BUYセグメント診断で train/holdout 双方悪化が再現した層の較正。
+
+    BUY件数を閾値で削るフィルタではない。本命選定（指数・SIM）側を動かす。
+    """
+    return str(os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper() == 'D'
+
+
 _ABLATION_FEATURES = frozenset({
     'jockey', 'course', 'time', 'margin', 'track', 'weight', 'enrich', 'detail',
 }) | UNUSED_SCORE_FEATURES
@@ -60,6 +68,7 @@ def ablation_enabled(feature: str) -> bool:
     - ARERU_LEGACY_SCORE=1 → 追加特徴は全て OFF（真の旧ロジック）
     - ARERU_LEGACY_SCORE=0 → 全特徴 ON（現行新ロジック＝段階SIM）
     - ARERU_LOGIC_PRESET=A|B|C → 段階SIM改善案
+    - ARERU_LOGIC_PRESET=D → 現行新と同じ特徴 + holdout確認済み較正
     - ARERU_LOGIC_PRESET=X → 旧ガウスSIM + 未使用特徴のスコア加点のみ
     - ARERU_LOGIC_PRESET=XSEL + ARERU_XSEL_FEATURES=burden,sgate,... → 選定特徴のみ
     """
@@ -71,6 +80,9 @@ def ablation_enabled(feature: str) -> bool:
     if explicit is not None:
         return str(explicit).strip().lower() in ('1', 'true', 'yes')
     preset = str(os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper()
+    if preset == 'D':
+        # 現行新と同じ特徴。枠/脚質/馬体重/12-20倍妙味の較正だけ変える
+        return feat not in UNUSED_SCORE_FEATURES
     if preset == 'A':
         # 改善案A: 旧ベース + 距離/コースのみ（SIMプロファイル最小）
         return feat == 'course'
@@ -633,13 +645,18 @@ def score_runner(row, history, target, weights):
             market_boost=clamp(np.log10(max(market_odds,1.0))*8, 0, 10)
         elif market_odds>=20:
             market_boost=clamp(np.log10(max(market_odds,1.0))*16, 0, 18)
+        elif calib_v2_enabled() and market_odds>=12:
+            # 12.0-19.9帯は train/holdout とも ROI 大幅悪化。
+            # BUY除外ではなく、妙味加点を抑えて本命を別馬へ寄せる。
+            market_boost=clamp(np.log10(max(market_odds,1.0))*10, 0, 12)
         else:
             market_boost=clamp(np.log10(max(market_odds,1.0))*28, 0, 35)
             if pd.notna(market_pop) and market_pop>=8:
                 market_boost=min(40, market_boost+6)
         value=clamp(0.65*value + 0.35*(50+market_boost))
         if 12<=market_odds<50 and not (pd.notna(market_pop) and market_pop>=12):
-            market_reason='市場オッズ妙味'
+            if not (calib_v2_enabled() and market_odds<20):
+                market_reason='市場オッズ妙味'
     elif n_valid < 2:
         value=clamp(min(value, 42.0))
     ctx=context_features(history,row['馬名'],target, target_source=target_source)

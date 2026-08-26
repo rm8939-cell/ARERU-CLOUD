@@ -34,6 +34,7 @@ LOGICS = {
     'A': {'ARERU_LEGACY_SCORE': '0', 'ARERU_LOGIC_PRESET': 'A'},
     'B': {'ARERU_LEGACY_SCORE': '0', 'ARERU_LOGIC_PRESET': 'B'},
     'C': {'ARERU_LEGACY_SCORE': '0', 'ARERU_LOGIC_PRESET': 'C'},
+    'D': {'ARERU_LEGACY_SCORE': '0', 'ARERU_LOGIC_PRESET': 'D'},
 }
 
 LOGIC_LABELS = {
@@ -42,6 +43,7 @@ LOGIC_LABELS = {
     'A': '改善案A:コースのみ',
     'B': '改善案B:SIM実データ(スコア加点なし)',
     'C': '改善案C:実データ+厳密detail',
+    'D': '改善案D:差し/内枠/12-20妙味/馬体重増の較正',
 }
 
 

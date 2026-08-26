@@ -180,8 +180,17 @@ def jockey_bonus(history: pd.DataFrame | None, jockey: str, venue: str, target) 
         return 0.0
 
 
+def calib_v2_enabled() -> bool:
+    """PRESET=D: holdoutでも悪化が再現したSIM較正。"""
+    return str(os.environ.get("ARERU_LOGIC_PRESET") or "").strip().upper() == "D"
+
+
 def gate_bias(venue: str, waku, n_horses: int, surface: str) -> float:
-    """枠順補正（簡易）。ダート内枠・芝外枠をわずかに優遇。"""
+    """枠順補正（簡易）。ダート内枠・芝外枠をわずかに優遇。
+
+    PRESET=D: NEW BUY の内枠は train/holdout とも大幅マイナス、外枠は相対的に良い。
+    ダート内枠加点を外し、外枠をわずかに戻す（場名での除外フィルタではない）。
+    """
     try:
         w = int(float(waku))
     except Exception:
@@ -191,6 +200,12 @@ def gate_bias(venue: str, waku, n_horses: int, surface: str) -> float:
     inner = w <= max(2, n_horses // 4)
     outer = w >= max(n_horses - 2, n_horses * 3 // 4)
     if surface == "ダ":
+        if calib_v2_enabled():
+            if inner:
+                return -0.6
+            if outer:
+                return 0.8
+            return 0.0
         if inner:
             return 2.2
         if outer:
@@ -408,6 +423,10 @@ def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue:
             elif abs(wdelta) >= 8:
                 adj -= 1.0
                 minus.append("馬体重変動")
+            elif calib_v2_enabled() and wdelta >= 3:
+                # +2〜+8kg の BUY は train/holdout とも 0的中。増減不明は触らない。
+                adj -= 1.2
+                minus.append("馬体重増")
         if trouble >= 0.35:
             adj += 2.0 * trouble  # 不利明けの巻き返し余地
             plus.append("前走不利の可能性")
@@ -551,6 +570,11 @@ def simulate_race_stages(g: pd.DataFrame, profiles: list[dict], pace: dict, runs
     else:
         front_fatigue = 1.0
         closer_boost = 1.0
+    # PRESET=D: BUYの70%が差しで両期間とも全体より悪い。
+    # 差し除外フィルタではなく、直線・道中の差し加点を下げて先行が本命に残れるようにする。
+    closer_mid = 3.5 if calib_v2_enabled() else 8.0
+    closer_stretch = 3.0 if calib_v2_enabled() else 6.5
+    early_style = 22.0 if calib_v2_enabled() else 18.0
 
     seed = int(abs(hash(str(g.iloc[0]["race_id"]))) % (2**32 - 1))
     rng = np.random.default_rng(seed)
@@ -567,7 +591,7 @@ def simulate_race_stages(g: pd.DataFrame, profiles: list[dict], pace: dict, runs
         # 能力ゆらぎ
         ability = rng.normal(base, sigma, size=(n, n_h))
         # スタート: 先行力 + 枠 + 不利回復 + ノイズ
-        early = (1.0 - styles) * 18.0 + gates * 1.2 - trouble * 4.0
+        early = (1.0 - styles) * early_style + gates * 1.2 - trouble * 4.0
         start_pos = ability * 0.35 + early + rng.normal(0, 5.5, size=(n, n_h))
         # 位置取り（小さいほど前）
         position = -start_pos + rng.normal(0, 3.0, size=(n, n_h))
@@ -575,7 +599,7 @@ def simulate_race_stages(g: pd.DataFrame, profiles: list[dict], pace: dict, runs
         mid_score = (
             ability * 0.28
             - position * (0.55 * front_fatigue)
-            + (styles[None, :] * 8.0 * closer_boost)
+            + (styles[None, :] * closer_mid * closer_boost)
             + rng.normal(0, 4.0, size=(n, n_h))
         )
         # 4角順位（小さいほど前）
@@ -590,7 +614,7 @@ def simulate_race_stages(g: pd.DataFrame, profiles: list[dict], pace: dict, runs
         stretch = (
             ability * 0.45
             + (last3[None, :] - 50.0) * 0.22
-            + styles[None, :] * 6.5 * closer_boost
+            + styles[None, :] * closer_stretch * closer_boost
             - corner_rank * (1.1 if pace_label == "スロー" else 0.55)
             + rng.normal(0, 5.0, size=(n, n_h))
         )

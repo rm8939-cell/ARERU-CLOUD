@@ -45,6 +45,7 @@ LOGICS = {
     'LAYOFF': {'ARERU_LEGACY_SCORE': '1', 'ARERU_ABL_SLAYOFF': '1'},
     'STYLE': {'ARERU_LEGACY_SCORE': '1', 'ARERU_ABL_SSTYLE': '1'},
     'FIELD': {'ARERU_LEGACY_SCORE': '1', 'ARERU_ABL_SFIELD': '1'},
+    'D': {'ARERU_LEGACY_SCORE': '0', 'ARERU_LOGIC_PRESET': 'D'},
 }
 
 LOGIC_LABELS = {
@@ -58,6 +59,7 @@ LOGIC_LABELS = {
     'LAYOFF': '旧+休み明け',
     'STYLE': '旧+脚質×頭数',
     'FIELD': '旧+頭数実績',
+    'D': '新+holdout確認較正（差しSIM/内枠ダート/12-20妙味/馬体重増）',
     'XSEL': '旧+trainで優位だった特徴の合成',
 }
 
@@ -206,7 +208,7 @@ def _one_day(payload: dict) -> list[dict]:
     else:
         history = _load_history()
         pred, _ = _predict_for_date(
-            d, legacy=(logic != 'NEW'), history=history,
+            d, legacy=(logic not in ('NEW', 'D')), history=history,
             sim_runs=sim_runs, use_cache=False, respect_env=True,
         )
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -417,6 +419,15 @@ def main():
             'ROI差_vs_OLD_holdout': round(block['holdout']['ROI'] - base['holdout']['ROI'], 2),
             '採用': bool(report['adoption'].get(logic, {}).get('adopt')),
         }
+        if 'NEW' in report['strict_buy'] and logic not in ('OLD', 'NEW'):
+            table[logic]['ROI差_vs_NEW_full'] = round(block['full']['ROI'] - report['strict_buy']['NEW']['full']['ROI'], 2)
+            table[logic]['ROI差_vs_NEW_train'] = round(block['train']['ROI'] - report['strict_buy']['NEW']['train']['ROI'], 2)
+            table[logic]['ROI差_vs_NEW_holdout'] = round(block['holdout']['ROI'] - report['strict_buy']['NEW']['holdout']['ROI'], 2)
+            newb = report['strict_buy']['NEW']
+            table[logic]['holdout_and_train_vs_NEW'] = (
+                block['train']['ROI'] > newb['train']['ROI']
+                and block['holdout']['ROI'] > newb['holdout']['ROI']
+            )
     report['comparison_table'] = table
     TABLE.write_text(json.dumps(table, ensure_ascii=False, indent=2), encoding='utf-8')
     OUT.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
