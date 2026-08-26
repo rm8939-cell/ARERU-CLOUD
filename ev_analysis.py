@@ -11,9 +11,9 @@ import pandas as pd
 # 表示側でもエンジンと同じ上限・下限を適用（既存CSVの100%/1.0倍を補正）
 SIM_WIN_MAX_PCT = 98.0
 AI_FAIR_ODDS_MIN = 1.1
-# 表示期待値のハード上限（100%＝市場オッズと同値の勝率想定）
-EV_DISPLAY_MAX = 124
-EV_DISPLAY_MIN = 78
+# 表示期待値 = 補正勝率 × オッズ（百分率回収）。100%＝市場と同値
+EV_DISPLAY_MAX = 250
+EV_DISPLAY_MIN = 40
 
 # 買い厳選: 期待回収率の最低ライン（これ未満は候補に入れない）
 BUY_EV_FLOOR = 108
@@ -689,16 +689,18 @@ def _claimable_ai_prob(ai_p: float, implied: float, conf: float, repro: float, n
 
 
 def _soft_display_ev(raw_ev: float) -> int:
-    """極端な生EVを tanh で圧縮し、ユーザーが信じやすい帯に落とす。"""
+    """表示期待値 = 生EV（補正勝率×オッズ）。123% は 1.23 倍回収の意味。
+
+    以前は tanh で 78〜124% に圧縮しており、推定勝率×オッズと不一致だった。
+    """
     try:
-        edge = float(raw_ev) - 100.0
+        v = float(raw_ev)
     except (TypeError, ValueError):
         return 100
-    if edge != edge:  # NaN
+    if v != v:  # NaN
         return 100
-    # |edge|が大きいほど伸びにくく、概ね 78〜124%
-    compressed = 100.0 + 26.0 * math.tanh(edge / 30.0)
-    return safe_int(_clamp(compressed, EV_DISPLAY_MIN, EV_DISPLAY_MAX), 100) or 100
+    # 外れ値だけクリップ。123% を 124% 上限に潰さない
+    return safe_int(_clamp(v, 40.0, 250.0), 100) or 100
 
 
 def score_horse_ev(
@@ -735,25 +737,28 @@ def score_horse_ev(
     edge_p = ai_eff - implied
     adj_p = implied + edge_p * take
     adj_p = _clamp(adj_p, 0.002, 0.55)
+    adj_pct = round(adj_p * 100, 1)
+    implied_pct = round(implied * 100, 1)
 
-    raw_ev = market * adj_p * 100.0
+    raw_ev = adj_pct * market  # 表示する推定勝率(%) × オッズ。123% = 18.9% × 6.5 など
     display_ev = _soft_display_ev(raw_ev)
     fair_adj = max(AI_FAIR_ODDS_MIN, 1.0 / max(adj_p, 1e-6))
 
     return {
         '期待値': display_ev,
-        '期待値生': safe_int(raw_ev, None),
+        '期待値生': round(raw_ev, 1),
         '期待値表示': f'{display_ev}%',
         '期待値エッジ': display_ev - 100,
         '期待値トーン': ev_tone(display_ev),
         '期待値ラベル': ev_label(ev_tone(display_ev)),
         '期待値コメント': ev_plain_label(display_ev),
         '期待値あり': True,
-        '補正勝率': round(adj_p * 100, 1),
+        '補正勝率': adj_pct,
         'ブレンド係数': round(take, 3),
         'AI適正オッズ補正': round(fair_adj, 1),
         'AI勝率採用': round(ai_eff * 100, 1),
-        '市場暗示勝率': round(implied * 100, 1),
+        '市場暗示勝率': implied_pct,
+        '期待値検算': round(adj_pct * market, 1),
     }
 
 
@@ -1073,6 +1078,7 @@ _FINALIZE_PERSIST_COLS = (
     '投資判定', '投資判定アイコン', '投資判定トーン', '投資判定表示',
     '一覧判定', '一覧判定トーン',
     '期待値', '期待値表示', '期待値トーン', '期待値あり', 'レース期待回収率',
+    '期待値生', '補正勝率', '市場暗示勝率', 'AI勝率採用', '期待値検算',
     'AI信頼度スコア', 'シミュレーション再現率', 'データ件数',
     'レース信頼度スコア', '能力差スコア', '展開読みやすさ',
     'データ件数スコア', 'シミュレーション一致率', '競馬場バイアス一致率',
@@ -1563,6 +1569,9 @@ def apply_expected_value(record: dict) -> dict:
     record['シミュレーション再現率'] = ev.get('シミュレーション再現率')
     record['適性スコア'] = ev.get('適性スコア')
     record['補正勝率'] = ev.get('補正勝率')
+    record['市場暗示勝率'] = ev.get('市場暗示勝率')
+    record['AI勝率採用'] = ev.get('AI勝率採用')
+    record['期待値検算'] = ev.get('期待値検算')
     record['データ件数'] = ev.get('データ件数')
     record['ブレンド係数'] = ev.get('ブレンド係数')
     if ev.get('AI適正オッズ補正') is not None:

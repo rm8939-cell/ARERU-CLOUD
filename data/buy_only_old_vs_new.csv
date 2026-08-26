@@ -1,0 +1,13 @@
+﻿label,サンプル数,BUY件数,的中件数,的中率,回収率,ROI,source,logic,period
+OLD/frozen/full,416,416,25,6.01,46.66,-53.34,frozen_BUY,OLD,full
+OLD/frozen/train,263,263,19,7.22,56.58,-43.42,frozen_BUY,OLD,train
+OLD/frozen/holdout,153,153,6,3.92,29.61,-70.39,frozen_BUY,OLD,holdout
+NEW/frozen/full,417,417,30,7.19,52.85,-47.15,frozen_BUY,NEW,full
+NEW/frozen/train,264,264,20,7.58,59.47,-40.53,frozen_BUY,NEW,train
+NEW/frozen/holdout,153,153,10,6.54,41.44,-58.56,frozen_BUY,NEW,holdout
+OLD/honestEV/full,416,416,25,6.01,49.4,-50.6,honestEV_BUY,OLD,full
+OLD/honestEV/train,263,263,19,7.22,60.91,-39.09,honestEV_BUY,OLD,train
+OLD/honestEV/holdout,153,153,6,3.92,29.61,-70.39,honestEV_BUY,OLD,holdout
+NEW/honestEV/full,419,419,30,7.16,51.91,-48.09,honestEV_BUY,NEW,full
+NEW/honestEV/train,266,266,20,7.52,56.92,-43.08,honestEV_BUY,NEW,train
+NEW/honestEV/holdout,153,153,10,6.54,43.2,-56.8,honestEV_BUY,NEW,holdout

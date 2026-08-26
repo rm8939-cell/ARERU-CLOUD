@@ -22,7 +22,7 @@ services:
       - key: ARERU_FAST_NAR
         value: "1"
       - key: ARERU_LEGACY_SCORE
-        value: "0"
+        value: "1"
       - key: ARERU_FETCH_BUDGET_SEC
         value: "240"
       # 0.1CPU / 512MB では本生成を始めると Web 応答が止まるため、
