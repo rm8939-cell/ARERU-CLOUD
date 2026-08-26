@@ -11,9 +11,9 @@ import pandas as pd
 # 表示側でもエンジンと同じ上限・下限を適用（既存CSVの100%/1.0倍を補正）
 SIM_WIN_MAX_PCT = 98.0
 AI_FAIR_ODDS_MIN = 1.1
-# 表示期待値 = 補正勝率 × オッズ（百分率回収）。100%＝市場と同値
-EV_DISPLAY_MAX = 250
-EV_DISPLAY_MIN = 40
+# 表示期待値のハード上限（本番表示を固定。100%＝市場と同値）
+EV_DISPLAY_MAX = 124
+EV_DISPLAY_MIN = 78
 
 # 買い厳選: 期待回収率の最低ライン（これ未満は候補に入れない）
 BUY_EV_FLOOR = 108
@@ -689,18 +689,36 @@ def _claimable_ai_prob(ai_p: float, implied: float, conf: float, repro: float, n
 
 
 def _soft_display_ev(raw_ev: float) -> int:
-    """表示期待値 = 生EV（補正勝率×オッズ）。123% は 1.23 倍回収の意味。
+    """本番表示の期待値。生EV（推定勝率×オッズ）を tanh で 78〜124% に圧縮。
 
-    以前は tanh で 78〜124% に圧縮しており、推定勝率×オッズと不一致だった。
+    例: 推定勝率 9.5% × オッズ 14.8倍 → 生EV 140.6%
+        表示 = 100 + 26*tanh((140.6-100)/30) ≈ 123%
+    改善が holdout で確認できるまでこの表示式は変更しない。
     """
     try:
-        v = float(raw_ev)
+        edge = float(raw_ev) - 100.0
     except (TypeError, ValueError):
         return 100
-    if v != v:  # NaN
+    if edge != edge:  # NaN
         return 100
-    # 外れ値だけクリップ。123% を 124% 上限に潰さない
-    return safe_int(_clamp(v, 40.0, 250.0), 100) or 100
+    compressed = 100.0 + 26.0 * math.tanh(edge / 30.0)
+    return safe_int(_clamp(compressed, EV_DISPLAY_MIN, EV_DISPLAY_MAX), 100) or 100
+
+
+def display_ev_from_winrate_odds(win_pct: float, odds: float) -> dict:
+    """BUYカードの 推定勝率 × オッズ → 生EV / 表示EV を検算する。"""
+    raw = float(win_pct) * float(odds)
+    disp = _soft_display_ev(raw)
+    return {
+        '推定勝率': round(float(win_pct), 1),
+        'オッズ': round(float(odds), 1),
+        '生EV': round(raw, 1),
+        '表示EV': disp,
+        '公式_生': '生EV% = 推定勝率(%) × オッズ',
+        '公式_表示': '表示EV = clip(100 + 26*tanh((生EV-100)/30), 78, 124)',
+        '控除': '単勝控除は take（信頼度ブレンド）で織り込み。表示圧縮自体は控除ではない',
+        'クリップ': f'表示 {EV_DISPLAY_MIN}–{EV_DISPLAY_MAX} / 補正勝率 0.2–55% / SIM勝率上限 {SIM_WIN_MAX_PCT}%',
+    }
 
 
 def score_horse_ev(
@@ -740,7 +758,9 @@ def score_horse_ev(
     adj_pct = round(adj_p * 100, 1)
     implied_pct = round(implied * 100, 1)
 
-    raw_ev = adj_pct * market  # 表示する推定勝率(%) × オッズ。123% = 18.9% × 6.5 など
+    # 生EV = 補正勝率(%) × オッズ。表示は tanh 圧縮（本番 UI 凍結）。
+    # 例: 推定勝率 9.5% × オッズ 14.8倍 → 生 140.6% → 表示 123%
+    raw_ev = adj_pct * market
     display_ev = _soft_display_ev(raw_ev)
     fair_adj = max(AI_FAIR_ODDS_MIN, 1.0 / max(adj_p, 1e-6))
 

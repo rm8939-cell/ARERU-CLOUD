@@ -50,12 +50,18 @@ def inventory() -> dict:
         '通過/ペース/上り': '馬キャッシュにあれば未使用',
     }
     unused_acquired = [
-        'runners.斤量',
-        'runners.実着順（結果検証用・スコア未使用）',
+        'runners.斤量（PRESET=X の burden でのみ指数加点。本番旧では未使用）',
+        'runners.枠（段階SIMの gate_bias のみ。旧ガウスでは PRESET=X の sgate）',
+        'runners.実着順（結果検証用・スコア未使用・リーク禁止）',
         'runners.オッズ更新日時',
         'all_history.斤量',
+        'all_history.馬体重（段階SIMの weight のみ。旧では PRESET=X の sweight）',
+        'all_history.騎手（段階SIMの jockey のみ。旧では PRESET=X の sjockey）',
+        'all_history.頭数（context で弱使用。PRESET=X の sfield で強化）',
         'all_history.今回レース',
-        'horse_cache.通過 / ペース / 上り（キャッシュがある場合）',
+        '脚質（infer_style は段階SIMのみ。旧では PRESET=X の sstyle）',
+        '休み明け（段階SIMの layoff のみ。旧では PRESET=X の slayoff）',
+        'horse_cache.通過 / ペース / 上り（キャッシュがある場合は未使用）',
     ]
 
     runner_fill = {}

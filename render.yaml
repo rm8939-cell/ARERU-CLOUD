@@ -21,6 +21,7 @@ services:
         value: "20000"
       - key: ARERU_FAST_NAR
         value: "1"
+      # 本番は旧ロジック固定。train/holdout で ROI 改善が統計確認できるまで変更しない。
       - key: ARERU_LEGACY_SCORE
         value: "1"
       - key: ARERU_FETCH_BUDGET_SEC

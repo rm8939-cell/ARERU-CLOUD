@@ -127,11 +127,15 @@ def refinalize_buy(logic: str, results, dates, train, hold) -> dict:
             ev = pd.to_numeric(r.get('期待値'), errors='coerce')
             chk = pd.to_numeric(r.get('期待値検算'), errors='coerce') if '期待値検算' in fixed.columns else float('nan')
             if pd.notna(adj) and pd.notna(odds) and pd.notna(ev):
-                recon = adj * float(odds)
-                if abs(float(ev) - recon) > 1.5:
+                from ev_analysis import _soft_display_ev
+                recon_raw = adj * float(odds)
+                recon_disp = _soft_display_ev(recon_raw)
+                # 表示は tanh 圧縮後。生EV（補正勝率×オッズ）と表示の差は仕様。
+                if abs(float(ev) - recon_disp) > 1.5:
                     mismatches.append({
                         'date': d, 'ev': float(ev), 'adj': float(adj), 'odds': float(odds),
-                        'recon': round(recon, 1), '検算': None if pd.isna(chk) else float(chk),
+                        'recon_raw': round(recon_raw, 1), 'recon_disp': recon_disp,
+                        '検算': None if pd.isna(chk) else float(chk),
                     })
         bets.extend(_settle(fixed, results, d, buy_only=True))
     out = {
@@ -146,26 +150,25 @@ def refinalize_buy(logic: str, results, dates, train, hold) -> dict:
 
 
 def formula_doc() -> dict:
-    from ev_analysis import score_horse_ev
-    # synthetic 123% example
+    from ev_analysis import display_ev_from_winrate_odds, score_horse_ev
     ex = score_horse_ev(
-        market=6.5, win_pct=22.0, fair=4.5, conf=70.0, repro=65.0, n=4, apt=60.0, reasons=''
+        market=14.8, win_pct=22.0, fair=4.5, conf=70.0, repro=65.0, n=4, apt=60.0, reasons=''
     )
+    example = display_ev_from_winrate_odds(9.5, 14.8)
     return {
-        '定義': (
-            '期待値% = 補正勝率(0-1) × 本命オッズ × 100 '
-            '= 補正勝率(%) × オッズ。100%は市場暗示と同値。'
-        ),
+        '定義_生EV': '生EV% = 補正勝率(%) × オッズ（= 推定勝率 × オッズ）',
+        '定義_表示EV': '表示EV% = clip(100 + 26*tanh((生EV-100)/30), 78, 124)',
         '補正勝率': (
             '市場暗示勝率(1/オッズ) + take × (採用AI勝率 − 市場暗示勝率)。'
-            'take は信頼度・再現率・データ件数・適性・穴抑制。'
+            'take は信頼度・再現率・データ件数・適性・穴抑制。控除は take で織込。'
         ),
-        '旧バグ': (
-            '表示EV = 100 + 26*tanh((生EV-100)/30) で 78-124% に圧縮。'
-            '123%表示は生EV≈142%に相当し、推定勝率×オッズと不一致。'
+        'ユーザー例': example,
+        '注記': (
+            'BUYカード「期待値123%」は生140.6%の圧縮表示。'
+            '推定勝率9.5%×オッズ14.8倍は生EVと一致し、表示とは一致しない。'
+            'ROI改善が holdout で確認できるまでこの表示は変更しない。'
         ),
         '合成例_score_horse_ev': ex,
-        '123パーセントの意味': '補正勝率 × オッズ ≈ 123 → 100円あたり期待回収 123円',
     }
 
 
@@ -175,7 +178,7 @@ def main():
     train, hold = _split(dates)
     report = {
         '本番ロジック固定': {
-            'main_render.yaml': 'ARERU_LEGACY_SCORE 未設定 → 新ロジック（追加特徴ON）が既定',
+            'main_render.yaml': 'ARERU_LEGACY_SCORE=1 → 本番は旧ロジック固定',
             '比較の旧': 'ARERU_LEGACY_SCORE=1（ガウスSIM・詳細特徴OFF）',
             '比較の新': 'ARERU_LEGACY_SCORE=0（段階SIM+詳細特徴）',
             '評価対象': '投資判定が買い のレースのみ（本命全体的中率は使わない）',

@@ -3,6 +3,7 @@ import json, logging, os, re
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from score_extras import UNUSED_SCORE_FEATURES
 
 DATA_DIR=Path(__file__).resolve().parent / 'data'
 CONFIG_FILE=DATA_DIR/'areru_v2_config.json'
@@ -47,7 +48,9 @@ def legacy_score_enabled() -> bool:
     return str(os.environ.get('ARERU_LEGACY_SCORE') or '').strip().lower() in ('1', 'true', 'yes')
 
 
-_ABLATION_FEATURES = frozenset({'jockey', 'course', 'time', 'margin', 'track', 'weight', 'enrich', 'detail'})
+_ABLATION_FEATURES = frozenset({
+    'jockey', 'course', 'time', 'margin', 'track', 'weight', 'enrich', 'detail',
+}) | UNUSED_SCORE_FEATURES
 
 
 def ablation_enabled(feature: str) -> bool:
@@ -55,8 +58,10 @@ def ablation_enabled(feature: str) -> bool:
 
     - ARERU_ABL_<FEAT>=1/0 → 明示上書き
     - ARERU_LEGACY_SCORE=1 → 追加特徴は全て OFF（真の旧ロジック）
-    - ARERU_LEGACY_SCORE=0 → 全特徴 ON（現行新ロジック）
-    - ARERU_LOGIC_PRESET=A|B|C → 改善案プリセット
+    - ARERU_LEGACY_SCORE=0 → 全特徴 ON（現行新ロジック＝段階SIM）
+    - ARERU_LOGIC_PRESET=A|B|C → 段階SIM改善案
+    - ARERU_LOGIC_PRESET=X → 旧ガウスSIM + 未使用特徴のスコア加点のみ
+    - ARERU_LOGIC_PRESET=XSEL + ARERU_XSEL_FEATURES=burden,sgate,... → 選定特徴のみ
     """
     feat = str(feature or '').strip().lower()
     if feat not in _ABLATION_FEATURES:
@@ -75,10 +80,20 @@ def ablation_enabled(feature: str) -> bool:
     if preset == 'C':
         # 改善案C: 実データ詳細のみ（タイム+着差が揃うとき）+ course。騎手/馬体重なし
         return feat in ('course', 'enrich', 'time', 'margin', 'track', 'detail')
+    if preset == 'X':
+        # 旧ガウスSIMを維持したまま、未使用取得特徴だけを指数へ加算
+        return feat in UNUSED_SCORE_FEATURES
+    if preset == 'XSEL':
+        selected = {
+            x.strip().lower()
+            for x in str(os.environ.get('ARERU_XSEL_FEATURES') or '').split(',')
+            if x.strip()
+        }
+        return feat in selected
     if legacy_score_enabled():
         return False
-    # 現行新: 全 ON
-    return True
+    # 現行新: 段階SIM系は ON。未使用スコア加点は PRESET=X でのみ（二重加点を避ける）
+    return feat not in UNUSED_SCORE_FEATURES
 
 
 def scoring_enrich_enabled() -> bool:
@@ -1061,6 +1076,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         SIM_RUNS, build_profiles, predict_pace, lap_aptitude, style_label,
         circle_ban, stars_from_ev,
     )
+    from score_extras import apply_unused_score_extras as _apply_unused
     scored=[]
     for _,row in r.iterrows():
         s,f,why=score_runner(row,history,target,weights)
@@ -1069,7 +1085,8 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
     sd=pd.DataFrame(scored); out=[]
     for race_id,g0 in sd.groupby('race_id',sort=False):
         venue=venue_from_race_id(race_id)
-        g_base=g0.sort_values('AREru指数',ascending=False).reset_index(drop=True)
+        g_base=_apply_unused(g0, history, target, venue)
+        g_base=g_base.sort_values('AREru指数',ascending=False).reset_index(drop=True)
         profiles=build_profiles(g_base, history, target, venue)
         pace=predict_pace(profiles)
         # ラップ適性を個別に付与
