@@ -1,0 +1,64 @@
+{
+  "verdict": "ROIはまだ大幅なマイナス。本番採用しない。",
+  "adopt": false,
+  "production": "OLD (ARERU_LEGACY_SCORE=1)",
+  "display_ev": "tanh 78-124 frozen",
+  "buy_gates": {"BUY_EV_FLOOR": 108, "BUY_CONF_FLOOR": 58},
+  "note": "DはBUY件数をほぼ維持したまま train/holdout とも NEW より点推定で改善。ただし全期間ROIは -41.47% でプラスではない。",
+  "table": {
+    "OLD": {
+      "label": "旧ロジック",
+      "BUY件数": 416,
+      "的中率": 6.01,
+      "平均オッズ": 17.42,
+      "train ROI": -43.42,
+      "holdout ROI": -70.39,
+      "全期間ROI": -53.34
+    },
+    "NEW": {
+      "label": "現行新ロジック",
+      "BUY件数": 417,
+      "的中率": 7.19,
+      "平均オッズ": 18.47,
+      "train ROI": -40.53,
+      "holdout ROI": -58.56,
+      "全期間ROI": -47.15,
+      "vs_OLD_full_pp": 6.19
+    },
+    "D": {
+      "label": "新+holdout確認較正",
+      "BUY件数": 414,
+      "的中率": 7.73,
+      "平均オッズ": 19.03,
+      "train ROI": -37.32,
+      "holdout ROI": -48.56,
+      "全期間ROI": -41.47,
+      "vs_OLD_full_pp": 11.87,
+      "vs_NEW_train_pp": 3.21,
+      "vs_NEW_holdout_pp": 10.0,
+      "holdout_and_train_vs_NEW": true,
+      "adopt": false
+    }
+  },
+  "mix_shift_D_vs_NEW": {
+    "BUY件数": {"NEW": 417, "D": 414},
+    "差し": {"NEW": 290, "D": 280},
+    "先行": {"NEW": 124, "D": 129, "NEW_ROI": -22.02, "D_ROI": -2.64},
+    "オッズ12-19.9": {"NEW": 118, "D": 100, "NEW_ROI": -89.32, "D_ROI": -73.8},
+    "内枠": {"NEW": 91, "D": 79, "NEW_ROI": -81.21, "D_ROI": -64.56},
+    "4-6番人気": {"NEW": 225, "D": 214, "NEW_ROI": -61.78, "D_ROI": -53.46}
+  },
+  "holdout_confirmed_changes": [
+    "差しのSIM直線・道中加点を縮小（除外フィルタではない）",
+    "ダート内枠加点を撤廃し外枠をわずかに戻す",
+    "12.0-19.9倍の市場オッズ妙味加点を縮小",
+    "馬体重+3kg以上を減点"
+  ],
+  "rejected_as_overfit": [
+    "trainだけで良い 推定勝率22%+ のみ残す",
+    "場名（園田/佐賀/浦和）の除外",
+    "騎手単位の除外（最大n=8）",
+    "BUY_EV_FLOOR の引き上げ",
+    "40倍以上の機械的除外（n_holdout=9）"
+  ]
+}
