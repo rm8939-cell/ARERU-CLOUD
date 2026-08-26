@@ -262,7 +262,7 @@ def main():
     ap.add_argument('--workers', type=int, default=4)
     args = ap.parse_args()
 
-    from scripts.logic_compare_backtest import _eligible_dates, _load_history, _load_results
+    from scripts.logic_compare_backtest import _eligible_dates, _load_results
     from replay_predict import available_dates, load_runners
 
     runners = load_runners()
