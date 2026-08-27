@@ -1,0 +1,12 @@
+{
+  "採用候補": [],
+  "保留": [],
+  "不採用": [
+    "SASHI_INNER",
+    "ODDS_INNER",
+    "SASHI_SWEET"
+  ],
+  "本番ロジックを変更してよいか": false,
+  "本番": "OLD (ARERU_LEGACY_SCORE=1)",
+  "note": "NEW自体がholdoutで統計確認できていない。候補が点推定でNEWを超えても、OLD超えの区間確認とプラスROIがなければ本番は変えない。"
+}
