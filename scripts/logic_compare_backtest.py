@@ -153,11 +153,14 @@ def _predict_for_date(target: str, legacy: bool, history: pd.DataFrame, *, sim_r
     src = DATA / 'predictions_by_date' / f'predictions_{target}.csv'
     scores_src = DATA / 'predictions_by_date' / f'scores_{target}.csv'
     df = pd.read_csv(src, encoding='utf-8-sig')
-    df.to_csv(cache_pred, index=False, encoding='utf-8-sig')
     scores = None
     if scores_src.exists():
         scores = pd.read_csv(scores_src, encoding='utf-8-sig')
-        scores.to_csv(cache_scores, index=False, encoding='utf-8-sig')
+    # respect_env の単特徴実験では legacy/new 共用キャッシュを汚さない
+    if not respect_env:
+        df.to_csv(cache_pred, index=False, encoding='utf-8-sig')
+        if scores is not None:
+            scores.to_csv(cache_scores, index=False, encoding='utf-8-sig')
     return df, scores
 
 
