@@ -1308,6 +1308,7 @@ _FINALIZE_PERSIST_COLS = (
     'レース信頼度スコア', '能力差スコア', '展開読みやすさ',
     'データ件数スコア', 'シミュレーション一致率', '競馬場バイアス一致率',
     '補正勝率', '市場暗示勝率', '実エッジpp', 'AI勝率採用',
+    '近走指数順位',
     'BUY品質判定', 'BUY品質理由', 'BUY品質スコア',
     'S降格', 'S降格理由',
 )
@@ -1866,6 +1867,15 @@ def apply_expected_value(record: dict) -> dict:
     if ev.get('AI適正オッズ補正') is not None:
         record['AI適正オッズ表示'] = ev['AI適正オッズ補正']
     record['AI信頼度'] = stars_for_score(safe_int(ev.get('AI信頼度スコア'), 50))
+    # 本命のフィールド指数順位（ピック順1位と混同しない）
+    if record.get('近走指数順位') in (None, '', '—'):
+        honmei = str(record.get('本命') or '').strip()
+        for c in record.get('ピックカード一覧') or []:
+            if not isinstance(c, dict):
+                continue
+            if str(c.get('馬名') or '').strip() == honmei and c.get('近走指数順位') not in (None, '', '—'):
+                record['近走指数順位'] = c.get('近走指数順位')
+                break
 
     conf = safe_float(ev.get('AI信頼度スコア'), 0.0) or 0.0
     repro = safe_float(ev.get('シミュレーション再現率'), 0.0) or 0.0

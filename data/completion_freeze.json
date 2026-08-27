@@ -1,0 +1,82 @@
+{
+  "探索": "停止",
+  "完成方針": "新しい改善案を増やさない。採用基準を満たしたファクターだけを採用候補にする。満たさないものは不採用で閉じる。本番スコア・BUY条件・tanh表示は変更しない。日次生成と配信をOLDで固定する。",
+  "台帳": "data/verified_factors.csv",
+  "比較条件": {
+    "BUY": "確定オッズ・1点100円・BUY_EV_FLOOR=108・BUY_CONF_FLOOR=58・tanh表示EV",
+    "train": "42開催日の先頭70%（〜2026-08-09）",
+    "holdout": "2026-08-10〜22",
+    "OLD_BUY": {"train_n": 263, "train_ROI": -43.42, "holdout_n": 153, "holdout_ROI": -70.39, "full_n": 416, "full_ROI": -53.34}
+  },
+  "採用基準": {
+    "必須": [
+      "train ROI が OLD を上回る",
+      "holdout ROI が OLD を上回る",
+      "holdout ROI差のブートストラップ90%CI下限が 0 より大きい",
+      "BUY件数を減らしてROIだけ上げていない（holdout件数比 ≳ 0.80、全期間 n ≳ 100）"
+    ],
+    "禁止": [
+      "trainだけ改善",
+      "全期間だけ改善",
+      "新しい条件フィルタ",
+      "複数未検証特徴の同時追加",
+      "採用候補があっても勝手に本番変更"
+    ]
+  },
+  "採用候補": [],
+  "本番": {
+    "ロジック": "OLD",
+    "変更してよいか": false,
+    "ARERU_LEGACY_SCORE": "1",
+    "render.yaml": "ARERU_LEGACY_SCORE=1 を固定（未設定だと NEW になる）",
+    "github_actions": "nar-daily-data.yml の job env に ARERU_LEGACY_SCORE=1（日次生成も OLD）",
+    "SIM_RUNS": "GHA 既定 100000 / Render 20000。Render は生成しないので配信には影響しない。今回は変更しない",
+    "note": "LEGACY=1 はスコア式の変更ではなく、未設定時に NEW へ落ちる事故を止める固定。NEW・PRESET・較正フラグは立てない。"
+  },
+  "表示仕様_凍結": {
+    "生EV": "補正勝率(%) × オッズ",
+    "表示EV": "clip(100 + 26*tanh((生EV-100)/30), 78, 124)",
+    "BUY判定に使うEV": "表示EV（tanh圧縮後）",
+    "推定勝率": "補正勝率。生SIM勝率へフォールバックしない",
+    "AI順位": "近走指数順位（ピック順1位と混同しない）",
+    "人気との差": "人気 − 近走指数順位",
+    "tanhを変えてよいか": false
+  },
+  "BUY条件_現行": {
+    "表示期待値": ">= 108",
+    "AI信頼度": ">= 58",
+    "レース信頼度": ">= 58",
+    "再現率_仮判定": ">= 42",
+    "再現率_最終厳選": ">= 40",
+    "勝負ランク": "S または A",
+    "品質ゲート": "_buy_quality_ok（実エッジ・人気・サンプル・品質スコア）",
+    "件数上限": "開催単位の buy_cap",
+    "フォールバック": "投資判定が空のときだけ表示期待値>=108。最終は apply_expected_value / tighten_buy_selection"
+  },
+  "予想生成フロー": [
+    "GitHub Actions nar-daily-data.yml（データ主導 morning/odds）",
+    "refresh_data.py で runners 更新",
+    "morning なら replay_predict.py（ARERU_LEGACY_SCORE=1）→ predictions_by_date に commit",
+    "8時JST以降は封印。以降はオッズパッチのみ（ランク再計算しない）",
+    "Render は ARERU_ENABLE_GENERATION=0 / ARERU_SKIP_BOOT=1 で配信専用",
+    "ページからの再取得はしない"
+  ],
+  "既知の限界_完成時に受け入れる": [
+    "BUY ROI は現行OLDでも大幅マイナス（holdout -70.39%）",
+    "補正勝率は的中より過大（BUY holdout 推定 > 的中）",
+    "本命とall_historyの馬名接合は約15%",
+    "表示EVはtanh圧縮（78-124）で生EVと一致しない。仕様として凍結",
+    "マージ前に生成済みの当日CSVは NEW のまま残る。次回 morning 生成から OLD になる",
+    "GHA が失敗すると UI は generating のまま。Render 側では自己修復しない"
+  ],
+  "やらないこと": [
+    "NEW を本番へ切り替え",
+    "履歴接合15%を上げるための新規取得・新特徴探索",
+    "isotonic/人気帯キャリブの実装",
+    "馬場・過去走履歴の再アブレーション",
+    "BUY閾値のグリッドサーチ",
+    "条件スライスで見かけ改善した層へのフィルタ追加",
+    "tanh 圧縮式の変更",
+    "SIM_RUNS の変更"
+  ]
+}

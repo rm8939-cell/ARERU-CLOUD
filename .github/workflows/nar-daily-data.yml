@@ -38,6 +38,9 @@ jobs:
   refresh-and-commit:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      # 日次生成も本番と同じ旧ロジック。未設定だと新ロジックになる。
+      ARERU_LEGACY_SCORE: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

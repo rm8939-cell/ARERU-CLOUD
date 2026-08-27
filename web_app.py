@@ -6,6 +6,7 @@ import os
 import pandas as pd
 from areru_engine import parse_date
 from ev_analysis import (
+    BUY_EV_FLOOR,
     apply_expected_value,
     build_ai_self_eval,
     day_performance,
@@ -99,6 +100,7 @@ _NAR_VENUE_DETAIL_COLS=(
     'ワイド買い目','馬連買い目','ワイド評価','馬連評価','レース期待回収率','期待回収率',
     'AI信頼度スコア','レース信頼度スコア','シミュレーション再現率','S降格','S降格理由',
     '補正勝率','市場暗示勝率','実エッジpp','BUY品質スコア','BUY品質判定','BUY品質理由',
+    '近走指数順位',
 )
 
 
@@ -2202,7 +2204,7 @@ def prep(records, ban_map=None):
         if not r.get('投資判定'):
             try:
                 ev=float(str(r.get('レース期待回収率') or '').replace('%',''))
-                if ev>=100:
+                if ev>=BUY_EV_FLOOR:
                     r['投資判定']='買い'; r['投資判定アイコン']='🟢'; r['投資判定トーン']='buy'
                 else:
                     r['投資判定']='見送り'; r['投資判定アイコン']='🔴'; r['投資判定トーン']='skip'

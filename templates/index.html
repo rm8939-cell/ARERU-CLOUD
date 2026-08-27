@@ -376,6 +376,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-card .bc-minus:before{content:"−";position:absolute;left:10px;top:8px;color:#c45a3a;font-weight:900}
 .buy-card .bc-risk{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:#fff8f0;border:1px solid #f0dcc4;font-size:13px;line-height:1.55;color:#6a4a2a}
 .buy-card .bc-risk b{color:#9a5b00;font-weight:900}
+.buy-card .bc-note{margin:10px 0 0;font-size:11px;font-weight:650;color:#5a6874;line-height:1.5}
 .buy-card .bc-reasons-title{margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 .buy-card .bc-reasons{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px}
 .buy-card .bc-reasons li{position:relative;padding:11px 12px 11px 34px;background:#f8fbf9;border:1px solid #e2eee6;border-radius:12px;font-size:15px;font-weight:750;line-height:1.45;color:#1f2a33}
@@ -465,7 +466,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source in ['nar','jra'] %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
-<div class="status-banner warn">初回データ準備中です。サーバー側の定期更新が完了次第、自動で表示します。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
+<div class="status-banner warn">初回データ準備中です。GitHub Actions の定期更新が完了次第、自動で表示します。この画面から再取得はしません。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
 <div class="status-banner info">バックグラウンドで更新中です。表示中の予想はそのまま見られます。完了後に最新へ切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
 {% elif _ds == 'success' %}
@@ -999,7 +1000,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 <section class="today-hero" id="predict-targets" aria-label="今日の買い">
 <div class="th-kicker">ARERU · {{selected_date}} · {{ 'JRA' if source == 'jra' else ('地方' if source == 'nar' else '全開催') }}</div>
 <h2>🔥 今日の買い</h2>
-<p class="th-sub">期待値のあるレースだけ表示</p>
+<p class="th-sub">期待値のあるレースだけ表示。勝ちを保証するものではありません。</p>
 <div class="th-count"><b>{{_buys_sorted|length}}</b><span>件のBUY</span></div>
 </section>
 
@@ -1008,12 +1009,22 @@ details.race-acc[open]>.race-acc-body{display:block}
 <h2>🔥 BUY<small>本番判定の買いのみ · {{_buys_sorted|length}}件</small></h2>
 <div class="buy-card-grid">
 {% for t in _buys_sorted %}
-  {% set _ai_rank = namespace(v='—') %}
-  {% for _p in (t.get('予想馬') or []) %}
-    {% if (_p.get('馬名') or '') == (t.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
-      {% set _ai_rank.v = _p.get('AI順位') or loop.index %}
-    {% endif %}
-  {% endfor %}
+  {% set _idx = namespace(v=None) %}
+  {% if t.get('近走指数順位') not in [None, '', '—'] %}
+    {% set _idx.v = t.get('近走指数順位')|int %}
+  {% elif t.get('本命カード') is mapping and t.get('本命カード').get('近走指数順位') not in [None, '', '—'] %}
+    {% set _idx.v = t.get('本命カード').get('近走指数順位')|int %}
+  {% endif %}
+  {% if _idx.v is none %}
+    {% for _p in (t.get('予想馬') or []) %}
+      {% if (_p.get('馬名') or '') == (t.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
+        {% set _card = _p.get('カード') if _p.get('カード') is mapping else {} %}
+        {% if _card.get('近走指数順位') not in [None, '', '—'] %}
+          {% set _idx.v = _card.get('近走指数順位')|int %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
   {% set _conf = t.get('レース信頼度スコア') or t.get('AI信頼度スコア') %}
   {% set _reasons = t.get('AI買い理由') if t.get('AI買い理由') is sequence and t.get('AI買い理由') else [] %}
   {% set _buy_pack = t.get('BUY根拠') if t.get('BUY根拠') is mapping else {} %}
@@ -1034,7 +1045,7 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% set _ev_raw = t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') or '—' %}
   {% set _ev_disp = (_ev_raw ~ '')|replace('%','') %}
   {% set _rk = t.get('勝負ランク') or _buy_pack.get('ランク') or '' %}
-  {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') or t.get('シミュレーション勝率') or _main_card.get('勝率') %}
+  {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') %}
   {% set _impl = _buy_pack.get('市場暗示勝率') or t.get('市場暗示勝率') %}
   {% set _edge_pp = _buy_pack.get('実エッジpp') or t.get('実エッジpp') %}
   {% set _ai_idx = _buy_pack.get('AI評価') or t.get('本命AREru指数') %}
@@ -1043,8 +1054,8 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% set _plus = _buy_pack.get('プラス') if _buy_pack.get('プラス') is sequence else [] %}
   {% set _minus = _buy_pack.get('マイナス') if _buy_pack.get('マイナス') is sequence else [] %}
   {% set _pop_gap = namespace(v='—') %}
-  {% if _pop is not none and _ai_rank.v != '—' %}
-    {% set _pop_gap.v = (_pop|int - _ai_rank.v|int) %}
+  {% if _pop is not none and _idx.v is not none %}
+    {% set _pop_gap.v = (_pop|int - _idx.v) %}
   {% endif %}
 <a class="buy-card" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
 <div class="bc-top"><span class="bc-badge">🔥 BUY</span>{% if _rk %}<span class="bc-rank-badge rank-{{_rk|lower}}">{{_rk}}</span>{% endif %}</div>
@@ -1054,17 +1065,18 @@ details.race-acc[open]>.race-acc-body{display:block}
 <span class="bc-name">{{_horse}}</span>
 </div>
 <div class="bc-metrics">
-<div><b>{{_ev_disp}}%</b><small>期待値</small></div>
+<div><b>{{_ev_disp}}%</b><small>表示期待値</small></div>
 <div><b>{% if _adj is not none %}{{'%g'|format(_adj|float)}}%{% else %}—{% endif %}</b><small>推定勝率</small></div>
 <div><b>{% if t.get('本命オッズ') is not none %}{{t.get('本命オッズ')}}倍{% else %}—{% endif %}</b><small>オッズ</small></div>
 <div><b>{% if _pop is not none %}{{_pop|int}}番{% else %}—{% endif %}</b><small>人気</small></div>
 <div><b>{% if _pop_gap.v != '—' %}{% if _pop_gap.v > 0 %}+{% endif %}{{_pop_gap.v}}{% else %}—{% endif %}</b><small>人気との差</small></div>
-<div><b>{% if _ai_rank.v != '—' %}{{_ai_rank.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
+<div><b>{% if _idx.v is not none %}{{_idx.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
 <div><b>{% if _rk %}{{_rk}}{% elif _ai_idx is not none %}{{'%g'|format(_ai_idx|float)}}{% else %}—{% endif %}</b><small>AI評価</small></div>
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 </div>
+<div class="bc-note">表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。BUYは表示期待値108%以上かつ信頼度などの条件を満たしたときだけです。勝ちを保証しません。</div>
 {% if _edge_pp is not none %}
-<div class="bc-edge">実エッジ <b>+{{'%g'|format(_edge_pp|float)}}pp</b>（補正勝率が市場より高い）</div>
+<div class="bc-edge">実エッジ <b>{{'%+.1f'|format(_edge_pp|float)}}pp</b>（推定勝率と市場暗示の差）</div>
 {% endif %}
 {% if _reasons %}
 <div class="bc-reasons-title">BUY理由</div>
@@ -1091,7 +1103,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% else %}
 <section class="buy-empty-card" aria-label="買いなし">
 <h3>本日は買いなし</h3>
-<p>期待値条件を満たすレースがありません</p>
+<p>表示期待値・AI評価S/A・信頼度の条件をすべて満たす買いがありません</p>
 </section>
 {% endif %}
 
@@ -1100,12 +1112,10 @@ details.race-acc[open]>.race-acc-body{display:block}
 <h2>⭐ 注目<small>BUYではないが期待値を確認できるレース · {{_watch_sorted|length}}件</small></h2>
 <div class="watch-grid">
 {% for t in _watch_sorted %}
-  {% set _ai_rank = namespace(v='—') %}
-  {% for _p in (t.get('予想馬') or []) %}
-    {% if (_p.get('馬名') or '') == (t.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
-      {% set _ai_rank.v = _p.get('AI順位') or loop.index %}
-    {% endif %}
-  {% endfor %}
+  {% set _idx = namespace(v=None) %}
+  {% if t.get('近走指数順位') not in [None, '', '—'] %}
+    {% set _idx.v = t.get('近走指数順位')|int %}
+  {% endif %}
   {% set _conf = t.get('レース信頼度スコア') or t.get('AI信頼度スコア') %}
   {% set _ev_disp = ((t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') or '—') ~ '')|replace('%','') %}
 <a class="watch-card" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
@@ -1115,10 +1125,10 @@ details.race-acc[open]>.race-acc-body{display:block}
 </div>
 <div class="wc-horse">{% if t.get('本命馬番') %}{{t.get('本命馬番')}}　{% endif %}{{t.get('本命') or '—'}}</div>
 <div class="wc-meta">
-<div><b>{{_ev_disp}}</b><small>期待値</small></div>
+<div><b>{{_ev_disp}}</b><small>表示期待値</small></div>
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 <div><b>{% if t.get('本命オッズ') is not none %}{{t.get('本命オッズ')}}倍{% else %}—{% endif %}</b><small>オッズ</small></div>
-<div><b>{% if _ai_rank.v != '—' %}{{_ai_rank.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
+<div><b>{% if _idx.v is not none %}{{_idx.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
 </div>
 </a>
 {% endfor %}
@@ -1177,12 +1187,10 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% elif _ev_n.v is not none and _ev_n.v >= P1_EV_WATCH %}{% set _race_judge = 'watch' %}
   {% else %}{% set _race_judge = 'skip' %}{% endif %}
   {% set _conf = r.get('レース信頼度スコア') or r.get('AI信頼度スコア') %}
-  {% set _ai_rank = namespace(v='—') %}
-  {% for _p in (r.get('予想馬') or []) %}
-    {% if (_p.get('馬名') or '') == (r.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
-      {% set _ai_rank.v = _p.get('AI順位') or loop.index %}
-    {% endif %}
-  {% endfor %}
+  {% set _idx = namespace(v=None) %}
+  {% if r.get('近走指数順位') not in [None, '', '—'] %}
+    {% set _idx.v = r.get('近走指数順位')|int %}
+  {% endif %}
 <details class="race-acc predict-acc" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-judge="{{_race_judge}}">
 <summary class="race-acc-toggle">
 <div class="list-race">
@@ -1198,7 +1206,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 </div>
 <div class="ss-row">
 <span class="ss-ev {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}</span>
-<span class="ss-rank">信頼度 {% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %} · AI{% if _ai_rank.v != '—' %}{{_ai_rank.v}}{% else %}—{% endif %}位</span>
+<span class="ss-rank">信頼度 {% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %} · AI{% if _idx.v is not none %}{{_idx.v}}{% else %}—{% endif %}位</span>
 </div>
 </div>
 </summary>
