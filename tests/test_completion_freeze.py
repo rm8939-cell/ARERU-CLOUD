@@ -94,12 +94,31 @@ class TestProductionLock(unittest.TestCase):
         self.assertIn('勝ちを保証するものではありません', html)
         self.assertIn('近走指数順位', html)
         self.assertIn('勝負ランクは信頼度枠', html)
-        buy = html.split('aria-label="BUYカード"', 1)[1].split('aria-label="注目"', 1)[0]
+        buy = html.split('aria-label="BUYカード"', 1)[1].split('aria-label="見送り"', 1)[0]
         self.assertIn('<small>勝負ランク</small>', buy)
         self.assertNotIn('<small>AI評価</small>', buy)
+        self.assertIn('プラス要因', html)
+        self.assertIn('マイナス要因', html)
+        self.assertIn('予想サマリー', html)
+        self.assertNotIn('惜しい', html)
+        self.assertNotIn('AI的には買い', html)
         self.assertNotIn("or t.get('シミュレーション勝率')", html)
         self.assertIn('生の期待値＝推定勝率×オッズ', html)
         self.assertNotIn('番人気の妙味', (ROOT / 'ev_analysis.py').read_text(encoding='utf-8'))
+
+    def test_display_factors_use_existing_lists_only(self):
+        from web_app import _display_factor_lists
+        plus, minus, why = _display_factor_lists({
+            'プラス材料一覧': ['距離適性が合う', '枠順有利'],
+            '不安材料一覧': ['特記すべき大きな不安は少ない', '斤量過多'],
+            '判断根拠': [
+                {'項目': '近走指数順位', '評価': '1位/12', '説明': '先頭'},
+                {'項目': '距離適性', '評価': '－', '説明': '距離適性データ不足'},
+            ],
+        })
+        self.assertEqual(plus, ['距離適性が合う', '枠順有利'])
+        self.assertEqual(minus, ['斤量過多'])
+        self.assertEqual(why, [{'項目': '近走指数順位', '評価': '1位/12'}])
 
     def test_index_rank_copied_from_pick_card(self):
         from ev_analysis import apply_expected_value

@@ -428,6 +428,42 @@ details.race-acc[open]>.race-acc-body{display:block}
 .horse-table-p1 .ht-b small{color:var(--muted);font-size:9px;font-weight:800}
 .horse-table-p1 .ht-b .ev-hi b{color:#176b45}.horse-table-p1 .ht-b .ev-mid b{color:#9a6b00}.horse-table-p1 .ht-b .ev-lo b{color:#78909c}
 .horse-table-p1 .ht-note{margin-top:2px;font-size:11px;color:var(--muted);font-weight:600}
+.race-sum{margin:0 0 12px;padding:14px;border-radius:16px;background:#f7faf8;border:1px solid #d7e6dd}
+.race-sum h3{margin:0 0 10px;font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.race-sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.race-sum-grid div{background:#fff;border:1px solid #e4eaee;border-radius:12px;padding:10px}
+.race-sum-grid b{display:block;font-size:16px;font-weight:900;line-height:1.3;word-break:break-word}
+.race-sum-grid small{color:var(--muted);font-size:10px;font-weight:800}
+.race-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:0 0 12px}
+.race-meta div{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 10px}
+.race-meta b{display:block;font-size:13px;font-weight:850}
+.race-meta small{color:var(--muted);font-size:10px;font-weight:800}
+.hc{border:1px solid #e4eaee;border-radius:16px;padding:14px;margin:0 0 10px;background:#fff}
+.hc.hc-buy{border-color:#b7dbc8;background:linear-gradient(180deg,#fff,#f3faf6)}
+.hc-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.hc-rank{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.08em}
+.hc-name{margin:6px 0 4px;font-size:18px;font-weight:900;line-height:1.3;word-break:break-word}
+.hc-sub{font-size:12px;font-weight:700;color:#556;line-height:1.45}
+.hc-metrics{margin-top:10px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.hc-metrics div{text-align:center;background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 4px}
+.hc.hc-buy .hc-metrics div{background:#fff}
+.hc-metrics b{display:block;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+.hc-metrics small{font-size:10px;color:var(--muted);font-weight:800}
+.hc-fac{margin:10px 0 0}
+.hc-fac h4{margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:.08em}
+.hc-fac.plus h4{color:#176b45}
+.hc-fac.minus h4{color:#b23b3b}
+.hc-fac ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.hc-fac li{font-size:13px;font-weight:750;line-height:1.4;padding:7px 10px 7px 28px;border-radius:10px;position:relative}
+.hc-fac.plus li{background:#f0faf4;color:#1a5c3a}
+.hc-fac.plus li:before{content:"+";position:absolute;left:10px;font-weight:900;color:#1a7f4b}
+.hc-fac.minus li{background:#fff8f6;color:#8a4a3a}
+.hc-fac.minus li:before{content:"−";position:absolute;left:10px;font-weight:900;color:#c45a3a}
+.hc-why{margin:8px 0 0;display:grid;gap:4px}
+.hc-why div{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;padding:4px 0;border-bottom:1px solid #eef2f5}
+.hc-why span{color:var(--muted)}
+.hc-why b{color:var(--text);text-align:right}
+@media (min-width:520px){.race-sum-grid,.race-meta,.hc-metrics{grid-template-columns:repeat(4,1fr)}}
 .p1-sub{font-size:11px;color:var(--muted);font-weight:700;margin:0 0 8px;line-height:1.5}
 .buy-spotlight{margin:12px 18px;padding:14px;border-radius:14px;background:linear-gradient(180deg,#f3faf6,#eaf6f0);border:1px solid #cfe3d8}
 .buy-spotlight .bs-title{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--brand);margin-bottom:8px}
@@ -1105,8 +1141,8 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endif %}
 
 {% if _watch_sorted %}
-<section class="sec-block" aria-label="注目">
-<h2>⭐ 注目<small>BUYではないが期待値を確認できるレース · {{_watch_sorted|length}}件</small></h2>
+<section class="sec-block" aria-label="見送り">
+<h2>見送り<small>BUYではないが期待値を確認できるレース · {{_watch_sorted|length}}件</small></h2>
 <div class="watch-grid">
 {% for t in _watch_sorted %}
   {% set _idx = namespace(v=None) %}
@@ -1118,7 +1154,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 <a class="watch-card" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
 <div class="wc-top">
 <div class="wc-race">{{t.get('開催地') or '—'}}{% if t.get('レース') is not none %}{{t['レース']|int}}R{% endif %}</div>
-<span class="judge-pill watch">⭐ 注目</span>
+<span class="judge-pill skip">見送り</span>
 </div>
 <div class="wc-horse">{% if t.get('本命馬番') %}{{t.get('本命馬番')}}　{% endif %}{{t.get('本命') or '—'}}</div>
 <div class="wc-meta">
@@ -1181,7 +1217,6 @@ details.race-acc[open]>.race-acc-body{display:block}
     {% set _ev_n.v = ('' ~ r.get('期待値'))|replace('%','')|float %}
   {% endif %}
   {% if _is_prod_buy %}{% set _race_judge = 'buy' %}
-  {% elif _ev_n.v is not none and _ev_n.v >= P1_EV_WATCH %}{% set _race_judge = 'watch' %}
   {% else %}{% set _race_judge = 'skip' %}{% endif %}
   {% set _conf = r.get('レース信頼度スコア') or r.get('AI信頼度スコア') %}
   {% set _idx = namespace(v=None) %}
@@ -1193,8 +1228,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div class="list-race">
 <span class="race-name">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %}{% if not selected_venue and r.get('開催地') %} {{r.get('開催地')}}{% endif %}</span>
 {% if _race_judge == 'buy' %}<span class="judge-pill buy">🔥 BUY</span>
-{% elif _race_judge == 'watch' %}<span class="judge-pill watch">⭐ 注目</span>
-{% else %}<span class="judge-pill skip">○ 見送り</span>{% endif %}
+{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
 </div>
 <div class="simple-summary" style="margin-top:8px">
 <div class="ss-row">
@@ -1210,54 +1244,87 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div class="race-acc-body">
 <section class="race {{r['荒れクラス']}}">
 <div class="race-head">
-<div class="venue">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}<small>詳細予想</small></div>
+<div class="venue">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% else %}<small>詳細予想</small>{% endif %}</div>
 <div class="race-head-right">
 {% if _race_judge == 'buy' %}<span class="judge-pill buy">🔥 BUY</span>
-{% elif _race_judge == 'watch' %}<span class="judge-pill watch">⭐ 注目</span>
-{% else %}<span class="judge-pill skip">○ 見送り</span>{% endif %}
+{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
 </div>
 </div>
 <div class="betbar">
-<span class="ev-main {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}<small>期待値</small></span>
-<span class="invest-pill {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定表示') or r.get('投資判定') or '—'}}</span>
+<span class="ev-main {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}<small>表示期待値</small></span>
+<span class="invest-pill {{r.get('投資判定トーン','wait')}}">{% if _is_prod_buy %}🔥 BUY{% else %}見送り{% endif %}</span>
 </div>
 
-<div class="section" style="padding-top:12px">
-<div class="section-title">評価馬</div>
 {% set _picks = r.get('予想馬') or [] %}
+{% set _hon = namespace(v='—') %}
+{% set _riv = namespace(v='—') %}
+{% for p in _picks %}
+  {% if (p.get('役割') or '') == '本命' %}{% set _hon.v = ((p.get('馬番表示') or p.get('馬番') or '') ~ ' ' ~ (p.get('馬名') or ''))|trim %}
+  {% elif (p.get('役割') or '') == '対抗' %}{% set _riv.v = ((p.get('馬番表示') or p.get('馬番') or '') ~ ' ' ~ (p.get('馬名') or ''))|trim %}
+  {% endif %}
+{% endfor %}
+{% if _hon.v == '—' %}{% set _hon.v = r.get('本命表示') or r.get('本命') or '—' %}{% endif %}
+<div class="section" style="padding-top:12px">
+<div class="race-sum">
+<h3>予想サマリー</h3>
+<div class="race-sum-grid">
+<div><b>{{_hon.v}}</b><small>本命</small></div>
+<div><b>{{_riv.v}}</b><small>対抗</small></div>
+<div><b>{% if _is_prod_buy %}1頭{% else %}0頭{% endif %}</b><small>BUY</small></div>
+<div><b>{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}</b><small>最高表示期待値</small></div>
+<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>最高信頼度</small></div>
+</div>
+</div>
+<div class="race-meta">
+<div><b>{{r.get('開催地') or '—'}}</b><small>競馬場</small></div>
+<div><b>{{r.get('開催日') or selected_date or '—'}}</b><small>開催日</small></div>
+<div><b>{% if r.get('レース') is not none %}{{r['レース']|int}}R{% else %}—{% endif %}</b><small>レース</small></div>
+<div><b>{% if r.get('データ頭数') not in [None, '', '—'] %}{{r.get('データ頭数')|int}}頭{% else %}—{% endif %}</b><small>頭数</small></div>
+<div><b>{{r.get('芝ダ') or r.get('馬場種別') or '—'}}</b><small>芝/ダート</small></div>
+<div><b>{{r.get('距離') or r.get('距離表示') or '—'}}</b><small>距離</small></div>
+<div><b>{{r.get('馬場状態') or r.get('馬場') or '—'}}</b><small>馬場状態</small></div>
+<div><b>{{r.get('レース名') or r.get('レース名表示') or '—'}}</b><small>レース名</small></div>
+</div>
+<div class="section-title">評価馬</div>
 {% if _picks %}
-<div class="horse-table-p1">
 {% for p in _picks %}
   {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
-  {% set _ev_raw = _card.get('期待値') if _card.get('期待値') is not none else p.get('期待値') %}
-  {% set _odds_raw = _card.get('単勝オッズ') if _card.get('単勝オッズ') is not none else none %}
-  {% set _ev_n = namespace(v=none) %}
-  {% if _ev_raw is not none and ('' ~ _ev_raw)|trim not in ('', '—', '-', 'None', 'nan') %}
-    {% set _ev_n.v = ('' ~ _ev_raw)|replace('%','')|float %}
-  {% endif %}
-  {% set _od_ok = false %}
+  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
+  {% set _odds_raw = p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ') %}
   {% set _odds_disp = '—' %}
   {% if _odds_raw is not none and ('' ~ _odds_raw)|trim not in ('', '—', '-', 'None', 'nan') %}
-    {% set _odds_disp = ('' ~ _odds_raw)|replace('倍','') %}
-    {% if (_odds_disp|float) > 0 %}{% set _od_ok = true %}{% endif %}
+    {% set _odds_disp = (('' ~ _odds_raw)|replace('倍','')) ~ '倍' %}
   {% endif %}
-  {% set _is_axis = (_is_prod_buy and (((p.get('馬名') or '') == (r.get('本命') or '')) or ((p.get('役割') or '') == '本命'))) %}
-  {% set _ev_tone = 'ev-hi' if (_ev_n.v is not none and _ev_n.v >= 115) else ('ev-mid' if (_ev_n.v is not none and _ev_n.v >= P1_EV_WATCH) else 'ev-lo') %}
-<div class="ht-row">
-<div class="ht-a">
-<span class="ht-ban">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
-<span class="ht-name">{{p.get('馬名') or '—'}}</span>
-{% if _is_axis %}<span class="judge-pill buy">🔥 BUY</span>{% endif %}
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+  {% set _rank = p.get('近走指数順位') or _card.get('近走指数順位') or p.get('AI順位') %}
+<div class="hc{% if p.get('BUY表示') %} hc-buy{% endif %}">
+<div class="hc-top">
+<div class="hc-rank">{% if _rank not in [None, '', '—'] %}{{_rank}}位{% else %}{{loop.index}}位{% endif %} · {{p.get('役割') or ''}}</div>
+{% if p.get('BUY表示') %}<span class="judge-pill buy">🔥 BUY</span>{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
 </div>
-<div class="ht-b">
-<span><b>{{_odds_disp}}{% if _od_ok %}倍{% endif %}</b><small>オッズ</small></span>
-<span><b>{{p.get('AI評価') or '—'}}</b><small>AI評価</small></span>
-<span class="{{_ev_tone}}"><b>{% if _ev_n.v is not none %}{{'%g'|format(_ev_n.v)}}%{% else %}—{% endif %}</b><small>期待値</small></span>
-<span><b>AI{{p.get('AI順位') or loop.index}}</b><small>参考</small></span>
+<div class="hc-name">{% if p.get('馬番表示') or p.get('馬番') %}{{p.get('馬番表示') or p.get('馬番')}} {% endif %}{{p.get('馬名') or '—'}}</div>
+<div class="hc-sub">{% if p.get('枠番') %}枠{{p.get('枠番')}}{% endif %}{% if p.get('騎手') %} · {{p.get('騎手')}}{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}{% if _odds_disp != '—' %} · {{_odds_disp}}{% endif %}</div>
+<div class="hc-metrics">
+<div><b>{% if p.get('予想スコア') is not none %}{{p.get('予想スコア')}}{% else %}{{_card.get('AI評価') or '—'}}{% endif %}</b><small>スコア</small></div>
+<div><b>{% if p.get('BUY表示') %}{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}{% elif _ev_raw not in [None, '', '—'] %}{{_ev_raw}}%{% else %}—{% endif %}</b><small>{% if p.get('BUY表示') %}表示期待値{% else %}期待値{% endif %}</small></div>
+<div><b>{% if p.get('BUY表示') %}{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
 </div>
-</div>
+{% if p.get('プラス要因') %}
+<div class="hc-fac plus"><h4>プラス要因</h4><ul>{% for x in p.get('プラス要因') %}<li>{{x}}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if p.get('マイナス要因') %}
+<div class="hc-fac minus"><h4>マイナス要因</h4><ul>{% for x in p.get('マイナス要因') %}<li>{{x}}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if p.get('評価内訳') %}
+<div class="hc-why">
+{% for w in p.get('評価内訳') %}
+<div><span>{{w.get('項目')}}</span><b>{{w.get('評価')}}</b></div>
 {% endfor %}
 </div>
+{% endif %}
+</div>
+{% endfor %}
 {% else %}
 <div class="reason">予想馬データがありません</div>
 {% endif %}
