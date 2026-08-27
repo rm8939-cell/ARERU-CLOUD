@@ -1,0 +1,35 @@
+category,id,name,source,old,new,fill_pct,production_old_uses,prior_roi_fail,note,path
+currently_used,past_finish,着順1-5,runners.csv,used,used,85.1,True,False,,score_runner performance/consistency/trend
+currently_used,past_pop,人気1-5,runners.csv,used,used,85.22,True,False,,score_runner upset/value + last3f/style proxy
+currently_used,past_venue,場1-5 / レース名1-5,runners.csv,used,used,78.66,True,False,,NAR→JRA scale + context_features
+currently_used,market_odds,単勝オッズ / 人気,runners.csv,used,used,97.36,True,False,,value市場補正 + SIM市場収縮 + EV/BUY
+currently_used,source_venue,source / race_id / 開催地,runners.csv,used,used,100.0,True,False,,JRA/NAR判定・会場名
+currently_used,hist_date_horse,年月日 / 馬名,all_history.csv,used,used,100.0,True,False,,_date < target フィルタ
+currently_used,hist_dist_venue,距離 / 場,all_history.csv,used,used,100.0,True,False,,context 距離・会場適性。NEWは course_distance_fit も
+currently_used,hist_heads,頭数,all_history.csv,used_weak,used_weak,100.0,True,True,PRESET=X の指数加点はholdout ROI失敗。残差が両split再現しない限り確率補正にも使わない,context 頭数減経験のみ。PRESET=X の sfield で強化（holdout失敗）
+currently_used,hist_finish_pop,着順 / 人気（履歴）,all_history.csv,used,used,99.46,True,False,,context + NEW jockey_bonus
+currently_used,consistency_sigma,因子_consistency → ガウスσ,derived,used,unused_in_stage,100.0,True,False,,OLD simulate_race の sigma。NEW段階SIMでは使わない
+currently_used,claimable_prob,補正勝率（EV）,derived,used,used,100.0,True,False,補正勝率は市場よりまだ過大。isotonic/人気帯キャリブが次の本線,_claimable_ai_prob + _edge_take_rate。表示EVの入力
+currently_used,place_shrink,連対/複勝 shrink,derived,used,used,100.0,True,False,,simulate_race でフィールド平均へ縮小。単勝は別途市場収縮
+acquired_unused,runners_jockey,騎手,runners.csv,unused,used,95.89,False,True,PRESET=X の指数加点はholdout ROI失敗。残差が両split再現しない限り確率補正にも使わない,NEW jockey_bonus。OLDは PRESET=X sjockey のみ（holdout失敗）
+acquired_unused,hist_jockey,騎手（履歴）,all_history.csv,unused,used,100.0,False,False,,NEW 騎手複勝率。OLD未使用
+acquired_unused,runners_waku,枠,runners.csv,unused,used,97.11,False,True,PRESET=X の指数加点はholdout ROI失敗。残差が両split再現しない限り確率補正にも使わない,NEW gate_bias。OLDガウスは無視。PRESET=X sgate はholdout失敗
+acquired_unused,runners_kg,斤量（当日）,runners.csv,unused,used,95.87,False,True,PRESET=X の指数加点はholdout ROI失敗。残差が両split再現しない限り確率補正にも使わない,NEW フィールド平均比。OLDは PRESET=X burden（holdout失敗）
+acquired_unused,last3f_proxy,上がり3F代理（着順×人気）,derived,unused,used_proxy,85.1,False,False,,NEW last3f_proxy。実上がり3Fは未取得
+acquired_unused,runners_umaban,馬番,runners.csv,display,display,98.3,False,False,表示用。予測ロジック未使用,表示用。枠と別。予測未使用
+sparse_or_unusable,runners_time,タイム1-5,runners.csv,unused,used_if_filled,10.27,False,False,runners列は約10%しか埋まらない。履歴フォールバックも本命馬名接合が約15%,history_detail_bonus / time_trend_bonus。本番OLDは ablation OFF
+sparse_or_unusable,runners_margin,着差1-5,runners.csv,unused,used_if_filled,9.35,False,False,,history_detail_bonus / margin_bonus_from_row。本番OLD OFF
+sparse_or_unusable,runners_track,馬場1-5,runners.csv,unused,used_if_filled,10.27,False,False,,history_detail_bonus / track_condition_bonus。本番OLD OFF
+sparse_or_unusable,hist_time,タイム（履歴）,all_history.csv,unused,used_fallback,98.56,False,False,all_history の行充足は高いが、本命馬名との接合は 14.8% 。履歴マスタのカバレッジ拡張が先。現状の本命予測には実質欠損,runners欠損時の NEW フォールバック。OLD未使用
+sparse_or_unusable,hist_margin,着差（履歴）,all_history.csv,unused,used_fallback,96.21,False,False,all_history の行充足は高いが、本命馬名との接合は 14.8% 。履歴マスタのカバレッジ拡張が先。現状の本命予測には実質欠損,NEW 着差ボーナス。OLD未使用
+sparse_or_unusable,hist_track,馬場（履歴）,all_history.csv,unused,used,99.81,False,False,all_history の行充足は高いが、本命馬名との接合は 14.8% 。履歴マスタのカバレッジ拡張が先。現状の本命予測には実質欠損,NEW track_condition_bonus。OLD未使用
+sparse_or_unusable,hist_weight,馬体重,all_history.csv,unused,used,99.99,False,True,all_history の行充足は高いが、本命馬名との接合は 14.8% 。履歴マスタのカバレッジ拡張が先。現状の本命予測には実質欠損,NEW weight_delta。OLDは PRESET=X sweight（holdout失敗）
+sparse_or_unusable,hist_kg,斤量（履歴）,all_history.csv,unused,unused,97.63,False,False,all_history の行充足は高いが、本命馬名との接合は 14.8% 。履歴マスタのカバレッジ拡張が先。現状の本命予測には実質欠損,取得済み。予測ロジック未配線
+sparse_or_unusable,layoff,休み明け日数,derived from all_history,unused,used,100.0,False,True,all_history の行充足は高いが、本命馬名との接合は 14.8% 。履歴マスタのカバレッジ拡張が先。現状の本命予測には実質欠損,NEW layoff。OLDは PRESET=X slayoff（holdout失敗）
+sparse_or_unusable,blood_stable,血統 / 厩舎,hardcoded,unused,placeholder,0.0,False,False,コード上は中立プレースホルダ。取得パイプラインなし,build_profiles で blood=50 / stable≈騎手連動。データ未取得
+sparse_or_unusable,pass_pace_last3f,通過 / ペース / 上り,netkeiba extra headers,missing,missing,0.0,False,False,netkeiba_client は取得できるが all_history に列がなくキャッシュも空,取得コードはあるが all_history に列なし。horse_results キャッシュ空
+sparse_or_unusable,hist_this_race,今回レース,all_history.csv,unused,unused,2.37,False,False,,フラグ列。スコア未使用
+sparse_or_unusable,runners_finish_today,実着順,runners.csv,leak_forbidden,leak_forbidden,24.11,False,False,,事後結果。スコア投入禁止
+sparse_or_unusable,odds_updated_at,オッズ更新日時,runners.csv,unused,unused,24.75,False,False,,メタデータ。予測未使用
+verifiable,style_proxy,脚質（着順×人気代理）,derived,unused,used,85.1,False,True,本命全体では差し寄りで hit は低いが p がさらに下がり残差が正。BUY層の差し×内枠は0的中のため単純加点は禁止。層別キャリブのみ検証可,NEW infer_style。実通過/上りではない。OLDは PRESET=X sstyle
+verifiable,winrate_isotonic,補正勝率のisotonic/人気帯キャリブ,derived (SIM + オッズ),used_miscalibrated,used_miscalibrated,100.0,True,False,"本番OLD 全本命: 補正勝率 19.54% vs 的中 15.97% (train overconf 0.0341, holdout 0.0387)。BUY holdout: 補正 12.56% vs 的中 3.95% (市場暗示 9.68%)。12-20倍帯は全本命でも補正8.7% vs 的中3.4%。1番人気的中 42.35% に対し本命的中 15.97%。Brierは補正がSIMより良く、市場とほぼ同等。次はオッズ/人気帯でpを実測に合わせる（BUY_EV_FLOOR=108は固定。追加条件フィルタ禁止）。",同じBUYゲートのまま p を実測に合わせる。件数削減フィルタではない

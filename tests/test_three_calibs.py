@@ -78,6 +78,13 @@ class TestThreeCalibs(unittest.TestCase):
         self.assertEqual(BUY_CONF_FLOOR, 58)
         self.assertFalse(calib_flag('SASHI_INNER'))
 
+    def test_rejected_flags_stay_off_in_production_env(self):
+        os.environ['ARERU_LEGACY_SCORE'] = '1'
+        from areru_engine import ablation_enabled, legacy_score_enabled
+        self.assertTrue(legacy_score_enabled())
+        for feat in ('jockey', 'time', 'margin', 'track', 'weight', 'burden', 'sgate'):
+            self.assertFalse(ablation_enabled(feat), feat)
+
 
 if __name__ == '__main__':
     unittest.main()

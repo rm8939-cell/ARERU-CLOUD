@@ -224,6 +224,8 @@ def three_calib_adj(style, waku, n_horses: int, market_odds) -> tuple[float, lis
     1. SASHI_INNER: 差し×内枠を減点
     2. ODDS_INNER: 12.0-19.9倍×内枠を減点
     3. SASHI_SWEET: 差し×5.0-7.9倍×中枠を加点
+
+    2026-08 検証で3つとも holdout 不採用確定。本番フラグは立てない。
     """
     delta = 0.0
     plus: list[str] = []

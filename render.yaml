@@ -21,7 +21,10 @@ services:
         value: "20000"
       - key: ARERU_FAST_NAR
         value: "1"
-      # 本番は旧ロジック固定。train/holdout で ROI 改善が統計確認できるまで変更しない。
+      # 本番は旧ロジック固定（ARERU_LEGACY_SCORE=1）。
+      # SASHI_INNER / ODDS_INNER / SASHI_SWEET は holdout 不採用確定。フラグを立てない。
+      # PRESET=D / PRESET=X も本番禁止。単純な BUY 条件フィルタ追加も禁止。
+      # 次の改善は同じ BUY 条件のまま、推定勝率・期待値・ランキング精度のみ。
       - key: ARERU_LEGACY_SCORE
         value: "1"
       - key: ARERU_FETCH_BUDGET_SEC
