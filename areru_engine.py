@@ -9,7 +9,8 @@ DATA_DIR=Path(__file__).resolve().parent / 'data'
 CONFIG_FILE=DATA_DIR/'areru_v2_config.json'
 HORSE_CACHE_DIR=DATA_DIR/'cache'/'horse_results'
 DEFAULT_WEIGHTS={'performance':0.28,'upset':0.24,'consistency':0.12,'trend':0.12,'value':0.14,'context':0.10}
-RECENCY=np.array([1.0,.82,.65,.48,.34])
+# 本番スコアは先頭5走のみ使用。6走目以降は ARERU_ABL_HISTORY_EXPAND=1 の実験専用。
+RECENCY=np.array([1.0,.82,.65,.48,.34,.22,.14,.09])
 log=logging.getLogger('areru')
 # 地方→中央転入時の着順品質スケール（1.0=中央と同格）
 NAR_TO_JRA_SCALE_DEFAULT=0.55
@@ -56,9 +57,27 @@ def calib_v2_enabled() -> bool:
     return str(os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper() == 'D'
 
 
+_EXPERIMENT_ONLY_FEATURES = frozenset({'history_expand'})
 _ABLATION_FEATURES = frozenset({
     'jockey', 'course', 'time', 'margin', 'track', 'weight', 'enrich', 'detail',
-}) | UNUSED_SCORE_FEATURES
+}) | UNUSED_SCORE_FEATURES | _EXPERIMENT_ONLY_FEATURES
+
+
+def keep_gauss_enabled() -> bool:
+    """実験専用。ガウスSIMを維持したままスコア側へ単特徴を足す。
+
+    本番は未設定。ABL_TIME 等が段階SIMへ切り替わるのを防ぐ。
+    """
+    return str(os.environ.get('ARERU_KEEP_GAUSS') or '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def use_stage_sim() -> bool:
+    """段階SIMを使うか。KEEP_GAUSS=1 なら常にガウス（単特徴実験用）。"""
+    if keep_gauss_enabled():
+        return False
+    return (not legacy_score_enabled()) or any(
+        ablation_enabled(f) for f in ('jockey', 'course', 'time', 'margin', 'track', 'weight')
+    )
 
 
 def ablation_enabled(feature: str) -> bool:
@@ -71,6 +90,7 @@ def ablation_enabled(feature: str) -> bool:
     - ARERU_LOGIC_PRESET=D → 現行新と同じ特徴 + holdout確認済み較正
     - ARERU_LOGIC_PRESET=X → 旧ガウスSIM + 未使用特徴のスコア加点のみ
     - ARERU_LOGIC_PRESET=XSEL + ARERU_XSEL_FEATURES=burden,sgate,... → 選定特徴のみ
+    - ARERU_ABL_HISTORY_EXPAND / ARERU_KEEP_GAUSS は実験専用で暗黙ONしない
     """
     feat = str(feature or '').strip().lower()
     if feat not in _ABLATION_FEATURES:
@@ -79,6 +99,9 @@ def ablation_enabled(feature: str) -> bool:
     explicit = os.environ.get(key)
     if explicit is not None:
         return str(explicit).strip().lower() in ('1', 'true', 'yes')
+    # 実験専用フラグは明示ON以外では絶対に効かない（NEW/PRESETでも暗黙ONしない）
+    if feat in _EXPERIMENT_ONLY_FEATURES:
+        return False
     preset = str(os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper()
     if preset == 'D':
         # 現行新と同じ特徴。枠/脚質/馬体重/12-20倍妙味の較正だけ変える
@@ -577,8 +600,10 @@ def history_detail_bonus(row, history, target) -> tuple[float, list[str]]:
 
 
 def score_runner(row, history, target, weights):
-    finishes=np.array([num(row.get(f'着順{i}')) for i in range(1,6)],dtype=float)
-    pops=np.array([num(row.get(f'人気{i}')) for i in range(1,6)],dtype=float)
+    expand_hist = ablation_enabled('history_expand')
+    n_past = 8 if expand_hist else 5
+    finishes=np.array([num(row.get(f'着順{i}')) for i in range(1, n_past+1)],dtype=float)
+    pops=np.array([num(row.get(f'人気{i}')) for i in range(1, n_past+1)],dtype=float)
     target_source=str(row.get('source') or source_from_race_id(row.get('race_id',''))).lower()
     metas=_past_meta_for_row(row, history, target)
     # キャッシュ補完（場列が空で finish パターン一致時）
@@ -590,10 +615,28 @@ def score_runner(row, history, target, weights):
             metas=list(cached)
             while len(metas)<5:
                 metas.append(('',''))
-    scales=np.ones(5, dtype=float)
+    metas=list(metas)
+    while len(metas)<n_past:
+        metas.append(('',''))
+    if expand_hist and history is not None and not getattr(history, 'empty', True):
+        try:
+            h=history[(history['_horse']==clean_name(row.get('馬名'))) & (history['_date']<target)]
+            h=h.sort_values('_date', ascending=False)
+            for j, (_, xr) in enumerate(h.iloc[5:8].iterrows()):
+                idx=5+j
+                if idx >= n_past:
+                    break
+                if np.isnan(finishes[idx]):
+                    finishes[idx]=num(xr.get('着順'))
+                    pops[idx]=num(xr.get('人気'))
+                if not metas[idx][0]:
+                    metas[idx]=(str(xr.get('場') or '').strip(), str(xr.get('レース名') or '').strip())
+        except Exception:
+            pass
+    scales=np.ones(n_past, dtype=float)
     nar_n=0
     if target_source=='jra':
-        for i in range(5):
+        for i in range(n_past):
             venue, rname = metas[i] if i < len(metas) else ('','')
             sc=nar_to_jra_scale(venue, rname)
             scales[i]=sc
@@ -661,13 +704,32 @@ def score_runner(row, history, target, weights):
         value=clamp(min(value, 42.0))
     ctx=context_features(history,row['馬名'],target, target_source=target_source)
     detail_adj, detail_reasons = history_detail_bonus(row, history, target)
+    course_adj, course_reasons = 0.0, []
+    # ガウス維持の単特徴実験でのみ指数へ距離/コース適性を足す。段階SIMでは profiles 側。
+    if ablation_enabled('course') and keep_gauss_enabled():
+        from race_sim import course_distance_fit, dist_meters, surface_of
+        venue = venue_from_race_id(row.get('race_id', ''))
+        dist_raw = str(row.get('距離') or '')
+        dist_m = dist_meters(dist_raw)
+        surface = surface_of(dist_raw)
+        if (np.isnan(dist_m) or not surface) and history is not None and not getattr(history, 'empty', True):
+            hh = history[(history['_horse'] == clean_name(row.get('馬名'))) & (history['_date'] < target)]
+            if not hh.empty:
+                last = hh.sort_values('_date', ascending=False).iloc[0]
+                if np.isnan(dist_m):
+                    dist_m = dist_meters(last.get('距離'))
+                if not surface:
+                    surface = surface_of(last.get('距離'))
+        course_adj, course_reasons = course_distance_fit(
+            history, row.get('馬名'), target, venue, dist_m, surface,
+        )
     factors={'performance':perf,'upset':upset,'consistency':cons,'trend':trend,'value':value,'context':ctx['context']}
     # 詳細加点の重み: 改善案Cは抑制、通常新は 0.12
     import os as _os
     _preset = str(_os.environ.get('ARERU_LOGIC_PRESET') or '').strip().upper()
     detail_w = 0.08 if _preset == 'C' else 0.12
-    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * detail_w
-    reasons=list(ctx['context_reason']) + detail_reasons
+    score=sum(factors[k]*weights[k] for k in weights) + detail_adj * detail_w + float(course_adj) * 0.12
+    reasons=list(ctx['context_reason']) + detail_reasons + list(course_reasons)
     if transfer_reason: reasons.insert(0, transfer_reason)
     if n_valid and n_valid<3: reasons.append('サンプル少')
     if upset>=65: reasons.append('人気以上に走る傾向')
@@ -736,10 +798,9 @@ def _cap_sim_win_rates(win_pct, max_win=SIM_WIN_MAX_PCT, min_fair=AI_FAIR_ODDS_M
 
 def simulate_race(g, runs=None, profiles=None, pace=None):
     """段階シミュレーション（デフォルト10万回）。profiles/pace が無い場合は指数ガウスにフォールバック。"""
-    # 純旧ロジックのみガウス。アブレーションで特徴をONにした旧ベースは段階SIMを使う
-    use_stage = (not legacy_score_enabled()) or any(
-        ablation_enabled(f) for f in ('jockey', 'course', 'time', 'margin', 'track', 'weight')
-    )
+    # 純旧ロジックのみガウス。アブレーションで特徴をONにした旧ベースは段階SIMを使う。
+    # ARERU_KEEP_GAUSS=1 の単特徴実験ではガウスを維持する（本番は未設定）。
+    use_stage = use_stage_sim()
     if not use_stage:
         profiles = None
         pace = None
@@ -1104,9 +1165,7 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         venue=venue_from_race_id(race_id)
         g_base=_apply_unused(g0, history, target, venue)
         g_base=g_base.sort_values('AREru指数',ascending=False).reset_index(drop=True)
-        use_stage = (not legacy_score_enabled()) or any(
-            ablation_enabled(f) for f in ('jockey', 'course', 'time', 'margin', 'track', 'weight')
-        )
+        use_stage = use_stage_sim()
         fast_gauss = str(os.environ.get('ARERU_FAST_GAUSS') or '').strip().lower() in ('1', 'true', 'yes')
         if use_stage or not fast_gauss:
             profiles=build_profiles(g_base, history, target, venue)
