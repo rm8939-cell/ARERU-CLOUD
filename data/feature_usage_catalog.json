@@ -10,7 +10,9 @@
     "buy_filters_forbidden": true,
     "simple_condition_filters_forbidden": true,
     "production_change_allowed": false,
-    "note": "次の改善は同じBUY条件のまま、馬ごとの推定勝率・期待値・ランキング精度。"
+    "exploration": "stopped",
+    "adopt_candidates": [],
+    "note": "検証済みファクターは採用基準未達。新しい改善案は探索しない。正本は data/completion_freeze.json。本番変更は明示承認なしにしない。"
   },
   "split": {
     "n_dates": 42,
