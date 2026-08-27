@@ -1,6 +1,7 @@
 """単特徴実験フラグは本番で無効。KEEP_GAUSS / HISTORY_EXPAND は明示ONのみ。"""
 from __future__ import annotations
 
+import json
 import os
 import unittest
 from pathlib import Path
@@ -81,6 +82,18 @@ class TestKeepGaussAndFlags(unittest.TestCase):
         self.assertFalse(ablation_enabled('history_expand'))
         os.environ['ARERU_ABL_HISTORY_EXPAND'] = '1'
         self.assertTrue(ablation_enabled('history_expand'))
+
+
+class TestSingleFeatureVerdict(unittest.TestCase):
+    def test_verdict_forbids_production_change(self):
+        path = ROOT / 'data' / 'single_feature_verdict.json'
+        self.assertTrue(path.exists(), 'single_feature_verdict.json が必要')
+        data = json.loads(path.read_text(encoding='utf-8'))
+        self.assertEqual(data['採用候補'], [])
+        self.assertFalse(data['本番ロジックを変更してよいか'])
+        self.assertIn('OLD', data['本番'])
+        self.assertIn('WEIGHT', data['不採用'])
+        self.assertIn('JOCKEY', data['不採用'])
 
 
 class TestSingleFeatureScoreHooks(unittest.TestCase):

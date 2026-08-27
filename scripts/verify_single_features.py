@@ -30,6 +30,7 @@ sys.path.insert(0, str(BASE))
 DATA = BASE / 'data'
 OUT = DATA / 'single_feature_report.json'
 TABLE = DATA / 'single_feature_table.csv'
+VERDICT = DATA / 'single_feature_verdict.json'
 CACHE_OLD = DATA / 'rca_logic_cache'
 CACHE_EXTRA = DATA / 'rca_extra_cache'
 CACHE_ABL = DATA / 'rca_abl_cache'
@@ -311,18 +312,18 @@ def _where_improved(delta_q: dict, roi_ho: float) -> dict:
     hit = delta_q.get('本命的中率')
     brier = delta_q.get('SIM_Brier')
     gap = delta_q.get('SIM過大差_pp')
-    pop = delta_q.get('本命平均人気')
+    edge = delta_q.get('SIMマイナス市場_pp')
     return {
-        '推定勝率': bool(
-            (brier is not None and brier < 0) or (gap is not None and gap < 0)
-        ),
-        '市場人気との差': bool(pop is not None and pop < 0),  # 人気側へ寄った
+        '推定勝率': bool(brier is not None and brier < 0),
+        '推定勝率_過大差縮小': bool(gap is not None and gap < 0),
+        '市場人気との差': bool(edge is not None and edge < 0),
         'ランキング': bool(hit is not None and hit > 0),
         'BUY判定': bool(roi_ho > 0),
         'note': (
-            '推定勝率= SIM Brier低下 or 過大差縮小。'
-            '市場差= 本命平均人気が下がる（人気側）。'
-            'ランキング= 全本命的中率。BUY判定= holdout ROI差。'
+            '推定勝率= SIM Brierが低下した場合のみ真。'
+            '過大差縮小= 平均SIM勝率−的中率 が縮小。'
+            '市場差= SIM勝率−市場暗示 が縮小（過信の低下）。'
+            'ランキング= 全本命的中率。BUY判定= holdout ROI差>0。'
         ),
     }
 
@@ -435,9 +436,9 @@ def _coverage(dates: list[str], honmei_rows: list[dict]) -> dict:
 
 def _grade(feat: str, sm: dict, old: dict, boot: dict, cov: dict, vol_note: str | None) -> dict:
     reasons = []
-    ho = sm['holdout']['ROI'] - old['holdout']['ROI']
-    tr = sm['train']['ROI'] - old['train']['ROI']
-    fu = sm['full']['ROI'] - old['full']['ROI']
+    ho = round(sm['holdout']['ROI'] - old['holdout']['ROI'], 2)
+    tr = round(sm['train']['ROI'] - old['train']['ROI'], 2)
+    fu = round(sm['full']['ROI'] - old['full']['ROI'], 2)
     ho_imp = ho > 0
     tr_imp = tr > 0
     fu_imp = fu > 0
@@ -647,6 +648,31 @@ def main():
             '次の検証対象として報告するだけ。'
         ),
     }
+    verdict = {
+        '採用候補': report['分類']['A'],
+        '保留': report['分類']['B'],
+        '不採用': report['分類']['C'],
+        '本番ロジックを変更してよいか': False,
+        '本番': 'OLD (ARERU_LEGACY_SCORE=1)',
+        '確定': True,
+        'note': (
+            'Aは空。holdout点推定がプラスでも90%CIが0を跨ぐ特徴は保留。'
+            'trainのみ改善の馬体重・騎手は不採用。'
+            '本命への履歴接合は約15%のため、タイム/着差/馬場/距離/履歴拡張は'
+            'カバレッジ拡張が先。本番は変えない。'
+        ),
+        'holdout要点': {
+            k: {
+                'grade': v.get('grade'),
+                'ROI差': v.get('ROI差_holdout'),
+                'holdout改善': v.get('holdout改善'),
+                'BUY件数比': v.get('BUY件数比_holdout'),
+                '利用可能な馬の割合': (v.get('coverage') or {}).get('利用可能な馬の割合'),
+                'どこが改善したか': v.get('どこが改善したか_holdout'),
+            } for k, v in report['grades'].items()
+        },
+    }
+    VERDICT.write_text(json.dumps(_json_safe(verdict), ensure_ascii=False, indent=2), encoding='utf-8')
     OUT.write_text(json.dumps(_json_safe(report), ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(_json_safe({
         '分類': report['分類'],
@@ -664,6 +690,7 @@ def main():
     }), ensure_ascii=False, indent=2))
     print(f'📁 {OUT}')
     print(f'📁 {TABLE}')
+    print(f'📁 {VERDICT}')
 
 
 if __name__ == '__main__':
