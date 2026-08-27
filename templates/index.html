@@ -4,12 +4,12 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>ARERU.EXE</title>
 <style>
-:root{--bg:#f3f5f7;--card:#fff;--line:#e6ebf0;--text:#121820;--muted:#6a7682;--red:#d64545;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a7f4b;--soft:#eaf6f0;--purple:#6b4eff;--blue:#2f6fed;--radius:16px}
-body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
-body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
+:root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
+body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
+body.all{--brand:#0a1a3a;--green:#2f4858;--soft:#eef2f5}
 *{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;color-scheme:only light}body{margin:0;background:var(--bg);color:var(--text);font-family:"Avenir Next","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow-x:hidden;min-height:100vh}
-.wrap{max-width:760px;width:100%;margin:auto;padding:0 16px}.header{padding:28px 0 18px;border-bottom:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,#12352a 0%,var(--brand) 55%,#0d4a32 100%);color:#fff}
-.header .eyebrow,.header .sub{color:rgba(255,255,255,.78)}.header .logo{color:#fff}.header .logo b{color:#ffd4d0}
+.wrap{max-width:860px;width:100%;margin:auto;padding:0 16px}.header{padding:0;border-bottom:0;background:linear-gradient(180deg,#0a1a3a 0%,#122a52 100%);color:#fff}
+.header .eyebrow,.header .sub{color:rgba(255,255,255,.78)}.header .logo{color:#fff}.header .logo b{color:#ffb14a}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:28px;font-weight:800;letter-spacing:.05em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:4px;font-size:12px}
 /* 本日AI成績 */
 .ai-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 6px}
@@ -473,8 +473,149 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-spotlight .bs-grid small{color:var(--muted);font-size:10px;font-weight:800}
 .buy-spotlight .bs-reasons{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}
 .buy-spotlight .bs-reasons li{font-size:12px;font-weight:700;line-height:1.45;color:#1f2a33;padding:8px 10px;background:#fff;border-radius:10px;border:1px solid #dcebdf}
+/* ===== 予想画面リデザイン（表示のみ） ===== */
+.fx-top-inner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:58px;padding:8px 0}
+.fx-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff;font-weight:900;letter-spacing:.04em;line-height:1}
+.fx-logo .mark{width:28px;height:28px;border-radius:9px;background:linear-gradient(160deg,#2f6fed,#0a1a3a);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#ffb14a}
+.fx-logo b{font-size:18px;letter-spacing:.08em}.fx-logo span{font-size:10px;font-weight:800;opacity:.72;letter-spacing:.14em;display:block;margin-top:2px}
+.fx-venue-slot{display:flex;justify-content:center;min-width:0}
+.fx-venue-slot select{max-width:100%;min-width:0;width:min(220px,100%);appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%230a1a3a' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E") no-repeat right 12px center;background-size:10px;color:var(--navy);border:0;border-radius:999px;padding:9px 32px 9px 14px;font-size:14px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.fx-icons{display:flex;gap:6px;align-items:center}
+.fx-icon{width:36px;height:36px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);color:#fff;text-decoration:none;font-size:14px;font-weight:900}
+.fx-nav{display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.fx-nav::-webkit-scrollbar{display:none}
+.fx-nav a,.fx-nav button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:13px;font-weight:850;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer;font:inherit}
+.fx-nav a.is-on,.fx-nav button.is-on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fx-nav a.is-buy{border-color:#f3b48a;background:#fff7f0}
+.fx-race{display:none;padding-bottom:24px}.fx-race.is-on{display:block}
+.fx-hero{margin:10px 0 12px;padding:18px 16px 16px;border-radius:22px;background:linear-gradient(160deg,#0a1a3a 0%,#163a72 48%,#2f6fed 140%);color:#fff;box-shadow:0 12px 28px rgba(10,26,58,.28);position:relative;overflow:hidden}
+.fx-hero:before{content:"";position:absolute;right:-36px;top:-48px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.08)}
+.fx-hero-kicker{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.08em;opacity:.86}
+.fx-hero h2{position:relative;margin:8px 0 4px;font-size:clamp(26px,7vw,34px);font-weight:900;letter-spacing:.02em;line-height:1.15}
+.fx-hero h2 small{display:block;margin-top:4px;font-size:15px;font-weight:800;opacity:.92;letter-spacing:0}
+.fx-hero-meta{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.fx-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:8px 10px;min-width:64px}
+.fx-chip b{display:block;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15}
+.fx-chip small{display:block;margin-top:3px;font-size:10px;font-weight:800;opacity:.78}
+.fx-hero-foot{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:14px}
+.fx-ev{font-size:clamp(32px,9vw,44px);font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:#ffb14a}
+.fx-ev.hot{color:#ff6b3d}.fx-ev small{display:block;margin-top:4px;font-size:11px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.8)}
+.fx-buy-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border-radius:14px;font-size:16px;font-weight:900;text-decoration:none;border:0}
+.fx-buy-btn.buy{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff;box-shadow:0 8px 18px rgba(229,57,53,.35)}
+.fx-buy-btn.skip{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.fx-picks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 14px}
+.fx-pc{background:#fff;border-radius:16px;padding:12px 10px 10px;box-shadow:0 4px 14px rgba(10,26,58,.08);border:1px solid #eef1f6;min-width:0}
+.fx-pc.hon{border-color:#ffd4a8;background:linear-gradient(180deg,#fff,#fff8f0)}
+.fx-pc.buy{border-color:#ffb199;box-shadow:0 6px 16px rgba(229,57,53,.12)}
+.fx-pc .role{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+.fx-pc .ban{font-size:clamp(26px,6vw,34px);font-weight:900;font-variant-numeric:tabular-nums;color:var(--navy);line-height:1}
+.fx-pc .name{margin:4px 0 6px;font-size:13px;font-weight:900;line-height:1.25;word-break:break-word}
+.fx-pc .sub{font-size:11px;font-weight:700;color:#556;line-height:1.4}
+.fx-pc .nums{margin-top:8px;display:grid;gap:4px}
+.fx-pc .nums div{display:flex;justify-content:space-between;gap:6px;font-size:11px;font-weight:800}
+.fx-pc .nums span{color:var(--muted)}
+.fx-pc .nums b{color:var(--navy);font-variant-numeric:tabular-nums}
+.fx-pc .nums b.hot{color:#e85d04}
+.fx-pc .nums b.plus{color:#1a7f4b}
+.fx-pc .pill{margin-top:8px;display:flex;justify-content:center;border-radius:999px;padding:6px 8px;font-size:11px;font-weight:900}
+.fx-pc .pill.buy{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff}
+.fx-pc .pill.skip{background:#f3f6f8;color:#5c6b78}
+.fx-ai-wrap{background:#fff;border-radius:18px;padding:12px;margin:0 0 14px;box-shadow:0 4px 14px rgba(10,26,58,.08);border:1px solid #eef1f6;overflow:hidden}
+.fx-ai-wrap h3{margin:0 0 10px;font-size:15px;font-weight:900}
+.fx-ai-head,.fx-hrow{display:grid;grid-template-columns:2.2em 2.2em minmax(0,1.4fr) 3.4em 3.8em 2.6em 3.2em 4.6em;gap:6px;align-items:center}
+.fx-ai-head{padding:0 8px 8px;font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--line)}
+.fx-hrow{width:100%;text-align:left;border:0;background:#fff;padding:10px 8px;border-bottom:1px solid #eef2f5;cursor:pointer;font:inherit;color:inherit;border-radius:0}
+.fx-hrow:last-child{border-bottom:0}
+.fx-hrow.is-on{background:#eef3fb}
+.fx-hrow .rk{font-weight:900;color:var(--muted);font-variant-numeric:tabular-nums}
+.fx-hrow .ban{font-size:18px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums}
+.fx-hrow .nm{font-size:14px;font-weight:900;line-height:1.2;word-break:break-word}
+.fx-hrow .nm small{display:block;margin-top:2px;font-size:11px;font-weight:700;color:var(--muted)}
+.fx-hrow .num{font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;text-align:right}
+.fx-hrow .num.hot{color:#e85d04;font-size:15px}
+.fx-hrow .num.plus{color:#1a7f4b}
+.fx-hrow .mini{display:inline-flex;align-items:center;justify-content:center;min-height:26px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}
+.fx-hrow .mini.buy{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff}
+.fx-hrow .mini.skip{background:#f3f6f8;color:#5c6b78}
+.fx-detail{display:none;background:#fff;border-radius:18px;padding:14px;margin:0 0 12px;box-shadow:0 4px 14px rgba(10,26,58,.08);border:1px solid #eef1f6}
+.fx-detail.is-on{display:block}
+.fx-dtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.fx-dname{font-size:22px;font-weight:900;line-height:1.25;word-break:break-word}
+.fx-dname small{display:block;margin-top:4px;font-size:12px;font-weight:700;color:#556}
+.fx-dmetrics{margin:12px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.fx-dmetrics div{text-align:center;background:#f7f9fc;border-radius:12px;padding:8px 4px;border:1px solid #eef1f6}
+.fx-dmetrics b{display:block;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+.fx-dmetrics b.hot{color:#e85d04}.fx-dmetrics b.plus{color:#1a7f4b}
+.fx-dmetrics small{font-size:10px;font-weight:800;color:var(--muted)}
+.fx-facs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fx-fac h4{margin:0 0 6px;font-size:12px;font-weight:900;letter-spacing:.06em}
+.fx-fac.plus h4{color:#1a7f4b}.fx-fac.minus h4{color:#b23b3b}
+.fx-fac ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.fx-fac li{font-size:12px;font-weight:750;line-height:1.4;padding:8px 10px 8px 26px;border-radius:10px;position:relative}
+.fx-fac.plus li{background:#f0faf4;color:#1a5c3a}
+.fx-fac.plus li:before{content:"+";position:absolute;left:8px;font-weight:900;color:#1a7f4b}
+.fx-fac.minus li{background:#fff8f6;color:#8a4a3a}
+.fx-fac.minus li:before{content:"−";position:absolute;left:8px;font-weight:900;color:#c45a3a}
+.fx-empty{font-size:12px;font-weight:700;color:var(--muted);padding:8px}
+.fx-anal{display:flex;align-items:center;justify-content:space-between;width:100%;margin:4px 0 12px;padding:16px 16px;border-radius:16px;background:#fff;border:1px solid #eef1f6;box-shadow:0 4px 14px rgba(10,26,58,.08);color:var(--navy);font-size:16px;font-weight:900;text-decoration:none;cursor:pointer;font:inherit}
+.fx-anal span{font-size:18px}
+.fx-analysis{display:none;margin:0 0 12px}.fx-analysis.is-on{display:block}
+.mode-predict .source-tabs{padding:10px 0 4px}.mode-predict .mode-tabs{padding:0 0 2px}.mode-predict .toolbar{padding:8px 0}
+.mode-predict .race-sum{background:#fff;border-color:#eef1f6;box-shadow:0 4px 14px rgba(10,26,58,.08)}
+.mode-predict .venue-back{margin:4px 0 0}
+.mode-predict .source-tabs a,.mode-predict .mode-tabs a{border-radius:12px;box-shadow:0 1px 4px rgba(10,26,58,.04)}
+.mode-predict .today-hero{background:linear-gradient(155deg,#0a1a3a 0%,#163a72 58%,#1f4f9a 100%);box-shadow:0 12px 30px rgba(10,26,58,.28)}
+.mode-predict .buy-card{border-color:#ffb199;box-shadow:0 10px 24px rgba(229,57,53,.12)}
+.mode-predict .buy-card .bc-badge{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff;border-color:transparent}
+.mode-predict .buy-card .bc-ban{background:linear-gradient(160deg,#163a72,#0a1a3a)}
+.mode-predict .buy-card .bc-metrics b{color:#0a1a3a}
+.mode-predict .buy-card .bc-metrics div:first-child b{color:#e85d04}
+@media (max-width:720px){
+  .fx-ai-wrap{overflow-x:auto}
+  .fx-ai-head,.fx-hrow{min-width:560px}
+}
+@media (max-width:560px){
+  .fx-top-inner{min-height:54px;gap:6px}
+  .fx-logo b{font-size:16px}.fx-logo .mark{width:26px;height:26px}
+  .fx-dmetrics{grid-template-columns:repeat(2,1fr)}
+  .fx-facs{grid-template-columns:1fr}
+  .fx-pc .name{font-size:12px}
+  .header .wrap{padding:0 12px}
+}
+@media (min-width:860px){
+  .fx-picks{gap:12px}
+  .fx-pc{padding:14px}
+  .fx-dmetrics{grid-template-columns:repeat(4,1fr)}
+}
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">EXPECTED VALUE INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}" id="top"><header class="header"><div class="wrap fx-top-inner">
+<a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
+<span class="mark">A</span>
+<span><b>ARERU</b><span>CLOUD</span></span>
+</a>
+<div class="fx-venue-slot">
+{% if venues %}
+<form method="get" action="/" class="fx-venue-form">
+<input type="hidden" name="source" value="{{source}}">
+<input type="hidden" name="mode" value="{{mode}}">
+<input type="hidden" name="date" value="{{selected_date}}">
+{% if selected_date and today and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}
+<select name="venue" aria-label="開催場所" onchange="this.form.submit()">
+<option value="">{% if selected_venue %}開催場を切替{% else %}開催場を選択{% endif %}</option>
+{% for v in venues %}
+<option value="{{v.name}}" {% if v.name==selected_venue %}selected{% endif %}>{{v.name}}{% if v.race_label %} · {{v.race_label}}{% endif %}</option>
+{% endfor %}
+</select>
+</form>
+{% else %}
+<div class="sub" style="margin:0;text-align:center;font-size:12px;font-weight:800">{% if source=='nar' %}地方競馬{% elif source=='all' %}中央・地方{% else %}JRA中央{% endif %}</div>
+{% endif %}
+</div>
+<div class="fx-icons">
+<a class="fx-icon" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}" aria-label="結果">結</a>
+<a class="fx-icon" href="#predict-targets" aria-label="今日の買い">🔥</a>
+</div>
+</div></header>
 <main class="wrap">
 <nav class="source-tabs">
 <a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
@@ -1032,6 +1173,264 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% set _buys_sorted = _grp.buy|sort(attribute='期待値', reverse=true) %}
 {% set _watch_sorted = _grp.watch|sort(attribute='期待値', reverse=true) %}
 {% set _races_ordered = _buys_sorted + _watch_sorted + _grp.skip %}
+{% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
+{% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
+
+<nav class="fx-nav" aria-label="レースナビゲーション">
+<a href="/?source={{source}}&mode=predict&date={{selected_date}}{{_hist}}">戻る</a>
+<a href="/?source={{source}}&mode=result&date={{selected_date}}{{_hist}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果</a>
+{% for v in venues or [] %}
+<a class="{% if v.name==selected_venue %}is-on{% endif %}" href="/?source={{source}}&mode=predict&date={{selected_date}}{{_hist}}&venue={{v.name|urlencode}}">{{v.name}}</a>
+{% endfor %}
+<button type="button" data-fx-prev>前R</button>
+<button type="button" data-fx-next>次R</button>
+</nav>
+
+<div class="fx-races" id="predict-acc-list">
+{% for r in _races_ordered %}
+  {% set _is_prod_buy = ('' ~ (r.get('投資判定') or '')).startswith('買い') %}
+  {% set _ev_n = namespace(v=none) %}
+  {% if r.get('期待値') is not none and ('' ~ r.get('期待値'))|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _ev_n.v = ('' ~ r.get('期待値'))|replace('%','')|float %}
+  {% endif %}
+  {% set _conf = r.get('レース信頼度スコア') or r.get('AI信頼度スコア') %}
+  {% set _picks = r.get('予想馬') or [] %}
+  {% set _roles = namespace(hon=none, tai=none, tan=none, watch=none) %}
+  {% for p in _picks %}
+    {% if (p.get('役割') or '') == '本命' and _roles.hon is none %}{% set _roles.hon = p %}
+    {% elif (p.get('役割') or '') == '対抗' and _roles.tai is none %}{% set _roles.tai = p %}
+    {% elif (p.get('役割') or '') == '穴馬' and _roles.tan is none %}{% set _roles.tan = p %}
+    {% elif (p.get('役割') or '') == '注目馬' and _roles.watch is none %}{% set _roles.watch = p %}
+    {% endif %}
+  {% endfor %}
+  {% if _roles.tan is none %}{% set _roles.tan = _roles.watch %}{% endif %}
+  {% set _surface = r.get('芝ダ') or r.get('馬場種別') %}
+  {% set _dist = r.get('距離') or r.get('距離表示') %}
+  {% set _track = r.get('馬場状態') or r.get('馬場') %}
+  {% set _start = r.get('発走時刻') or r.get('発走') or r.get('発走時間') %}
+  {% set _ev_disp = r.get('期待回収率短') or r.get('期待値表示') or r.get('期待値') or '—' %}
+<article class="fx-race{% if loop.first %} is-on{% endif %}" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-judge="{% if _is_prod_buy %}buy{% else %}skip{% endif %}">
+
+<section class="fx-hero">
+<div class="fx-hero-kicker">
+<span>{% if r.get('開催日') %}{{r.get('開催日')}}{% else %}{{selected_date}}{% endif %}{% if r.get('開催地') %} · {{r.get('開催地')}}{% endif %}</span>
+{% if r.get('勝負ランク') %}<span>勝負ランク {{r.get('勝負ランク')}}</span>{% endif %}
+</div>
+<h2>{% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %} {{r.get('開催地') or ''}}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% endif %}</h2>
+<div class="fx-hero-meta">
+{% if _start not in _blank %}<div class="fx-chip"><b>{{_start}}</b><small>発走</small></div>{% endif %}
+{% if _surface not in _blank %}<div class="fx-chip"><b>{{_surface}}</b><small>芝/ダート</small></div>{% endif %}
+{% if _dist not in _blank %}<div class="fx-chip"><b>{{_dist}}</b><small>距離</small></div>{% endif %}
+{% if r.get('データ頭数') not in _blank %}<div class="fx-chip"><b>{{r.get('データ頭数')|int}}頭</b><small>頭数</small></div>{% endif %}
+{% if _track not in _blank %}<div class="fx-chip"><b>{{_track}}</b><small>馬場状態</small></div>{% endif %}
+{% if r.get('能力差スコア') not in _blank %}<div class="fx-chip"><b>{{r.get('能力差スコア')}}</b><small>能力差</small></div>{% endif %}
+</div>
+<div class="fx-hero-foot">
+<div class="fx-ev{% if _ev_n.v is not none and _ev_n.v >= 100 %} hot{% endif %}">{{_ev_disp}}<small>表示期待値</small></div>
+{% if _is_prod_buy %}<span class="fx-buy-btn buy">🔥 BUY</span>{% else %}<span class="fx-buy-btn skip">見送り</span>{% endif %}
+</div>
+</section>
+
+<div class="race-sum">
+<h3>予想サマリー</h3>
+<div class="race-sum-grid">
+<div><b>{% if _roles.hon %}{% if _roles.hon.get('馬番表示') or _roles.hon.get('馬番') %}{{_roles.hon.get('馬番表示') or _roles.hon.get('馬番')}} {% endif %}{{_roles.hon.get('馬名') or '—'}}{% else %}{{r.get('本命表示') or r.get('本命') or '—'}}{% endif %}</b><small>本命</small></div>
+<div><b>{% if _roles.tai %}{% if _roles.tai.get('馬番表示') or _roles.tai.get('馬番') %}{{_roles.tai.get('馬番表示') or _roles.tai.get('馬番')}} {% endif %}{{_roles.tai.get('馬名') or '—'}}{% else %}—{% endif %}</b><small>対抗</small></div>
+<div><b>{% if _is_prod_buy %}1頭{% else %}0頭{% endif %}</b><small>BUY</small></div>
+<div><b>{{_ev_disp}}</b><small>最高表示期待値</small></div>
+<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>最高信頼度</small></div>
+</div>
+</div>
+
+<div class="fx-picks">
+{% for _item in [(_roles.hon, '本命', 'hon'), (_roles.tai, '対抗', 'tai'), (_roles.tan, '単穴', 'tan')] %}
+  {% set p = _item[0] %}
+  {% if p %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = namespace(v=p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ')) %}
+  {% if _od.v in _blank and (p.get('役割') or '') == '本命' %}{% set _od.v = r.get('本命オッズ') %}{% endif %}
+  {% set _odds_disp = (('' ~ _od.v)|replace('倍','') ~ '倍') if _od.v not in _blank else '—' %}
+  {% set _pop = namespace(v=_card.get('人気')) %}
+  {% if _pop.v in _blank and (p.get('役割') or '') == '本命' %}{% set _pop.v = r.get('本命人気') %}{% endif %}
+  {% set _pe = namespace(v=none) %}
+  {% if p.get('BUY表示') %}{% set _pe.v = _ev_disp %}
+  {% elif p.get('カード期待値') not in _blank %}{% set _pe.v = (p.get('カード期待値') ~ '') %}
+  {% elif _card.get('期待値') not in _blank %}{% set _pe.v = (_card.get('期待値') ~ '') %}
+  {% endif %}
+  {% set _pev_n = namespace(v=none) %}
+  {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _pev_n.v = (_pe.v ~ '')|replace('%','')|float %}
+  {% endif %}
+<div class="fx-pc {{_item[2]}}{% if p.get('BUY表示') %} buy{% endif %}">
+<div class="role">{{_item[1]}}</div>
+<div class="ban">{{p.get('馬番表示') or p.get('馬番') or '—'}}</div>
+<div class="name">{{p.get('馬名') or '—'}}</div>
+<div class="sub">{% if p.get('騎手') %}{{p.get('騎手')}}{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}</div>
+<div class="nums">
+<div><span>人気</span><b>{% if _pop.v not in _blank %}{{_pop.v}}{% else %}—{% endif %}</b></div>
+<div><span>オッズ</span><b>{{_odds_disp}}</b></div>
+<div><span>期待値</span><b class="{% if _pev_n.v is not none and _pev_n.v >= 100 %}hot{% endif %}">{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b></div>
+</div>
+{% if p.get('BUY表示') %}<div class="pill buy">🔥 BUY</div>{% else %}<div class="pill skip">見送り</div>{% endif %}
+</div>
+  {% endif %}
+{% endfor %}
+</div>
+
+<section class="fx-ai-wrap">
+<h3>AI予想一覧</h3>
+<div class="fx-ai-head"><div>AI順位</div><div>馬番</div><div>馬名 / 騎手</div><div>オッズ</div><div>期待値</div><div>AI評価</div><div>信頼度</div><div>BUY</div></div>
+{% if _picks %}
+{% for p in _picks %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = namespace(v=p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ')) %}
+  {% if _od.v in _blank and (p.get('役割') or '') == '本命' %}{% set _od.v = r.get('本命オッズ') %}{% endif %}
+  {% set _odds_disp = (('' ~ _od.v)|replace('倍','') ~ '倍') if _od.v not in _blank else '—' %}
+  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
+  {% set _pe = namespace(v=none) %}
+  {% if p.get('BUY表示') %}{% set _pe.v = _ev_disp %}
+  {% elif _ev_raw not in _blank %}{% set _pe.v = (_ev_raw ~ '') %}
+  {% endif %}
+  {% set _row_n = namespace(v=none) %}
+  {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _row_n.v = (_pe.v ~ '')|replace('%','')|float %}
+  {% endif %}
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+  {% set _rank = p.get('AI順位') or p.get('近走指数順位') or _card.get('近走指数順位') %}
+<button type="button" class="fx-hrow{% if loop.first %} is-on{% endif %}" data-horse-i="{{loop.index0}}">
+<div class="rk">{% if _rank not in _blank %}{{_rank}}{% else %}{{loop.index}}{% endif %}</div>
+<div class="ban">{{p.get('馬番表示') or p.get('馬番') or '—'}}</div>
+<div class="nm">{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% else %}—{% endif %}</small></div>
+<div class="num">{{_odds_disp}}</div>
+<div class="num{% if _row_n.v is not none and _row_n.v >= 100 %} hot{% endif %}">{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</div>
+<div class="num">{{p.get('AI評価') or '—'}}</div>
+<div class="num">{% if p.get('BUY表示') and _conf is not none %}{{'%g'|format(_conf|float)}}%{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</div>
+<div>{% if p.get('BUY表示') %}<span class="mini buy">🔥 BUY</span>{% else %}<span class="mini skip">見送り</span>{% endif %}</div>
+</button>
+{% endfor %}
+{% else %}
+<div class="reason">予想馬データがありません</div>
+{% endif %}
+</section>
+
+{% if _picks %}
+{% for p in _picks %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = namespace(v=p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ')) %}
+  {% if _od.v in _blank and (p.get('役割') or '') == '本命' %}{% set _od.v = r.get('本命オッズ') %}{% endif %}
+  {% set _odds_disp = (('' ~ _od.v)|replace('倍','') ~ '倍') if _od.v not in _blank else '—' %}
+  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
+  {% set _pe = namespace(v=none) %}
+  {% if p.get('BUY表示') %}{% set _pe.v = _ev_disp %}
+  {% elif _ev_raw not in _blank %}{% set _pe.v = (_ev_raw ~ '') %}
+  {% endif %}
+  {% set _row_n = namespace(v=none) %}
+  {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _row_n.v = (_pe.v ~ '')|replace('%','')|float %}
+  {% endif %}
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+<section class="fx-detail{% if loop.first %} is-on{% endif %}" data-horse-detail="{{loop.index0}}">
+<div class="fx-dtop">
+<div>
+<div class="fx-dname">{% if p.get('馬番表示') or p.get('馬番') %}{{p.get('馬番表示') or p.get('馬番')}} {% endif %}{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}{% if p.get('役割') %} · {{p.get('役割')}}{% endif %}</small></div>
+</div>
+{% if p.get('BUY表示') %}<span class="fx-buy-btn buy">🔥 BUY</span>{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
+</div>
+<div class="fx-dmetrics">
+<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
+<div><b class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}">{% if p.get('BUY表示') %}{{_ev_disp}}{% elif _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b><small>{% if p.get('BUY表示') %}表示期待値{% else %}期待値{% endif %}</small></div>
+<div><b>{{p.get('AI評価') or '—'}}</b><small>評価値</small></div>
+<div><b>{% if p.get('BUY表示') %}{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+</div>
+<div class="fx-facs">
+<div class="fx-fac plus"><h4>プラス要因</h4>
+{% if p.get('プラス要因') %}<ul>{% for x in p.get('プラス要因') %}<li>{{x}}</li>{% endfor %}</ul>{% else %}<div class="fx-empty">表示できる要因はありません</div>{% endif %}
+</div>
+<div class="fx-fac minus"><h4>マイナス要因</h4>
+{% if p.get('マイナス要因') %}<ul>{% for x in p.get('マイナス要因') %}<li>{{x}}</li>{% endfor %}</ul>{% else %}<div class="fx-empty">表示できる要因はありません</div>{% endif %}
+</div>
+</div>
+</section>
+{% endfor %}
+{% endif %}
+
+<button type="button" class="fx-anal" data-fx-anal>📄 レース分析を見る <span>＞</span></button>
+<div class="fx-analysis">
+{% set pace = r.get('展開予想データ') if r.get('展開予想データ') is mapping else {} %}
+{% if pace %}
+<div class="section" style="padding:0 0 12px;border:0">
+<div class="ai-card">
+<h3>展開予想</h3>
+<div class="kv">
+<div>想定ペース <b>{{pace.get('想定ペース','—')}}</b></div>
+<div>荒れ指数 <b>{{pace.get('荒れ指数','—')}}</b></div>
+</div>
+<div class="reason" style="margin-top:8px">{{pace.get('AI総評','')}}</div>
+</div>
+</div>
+{% endif %}
+<div class="section" style="padding:0;border:0">
+<div class="section-title gold">推奨馬券</div>
+<div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '単勝'}}</strong><p>{{r.get('馬券戦略理由') or '地方は単勝・馬連・ワイドのシンプル買いを優先'}}</p></div>
+{% set tickets = r.get('推奨馬券一覧') or [] %}
+{% if source=='nar' %}
+<div class="nar-tickets">
+{% set ns = namespace(n=0) %}
+{% for t in tickets %}
+{% if t is mapping and t.get('券種') in ('単勝','馬連','ワイド') %}
+{% set ns.n = ns.n + 1 %}
+<div class="nar-ticket">
+<div class="nt-head"><span class="nt-kind">{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
+<div class="nt-ban">{{t.get('馬番表示') or '—'}}</div>
+{% if t.get('説明') %}<div class="nt-desc">{{t.get('説明')}}</div>{% endif %}
+</div>
+{% endif %}
+{% endfor %}
+{% if ns.n == 0 %}
+<div class="reason">推奨馬券を準備中です</div>
+{% endif %}
+</div>
+{% else %}
+<div class="fund-box" data-fund-box>
+<label class="label">軍資金（円）</label>
+<input type="number" min="100" step="100" value="10000" data-fund-input inputmode="numeric">
+<div data-fund-alloc></div>
+</div>
+{% if tickets %}
+<div class="betplan" data-fund-tickets>
+{% for t in tickets[:8] %}
+{% if t is mapping %}
+{% set form = t.get('フォーメーション') if t.get('フォーメーション') is mapping else none %}
+<div class="ticket ai-card" style="margin:0" data-fund-item data-kind="{{t.get('券種','')}}" data-ban="{{t.get('馬番表示','')}}" data-ev="{{t.get('期待値') or t.get('推定回収率') or 100}}" data-hit="{{t.get('的中率') or 1}}">
+<div class="ticket-head"><span>{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
+<div class="ticket-ban">{{t.get('馬番表示') or '—'}}</div>
+{% if form %}
+<div class="form-box">
+<div class="slot"><b>1頭目</b>{{ (form.get('1頭目') or [])|join(' ') }}</div>
+<div class="slot"><b>2頭目</b>{{ (form.get('2頭目') or [])|join(' ') }}</div>
+{% if form.get('3頭目') %}<div class="slot"><b>3頭目</b>{{ (form.get('3頭目') or [])|join(' ') }}</div>{% endif %}
+<div class="slot"><b>点数</b>{{ form.get('点数','—') }}点</div>
+</div>
+{% endif %}
+<div class="kv">
+<div>期待値 <b>{% if t.get('期待値') %}{{t.get('期待値')}}%{% else %}—{% endif %}</b></div>
+<div>的中率 <b>{% if t.get('的中率') %}{{t.get('的中率')}}%{% else %}—{% endif %}</b></div>
+<div>推定回収率 <b>{% if t.get('推定回収率') %}{{t.get('推定回収率')}}%{% else %}—{% endif %}</b></div>
+</div>
+</div>
+{% endif %}
+{% endfor %}
+</div>
+{% else %}
+<div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r.get(kind+'判定','—')}}</span><span class="ticket-score">適性 {{r.get(kind+'評価','—')}}</span></div><ul>{% for x in r.get(kind+'買い目一覧', []) %}<li>{{x}}</li>{% endfor %}</ul></div>{% endfor %}</div>
+{% endif %}
+{% endif %}
+</div>
+<div class="beta">期待値が最重要です · AI順位だけではBUYにしません · BUY 0件も正常</div>
+</div>
+</article>
+{% endfor %}
+</div>
 
 <section class="today-hero" id="predict-targets" aria-label="今日の買い">
 <div class="th-kicker">ARERU · {{selected_date}} · {{ 'JRA' if source == 'jra' else ('地方' if source == 'nar' else '全開催') }}</div>
@@ -1207,238 +1606,58 @@ details.race-acc[open]>.race-acc-body{display:block}
 </section>
 {% endif %}
 
-<details class="detail-fold" id="predict-race-panel">
-<summary>馬券・詳細予想を開く{% if selected_venue %} · {{selected_venue}}{% endif %}</summary>
-<div class="race-acc-list" id="predict-acc-list">
-{% for r in _races_ordered %}
-  {% set _is_prod_buy = ('' ~ (r.get('投資判定') or '')).startswith('買い') %}
-  {% set _ev_n = namespace(v=none) %}
-  {% if r.get('期待値') is not none and ('' ~ r.get('期待値'))|trim not in ('', '—', '-', 'None', 'nan') %}
-    {% set _ev_n.v = ('' ~ r.get('期待値'))|replace('%','')|float %}
-  {% endif %}
-  {% if _is_prod_buy %}{% set _race_judge = 'buy' %}
-  {% else %}{% set _race_judge = 'skip' %}{% endif %}
-  {% set _conf = r.get('レース信頼度スコア') or r.get('AI信頼度スコア') %}
-  {% set _idx = namespace(v=None) %}
-  {% if r.get('近走指数順位') not in [None, '', '—'] %}
-    {% set _idx.v = r.get('近走指数順位')|int %}
-  {% endif %}
-<details class="race-acc predict-acc" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-judge="{{_race_judge}}">
-<summary class="race-acc-toggle">
-<div class="list-race">
-<span class="race-name">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %}{% if not selected_venue and r.get('開催地') %} {{r.get('開催地')}}{% endif %}</span>
-{% if _race_judge == 'buy' %}<span class="judge-pill buy">🔥 BUY</span>
-{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
-</div>
-<div class="simple-summary" style="margin-top:8px">
-<div class="ss-row">
-<span class="ss-main">{{r.get('本命表示') or r.get('本命') or '—'}}</span>
-<span class="ss-invest {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定表示') or r.get('投資判定') or '—'}}</span>
-</div>
-<div class="ss-row">
-<span class="ss-ev {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}</span>
-<span class="ss-rank">信頼度 {% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %} · AI{% if _idx.v is not none %}{{_idx.v}}{% else %}—{% endif %}位</span>
-</div>
-</div>
-</summary>
-<div class="race-acc-body">
-<section class="race {{r['荒れクラス']}}">
-<div class="race-head">
-<div class="venue">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% else %}<small>詳細予想</small>{% endif %}</div>
-<div class="race-head-right">
-{% if _race_judge == 'buy' %}<span class="judge-pill buy">🔥 BUY</span>
-{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
-</div>
-</div>
-<div class="betbar">
-<span class="ev-main {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}<small>表示期待値</small></span>
-<span class="invest-pill {{r.get('投資判定トーン','wait')}}">{% if _is_prod_buy %}🔥 BUY{% else %}見送り{% endif %}</span>
-</div>
-
-{% set _picks = r.get('予想馬') or [] %}
-{% set _hon = namespace(v='—') %}
-{% set _riv = namespace(v='—') %}
-{% for p in _picks %}
-  {% if (p.get('役割') or '') == '本命' %}{% set _hon.v = ((p.get('馬番表示') or p.get('馬番') or '') ~ ' ' ~ (p.get('馬名') or ''))|trim %}
-  {% elif (p.get('役割') or '') == '対抗' %}{% set _riv.v = ((p.get('馬番表示') or p.get('馬番') or '') ~ ' ' ~ (p.get('馬名') or ''))|trim %}
-  {% endif %}
-{% endfor %}
-{% if _hon.v == '—' %}{% set _hon.v = r.get('本命表示') or r.get('本命') or '—' %}{% endif %}
-<div class="section" style="padding-top:12px">
-<div class="race-sum">
-<h3>予想サマリー</h3>
-<div class="race-sum-grid">
-<div><b>{{_hon.v}}</b><small>本命</small></div>
-<div><b>{{_riv.v}}</b><small>対抗</small></div>
-<div><b>{% if _is_prod_buy %}1頭{% else %}0頭{% endif %}</b><small>BUY</small></div>
-<div><b>{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}</b><small>最高表示期待値</small></div>
-<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>最高信頼度</small></div>
-</div>
-</div>
-<div class="race-meta">
-<div><b>{{r.get('開催地') or '—'}}</b><small>競馬場</small></div>
-<div><b>{{r.get('開催日') or selected_date or '—'}}</b><small>開催日</small></div>
-<div><b>{% if r.get('レース') is not none %}{{r['レース']|int}}R{% else %}—{% endif %}</b><small>レース</small></div>
-<div><b>{% if r.get('データ頭数') not in [None, '', '—'] %}{{r.get('データ頭数')|int}}頭{% else %}—{% endif %}</b><small>頭数</small></div>
-<div><b>{{r.get('芝ダ') or r.get('馬場種別') or '—'}}</b><small>芝/ダート</small></div>
-<div><b>{{r.get('距離') or r.get('距離表示') or '—'}}</b><small>距離</small></div>
-<div><b>{{r.get('馬場状態') or r.get('馬場') or '—'}}</b><small>馬場状態</small></div>
-<div><b>{{r.get('レース名') or r.get('レース名表示') or '—'}}</b><small>レース名</small></div>
-</div>
-<div class="section-title">評価馬</div>
-{% if _picks %}
-{% for p in _picks %}
-  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
-  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
-  {% set _odds_raw = p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ') %}
-  {% set _odds_disp = '—' %}
-  {% if _odds_raw is not none and ('' ~ _odds_raw)|trim not in ('', '—', '-', 'None', 'nan') %}
-    {% set _odds_disp = (('' ~ _odds_raw)|replace('倍','')) ~ '倍' %}
-  {% endif %}
-  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
-  {% set _rank = p.get('近走指数順位') or _card.get('近走指数順位') or p.get('AI順位') %}
-<div class="hc{% if p.get('BUY表示') %} hc-buy{% endif %}">
-<div class="hc-top">
-<div class="hc-rank">{% if _rank not in [None, '', '—'] %}{{_rank}}位{% else %}{{loop.index}}位{% endif %} · {{p.get('役割') or ''}}</div>
-{% if p.get('BUY表示') %}<span class="judge-pill buy">🔥 BUY</span>{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
-</div>
-<div class="hc-name">{% if p.get('馬番表示') or p.get('馬番') %}{{p.get('馬番表示') or p.get('馬番')}} {% endif %}{{p.get('馬名') or '—'}}</div>
-<div class="hc-sub">{% if p.get('枠番') %}枠{{p.get('枠番')}}{% endif %}{% if p.get('騎手') %} · {{p.get('騎手')}}{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}{% if _odds_disp != '—' %} · {{_odds_disp}}{% endif %}</div>
-<div class="hc-metrics">
-<div><b>{% if p.get('予想スコア') is not none %}{{p.get('予想スコア')}}{% else %}{{_card.get('AI評価') or '—'}}{% endif %}</b><small>スコア</small></div>
-<div><b>{% if p.get('BUY表示') %}{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}{% elif _ev_raw not in [None, '', '—'] %}{{_ev_raw}}%{% else %}—{% endif %}</b><small>{% if p.get('BUY表示') %}表示期待値{% else %}期待値{% endif %}</small></div>
-<div><b>{% if p.get('BUY表示') %}{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
-<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
-</div>
-{% if p.get('プラス要因') %}
-<div class="hc-fac plus"><h4>プラス要因</h4><ul>{% for x in p.get('プラス要因') %}<li>{{x}}</li>{% endfor %}</ul></div>
-{% endif %}
-{% if p.get('マイナス要因') %}
-<div class="hc-fac minus"><h4>マイナス要因</h4><ul>{% for x in p.get('マイナス要因') %}<li>{{x}}</li>{% endfor %}</ul></div>
-{% endif %}
-{% if p.get('評価内訳') %}
-<div class="hc-why">
-{% for w in p.get('評価内訳') %}
-<div><span>{{w.get('項目')}}</span><b>{{w.get('評価')}}</b></div>
-{% endfor %}
-</div>
-{% endif %}
-</div>
-{% endfor %}
-{% else %}
-<div class="reason">予想馬データがありません</div>
-{% endif %}
-</div>
-
-{% set pace = r.get('展開予想データ') if r.get('展開予想データ') is mapping else {} %}
-{% if pace %}
-<div class="section">
-<div class="ai-card">
-<h3>展開予想</h3>
-<div class="kv">
-<div>想定ペース <b>{{pace.get('想定ペース','—')}}</b></div>
-<div>荒れ指数 <b>{{pace.get('荒れ指数','—')}}</b></div>
-</div>
-<div class="reason" style="margin-top:8px">{{pace.get('AI総評','')}}</div>
-</div>
-</div>
-{% endif %}
-
-<div class="section">
-<div class="section-title gold">推奨馬券</div>
-<div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '単勝'}}</strong><p>{{r.get('馬券戦略理由') or '地方は単勝・馬連・ワイドのシンプル買いを優先'}}</p></div>
-{% set tickets = r.get('推奨馬券一覧') or [] %}
-{% if source=='nar' %}
-<div class="nar-tickets">
-{% set ns = namespace(n=0) %}
-{% for t in tickets %}
-{% if t is mapping and t.get('券種') in ('単勝','馬連','ワイド') %}
-{% set ns.n = ns.n + 1 %}
-<div class="nar-ticket">
-<div class="nt-head"><span class="nt-kind">{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
-<div class="nt-ban">{{t.get('馬番表示') or '—'}}</div>
-{% if t.get('説明') %}<div class="nt-desc">{{t.get('説明')}}</div>{% endif %}
-</div>
-{% endif %}
-{% endfor %}
-{% if ns.n == 0 %}
-<div class="reason">推奨馬券を準備中です</div>
-{% endif %}
-</div>
-{% else %}
-<div class="fund-box" data-fund-box>
-<label class="label">軍資金（円）</label>
-<input type="number" min="100" step="100" value="10000" data-fund-input inputmode="numeric">
-<div data-fund-alloc></div>
-</div>
-{% if tickets %}
-<div class="betplan" data-fund-tickets>
-{% for t in tickets[:8] %}
-{% if t is mapping %}
-{% set form = t.get('フォーメーション') if t.get('フォーメーション') is mapping else none %}
-<div class="ticket ai-card" style="margin:0" data-fund-item data-kind="{{t.get('券種','')}}" data-ban="{{t.get('馬番表示','')}}" data-ev="{{t.get('期待値') or t.get('推定回収率') or 100}}" data-hit="{{t.get('的中率') or 1}}">
-<div class="ticket-head"><span>{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
-<div class="ticket-ban">{{t.get('馬番表示') or '—'}}</div>
-{% if form %}
-<div class="form-box">
-<div class="slot"><b>1頭目</b>{{ (form.get('1頭目') or [])|join(' ') }}</div>
-<div class="slot"><b>2頭目</b>{{ (form.get('2頭目') or [])|join(' ') }}</div>
-{% if form.get('3頭目') %}<div class="slot"><b>3頭目</b>{{ (form.get('3頭目') or [])|join(' ') }}</div>{% endif %}
-<div class="slot"><b>点数</b>{{ form.get('点数','—') }}点</div>
-</div>
-{% endif %}
-<div class="kv">
-<div>期待値 <b>{% if t.get('期待値') %}{{t.get('期待値')}}%{% else %}—{% endif %}</b></div>
-<div>的中率 <b>{% if t.get('的中率') %}{{t.get('的中率')}}%{% else %}—{% endif %}</b></div>
-<div>推定回収率 <b>{% if t.get('推定回収率') %}{{t.get('推定回収率')}}%{% else %}—{% endif %}</b></div>
-</div>
-</div>
-{% endif %}
-{% endfor %}
-</div>
-{% else %}
-<div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r.get(kind+'判定','—')}}</span><span class="ticket-score">適性 {{r.get(kind+'評価','—')}}</span></div><ul>{% for x in r.get(kind+'買い目一覧', []) %}<li>{{x}}</li>{% endfor %}</ul></div>{% endfor %}</div>
-{% endif %}
-{% endif %}
-</div>
-<div class="beta">期待値が最重要です · AI順位だけではBUYにしません · BUY 0件も正常</div><div class="toplink"><a href="#top">↑ TODAY'S AI へ戻る</a></div>
-</section>
-</div>
-</details>
-{% endfor %}
-</div>
-</details>
 <script>
 (function(){
   try{
   var list=document.getElementById('predict-acc-list');
   if(!list) return;
-  var detailFold=document.getElementById('predict-race-panel');
+  var races=[].slice.call(list.querySelectorAll('.fx-race'));
 
-  function openCard(card, scroll){
+  function showRace(card, scroll){
     if(!card) return;
-    if(detailFold && detailFold.tagName === 'DETAILS') detailFold.open=true;
-    [].forEach.call(list.querySelectorAll('details.race-acc[open]'), function(other){
-      if(other!==card) other.open=false;
-    });
-    card.open=true;
+    races.forEach(function(el){ el.classList.toggle('is-on', el===card); });
+    var idx=races.indexOf(card);
+    [].forEach.call(document.querySelectorAll('[data-fx-prev]'), function(b){ b.disabled = idx<=0; });
+    [].forEach.call(document.querySelectorAll('[data-fx-next]'), function(b){ b.disabled = idx<0 || idx>=races.length-1; });
     if(scroll){
       try{ card.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){ card.scrollIntoView(true); }
     }
   }
 
-  // details/summary は JS なしでも開く。ここでは「1枚だけ開く」補助のみ
-  list.addEventListener('toggle', function(e){
-    var card=e.target;
-    if(!card || !card.classList || !card.classList.contains('race-acc')) return;
-    if(card.open){
-      [].forEach.call(list.querySelectorAll('details.race-acc[open]'), function(other){
-        if(other!==card) other.open=false;
-      });
-    }
-  });
-
   document.addEventListener('click', function(e){
+    var prev=e.target.closest('[data-fx-prev]');
+    var next=e.target.closest('[data-fx-next]');
+    if(prev || next){
+      e.preventDefault();
+      var cur=races.filter(function(r){return r.classList.contains('is-on');})[0] || races[0];
+      var n=races.indexOf(cur);
+      var j=prev ? Math.max(0,n-1) : Math.min(races.length-1,n+1);
+      if(races[j]){
+        showRace(races[j], true);
+        if(history && history.replaceState){
+          try{ history.replaceState(null,'','#'+races[j].id); }catch(err){}
+        }
+      }
+      return;
+    }
+    var row=e.target.closest('[data-horse-i]');
+    if(row && list.contains(row.closest('.fx-race'))){
+      var race=row.closest('.fx-race');
+      var hi=row.getAttribute('data-horse-i');
+      [].forEach.call(race.querySelectorAll('.fx-hrow'), function(el){
+        el.classList.toggle('is-on', el.getAttribute('data-horse-i')===hi);
+      });
+      [].forEach.call(race.querySelectorAll('.fx-detail'), function(el){
+        el.classList.toggle('is-on', el.getAttribute('data-horse-detail')===hi);
+      });
+      return;
+    }
+    var anal=e.target.closest('[data-fx-anal]');
+    if(anal){
+      var panel=anal.parentElement && anal.parentElement.querySelector('.fx-analysis');
+      if(panel) panel.classList.toggle('is-on');
+      return;
+    }
     var a=e.target.closest('[data-open-race]');
     if(!a) return;
     var id=a.getAttribute('data-open-race');
@@ -1446,7 +1665,7 @@ details.race-acc[open]>.race-acc-body{display:block}
     var card=document.getElementById(id);
     if(!card || !list.contains(card)) return;
     e.preventDefault();
-    openCard(card, true);
+    showRace(card, true);
     if(history && history.replaceState){
       try{ history.replaceState(null,'','#'+id); }catch(err){}
     }
@@ -1456,8 +1675,10 @@ details.race-acc[open]>.race-acc-body{display:block}
     var id=(location.hash||'').replace(/^#/,'');
     if(!id) return;
     var card=document.getElementById(id);
-    if(card && list.contains(card)) openCard(card, true);
+    if(card && list.contains(card)) showRace(card, true);
   }
+  var current=races.filter(function(r){return r.classList.contains('is-on');})[0] || races[0];
+  showRace(current, false);
   openFromHash();
   window.addEventListener('hashchange', openFromHash);
 
@@ -1465,7 +1686,7 @@ details.race-acc[open]>.race-acc-body{display:block}
   function renderFund(box){
     var input=box.querySelector('[data-fund-input]');
     var out=box.querySelector('[data-fund-alloc]');
-    var section=box.closest('.section') || box.parentElement;
+    var section=box.closest('.fx-analysis') || box.closest('.section') || box.parentElement;
     var items=section ? [].slice.call(section.querySelectorAll('[data-fund-item]')) : [];
     var tickets=items.map(function(el){
       return {

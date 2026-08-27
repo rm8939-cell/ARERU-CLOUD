@@ -1743,6 +1743,18 @@ def _venue_meetings(records):
     return meetings
 
 
+def _day_venues_for_nav(pred_path, source, fallback=None):
+    """表示専用: 当日の開催場チップ用。予想・BUYは再計算しない。"""
+    try:
+        light = _read_predictions_for_venue_picker(pred_path, source)
+        meetings = _venue_meetings(light)
+        if meetings:
+            return meetings
+    except Exception as e:
+        print(f'[venue-nav] skip: {e}', flush=True)
+    return fallback or []
+
+
 def _pick_today_date(available, today_str=''):
     """本日開催日を解決。当日が無ければ直近の開催日へ。"""
     today_str=str(today_str or _today_jst())
@@ -3514,13 +3526,13 @@ def index():
                                         rid=_norm_race_id(row.get('race_id',''))
                                         row['purchase_ranks']=list(ranks_map.get(rid, []))
                                         row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
-                                venues=[{
+                                venues=_day_venues_for_nav(pred_path, source, fallback=[{
                                     'name': selected_venue,
                                     'count': len(races),
                                     'race_label': f'1-{len(races)}R' if races else '—',
                                     's': sum(1 for r in races if str(r.get('勝負ランク'))=='S'),
                                     'a': sum(1 for r in races if str(r.get('勝負ランク'))=='A'),
-                                }]
+                                }])
                                 show_venue_picker=False
                                 races_for_board=list(races)
                                 buy_candidates=build_buy_candidates(races_for_board)
@@ -3557,7 +3569,9 @@ def index():
                                 for row in races:
                                     if not _race_date(row):
                                         row['日付'] = selected
-                                venues = _venue_meetings(races)
+                                venues = _day_venues_for_nav(
+                                    pred_path, source, fallback=_venue_meetings(races)
+                                )
                                 show_venue_picker = False
                                 races_for_board = list(races)
                                 buy_candidates = build_buy_candidates(races_for_board)
