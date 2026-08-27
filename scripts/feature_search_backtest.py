@@ -46,6 +46,9 @@ LOGICS = {
     'STYLE': {'ARERU_LEGACY_SCORE': '1', 'ARERU_ABL_SSTYLE': '1'},
     'FIELD': {'ARERU_LEGACY_SCORE': '1', 'ARERU_ABL_SFIELD': '1'},
     'D': {'ARERU_LEGACY_SCORE': '0', 'ARERU_LOGIC_PRESET': 'D'},
+    'SASHI_INNER': {'ARERU_LEGACY_SCORE': '0', 'ARERU_CALIB_SASHI_INNER': '1'},
+    'ODDS_INNER': {'ARERU_LEGACY_SCORE': '0', 'ARERU_CALIB_ODDS_INNER': '1'},
+    'SASHI_SWEET': {'ARERU_LEGACY_SCORE': '0', 'ARERU_CALIB_SASHI_SWEET': '1'},
 }
 
 LOGIC_LABELS = {
@@ -60,6 +63,9 @@ LOGIC_LABELS = {
     'STYLE': '旧+脚質×頭数',
     'FIELD': '旧+頭数実績',
     'D': '新+holdout確認較正（差しSIM/内枠ダート/12-20妙味/馬体重増）',
+    'SASHI_INNER': '新+差し×内枠減点',
+    'ODDS_INNER': '新+12-20倍×内枠減点',
+    'SASHI_SWEET': '新+差し×5-8倍×中枠加点',
     'XSEL': '旧+trainで優位だった特徴の合成',
 }
 
@@ -77,7 +83,7 @@ FEAT_OF = {
 
 def _clear_env():
     for k in list(os.environ.keys()):
-        if k.startswith('ARERU_ABL_') or k in (
+        if k.startswith('ARERU_ABL_') or k.startswith('ARERU_CALIB_') or k in (
             'ARERU_LEGACY_SCORE', 'ARERU_LOGIC_PRESET', 'ARERU_XSEL_FEATURES',
         ):
             os.environ.pop(k, None)
@@ -208,7 +214,8 @@ def _one_day(payload: dict) -> list[dict]:
     else:
         history = _load_history()
         pred, _ = _predict_for_date(
-            d, legacy=(logic not in ('NEW', 'D')), history=history,
+            d, legacy=str(os.environ.get('ARERU_LEGACY_SCORE') or '0') in ('1', 'true', 'yes'),
+            history=history,
             sim_runs=sim_runs, use_cache=False, respect_env=True,
         )
         cache_path.parent.mkdir(parents=True, exist_ok=True)

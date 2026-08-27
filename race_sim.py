@@ -185,6 +185,68 @@ def calib_v2_enabled() -> bool:
     return str(os.environ.get("ARERU_LOGIC_PRESET") or "").strip().upper() == "D"
 
 
+def calib_flag(name: str) -> bool:
+    """単体較正フラグ（BUY除外ではない）。ARERU_CALIB_<NAME>=1。"""
+    key = f"ARERU_CALIB_{str(name or '').strip().upper()}"
+    return str(os.environ.get(key) or "").strip().lower() in ("1", "true", "yes")
+
+
+def is_sashi_style(style) -> bool:
+    """診断スクリプトと同じ差し定義: 0.45超〜0.70。"""
+    try:
+        x = float(style)
+    except (TypeError, ValueError):
+        return False
+    if x != x:
+        return False
+    return 0.45 < x <= 0.70
+
+
+def gate_band(waku, n_horses: int) -> str:
+    """診断スクリプトと同じ内/中/外。"""
+    try:
+        w = int(float(waku))
+    except (TypeError, ValueError):
+        return "不明"
+    n = int(n_horses or 0)
+    if n <= 0:
+        return str(w)
+    if w <= max(2, n // 4):
+        return "内枠"
+    if w >= max(n - 2, int(n * 3 / 4)):
+        return "外枠"
+    return "中枠"
+
+
+def three_calib_adj(style, waku, n_horses: int, market_odds) -> tuple[float, list[str], list[str]]:
+    """検証対象3条件だけの本命較正。フラグOFFならゼロ。
+
+    1. SASHI_INNER: 差し×内枠を減点
+    2. ODDS_INNER: 12.0-19.9倍×内枠を減点
+    3. SASHI_SWEET: 差し×5.0-7.9倍×中枠を加点
+    """
+    delta = 0.0
+    plus: list[str] = []
+    minus: list[str] = []
+    band = gate_band(waku, n_horses)
+    try:
+        odds = float(market_odds)
+    except (TypeError, ValueError):
+        odds = float("nan")
+    sashi = is_sashi_style(style)
+
+    if calib_flag("SASHI_INNER") and sashi and band == "内枠":
+        delta -= 3.2
+        minus.append("差し×内枠")
+    if calib_flag("ODDS_INNER") and band == "内枠" and 12.0 <= odds < 20.0:
+        delta -= 2.8
+        minus.append("12-20倍×内枠")
+    if calib_flag("SASHI_SWEET") and sashi and band == "中枠" and 5.0 <= odds < 8.0:
+        delta += 2.0
+        plus.append("差し×5-8倍×中枠")
+    return delta, plus, minus
+
+
 def gate_bias(venue: str, waku, n_horses: int, surface: str) -> float:
     """枠順補正（簡易）。ダート内枠・芝外枠をわずかに優遇。
 
@@ -448,6 +510,10 @@ def build_profiles(g: pd.DataFrame, history: pd.DataFrame | None, target, venue:
         adj += cfit
         for r in c_reasons:
             plus.append(r)
+        tdelta, tplus, tminus = three_calib_adj(style, row.get("枠"), n, row.get("単勝オッズ"))
+        adj += tdelta
+        plus.extend(tplus)
+        minus.extend(tminus)
 
         # 血統は未取得のため中立（将来拡張用）
         blood = 50.0
