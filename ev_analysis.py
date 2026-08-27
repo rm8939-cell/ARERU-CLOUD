@@ -1687,7 +1687,7 @@ def build_ai_buy_reasons(record: dict, limit: int = 4) -> list[str]:
 
     pop = pack.get('人気')
     if pop and pop >= 5 and len(reasons) < limit:
-        add(f'{pop}番人気の妙味')
+        add(f'{pop}番人気')
 
     return reasons[:limit]
 

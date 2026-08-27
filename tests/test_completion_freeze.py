@@ -20,6 +20,10 @@ class TestCompletionFreeze(unittest.TestCase):
         self.assertEqual(data['本番']['ロジック'], 'OLD')
         self.assertEqual(data['本番']['ARERU_LEGACY_SCORE'], '1')
         self.assertFalse(data['表示仕様_凍結']['tanhを変えてよいか'])
+        usage = data['ファクター使用_現行OLD']
+        self.assertIn('SASHI_INNER', usage['未実装'])
+        self.assertTrue(any('TIME' in x for x in usage['LEGACY=1で無効']))
+        self.assertTrue(any('GATE' in x for x in usage['OLD_SIMに既存_今回は触らない']))
 
     def test_factor_ledger_columns_and_no_adopts(self):
         path = ROOT / 'data' / 'verified_factors.csv'
@@ -89,9 +93,13 @@ class TestProductionLock(unittest.TestCase):
         self.assertIn('表示期待値', html)
         self.assertIn('勝ちを保証するものではありません', html)
         self.assertIn('近走指数順位', html)
-        # 推定勝率は補正勝率のみ。生SIMへ落とさない
+        self.assertIn('勝負ランクは信頼度枠', html)
+        buy = html.split('aria-label="BUYカード"', 1)[1].split('aria-label="注目"', 1)[0]
+        self.assertIn('<small>勝負ランク</small>', buy)
+        self.assertNotIn('<small>AI評価</small>', buy)
         self.assertNotIn("or t.get('シミュレーション勝率')", html)
         self.assertIn('生の期待値＝推定勝率×オッズ', html)
+        self.assertNotIn('番人気の妙味', (ROOT / 'ev_analysis.py').read_text(encoding='utf-8'))
 
     def test_index_rank_copied_from_pick_card(self):
         from ev_analysis import apply_expected_value

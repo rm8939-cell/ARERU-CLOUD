@@ -69,6 +69,26 @@
     "マージ前に生成済みの当日CSVは NEW のまま残る。次回 morning 生成から OLD になる",
     "GHA が失敗すると UI は generating のまま。Render 側では自己修復しない"
   ],
+  "ファクター使用_現行OLD": {
+    "LEGACY=1で無効": [
+      "TIME（history_detail_bonus / time_trend_bonus）",
+      "MARGIN（history_detail_bonus / margin_bonus_from_row）",
+      "TRACK（history_detail_bonus / track_condition_bonus）",
+      "JOCKEY（jockey_bonus）",
+      "WEIGHT履歴増減（weight_delta）",
+      "HISTORY拡張（enrich_runner_history_fields）"
+    ],
+    "OLD_SIMに既存_今回は触らない": [
+      "GATE（race_sim.gate_bias）",
+      "BURDEN_当日斤量（build_profiles のフィールド平均比）",
+      "LAYOFF（layoff_days）",
+      "COURSE（course_distance_fit）",
+      "STYLE（infer_style / lap_aptitude）",
+      "基本近走着順・人気（score_runner）"
+    ],
+    "未実装": ["SASHI_INNER", "ODDS_INNER", "SASHI_SWEET"],
+    "検証の扱い": "アブレーションの OLD+GATE 等は既存SIMへの追加加点。既存SIM内の枠・斤量・脚質はOLD基準の一部として残す。新規無効化はスコア変更になるためしない。"
+  },
   "やらないこと": [
     "NEW を本番へ切り替え",
     "履歴接合15%を上げるための新規取得・新特徴探索",

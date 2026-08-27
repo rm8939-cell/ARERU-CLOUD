@@ -1046,10 +1046,7 @@ details.race-acc[open]>.race-acc-body{display:block}
   {% set _ev_disp = (_ev_raw ~ '')|replace('%','') %}
   {% set _rk = t.get('勝負ランク') or _buy_pack.get('ランク') or '' %}
   {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') %}
-  {% set _impl = _buy_pack.get('市場暗示勝率') or t.get('市場暗示勝率') %}
   {% set _edge_pp = _buy_pack.get('実エッジpp') or t.get('実エッジpp') %}
-  {% set _ai_idx = _buy_pack.get('AI評価') or t.get('本命AREru指数') %}
-  {% set _qscore = _buy_pack.get('BUY品質スコア') or t.get('BUY品質スコア') %}
   {% set _pop = _buy_pack.get('人気') or t.get('本命人気') %}
   {% set _plus = _buy_pack.get('プラス') if _buy_pack.get('プラス') is sequence else [] %}
   {% set _minus = _buy_pack.get('マイナス') if _buy_pack.get('マイナス') is sequence else [] %}
@@ -1071,10 +1068,10 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div><b>{% if _pop is not none %}{{_pop|int}}番{% else %}—{% endif %}</b><small>人気</small></div>
 <div><b>{% if _pop_gap.v != '—' %}{% if _pop_gap.v > 0 %}+{% endif %}{{_pop_gap.v}}{% else %}—{% endif %}</b><small>人気との差</small></div>
 <div><b>{% if _idx.v is not none %}{{_idx.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
-<div><b>{% if _rk %}{{_rk}}{% elif _ai_idx is not none %}{{'%g'|format(_ai_idx|float)}}{% else %}—{% endif %}</b><small>AI評価</small></div>
+<div><b>{% if _rk %}{{_rk}}{% else %}—{% endif %}</b><small>勝負ランク</small></div>
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 </div>
-<div class="bc-note">表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。BUYは表示期待値108%以上かつ信頼度などの条件を満たしたときだけです。勝ちを保証しません。</div>
+<div class="bc-note">表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。BUYは表示期待値108%以上・勝負ランクS/A・信頼度などの条件を満たしたときだけです。勝負ランクは信頼度枠であり、的中を保証しません。</div>
 {% if _edge_pp is not none %}
 <div class="bc-edge">実エッジ <b>{{'%+.1f'|format(_edge_pp|float)}}pp</b>（推定勝率と市場暗示の差）</div>
 {% endif %}
@@ -1103,7 +1100,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% else %}
 <section class="buy-empty-card" aria-label="買いなし">
 <h3>本日は買いなし</h3>
-<p>表示期待値・AI評価S/A・信頼度の条件をすべて満たす買いがありません</p>
+<p>表示期待値・勝負ランクS/A・信頼度の条件をすべて満たす買いがありません</p>
 </section>
 {% endif %}
 
