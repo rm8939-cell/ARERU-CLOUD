@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 {# 中身が無い初回取得中のみフルリロード。表示維持中(updating)は JS で静かに監視する #}
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>ARERU.EXE</title>
@@ -474,141 +474,145 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-spotlight .bs-reasons{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}
 .buy-spotlight .bs-reasons li{font-size:12px;font-weight:700;line-height:1.45;color:#1f2a33;padding:8px 10px;background:#fff;border-radius:10px;border:1px solid #dcebdf}
 /* ===== 予想画面リデザイン（表示のみ） ===== */
-.fx-top-inner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:58px;padding:8px 0}
+body.app-race{padding-bottom:env(safe-area-inset-bottom,0)}
+body.app-race .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+.fx-top-inner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:58px;padding:calc(8px + env(safe-area-inset-top,0)) 0 8px}
 .fx-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff;font-weight:900;letter-spacing:.04em;line-height:1}
-.fx-logo .mark{width:28px;height:28px;border-radius:9px;background:linear-gradient(160deg,#2f6fed,#0a1a3a);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#ffb14a}
-.fx-logo b{font-size:18px;letter-spacing:.08em}.fx-logo span{font-size:10px;font-weight:800;opacity:.72;letter-spacing:.14em;display:block;margin-top:2px}
+.fx-logo .mark{width:28px;height:28px;border-radius:9px;background:linear-gradient(160deg,#2f6fed,#0a1a3a);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#7dd3a0}
+.fx-logo b{font-size:17px;letter-spacing:.08em}.fx-logo span{font-size:10px;font-weight:800;opacity:.72;letter-spacing:.14em;display:block;margin-top:2px}
 .fx-venue-slot{display:flex;justify-content:center;min-width:0}
 .fx-venue-form{display:flex;gap:6px;align-items:center;max-width:100%}
-.fx-venue-slot select{max-width:100%;min-width:0;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%230a1a3a' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E") no-repeat right 10px center;background-size:10px;color:var(--navy);border:0;border-radius:999px;padding:8px 28px 8px 12px;font-size:13px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.fx-venue-slot select{max-width:100%;min-width:0;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%230a1a3a' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E") no-repeat right 10px center;background-size:10px;color:var(--navy);border:0;border-radius:999px;padding:8px 28px 8px 12px;font-size:13px;font-weight:900;box-shadow:0 4px 12px rgba(10,26,58,.18)}
 .fx-venue-form select[name="date"]{flex:0 0 auto;width:7.2em}
 .fx-venue-form select[name="venue"]{flex:1 1 auto;width:7.5em}
 .fx-icons{display:flex;gap:6px;align-items:center}
 .fx-icon{width:36px;height:36px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);color:#fff;text-decoration:none;font-size:14px;font-weight:900}
 body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back{display:none !important}
 .fx-sr{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.fx-nav{display:flex;gap:8px;overflow-x:auto;padding:10px 0 8px;position:sticky;top:58px;z-index:25;background:linear-gradient(180deg,#f3f5f8 70%,rgba(243,245,248,0));-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.fx-nav::-webkit-scrollbar{display:none}
-.fx-nav a,.fx-nav button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:13px;font-weight:850;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer;font:inherit}
+.fx-nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0 8px}
+.fx-nav a,.fx-nav button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:13px;font-weight:850;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer;font:inherit}
 .fx-nav a.is-on,.fx-nav button.is-on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.fx-nav a.is-buy{border-color:#f3b48a;background:#fff7f0}
-.fx-race{display:none;padding-bottom:24px}.fx-race.is-on{display:block}
-.fx-hero{margin:10px 0 12px;padding:18px 16px 16px;border-radius:22px;background:linear-gradient(160deg,#0a1a3a 0%,#163a72 48%,#2f6fed 140%);color:#fff;box-shadow:0 12px 28px rgba(10,26,58,.28);position:relative;overflow:hidden}
-.fx-hero:before{content:"";position:absolute;right:-36px;top:-48px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.08)}
-.fx-hero-kicker{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.08em;opacity:.86}
-.fx-hero h2{position:relative;margin:6px 0 0;font-size:clamp(32px,10vw,42px);font-weight:900;letter-spacing:.02em;line-height:1.05}
-.fx-hero h2 small{display:block;margin-top:6px;font-size:15px;font-weight:800;opacity:.92;letter-spacing:0}
-.fx-hero-meta{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.fx-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:8px 10px;min-width:64px}
-.fx-chip b{display:block;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15}
-.fx-chip small{display:block;margin-top:3px;font-size:10px;font-weight:800;opacity:.78}
-.fx-hero-foot{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:14px}
-.fx-ev{font-size:clamp(32px,9vw,44px);font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:#ffb14a}
-.fx-ev.hot{color:#ff6b3d}.fx-ev small{display:block;margin-top:4px;font-size:11px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.8)}
-.fx-buy-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border-radius:14px;font-size:16px;font-weight:900;text-decoration:none;border:0}
-.fx-buy-btn.buy{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff;box-shadow:0 8px 18px rgba(229,57,53,.35)}
-.fx-buy-btn.skip{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2)}
-.fx-sec-label{margin:2px 0 8px;font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
-.fx-picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin:0 0 14px}
-.fx-pc{background:#fff;border-radius:16px;padding:12px 10px 10px;box-shadow:0 4px 14px rgba(10,26,58,.08);border:1px solid #eef1f6;min-width:0}
-.fx-pc.hon{border-color:#ffd4a8;background:linear-gradient(180deg,#fff,#fff8f0)}
-.fx-pc.buy{border-color:#ffb199;box-shadow:0 6px 16px rgba(229,57,53,.12)}
-.fx-pc .role{font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--muted);margin-bottom:8px;text-align:center}
-.fx-pc .ban{display:flex;justify-content:center;margin:0 0 6px}
-.fx-pc .name{margin:0 0 4px;font-size:13px;font-weight:900;line-height:1.25;word-break:break-word;text-align:center}
-.fx-pc .sub{font-size:11px;font-weight:700;color:#556;line-height:1.4;text-align:center}
-.fx-pc .nums{margin-top:8px;display:grid;gap:4px}
-.fx-pc .nums div{display:flex;justify-content:space-between;gap:6px;font-size:11px;font-weight:800}
-.fx-pc .nums span{color:var(--muted)}
-.fx-pc .nums b{color:var(--navy);font-variant-numeric:tabular-nums}
-.fx-pc .nums b.hot{color:#e85d04}
-.fx-pc .nums b.plus{color:#1a7f4b}
-.fx-pc .pill{margin-top:8px;display:flex;justify-content:center;border-radius:999px;padding:6px 8px;font-size:11px;font-weight:900}
-.fx-pc .pill.buy{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff}
+.fx-nav a.is-buy{border-color:#86efac;background:#f0fdf4}
+.fx-race{display:none;padding-bottom:28px}.fx-race.is-on{display:block}
+.fx-info{margin:4px 0 10px;padding:16px;border-radius:20px;background:#fff;border:1px solid #e8eef5;box-shadow:0 6px 18px rgba(10,26,58,.06)}
+.fx-info-kicker{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+.fx-info h2{margin:6px 0 0;font-size:clamp(28px,8vw,36px);font-weight:900;letter-spacing:.02em;line-height:1.08;color:var(--navy)}
+.fx-info h2 small{display:block;margin-top:4px;font-size:14px;font-weight:800;color:#445;letter-spacing:0}
+.fx-hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.fx-chip{background:#f4f7fb;border:1px solid #e8eef5;border-radius:12px;padding:8px 10px;min-width:64px}
+.fx-chip b{display:block;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15;color:var(--navy)}
+.fx-chip small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:var(--muted)}
+.fx-spot{margin:0 0 14px;padding:20px 16px 16px;border-radius:22px;background:linear-gradient(160deg,#071428 0%,#122a52 52%,#1d4f91 140%);color:#fff;box-shadow:0 14px 28px rgba(10,26,58,.28);position:relative;overflow:hidden}
+.fx-spot:before{content:"";position:absolute;right:-40px;top:-50px;width:170px;height:170px;border-radius:50%;background:rgba(125,211,160,.12)}
+.fx-spot-race{position:relative;font-size:13px;font-weight:800;letter-spacing:.08em;opacity:.88}
+.fx-ev{position:relative;margin:10px 0 4px;font-size:clamp(44px,12vw,58px);font-weight:900;font-variant-numeric:tabular-nums;line-height:.95;color:#7dd3a0}
+.fx-ev.hot{color:#4ade80}.fx-ev small{display:block;margin-top:6px;font-size:12px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.78)}
+.fx-spot-actions{position:relative;display:flex;align-items:center;gap:10px;margin:14px 0 12px}
+.fx-buy-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 18px;border-radius:16px;font-size:17px;font-weight:900;text-decoration:none;border:0}
+.fx-buy-btn.buy{background:linear-gradient(160deg,#34d399,#15803d);color:#fff;box-shadow:0 8px 18px rgba(21,128,61,.38)}
+.fx-buy-btn.skip{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.18)}
+.fx-spot-stats{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fx-spot-stats div{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px 12px}
+.fx-spot-stats b{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
+.fx-spot-stats small{display:block;margin-top:3px;font-size:10px;font-weight:800;letter-spacing:.08em;opacity:.78}
+.fx-sec-label{margin:4px 2px 8px;font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.fx-picks{display:grid;grid-template-columns:1fr;gap:10px;margin:0 0 16px}
+.fx-pc{width:100%;text-align:left;background:#fff;border-radius:18px;padding:14px;box-shadow:0 6px 16px rgba(10,26,58,.07);border:1px solid #e8eef5;min-width:0;cursor:pointer;font:inherit;color:inherit}
+.fx-pc.hon{border-color:#bbf7d0;background:linear-gradient(180deg,#fff,#f3fdf7)}
+.fx-pc.buy{border-color:#86efac;box-shadow:0 8px 18px rgba(21,128,61,.12)}
+.fx-pc.is-on{border-color:#4ade80;box-shadow:0 8px 18px rgba(21,128,61,.14)}
+.fx-pc .pc-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.fx-pc .role{font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--muted)}
+.fx-pc .name{margin:0;font-size:16px;font-weight:900;line-height:1.25;word-break:break-word}
+.fx-pc .sub{font-size:12px;font-weight:700;color:#556;line-height:1.4;margin-top:2px}
+.fx-pc .nums{margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.fx-pc .nums div{background:#f6f8fb;border-radius:12px;padding:8px 6px;text-align:center}
+.fx-pc .nums span{display:block;color:var(--muted);font-size:10px;font-weight:800}
+.fx-pc .nums b{display:block;margin-top:3px;color:var(--navy);font-size:13px;font-weight:900;font-variant-numeric:tabular-nums}
+.fx-pc .nums b.hot{color:#15803d}
+.fx-pc .pill{min-height:36px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.fx-pc .pill.buy{background:linear-gradient(160deg,#34d399,#15803d);color:#fff}
 .fx-pc .pill.skip{background:#f3f6f8;color:#5c6b78}
-.fx-ai-wrap{background:#fff;border-radius:18px;padding:12px;margin:0 0 14px;box-shadow:0 4px 14px rgba(10,26,58,.08);border:1px solid #eef1f6;overflow:hidden}
-.fx-ai-wrap h3{margin:0 0 4px;font-size:16px;font-weight:900}
-.fx-ai-legend{margin:0 0 10px;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.02em}
+.fx-ai-wrap{background:transparent;border:0;box-shadow:none;padding:0;margin:0 0 14px;overflow:visible}
+.fx-ai-wrap h3{margin:0 0 4px;font-size:16px;font-weight:900;color:var(--navy)}
+.fx-ai-legend{margin:0 0 10px;font-size:11px;font-weight:800;color:var(--muted)}
 .fx-ai-head{display:none}
-.fx-hrow{width:100%;display:grid;grid-template-columns:1.6em 2.6em minmax(0,1fr) auto;gap:8px;align-items:center;text-align:left;border:0;background:#fff;padding:10px 8px;border-bottom:1px solid #eef2f5;cursor:pointer;font:inherit;color:inherit;border-radius:12px}
-.fx-hrow:last-child{border-bottom:0}
-.fx-hrow.is-on{background:#eef3fb;box-shadow:inset 0 0 0 1px #d5e3f7}
-.fx-hrow.is-extra{opacity:.92}
-.fx-hrow .rk{font-weight:900;color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
-.fx-hrow .main{min-width:0}
-.fx-hrow .nm{font-size:15px;font-weight:900;line-height:1.2;word-break:break-word}
-.fx-hrow .nm small{display:block;margin-top:2px;font-size:11px;font-weight:700;color:var(--muted)}
-.fx-hrow .stats{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:6px;font-variant-numeric:tabular-nums}
-.fx-hrow .stats span{display:inline-flex;flex-direction:column;gap:1px;min-width:2.6em}
-.fx-hrow .stats small{font-size:9px;font-weight:800;letter-spacing:.04em;color:var(--muted)}
-.fx-hrow .stats b{font-size:13px;font-weight:900;color:#223}
-.fx-hrow .stats .hot b{color:#e85d04}
-.fx-hrow .stats .grade b{display:inline-flex;min-width:1.4em;justify-content:center;padding:0 5px;border-radius:6px;background:#eef3fb;color:var(--navy)}
-.fx-hrow .mini{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}
-.fx-hrow .mini.buy{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff}
+.fx-hrow{width:100%;display:block;text-align:left;border:1px solid #e8eef5;background:#fff;padding:14px;margin:0 0 10px;cursor:pointer;font:inherit;color:inherit;border-radius:18px;box-shadow:0 6px 16px rgba(10,26,58,.06)}
+.fx-hrow:last-child{margin-bottom:0}
+.fx-hrow.is-on{background:#f0fdf4;border-color:#86efac;box-shadow:0 8px 18px rgba(21,128,61,.1)}
+.fx-hrow-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.fx-hrow .rk{display:none}
+.fx-hrow .nm{font-size:17px;font-weight:900;line-height:1.2;word-break:break-word}
+.fx-hrow .nm small{display:block;margin-top:3px;font-size:12px;font-weight:700;color:var(--muted)}
+.fx-hrow-metrics{margin-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.fx-hrow-metrics div{text-align:center;background:#f6f8fb;border-radius:12px;padding:8px 4px}
+.fx-hrow.is-on .fx-hrow-metrics div{background:#fff}
+.fx-hrow-metrics b{display:block;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--navy);line-height:1.15}
+.fx-hrow-metrics b.hot{color:#15803d}
+.fx-hrow-metrics small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:var(--muted)}
+.fx-hrow .mini{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}
+.fx-hrow .mini.buy{background:linear-gradient(160deg,#34d399,#15803d);color:#fff}
 .fx-hrow .mini.skip{background:#f3f6f8;color:#5c6b78}
-.ban-circle{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:#fff;background:var(--navy);flex-shrink:0}
-.fx-pc .ban-circle{width:40px;height:40px;font-size:18px}
-.fx-dname .ban-circle{width:36px;height:36px;font-size:16px;margin-right:8px;vertical-align:middle}
+.gpill{display:inline-flex;min-width:1.6em;justify-content:center;padding:2px 7px;border-radius:8px;background:#eef3fb;color:var(--navy)}
+.g-s{background:#fff4d6;color:#9a6b00}.g-a{background:#e7f7ee;color:#176b45}.g-b{background:#e8f1fb;color:#1a4f9a}.g-c{background:#f3f5f8;color:#5c6b78}.g-d{background:#f8f0f0;color:#8a4a3a}
+.ban-circle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:#fff;background:var(--navy);flex-shrink:0}
+.fx-pc .ban-circle,.fx-hrow .ban-circle{width:42px;height:42px;font-size:18px}
+.fx-dname .ban-circle{width:40px;height:40px;font-size:17px}
 .waku-1{background:#fff;color:#111;border:1px solid #333}.waku-2{background:#111;color:#fff}.waku-3{background:#e53935}.waku-4{background:#1565c0}.waku-5{background:#f4d03f;color:#111}.waku-6{background:#2e7d32}.waku-7{background:#ef6c00}.waku-8{background:#ec407a}
 .fx-more>summary::-webkit-details-marker{display:none}
 .fx-more>summary{list-style:none;cursor:pointer;padding:14px 16px;font-size:15px;font-weight:900;background:#fff;border:1px solid #eef1f6;border-radius:18px;box-shadow:0 4px 14px rgba(10,26,58,.06)}
-.fx-more>summary::-webkit-details-marker{display:none}
-.fx-detail{display:none;background:#fff;border-radius:18px;padding:14px;margin:0 0 12px;box-shadow:0 4px 14px rgba(10,26,58,.08);border:1px solid #eef1f6}
+.fx-detail{display:none;background:#fff;border-radius:20px;padding:16px;margin:0 0 12px;box-shadow:0 6px 16px rgba(10,26,58,.07);border:1px solid #e8eef5}
 .fx-detail.is-on{display:block}
 .fx-dtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .fx-dname{font-size:22px;font-weight:900;line-height:1.25;word-break:break-word;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .fx-dname small{display:block;width:100%;margin-top:0;font-size:12px;font-weight:700;color:#556}
-.fx-dmetrics{margin:12px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.fx-dmetrics div{text-align:center;background:#f7f9fc;border-radius:12px;padding:8px 4px;border:1px solid #eef1f6}
-.fx-dmetrics b{display:block;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
-.fx-dmetrics b.hot{color:#e85d04}.fx-dmetrics b.plus{color:#1a7f4b}
+.fx-dmetrics{margin:12px 0;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.fx-dmetrics div{text-align:center;background:#f7f9fc;border-radius:14px;padding:12px 6px;border:1px solid #eef1f6}
+.fx-dmetrics b{display:block;font-size:20px;font-weight:900;font-variant-numeric:tabular-nums}
+.fx-dmetrics b.hot{color:#15803d}
 .fx-dmetrics small{font-size:10px;font-weight:800;color:var(--muted)}
-.fx-facs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.fx-fac h4{margin:0 0 6px;font-size:12px;font-weight:900;letter-spacing:.06em}
-.fx-fac.plus h4{color:#1a7f4b}.fx-fac.minus h4{color:#b23b3b}
-.fx-fac ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
-.fx-fac li{font-size:12px;font-weight:750;line-height:1.4;padding:8px 10px 8px 26px;border-radius:10px;position:relative}
-.fx-fac.plus li{background:#f0faf4;color:#1a5c3a}
-.fx-fac.plus li:before{content:"+";position:absolute;left:8px;font-weight:900;color:#1a7f4b}
-.fx-fac.minus li{background:#fff8f6;color:#8a4a3a}
-.fx-fac.minus li:before{content:"−";position:absolute;left:8px;font-weight:900;color:#c45a3a}
+.fx-facs{display:grid;grid-template-columns:1fr;gap:10px}
+.fx-fac h4{margin:0 0 8px;font-size:13px;font-weight:900;letter-spacing:.06em}
+.fx-fac.plus h4{color:#15803d}.fx-fac.minus h4{color:#c2410c}
+.fx-fac ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.fx-fac li{font-size:13px;font-weight:750;line-height:1.45;padding:10px 12px 10px 28px;border-radius:12px;position:relative}
+.fx-fac.plus li{background:#f0fdf4;color:#166534}
+.fx-fac.plus li:before{content:"+";position:absolute;left:10px;font-weight:900;color:#15803d}
+.fx-fac.minus li{background:#fff7ed;color:#9a3412}
+.fx-fac.minus li:before{content:"−";position:absolute;left:10px;font-weight:900;color:#c2410c}
 .fx-empty{font-size:12px;font-weight:700;color:var(--muted);padding:8px}
-.fx-anal{display:flex;align-items:center;justify-content:space-between;width:100%;margin:4px 0 12px;padding:16px 16px;border-radius:16px;background:#fff;border:1px solid #eef1f6;box-shadow:0 4px 14px rgba(10,26,58,.08);color:var(--navy);font-size:16px;font-weight:900;text-decoration:none;cursor:pointer;font:inherit}
+.fx-anal{display:flex;align-items:center;justify-content:space-between;width:100%;margin:4px 0 12px;padding:16px;border-radius:18px;background:#fff;border:1px solid #e8eef5;box-shadow:0 6px 16px rgba(10,26,58,.06);color:var(--navy);font-size:16px;font-weight:900;cursor:pointer;font:inherit}
 .fx-anal span{font-size:18px}
 .fx-analysis{display:none;margin:0 0 12px}.fx-analysis.is-on{display:block}
 .mode-predict .source-tabs{padding:10px 0 4px}.mode-predict .mode-tabs{padding:0 0 2px}.mode-predict .toolbar{padding:8px 0}
 .mode-predict .race-sum{background:#fff;border-color:#eef1f6;box-shadow:0 4px 14px rgba(10,26,58,.08)}
 .mode-predict .venue-back{margin:4px 0 0}
-.mode-predict .source-tabs a,.mode-predict .mode-tabs a{border-radius:12px;box-shadow:0 1px 4px rgba(10,26,58,.04)}
 .mode-predict .today-hero{background:linear-gradient(155deg,#0a1a3a 0%,#163a72 58%,#1f4f9a 100%);box-shadow:0 12px 30px rgba(10,26,58,.28)}
-.mode-predict .buy-card{border-color:#ffb199;box-shadow:0 10px 24px rgba(229,57,53,.12)}
-.mode-predict .buy-card .bc-badge{background:linear-gradient(160deg,#ff6b3d,#e53935);color:#fff;border-color:transparent}
+.mode-predict .buy-card{border-color:#86efac;box-shadow:0 10px 24px rgba(21,128,61,.12)}
+.mode-predict .buy-card .bc-badge{background:linear-gradient(160deg,#34d399,#15803d);color:#fff;border-color:transparent}
 .mode-predict .buy-card .bc-ban{background:linear-gradient(160deg,#163a72,#0a1a3a)}
 .mode-predict .buy-card .bc-metrics b{color:#0a1a3a}
-.mode-predict .buy-card .bc-metrics div:first-child b{color:#e85d04}
-@media (max-width:720px){
-  .fx-nav{top:54px}
-}
+.mode-predict .buy-card .bc-metrics div:first-child b{color:#15803d}
 @media (max-width:560px){
   .fx-top-inner{min-height:54px;gap:6px}
-  .fx-logo b{font-size:16px}.fx-logo .mark{width:26px;height:26px}
-  .fx-dmetrics{grid-template-columns:repeat(2,1fr)}
-  .fx-facs{grid-template-columns:1fr}
-  .fx-pc .name{font-size:12px}
-  .header .wrap{padding:0 12px}
+  .fx-logo b{font-size:15px}.fx-logo .mark{width:26px;height:26px}
+  .header .wrap{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
   .fx-icons .fx-icon:first-child{display:none}
+  .fx-hrow-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media (min-width:860px){
-  .fx-picks{gap:12px}
-  .fx-pc{padding:14px}
+@media (min-width:720px){
+  .fx-picks{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .fx-pc .pc-top{grid-template-columns:1fr;justify-items:center;text-align:center}
+  .fx-pc .name,.fx-pc .sub{text-align:center}
   .fx-dmetrics{grid-template-columns:repeat(4,1fr)}
+  .fx-facs{grid-template-columns:1fr 1fr}
+  .fx-hrow-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 </style></head>
 <body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' and races and not show_venue_picker %} app-race{% endif %}" id="top"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
-<span class="mark">A</span>
-<span><b>ARERU</b><span>CLOUD</span></span>
+<span class="mark">F</span>
+<span><b>FUJIAI</b><span>ARERU</span></span>
 </a>
 <div class="fx-venue-slot">
 <form method="get" action="/" class="fx-venue-form">
@@ -1227,14 +1231,16 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
   {% set _track = r.get('馬場状態') or r.get('馬場') %}
   {% set _start = r.get('発走時刻') or r.get('発走') or r.get('発走時間') %}
   {% set _ev_disp = r.get('期待回収率短') or r.get('期待値表示') or r.get('期待値') or '—' %}
+  {% set _rows = r.get('AI一覧') or _picks %}
+  {% set _hon_rank = _roles.hon.get('AI順位') if _roles.hon else none %}
 <article class="fx-race{% if loop.first %} is-on{% endif %}" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-judge="{% if _is_prod_buy %}buy{% else %}skip{% endif %}">
 
-<section class="fx-hero">
-<div class="fx-hero-kicker">
+<section class="fx-info">
+<div class="fx-info-kicker">
 <span>{% if r.get('開催日') %}{{r.get('開催日')}}{% else %}{{selected_date}}{% endif %}{% if r.get('開催地') %} · {{r.get('開催地')}}{% endif %}</span>
 {% if r.get('勝負ランク') %}<span>勝負ランク {{r.get('勝負ランク')}}</span>{% endif %}
 </div>
-<h2>{% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %} {{r.get('開催地') or ''}}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% endif %}</h2>
+<h2>{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% endif %}</h2>
 <div class="fx-hero-meta">
 {% if _start not in _blank %}<div class="fx-chip"><b>{{_start}}</b><small>発走</small></div>{% endif %}
 {% if _surface not in _blank %}<div class="fx-chip"><b>{{_surface}}</b><small>芝/ダート</small></div>{% endif %}
@@ -1243,10 +1249,19 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
 {% elif r.get('表示頭数') not in _blank %}<div class="fx-chip"><b>{{r.get('表示頭数')|int}}頭</b><small>頭数</small></div>{% endif %}
 {% if _track not in _blank %}<div class="fx-chip"><b>{{_track}}</b><small>馬場状態</small></div>{% endif %}
 {% if r.get('能力差スコア') not in _blank %}<div class="fx-chip"><b>{{r.get('能力差スコア')}}</b><small>能力差</small></div>{% endif %}
+{% if r.get('本命AREru指数') not in _blank %}<div class="fx-chip"><b>{{r.get('本命AREru指数')}}</b><small>本命指数</small></div>{% endif %}
 </div>
-<div class="fx-hero-foot">
+</section>
+
+<section class="fx-spot">
+<div class="fx-spot-race">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}</div>
 <div class="fx-ev{% if _ev_n.v is not none and _ev_n.v >= 100 %} hot{% endif %}">{{_ev_disp}}<small>表示期待値</small></div>
+<div class="fx-spot-actions">
 {% if _is_prod_buy %}<span class="fx-buy-btn buy">🔥 BUY</span>{% else %}<span class="fx-buy-btn skip">見送り</span>{% endif %}
+</div>
+<div class="fx-spot-stats">
+<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+<div><b>{% if _hon_rank not in _blank %}AI{{_hon_rank}}{% else %}—{% endif %}</b><small>本命AI順位</small></div>
 </div>
 </section>
 
@@ -1281,26 +1296,39 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
   {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
     {% set _pev_n.v = (_pe.v ~ '')|replace('%','')|float %}
   {% endif %}
-<div class="fx-pc {{_item[2]}}{% if p.get('BUY表示') %} buy{% endif %}">
-<div class="role">{{_item[1]}}</div>
-<div class="ban"><span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></div>
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+  {% set _grade = p.get('AI評価') or p.get('予想スコア') %}
+  {% set _gkey = (_grade ~ '')|trim|upper %}
+  {% set _pick_i = namespace(v=none) %}
+  {% for _rp in _rows %}
+    {% if _pick_i.v is none and (_rp.get('馬名') or '') == (p.get('馬名') or '') %}{% set _pick_i.v = loop.index0 %}{% endif %}
+  {% endfor %}
+<button type="button" class="fx-pc {{_item[2]}}{% if p.get('BUY表示') %} buy{% endif %}{% if _pick_i.v == 0 %} is-on{% endif %}"{% if _pick_i.v is not none %} data-horse-i="{{_pick_i.v}}"{% endif %}>
+<div class="pc-top">
+<span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
+<div>
+<div class="role">{% if p.get('印') %}{{p.get('印')}} {% endif %}{{_item[1]}}</div>
 <div class="name">{{p.get('馬名') or '—'}}</div>
 <div class="sub">{% if p.get('騎手') %}{{p.get('騎手')}}{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}</div>
+</div>
+{% if p.get('BUY表示') %}<span class="pill buy">🔥 BUY</span>{% else %}<span class="pill skip">見送り</span>{% endif %}
+</div>
 <div class="nums">
 <div><span>人気</span><b>{% if _pop.v not in _blank %}{{_pop.v}}{% else %}—{% endif %}</b></div>
 <div><span>オッズ</span><b>{{_odds_disp}}</b></div>
 <div><span>期待値</span><b class="{% if _pev_n.v is not none and _pev_n.v >= 100 %}hot{% endif %}">{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b></div>
+<div><span>AI評価</span><b>{% if _grade not in _blank %}<span class="gpill{% if _gkey[:1] in ['S','A','B','C','D'] %} g-{{_gkey[:1]|lower}}{% endif %}">{{_grade}}</span>{% else %}—{% endif %}</b></div>
+<div><span>信頼度</span><b>{% if p.get('BUY表示') and _conf is not none %}{{'%g'|format(_conf|float)}}%{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</b></div>
+<div><span>AI順位</span><b>{% if p.get('AI順位') not in _blank %}AI{{p.get('AI順位')}}{% else %}—{% endif %}</b></div>
 </div>
-{% if p.get('BUY表示') %}<div class="pill buy">🔥 BUY</div>{% else %}<div class="pill skip">見送り</div>{% endif %}
-</div>
+</button>
   {% endif %}
 {% endfor %}
 </div>
 
 <section class="fx-ai-wrap">
 <h3>AI予想ランキング</h3>
-<p class="fx-ai-legend">既存の予想馬＋出走馬。期待値・AI評価・信頼度は計算済みの値のみ表示します。</p>
-{% set _rows = r.get('AI一覧') or _picks %}
+<p class="fx-ai-legend">既存の予想馬＋出走馬。数値は計算済みの値のみ表示します。</p>
 {% if _rows %}
 {% for p in _rows %}
   {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
@@ -1318,19 +1346,20 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
   {% endif %}
   {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
   {% set _rank = p.get('AI順位') %}
-<button type="button" class="fx-hrow{% if loop.first %} is-on{% endif %}{% if not p.get('役割') %} is-extra{% endif %}" data-horse-i="{{loop.index0}}">
-<div class="rk">{% if _rank not in _blank %}{{_rank}}{% elif p.get('役割') %}{{loop.index}}{% else %}—{% endif %}</div>
-<div><span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></div>
-<div class="main">
-<div class="nm">{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% else %}—{% endif %}</small></div>
-<div class="stats">
-<span><small>オッズ</small><b>{{_odds_disp}}</b></span>
-<span class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}"><small>期待値</small><b>{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b></span>
-<span class="grade"><small>AI評価</small><b>{{p.get('AI評価') or p.get('予想スコア') or '—'}}</b></span>
-<span><small>信頼度</small><b>{% if p.get('BUY表示') and _conf is not none %}{{'%g'|format(_conf|float)}}%{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</b></span>
+  {% set _grade = p.get('AI評価') or p.get('予想スコア') %}
+  {% set _gkey = (_grade ~ '')|trim|upper %}
+<button type="button" class="fx-hrow{% if loop.first %} is-on{% endif %}" data-horse-i="{{loop.index0}}">
+<div class="fx-hrow-top">
+<span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
+<div class="nm">{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% else %}—{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}</small></div>
+{% if p.get('BUY表示') %}<span class="mini buy">🔥 BUY</span>{% else %}<span class="mini skip">見送り</span>{% endif %}
 </div>
+<div class="fx-hrow-metrics">
+<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
+<div><b>{% if _grade not in _blank %}<span class="gpill{% if _gkey[:1] in ['S','A','B','C','D'] %} g-{{_gkey[:1]|lower}}{% endif %}">{{_grade}}</span>{% else %}—{% endif %}</b><small>AI評価</small></div>
+<div><b class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}">{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b><small>期待値</small></div>
+<div><b>{% if _rank not in _blank %}AI{{_rank}}{% elif p.get('役割') %}AI{{loop.index}}{% else %}—{% endif %}</b><small>AI順位</small></div>
 </div>
-<div>{% if p.get('BUY表示') %}<span class="mini buy">🔥 BUY</span>{% else %}<span class="mini skip">見送り</span>{% endif %}</div>
 </button>
 {% endfor %}
 {% else %}
@@ -1672,12 +1701,18 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
     if(row && list.contains(row.closest('.fx-race'))){
       var race=row.closest('.fx-race');
       var hi=row.getAttribute('data-horse-i');
-      [].forEach.call(race.querySelectorAll('.fx-hrow'), function(el){
+      [].forEach.call(race.querySelectorAll('[data-horse-i]'), function(el){
         el.classList.toggle('is-on', el.getAttribute('data-horse-i')===hi);
       });
+      var detail=null;
       [].forEach.call(race.querySelectorAll('.fx-detail'), function(el){
-        el.classList.toggle('is-on', el.getAttribute('data-horse-detail')===hi);
+        var on=el.getAttribute('data-horse-detail')===hi;
+        el.classList.toggle('is-on', on);
+        if(on) detail=el;
       });
+      if(detail){
+        try{ detail.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(err){}
+      }
       return;
     }
     var anal=e.target.closest('[data-fx-anal]');
