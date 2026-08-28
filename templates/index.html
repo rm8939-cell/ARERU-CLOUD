@@ -490,7 +490,7 @@ body.app-race .wrap{padding-left:max(14px,env(safe-area-inset-left));padding-rig
 body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back{display:none !important}
 .fx-sr{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .fx-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px 0}
-.fx-nav a,.fx-nav button,.fx-nav-now{width:100%;min-width:0;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 8px;border-radius:11px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:13px;font-weight:850;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer;font:inherit}
+.fx-nav a,.fx-nav button,.fx-nav-now{width:100%;min-width:0;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 4px;border-radius:11px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:12px;font-weight:850;line-height:1;white-space:nowrap;overflow:visible;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer}
 .fx-nav a.is-on,.fx-nav button.is-on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .fx-nav-now{background:var(--navy);color:#fff;border-color:var(--navy);cursor:default}
 .fx-race{display:none;padding-bottom:20px;scroll-margin-top:86px}.fx-race.is-on{display:block}
@@ -1301,13 +1301,7 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 <div><b>{% if _rank not in _blank %}AI{{_rank}}{% else %}—{% endif %}</b><small>AI順位</small></div>
 </div>
 </button>
-{% endfor %}
-{% else %}
-<div class="reason">予想馬データがありません</div>
-{% endif %}
-</section>
-
-{% if _is_prod_buy %}
+{% if p.get('BUY表示') and _is_prod_buy %}
 <details class="fx-why">
 <summary>BUY理由を見る</summary>
 <div class="fx-why-body">
@@ -1316,13 +1310,18 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 {% if _edge not in _blank %}<div><small>実エッジ</small><b>{{'%+.1f'|format(_edge|float)}}pp</b></div>{% endif %}
 {% set _q = _buy_pack.get('BUY品質スコア') if _buy_pack.get('BUY品質スコア') not in _blank else r.get('BUY品質スコア') %}
 {% if _q not in _blank %}<div><small>品質スコア</small><b>{{_q}}</b></div>{% endif %}
-<div><small>表示期待値</small><b>{{_ev_disp}}</b></div>
+{% if _ev_disp not in _blank %}<div><small>表示期待値</small><b>{{_ev_disp}}</b></div>{% endif %}
 {% for x in _buy_reasons %}
 <div class="fx-why-note">{{x}}</div>
 {% endfor %}
 </div>
 </details>
 {% endif %}
+{% endfor %}
+{% else %}
+<div class="reason">予想馬データがありません</div>
+{% endif %}
+</section>
 
 {% if _rows %}
 {% for p in _rows %}
@@ -1680,8 +1679,10 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
         var detail=race.querySelector('.fx-detail[data-horse-detail="'+hi+'"]');
         if(detail){
           detail.classList.add('is-on');
-          if(row.parentNode && row.nextSibling !== detail){
-            row.parentNode.insertBefore(detail, row.nextSibling);
+          var after=row.nextElementSibling;
+          if(after && after.classList && after.classList.contains('fx-why')) after=after.nextSibling;
+          if(row.parentNode && detail !== after){
+            row.parentNode.insertBefore(detail, after || null);
           }
           try{ detail.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(err){}
         }
