@@ -475,10 +475,10 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-spotlight .bs-reasons li{font-size:12px;font-weight:700;line-height:1.45;color:#1f2a33;padding:8px 10px;background:#fff;border-radius:10px;border:1px solid #dcebdf}
 /* ===== 予想画面リデザイン（表示のみ） ===== */
 body.app-race{padding-bottom:env(safe-area-inset-bottom,0)}
-body.app-race .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
-.fx-top-inner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:58px;padding:calc(8px + env(safe-area-inset-top,0)) 0 8px}
+body.app-race .wrap{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+.fx-top-inner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:56px;padding:calc(8px + env(safe-area-inset-top,0)) 0 8px}
 .fx-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff;font-weight:900;letter-spacing:.04em;line-height:1}
-.fx-logo .mark{width:28px;height:28px;border-radius:9px;background:linear-gradient(160deg,#2f6fed,#0a1a3a);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#7dd3a0}
+.fx-logo .mark{width:28px;height:28px;border-radius:9px;background:linear-gradient(160deg,#2f6fed,#0a1a3a);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#ffb14a}
 .fx-logo b{font-size:17px;letter-spacing:.08em}.fx-logo span{font-size:10px;font-weight:800;opacity:.72;letter-spacing:.14em;display:block;margin-top:2px}
 .fx-venue-slot{display:flex;justify-content:center;min-width:0}
 .fx-venue-form{display:flex;gap:6px;align-items:center;max-width:100%}
@@ -489,74 +489,82 @@ body.app-race .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-rig
 .fx-icon{width:36px;height:36px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);color:#fff;text-decoration:none;font-size:14px;font-weight:900}
 body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back{display:none !important}
 .fx-sr{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.fx-nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0 8px}
-.fx-nav a,.fx-nav button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:13px;font-weight:850;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer;font:inherit}
+.fx-nav{display:flex;flex-wrap:nowrap;gap:6px;padding:10px 0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.fx-nav::-webkit-scrollbar{display:none}
+.fx-nav a,.fx-nav button,.fx-nav-now{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:13px;font-weight:850;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer;font:inherit}
 .fx-nav a.is-on,.fx-nav button.is-on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.fx-nav a.is-buy{border-color:#86efac;background:#f0fdf4}
+.fx-nav-now{background:var(--navy);color:#fff;border-color:var(--navy);min-width:3.2em;cursor:default;box-shadow:0 4px 12px rgba(10,26,58,.2)}
+.fx-nav a.is-buy{border-color:#ffd0a8;background:#fff8f1}
 .fx-race{display:none;padding-bottom:28px}.fx-race.is-on{display:block}
-.fx-info{margin:4px 0 10px;padding:16px;border-radius:20px;background:#fff;border:1px solid #e8eef5;box-shadow:0 6px 18px rgba(10,26,58,.06)}
-.fx-info-kicker{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
-.fx-info h2{margin:6px 0 0;font-size:clamp(28px,8vw,36px);font-weight:900;letter-spacing:.02em;line-height:1.08;color:var(--navy)}
-.fx-info h2 small{display:block;margin-top:4px;font-size:14px;font-weight:800;color:#445;letter-spacing:0}
-.fx-hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.fx-chip{background:#f4f7fb;border:1px solid #e8eef5;border-radius:12px;padding:8px 10px;min-width:64px}
-.fx-chip b{display:block;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15;color:var(--navy)}
-.fx-chip small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:var(--muted)}
-.fx-spot{margin:0 0 14px;padding:20px 16px 16px;border-radius:22px;background:linear-gradient(160deg,#071428 0%,#122a52 52%,#1d4f91 140%);color:#fff;box-shadow:0 14px 28px rgba(10,26,58,.28);position:relative;overflow:hidden}
-.fx-spot:before{content:"";position:absolute;right:-40px;top:-50px;width:170px;height:170px;border-radius:50%;background:rgba(125,211,160,.12)}
-.fx-spot-race{position:relative;font-size:13px;font-weight:800;letter-spacing:.08em;opacity:.88}
-.fx-ev{position:relative;margin:10px 0 4px;font-size:clamp(44px,12vw,58px);font-weight:900;font-variant-numeric:tabular-nums;line-height:.95;color:#7dd3a0}
-.fx-ev.hot{color:#4ade80}.fx-ev small{display:block;margin-top:6px;font-size:12px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.78)}
-.fx-spot-actions{position:relative;display:flex;align-items:center;gap:10px;margin:14px 0 12px}
+.fx-hero{margin:4px 0 12px;padding:18px 16px 16px;border-radius:22px;background:linear-gradient(160deg,#071428 0%,#122a52 52%,#1d4f91 140%);color:#fff;box-shadow:0 14px 28px rgba(10,26,58,.28);position:relative;overflow:hidden}
+.fx-hero:before{content:"";position:absolute;right:-40px;top:-50px;width:170px;height:170px;border-radius:50%;background:rgba(255,177,74,.12)}
+.fx-hero-kicker{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.08em;opacity:.86}
+.fx-hero h2{position:relative;margin:8px 0 0;font-size:clamp(30px,9vw,40px);font-weight:900;letter-spacing:.02em;line-height:1.05}
+.fx-hero h2 small{display:block;margin-top:5px;font-size:14px;font-weight:800;opacity:.9;letter-spacing:0}
+.fx-hero-meta{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.fx-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:8px 10px;min-width:58px}
+.fx-chip b{display:block;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15}
+.fx-chip small{display:block;margin-top:3px;font-size:10px;font-weight:800;opacity:.78}
+.fx-hero-hl{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.fx-hero-hl div{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px 12px}
+.fx-hero-hl b{display:block;font-size:15px;font-weight:900;line-height:1.3;word-break:break-word}
+.fx-hero-hl small{display:block;margin-bottom:4px;font-size:10px;font-weight:800;letter-spacing:.1em;opacity:.78}
+.fx-hero-foot{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:14px}
+.fx-ev{font-size:clamp(40px,11vw,54px);font-weight:900;font-variant-numeric:tabular-nums;line-height:.95;color:#7dd3a0}
+.fx-ev.hot{color:#4ade80}.fx-ev small{display:block;margin-top:6px;font-size:11px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.78)}
 .fx-buy-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 18px;border-radius:16px;font-size:17px;font-weight:900;text-decoration:none;border:0}
-.fx-buy-btn.buy{background:linear-gradient(160deg,#34d399,#15803d);color:#fff;box-shadow:0 8px 18px rgba(21,128,61,.38)}
+.fx-buy-btn.buy{background:linear-gradient(160deg,#ffb14a,#e67e22);color:#fff;box-shadow:0 8px 18px rgba(230,126,34,.38)}
 .fx-buy-btn.skip{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.18)}
-.fx-spot-stats{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.fx-spot-stats div{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px 12px}
-.fx-spot-stats b{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
-.fx-spot-stats small{display:block;margin-top:3px;font-size:10px;font-weight:800;letter-spacing:.08em;opacity:.78}
+.fx-sum{margin:0 0 14px;padding:14px;border-radius:20px;background:#fff;border:1px solid #e8eef5;box-shadow:0 6px 16px rgba(10,26,58,.06)}
+.fx-sum h3{margin:0 0 10px;font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;font-weight:900}
+.fx-sum .race-sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fx-sum .race-sum-grid div{background:#f6f8fb;border:1px solid #e8eef5;border-radius:14px;padding:12px 10px}
+.fx-sum .race-sum-grid b{display:block;font-size:16px;font-weight:900;line-height:1.3;word-break:break-word;color:var(--navy)}
+.fx-sum .race-sum-grid small{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.06em}
+.fx-sum .is-buy b{color:#c2410c}
 .fx-sec-label{margin:4px 2px 8px;font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 .fx-picks{display:grid;grid-template-columns:1fr;gap:10px;margin:0 0 16px}
 .fx-pc{width:100%;text-align:left;background:#fff;border-radius:18px;padding:14px;box-shadow:0 6px 16px rgba(10,26,58,.07);border:1px solid #e8eef5;min-width:0;cursor:pointer;font:inherit;color:inherit}
-.fx-pc.hon{border-color:#bbf7d0;background:linear-gradient(180deg,#fff,#f3fdf7)}
-.fx-pc.buy{border-color:#86efac;box-shadow:0 8px 18px rgba(21,128,61,.12)}
-.fx-pc.is-on{border-color:#4ade80;box-shadow:0 8px 18px rgba(21,128,61,.14)}
+.fx-pc.hon{border-color:#ffd0a8;background:linear-gradient(180deg,#fff,#fff8f1)}
+.fx-pc.buy{border-color:#ffb14a;box-shadow:0 8px 18px rgba(230,126,34,.12)}
+.fx-pc.is-on{border-color:#e67e22;box-shadow:0 8px 18px rgba(230,126,34,.16)}
 .fx-pc .pc-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
 .fx-pc .role{font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--muted)}
-.fx-pc .name{margin:0;font-size:16px;font-weight:900;line-height:1.25;word-break:break-word}
+.fx-pc .name{margin:0;font-size:17px;font-weight:900;line-height:1.25;word-break:break-word}
 .fx-pc .sub{font-size:12px;font-weight:700;color:#556;line-height:1.4;margin-top:2px}
 .fx-pc .nums{margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .fx-pc .nums div{background:#f6f8fb;border-radius:12px;padding:8px 6px;text-align:center}
 .fx-pc .nums span{display:block;color:var(--muted);font-size:10px;font-weight:800}
-.fx-pc .nums b{display:block;margin-top:3px;color:var(--navy);font-size:13px;font-weight:900;font-variant-numeric:tabular-nums}
+.fx-pc .nums b{display:block;margin-top:3px;color:var(--navy);font-size:14px;font-weight:900;font-variant-numeric:tabular-nums}
 .fx-pc .nums b.hot{color:#15803d}
 .fx-pc .pill{min-height:36px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
-.fx-pc .pill.buy{background:linear-gradient(160deg,#34d399,#15803d);color:#fff}
+.fx-pc .pill.buy{background:linear-gradient(160deg,#ffb14a,#e67e22);color:#fff}
 .fx-pc .pill.skip{background:#f3f6f8;color:#5c6b78}
 .fx-ai-wrap{background:transparent;border:0;box-shadow:none;padding:0;margin:0 0 14px;overflow:visible}
 .fx-ai-wrap h3{margin:0 0 4px;font-size:16px;font-weight:900;color:var(--navy)}
 .fx-ai-legend{margin:0 0 10px;font-size:11px;font-weight:800;color:var(--muted)}
 .fx-ai-head{display:none}
-.fx-hrow{width:100%;display:block;text-align:left;border:1px solid #e8eef5;background:#fff;padding:14px;margin:0 0 10px;cursor:pointer;font:inherit;color:inherit;border-radius:18px;box-shadow:0 6px 16px rgba(10,26,58,.06)}
+.fx-hrow{width:100%;display:block;text-align:left;border:1px solid #e8eef5;background:#fff;padding:16px;margin:0 0 12px;cursor:pointer;font:inherit;color:inherit;border-radius:20px;box-shadow:0 6px 16px rgba(10,26,58,.06)}
 .fx-hrow:last-child{margin-bottom:0}
-.fx-hrow.is-on{background:#f0fdf4;border-color:#86efac;box-shadow:0 8px 18px rgba(21,128,61,.1)}
+.fx-hrow.is-on{border-color:#c5d4e8;box-shadow:0 8px 18px rgba(10,26,58,.1)}
+.fx-hrow.buy{border-color:#ffd0a8;background:linear-gradient(180deg,#fff,#fff8f1);box-shadow:0 8px 18px rgba(230,126,34,.1)}
+.fx-hrow.buy.is-on{border-color:#e67e22}
 .fx-hrow-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
-.fx-hrow .rk{display:none}
-.fx-hrow .nm{font-size:17px;font-weight:900;line-height:1.2;word-break:break-word}
+.fx-hrow .nm{font-size:18px;font-weight:900;line-height:1.2;word-break:break-word}
 .fx-hrow .nm small{display:block;margin-top:3px;font-size:12px;font-weight:700;color:var(--muted)}
-.fx-hrow-metrics{margin-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.fx-hrow-metrics div{text-align:center;background:#f6f8fb;border-radius:12px;padding:8px 4px}
-.fx-hrow.is-on .fx-hrow-metrics div{background:#fff}
-.fx-hrow-metrics b{display:block;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--navy);line-height:1.15}
+.fx-hrow-metrics{margin-top:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.fx-hrow-metrics div{text-align:center;background:#f6f8fb;border-radius:12px;padding:10px 4px}
+.fx-hrow.buy .fx-hrow-metrics div,.fx-hrow.is-on .fx-hrow-metrics div{background:#fff}
+.fx-hrow-metrics b{display:block;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--navy);line-height:1.1}
 .fx-hrow-metrics b.hot{color:#15803d}
-.fx-hrow-metrics small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:var(--muted)}
-.fx-hrow .mini{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}
-.fx-hrow .mini.buy{background:linear-gradient(160deg,#34d399,#15803d);color:#fff}
+.fx-hrow-metrics small{display:block;margin-top:4px;font-size:10px;font-weight:800;color:var(--muted)}
+.fx-hrow .mini{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:900;white-space:nowrap}
+.fx-hrow .mini.buy{background:linear-gradient(160deg,#ffb14a,#e67e22);color:#fff}
 .fx-hrow .mini.skip{background:#f3f6f8;color:#5c6b78}
 .gpill{display:inline-flex;min-width:1.6em;justify-content:center;padding:2px 7px;border-radius:8px;background:#eef3fb;color:var(--navy)}
 .g-s{background:#fff4d6;color:#9a6b00}.g-a{background:#e7f7ee;color:#176b45}.g-b{background:#e8f1fb;color:#1a4f9a}.g-c{background:#f3f5f8;color:#5c6b78}.g-d{background:#f8f0f0;color:#8a4a3a}
-.ban-circle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:#fff;background:var(--navy);flex-shrink:0}
-.fx-pc .ban-circle,.fx-hrow .ban-circle{width:42px;height:42px;font-size:18px}
+.ban-circle{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:#fff;background:var(--navy);flex-shrink:0}
+.fx-pc .ban-circle,.fx-hrow .ban-circle{width:44px;height:44px;font-size:18px}
 .fx-dname .ban-circle{width:40px;height:40px;font-size:17px}
 .waku-1{background:#fff;color:#111;border:1px solid #333}.waku-2{background:#111;color:#fff}.waku-3{background:#e53935}.waku-4{background:#1565c0}.waku-5{background:#f4d03f;color:#111}.waku-6{background:#2e7d32}.waku-7{background:#ef6c00}.waku-8{background:#ec407a}
 .fx-more>summary::-webkit-details-marker{display:none}
@@ -588,25 +596,26 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
 .mode-predict .race-sum{background:#fff;border-color:#eef1f6;box-shadow:0 4px 14px rgba(10,26,58,.08)}
 .mode-predict .venue-back{margin:4px 0 0}
 .mode-predict .today-hero{background:linear-gradient(155deg,#0a1a3a 0%,#163a72 58%,#1f4f9a 100%);box-shadow:0 12px 30px rgba(10,26,58,.28)}
-.mode-predict .buy-card{border-color:#86efac;box-shadow:0 10px 24px rgba(21,128,61,.12)}
-.mode-predict .buy-card .bc-badge{background:linear-gradient(160deg,#34d399,#15803d);color:#fff;border-color:transparent}
+.mode-predict .buy-card{border-color:#ffd0a8;box-shadow:0 10px 24px rgba(230,126,34,.12)}
+.mode-predict .buy-card .bc-badge{background:linear-gradient(160deg,#ffb14a,#e67e22);color:#fff;border-color:transparent}
 .mode-predict .buy-card .bc-ban{background:linear-gradient(160deg,#163a72,#0a1a3a)}
 .mode-predict .buy-card .bc-metrics b{color:#0a1a3a}
 .mode-predict .buy-card .bc-metrics div:first-child b{color:#15803d}
 @media (max-width:560px){
-  .fx-top-inner{min-height:54px;gap:6px}
+  .fx-top-inner{min-height:52px;gap:6px}
   .fx-logo b{font-size:15px}.fx-logo .mark{width:26px;height:26px}
   .header .wrap{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
   .fx-icons .fx-icon:first-child{display:none}
-  .fx-hrow-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fx-hrow-metrics{gap:5px}
+  .fx-hrow-metrics b{font-size:14px}
 }
 @media (min-width:720px){
   .fx-picks{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
   .fx-pc .pc-top{grid-template-columns:1fr;justify-items:center;text-align:center}
   .fx-pc .name,.fx-pc .sub{text-align:center}
+  .fx-sum .race-sum-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
   .fx-dmetrics{grid-template-columns:repeat(4,1fr)}
   .fx-facs{grid-template-columns:1fr 1fr}
-  .fx-hrow-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 </style></head>
 <body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' and races and not show_venue_picker %} app-race{% endif %}" id="top"><header class="header"><div class="wrap fx-top-inner">
@@ -1205,6 +1214,7 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
 <a class="{% if v.name==selected_venue %}is-on{% endif %}" href="/?source={{source}}&mode=predict&date={{selected_date}}{{_hist}}&venue={{v.name|urlencode}}">{{v.name}}</a>
 {% endfor %}
 <button type="button" data-fx-prev>前R</button>
+<span class="fx-nav-now" data-fx-now>—</span>
 <button type="button" data-fx-next>次R</button>
 </nav>
 
@@ -1233,10 +1243,10 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
   {% set _ev_disp = r.get('期待回収率短') or r.get('期待値表示') or r.get('期待値') or '—' %}
   {% set _rows = r.get('AI一覧') or _picks %}
   {% set _hon_rank = _roles.hon.get('AI順位') if _roles.hon else none %}
-<article class="fx-race{% if loop.first %} is-on{% endif %}" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-judge="{% if _is_prod_buy %}buy{% else %}skip{% endif %}">
+<article class="fx-race{% if loop.first %} is-on{% endif %}" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-no="{% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}" data-race-judge="{% if _is_prod_buy %}buy{% else %}skip{% endif %}">
 
-<section class="fx-info">
-<div class="fx-info-kicker">
+<section class="fx-hero">
+<div class="fx-hero-kicker">
 <span>{% if r.get('開催日') %}{{r.get('開催日')}}{% else %}{{selected_date}}{% endif %}{% if r.get('開催地') %} · {{r.get('開催地')}}{% endif %}</span>
 {% if r.get('勝負ランク') %}<span>勝負ランク {{r.get('勝負ランク')}}</span>{% endif %}
 </div>
@@ -1251,30 +1261,26 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
 {% if r.get('能力差スコア') not in _blank %}<div class="fx-chip"><b>{{r.get('能力差スコア')}}</b><small>能力差</small></div>{% endif %}
 {% if r.get('本命AREru指数') not in _blank %}<div class="fx-chip"><b>{{r.get('本命AREru指数')}}</b><small>本命指数</small></div>{% endif %}
 </div>
-</section>
-
-<section class="fx-spot">
-<div class="fx-spot-race">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}</div>
+<div class="fx-hero-hl">
+<div><small>本命</small><b>{% if _roles.hon %}{% if _roles.hon.get('馬番表示') or _roles.hon.get('馬番') %}{{_roles.hon.get('馬番表示') or _roles.hon.get('馬番')}} {% endif %}{{_roles.hon.get('馬名') or '—'}}{% else %}{{r.get('本命表示') or r.get('本命') or '—'}}{% endif %}</b></div>
+<div><small>対抗</small><b>{% if _roles.tai %}{% if _roles.tai.get('馬番表示') or _roles.tai.get('馬番') %}{{_roles.tai.get('馬番表示') or _roles.tai.get('馬番')}} {% endif %}{{_roles.tai.get('馬名') or '—'}}{% else %}—{% endif %}</b></div>
+</div>
+<div class="fx-hero-foot">
 <div class="fx-ev{% if _ev_n.v is not none and _ev_n.v >= 100 %} hot{% endif %}">{{_ev_disp}}<small>表示期待値</small></div>
-<div class="fx-spot-actions">
 {% if _is_prod_buy %}<span class="fx-buy-btn buy">🔥 BUY</span>{% else %}<span class="fx-buy-btn skip">見送り</span>{% endif %}
 </div>
-<div class="fx-spot-stats">
-<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
-<div><b>{% if _hon_rank not in _blank %}AI{{_hon_rank}}{% else %}—{% endif %}</b><small>本命AI順位</small></div>
-</div>
 </section>
 
-<div class="race-sum fx-sr">
+<section class="race-sum fx-sum">
 <h3>予想サマリー</h3>
 <div class="race-sum-grid">
 <div><b>{% if _roles.hon %}{% if _roles.hon.get('馬番表示') or _roles.hon.get('馬番') %}{{_roles.hon.get('馬番表示') or _roles.hon.get('馬番')}} {% endif %}{{_roles.hon.get('馬名') or '—'}}{% else %}{{r.get('本命表示') or r.get('本命') or '—'}}{% endif %}</b><small>本命</small></div>
 <div><b>{% if _roles.tai %}{% if _roles.tai.get('馬番表示') or _roles.tai.get('馬番') %}{{_roles.tai.get('馬番表示') or _roles.tai.get('馬番')}} {% endif %}{{_roles.tai.get('馬名') or '—'}}{% else %}—{% endif %}</b><small>対抗</small></div>
-<div><b>{% if _is_prod_buy %}1頭{% else %}0頭{% endif %}</b><small>BUY</small></div>
-<div><b>{{_ev_disp}}</b><small>最高表示期待値</small></div>
-<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>最高信頼度</small></div>
+<div class="{% if _is_prod_buy %}is-buy{% endif %}"><b>{% if _is_prod_buy %}🔥 BUY{% else %}見送り{% endif %}</b><small>BUY</small></div>
+<div><b>{{_ev_disp}}</b><small>期待値</small></div>
+<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 </div>
-</div>
+</section>
 
 <div class="fx-sec-label">本命 · 対抗 · 単穴</div>
 <div class="fx-picks">
@@ -1348,10 +1354,10 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
   {% set _rank = p.get('AI順位') %}
   {% set _grade = p.get('AI評価') or p.get('予想スコア') %}
   {% set _gkey = (_grade ~ '')|trim|upper %}
-<button type="button" class="fx-hrow{% if loop.first %} is-on{% endif %}" data-horse-i="{{loop.index0}}">
+<button type="button" class="fx-hrow{% if loop.first %} is-on{% endif %}{% if p.get('BUY表示') %} buy{% endif %}" data-horse-i="{{loop.index0}}">
 <div class="fx-hrow-top">
 <span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
-<div class="nm">{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% else %}—{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}</small></div>
+<div class="nm">{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% endif %}{% if p.get('斤量') %}{% if p.get('騎手') %} · {% endif %}{{p.get('斤量')}}{% endif %}{% if not p.get('騎手') and not p.get('斤量') %}—{% endif %}</small></div>
 {% if p.get('BUY表示') %}<span class="mini buy">🔥 BUY</span>{% else %}<span class="mini skip">見送り</span>{% endif %}
 </div>
 <div class="fx-hrow-metrics">
@@ -1359,6 +1365,9 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
 <div><b>{% if _grade not in _blank %}<span class="gpill{% if _gkey[:1] in ['S','A','B','C','D'] %} g-{{_gkey[:1]|lower}}{% endif %}">{{_grade}}</span>{% else %}—{% endif %}</b><small>AI評価</small></div>
 <div><b class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}">{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b><small>期待値</small></div>
 <div><b>{% if _rank not in _blank %}AI{{_rank}}{% elif p.get('役割') %}AI{{loop.index}}{% else %}—{% endif %}</b><small>AI順位</small></div>
+{% if p.get('予想スコア') not in _blank and p.get('AI評価') not in _blank %}<div><b>{{p.get('予想スコア')}}</b><small>スコア</small></div>{% endif %}
+{% if p.get('BUY表示') and _conf is not none %}<div><b>{{'%g'|format(_conf|float)}}%</b><small>信頼度</small></div>
+{% elif _pconf not in _blank %}<div><b>{{'%g'|format(_pconf|float)}}%</b><small>信頼度</small></div>{% endif %}
 </div>
 </button>
 {% endfor %}
@@ -1676,6 +1685,9 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
     var idx=races.indexOf(card);
     [].forEach.call(document.querySelectorAll('[data-fx-prev]'), function(b){ b.disabled = idx<=0; });
     [].forEach.call(document.querySelectorAll('[data-fx-next]'), function(b){ b.disabled = idx<0 || idx>=races.length-1; });
+    [].forEach.call(document.querySelectorAll('[data-fx-now]'), function(el){
+      el.textContent = card.getAttribute('data-race-no') || '—';
+    });
     if(scroll){
       try{ card.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){ card.scrollIntoView(true); }
     }
