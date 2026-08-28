@@ -2008,7 +2008,7 @@ def _horse_display_meta_for_records(records: list) -> dict:
     rids.discard('')
     if not rids:
         return {}
-    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量')
+    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気')
     frames = []
     dates = {
         str(r.get('日付') or r.get('開催日') or '').strip()
@@ -2048,6 +2048,8 @@ def _horse_display_meta_for_records(records: list) -> dict:
                 ('斤量', '斤量', '斤量'),
                 ('馬番', '馬番', '枠'),
                 ('日付', '日付', ''),
+                ('単勝オッズ', '単勝オッズ', ''),
+                ('人気', '人気', '枠'),
             ):
                 if cur.get(dst):
                     continue
@@ -2386,6 +2388,10 @@ def prep(records, ban_map=None):
             p['斤量']=p.get('斤量') or card.get('斤量') or meta.get('斤量') or ''
             if not p.get('馬番表示') and meta.get('馬番'):
                 p['馬番表示']=meta.get('馬番')
+            if not p.get('人気') and meta.get('人気'):
+                p['人気']=meta.get('人気')
+            if p.get('単勝オッズ表示') in (None, '', '—') and meta.get('単勝オッズ'):
+                p['単勝オッズ表示']=meta.get('単勝オッズ')
             plus, minus, why=_display_factor_lists(card)
             if not plus and p.get('要点'):
                 plus=[str(x).strip() for x in (p.get('要点') or []) if str(x).strip()]
@@ -2397,8 +2403,38 @@ def prep(records, ban_map=None):
                 p['予想スコア']=round(float(score), 1) if score not in (None, '', '—') else None
             except (TypeError, ValueError):
                 p['予想スコア']=None
-            p['単勝オッズ表示']=card.get('単勝オッズ')
+            p['単勝オッズ表示']=p.get('単勝オッズ表示') or card.get('単勝オッズ')
             p['カード期待値']=card.get('期待値')
+        picks=[p for p in (r.get('予想馬') or []) if isinstance(p, dict)]
+        known={clean_horse(p.get('馬名') or '') for p in picks}
+        extras=[]
+        for (mrid, name), meta in horse_meta.items():
+            if mrid != rid or not name or name in known:
+                continue
+            extras.append({
+                '役割': '',
+                '馬名': name,
+                '馬番表示': meta.get('馬番') or '',
+                '馬番': meta.get('馬番') or '',
+                '枠番': meta.get('枠番') or '',
+                '騎手': meta.get('騎手') or '',
+                '斤量': meta.get('斤量') or '',
+                '人気': meta.get('人気') or '',
+                '単勝オッズ表示': meta.get('単勝オッズ') or '',
+                'BUY表示': False,
+                'プラス要因': [],
+                'マイナス要因': [],
+            })
+        def _ban_key(p):
+            try:
+                return int(float(str(p.get('馬番') or p.get('馬番表示') or 99)))
+            except (TypeError, ValueError):
+                return 99
+        extras.sort(key=_ban_key)
+        r['AI一覧']=picks + extras
+        n=len(picks)+len(extras)
+        if n:
+            r['表示頭数']=n
         if race_date and not r.get('開催日'):
             r['開催日']=race_date
         # 地方: 単勝・馬連・ワイドのシンプル買い目を優先表示
