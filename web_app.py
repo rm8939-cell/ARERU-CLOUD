@@ -25,6 +25,15 @@ from daily_ops import (
 )
 
 app=Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.jinja_env.auto_reload = True
+app.jinja_env.cache = {}
+@app.after_request
+def _html_no_store(resp):
+    if 'text/html' in (resp.content_type or ''):
+        resp.headers['Cache-Control'] = 'no-store, max-age=0'
+        resp.headers['Pragma'] = 'no-cache'
+    return resp
 BASE=Path(__file__).resolve().parent
 DATA=BASE/'data'; ARCH=DATA/'predictions_by_date'; ARCH.mkdir(parents=True,exist_ok=True)
 RUNNERS=DATA/'runners.csv'
