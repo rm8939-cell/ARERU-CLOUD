@@ -1219,7 +1219,7 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 {% if _buys_sorted %}
 <section class="sec-block buy-board" id="predict-targets" aria-label="BUYカード">
 <h2>🔥 BUY<small>本命判定の買いのみ · {{_buys_sorted|length}}件</small></h2>
-<p class="buy-board-lead">期待値のあるレースだけ表示。勝ちを保証するものではありません。</p>
+<p class="buy-board-lead">期待値のあるレースだけ表示。勝ちを保証するものではありません。表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。</p>
 <div class="buy-card-grid">
 {% for t in _buys_sorted %}
   {% set _idx = namespace(v=None) %}
@@ -1275,6 +1275,12 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
   {% elif _ai_v is none and _main_card.get('AI評価') is not none and _main_card.get('AI評価') is not mapping %}
     {% set _ai_v = _main_card.get('AI評価') %}
   {% endif %}
+  {% set _minus_show = namespace(v=[]) %}
+  {% for m in _minus %}
+    {% if (m ~ '')|trim not in ['特記すべき大きな不安は少ない','特記なし','なし','—','-',''] %}
+      {% set _ = _minus_show.v.append(m) %}
+    {% endif %}
+  {% endfor %}
   {% set _pop_gap = namespace(v='—') %}
   {% if _pop is not none and _idx.v is not none %}
     {% set _pop_gap.v = (_pop|int - _idx.v) %}
@@ -1301,7 +1307,6 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 <div><b>{% if _ai_v not in _blank %}{{_ai_v}}{% else %}—{% endif %}</b><span class="bc-k">AI評価</span></div>
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 </div>
-<div class="bc-note">表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。BUYは表示期待値108%以上・勝負ランクS/A・信頼度などの条件を満たしたときだけです。勝負ランクは信頼度枠であり、的中を保証しません。</div>
 {% if _edge_pp is not none %}
 <div class="bc-edge">実エッジ <b>{{'%+.1f'|format(_edge_pp|float)}}pp</b>（推定勝率と市場暗示の差）</div>
 {% endif %}
@@ -1318,9 +1323,9 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 <div class="bc-factors">{% for p in _plus %}<div class="bc-plus">{{p}}</div>{% endfor %}</div>
 </div>
 {% endif %}
-{% if _minus %}
+{% if _minus_show.v %}
 <div class="bc-fac minus"><h4>マイナス要因</h4>
-<div class="bc-factors">{% for m in _minus %}<div class="bc-minus">{{m}}</div>{% endfor %}</div>
+<div class="bc-factors">{% for m in _minus_show.v %}<div class="bc-minus">{{m}}</div>{% endfor %}</div>
 </div>
 {% endif %}
 {% if _risks %}
