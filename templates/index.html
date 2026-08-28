@@ -496,7 +496,7 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
 .fx-race{display:none;padding-bottom:20px;scroll-margin-top:86px}.fx-race.is-on{display:block}
 .fx-hero{margin:2px 0 10px;padding:12px 14px;border-radius:18px;background:#fff;border:1px solid #e8eef5;box-shadow:0 4px 14px rgba(10,26,58,.06);color:var(--navy)}
 .fx-hero-kicker{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
-.fx-hero h2{margin:4px 0 0;font-size:clamp(22px,6.4vw,28px);font-weight:900;letter-spacing:.02em;line-height:1.15}
+.fx-hero h2{margin:4px 0 0;font-size:clamp(20px,6vw,26px);font-weight:900;letter-spacing:.02em;line-height:1.15}
 .fx-hero h2 small{display:block;margin-top:3px;font-size:13px;font-weight:800;color:#445;letter-spacing:0}
 .fx-hero-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .fx-chip{background:#f4f7fb;border:1px solid #e8eef5;border-radius:10px;padding:6px 8px;min-width:52px}
@@ -517,8 +517,9 @@ body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.
 .fx-buy-btn.skip{background:#f3f6f8;color:#5c6b78}
 .fx-sum{margin:0 0 10px;padding:10px;border-radius:16px;background:#fff;border:1px solid #e8eef5;box-shadow:0 4px 12px rgba(10,26,58,.05)}
 .fx-sum h3{margin:0 0 8px;font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;font-weight:900}
-.fx-sum .race-sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.fx-sum .race-sum-grid div{background:#f6f8fb;border:1px solid #e8eef5;border-radius:12px;padding:8px 8px}
+.fx-sum .race-sum-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.fx-sum .race-sum-grid div{background:#f6f8fb;border:1px solid #e8eef5;border-radius:12px;padding:8px 8px;grid-column:span 3}
+.fx-sum .race-sum-grid div:nth-child(n+3){grid-column:span 2}
 .fx-sum .race-sum-grid b{display:block;font-size:13px;font-weight:900;line-height:1.25;word-break:break-word;color:var(--navy)}
 .fx-sum .race-sum-grid small{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.06em}
 .fx-sum .is-buy b{color:#c2410c}
@@ -598,6 +599,7 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 }
 @media (min-width:720px){
   .fx-sum .race-sum-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .fx-sum .race-sum-grid div,.fx-sum .race-sum-grid div:nth-child(n+3){grid-column:auto}
   .fx-hero-hl{grid-template-columns:1fr 1fr 1fr 1fr}
   .fx-dmetrics{grid-template-columns:repeat(4,1fr)}
   .fx-facs{grid-template-columns:1fr 1fr}
@@ -1235,7 +1237,7 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 <div class="fx-hero-kicker">
 <span>{% if r.get('開催日') %}{{r.get('開催日')}}{% else %}{{selected_date}}{% endif %}{% if r.get('開催地') %} · {{r.get('開催地')}}{% endif %}</span>
 </div>
-<h2>{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% endif %}</h2>
+<h2>{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% endif %}</h2>
 <div class="fx-hero-meta">
 {% if _start not in _blank %}<div class="fx-chip"><b>{{_start}}</b><small>発走</small></div>{% endif %}
 {% if _surface not in _blank %}<div class="fx-chip"><b>{{_surface}}</b><small>芝/ダート</small></div>{% endif %}
