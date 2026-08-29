@@ -1,0 +1,70 @@
+# Trigger a Render deploy of main after UI (and data) lands.
+# Auto-deploy from GitHub is not always on; a Deploy Hook / API key
+# in repo secrets is the reliable path to production.
+name: Render deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          HOOK2: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          set -euo pipefail
+          URL="${HOOK:-}"
+          if [ -z "$URL" ]; then
+            URL="${HOOK2:-}"
+          fi
+          if [ -n "$URL" ]; then
+            echo "Calling Render deploy hook"
+            curl -fsS -X GET "$URL"
+            echo
+            exit 0
+          fi
+          if [ -n "${KEY:-}" ]; then
+            echo "Listing Render services"
+            RESP=$(curl -fsS -H "Authorization: Bearer ${KEY}" \
+              "https://api.render.com/v1/services?limit=50")
+            export RESP
+            SID=$(python3 -c 'import json,os
+raw=os.environ.get("RESP") or ""
+data=json.loads(raw) if raw else []
+rows=data if isinstance(data,list) else (data.get("data") or [])
+sid=""
+for row in rows:
+    svc=row.get("service") if isinstance(row,dict) and "service" in row else row
+    if not isinstance(svc,dict):
+        continue
+    if str(svc.get("name") or "")=="areru-cloud" and svc.get("id"):
+        sid=str(svc.get("id")); break
+if not sid:
+    for row in rows:
+        svc=row.get("service") if isinstance(row,dict) and "service" in row else row
+        if isinstance(svc,dict) and svc.get("id"):
+            sid=str(svc.get("id")); break
+print(sid)')
+            if [ -z "$SID" ]; then
+              echo "RENDER_API_KEY set but no service id found"
+              exit 1
+            fi
+            echo "Creating deploy for ${SID}"
+            curl -fsS -X POST \
+              -H "Authorization: Bearer ${KEY}" \
+              -H "Content-Type: application/json" \
+              -d '{"clearCache":"do_not_clear"}' \
+              "https://api.render.com/v1/services/${SID}/deploys"
+            echo
+            exit 0
+          fi
+          echo "No RENDER_DEPLOY_HOOK_URL / RENDER_DEPLOY_HOOK / RENDER_API_KEY secret."
+          echo "Git push alone must trigger Render auto-deploy."
+          exit 0
