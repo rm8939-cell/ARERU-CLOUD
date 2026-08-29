@@ -3,6 +3,8 @@
 {# 中身が無い初回取得中のみフルリロード。表示維持中(updating)は JS で静かに監視する #}
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
+<meta http-equiv="Cache-Control" content="no-store, max-age=0">
+<meta name="areu-ui" content="app-v8">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
@@ -639,8 +641,61 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
   .fx-dmetrics{grid-template-columns:repeat(4,1fr)}
   .fx-facs{grid-template-columns:1fr 1fr}
 }
+/* ===== AREU APP V8: 予想画面を旧Webレイアウトから切り離す ===== */
+body.app-race{background:#eef4f0 !important;color:#102016}
+body.app-race .header{background:#f7fbf8 !important;color:#102016 !important;border-bottom:1px solid #d7e8dc !important;box-shadow:none !important}
+body.app-race .fx-top-inner{grid-template-columns:minmax(0,1fr) auto;min-height:56px}
+body.app-race .fx-logo{display:none !important}
+body.app-race .fx-venue-slot{justify-content:flex-start}
+body.app-race .fx-venue-form select{background:#fff;color:#102016;border:1px solid #cfe5d6;box-shadow:none;font-size:15px;padding:9px 28px 9px 14px}
+body.app-race .fx-venue-form select[name="date"]{display:block;width:auto;flex:0 0 auto}
+body.app-race:not(.picker) .fx-venue-form select[name="date"]{display:none}
+body.app-race .fx-icon{background:#fff;border:1px solid #cfe5d6;color:#145c37}
+body.app-race .fx-icons .fx-icon:first-child{display:inline-flex}
+body.app-race .fx-icons .fx-icon:last-child{display:none}
+body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back{display:none !important}
+body.app-race .venue-panel{background:transparent;border:0;border-radius:0;margin:12px 0 20px;overflow:visible}
+body.app-race .venue-panel>h2{font-size:22px;font-weight:900;letter-spacing:0;text-transform:none;color:#102016;padding:8px 2px 4px}
+body.app-race .venue-panel>p{font-size:15px;color:#4d6156;padding:0 2px 14px}
+body.app-race .venue-list{display:grid;gap:12px}
+body.app-race .venue-row{background:#fff;border:1px solid #d7e8dc;border-radius:22px;padding:18px 16px;grid-template-columns:1fr auto;box-shadow:0 6px 16px rgba(16,32,22,.05)}
+body.app-race .venue-row-name{font-size:22px;font-weight:900;color:#102016}
+body.app-race .venue-row-name small{font-size:13px;color:#4d6156}
+body.app-race .venue-chip.open-chip{background:#e7f6ee;border-color:#bbf7d0;color:#145c37;border-radius:999px;padding:8px 12px;font-size:13px}
+body.app-race .buy-head h2{font-size:18px;background:#145c37;color:#fff;border:0;border-radius:18px;padding:14px 16px;text-align:center;letter-spacing:.01em}
+body.app-race .buy-card{background:#fff;border:2px solid #22c55e;border-radius:28px;padding:20px 16px 18px;box-shadow:0 12px 28px rgba(20,92,55,.12)}
+body.app-race .buy-card .bc-badge{background:#145c37;font-size:17px;padding:9px 16px}
+body.app-race .buy-card .bc-rank-badge{width:58px;height:58px;border-radius:18px;background:#145c37}
+body.app-race .buy-card .bc-rank-badge.rank-a{background:#16a34a}
+body.app-race .buy-card .bc-race{font-size:24px;color:#102016}
+body.app-race .buy-card .bc-ban{width:72px;height:72px;border-radius:18px;background:#16a34a;color:#fff;font-size:30px}
+body.app-race .buy-card .bc-name{font-size:28px;color:#102016}
+body.app-race .buy-card .bc-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+body.app-race .buy-card .bc-cell{background:#f3faf6;border:1px solid #d9eee2;border-radius:16px;padding:12px 4px}
+body.app-race .buy-card .bc-cell b{font-size:18px;color:#102016}
+body.app-race .buy-card .bc-cell .bc-k{font-size:12px;color:#4d6156}
+body.app-race .buy-card .bc-cell.bc-ev{background:#e8f8ee;border-color:#86efac}
+body.app-race .buy-card .bc-cell.bc-ev b{font-size:28px;color:#15803d}
+body.app-race .buy-card .bc-edge{margin:10px 0 0;padding:12px 14px;background:#e8f8ee;border:1px solid #86efac;border-radius:16px;font-size:16px;font-weight:800;color:#145c37}
+body.app-race .buy-why h4,body.app-race .buy-grounds h4{font-size:16px;color:#145c37;margin:14px 0 8px}
+body.app-race .buy-why ul,body.app-race .buy-grounds ul{display:grid;gap:8px}
+body.app-race .buy-why li,body.app-race .buy-grounds li{position:relative;background:#fff;border:1px solid #d7e8dc;border-radius:16px;padding:14px 14px 14px 38px;font-size:16px;font-weight:800;color:#102016}
+body.app-race .buy-why li:before,body.app-race .buy-grounds li:before{content:"◎";position:absolute;left:12px;top:14px;color:#15803d;font-weight:900}
+body.app-race .buy-grounds:not(:has(li)){display:none}
+body.app-race .field-card{border-radius:18px;padding:14px;border:1px solid #dce6e0;background:#fff}
+body.app-race .field-card .fc-judge{background:#eef2f0;color:#5b6b63;font-size:13px}
+body.app-race .field-card .fc-ban{background:#e8f8ee;color:#145c37;border-radius:12px;min-width:42px;height:42px;font-size:17px}
+body.app-race .field-card .fc-name{font-size:18px}
+body.app-race .field-card .fc-meta{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.app-race .field-card .fc-meta span{font-size:12px;background:#f3faf6}
+body.app-race .field-card .fc-meta b{font-size:15px}
+@media (max-width:560px){
+  body.app-race .fx-icons .fx-icon:first-child{display:inline-flex !important}
+  body.app-race .buy-card .bc-name{font-size:24px}
+  body.app-race .buy-card .bc-ban{width:64px;height:64px;font-size:26px}
+}
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' and races and not show_venue_picker %} app-race{% endif %}" id="top"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v8"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -708,8 +763,8 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
-<h2>{{selected_date}}｜開催場一覧</h2>
-<p>開催場を選ぶとレース一覧を表示します。</p>
+<h2>開催場を選ぶ</h2>
+<p>{{selected_date}} の開催です。場を選ぶとBUYカードを表示します。</p>
 {% if venues %}
 <div class="venue-list">
 {% for v in venues %}
@@ -1237,7 +1292,7 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 </nav>
 
 {% if _buys_sorted %}
-<section class="sec-block buy-board" id="predict-targets" aria-label="BUYカード" data-ui="areu-cards-v6">
+<section class="sec-block buy-board" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v8">
 {% macro buy_horse_card(t, linked=true) %}
   {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
   {% set _idx = namespace(v=None) %}
@@ -1279,6 +1334,8 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
   {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') %}
   {% set _pop = _buy_pack.get('人気') or t.get('本命人気') or (_honp.p.get('人気') if _honp.p else none) %}
   {% set _odds = t.get('本命オッズ') %}
+  {% set _edge_pp = _buy_pack.get('実エッジpp') if _buy_pack.get('実エッジpp') not in _blank else t.get('実エッジpp') %}
+  {% set _grounds = _buy_pack.get('プラス') if _buy_pack.get('プラス') is sequence else [] %}
   {% set _pop_gap = namespace(v=none) %}
   {% if _pop is not none and _idx.v is not none %}
     {% set _pop_gap.v = (_pop|int - _idx.v) %}
@@ -1321,6 +1378,9 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 {% if _conf not in _blank %}<div class="bc-cell"><b>{{'%g'|format(_conf|float)}}%</b><span class="bc-k">信頼度</span></div>{% endif %}
 </div>
 {% endif %}
+{% if _edge_pp not in _blank %}
+<div class="bc-edge">実エッジ <b>{{'%+.1f'|format(_edge_pp|float)}}pp</b></div>
+{% endif %}
 {% if linked %}
 </a>
 {% else %}
@@ -1332,6 +1392,16 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 <ul>
 {% for tip in _reasons %}
 {% if (tip ~ '')|trim %}<li>{{(tip ~ '')|trim}}</li>{% endif %}
+{% endfor %}
+</ul>
+</section>
+{% endif %}
+{% if _grounds %}
+<section class="buy-grounds">
+<h4>BUY根拠</h4>
+<ul>
+{% for g in _grounds %}
+{% if (g ~ '')|trim and '実エッジ' not in (g ~ '') %}<li>{{(g ~ '')|trim}}</li>{% endif %}
 {% endfor %}
 </ul>
 </section>
