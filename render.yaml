@@ -21,6 +21,9 @@ services:
         value: "20000"
       - key: ARERU_FAST_NAR
         value: "1"
+      # 本番は旧ロジック固定。NEW / PRESET / 較正フラグは立てない。
+      - key: ARERU_LEGACY_SCORE
+        value: "1"
       - key: ARERU_FETCH_BUDGET_SEC
         value: "240"
       # 0.1CPU / 512MB では本生成を始めると Web 応答が止まるため、

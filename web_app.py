@@ -6,6 +6,7 @@ import os
 import pandas as pd
 from areru_engine import parse_date
 from ev_analysis import (
+    BUY_EV_FLOOR,
     apply_expected_value,
     build_ai_self_eval,
     day_performance,
@@ -24,6 +25,15 @@ from daily_ops import (
 )
 
 app=Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.jinja_env.auto_reload = True
+app.jinja_env.cache = {}
+@app.after_request
+def _html_no_store(resp):
+    if 'text/html' in (resp.content_type or ''):
+        resp.headers['Cache-Control'] = 'no-store, max-age=0'
+        resp.headers['Pragma'] = 'no-cache'
+    return resp
 BASE=Path(__file__).resolve().parent
 DATA=BASE/'data'; ARCH=DATA/'predictions_by_date'; ARCH.mkdir(parents=True,exist_ok=True)
 RUNNERS=DATA/'runners.csv'
@@ -99,6 +109,7 @@ _NAR_VENUE_DETAIL_COLS=(
     'ワイド買い目','馬連買い目','ワイド評価','馬連評価','レース期待回収率','期待回収率',
     'AI信頼度スコア','レース信頼度スコア','シミュレーション再現率','S降格','S降格理由',
     '補正勝率','市場暗示勝率','実エッジpp','BUY品質スコア','BUY品質判定','BUY品質理由',
+    '近走指数順位',
 )
 
 
@@ -1741,6 +1752,18 @@ def _venue_meetings(records):
     return meetings
 
 
+def _day_venues_for_nav(pred_path, source, fallback=None):
+    """表示専用: 当日の開催場チップ用。予想・BUYは再計算しない。"""
+    try:
+        light = _read_predictions_for_venue_picker(pred_path, source)
+        meetings = _venue_meetings(light)
+        if meetings:
+            return meetings
+    except Exception as e:
+        print(f'[venue-nav] skip: {e}', flush=True)
+    return fallback or []
+
+
 def _pick_today_date(available, today_str=''):
     """本日開催日を解決。当日が無ければ直近の開催日へ。"""
     today_str=str(today_str or _today_jst())
@@ -1967,6 +1990,124 @@ def _norm_ban(x) -> str:
         return s
 
 
+def _fmt_display_num(v, *, kind: str = '') -> str:
+    """表示専用。欠損は空文字（推測しない）。"""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ''
+    s = str(v).strip()
+    if not s or s.lower() in ('nan', 'none', 'なし', '—', '-'):
+        return ''
+    if kind == '枠':
+        try:
+            return str(int(float(s)))
+        except (TypeError, ValueError):
+            return s
+    if kind == '斤量':
+        try:
+            x = float(s)
+            return f'{x:g}kg'
+        except (TypeError, ValueError):
+            return s
+    return s
+
+
+def _horse_display_meta_for_records(records: list) -> dict:
+    """表示専用: scores/runners から枠・騎手・斤量・日付を引く。スコア計算には使わない。"""
+    rids = {_norm_race_id(r.get('race_id')) for r in (records or [])}
+    rids.discard('')
+    if not rids:
+        return {}
+    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気')
+    frames = []
+    dates = {
+        str(r.get('日付') or r.get('開催日') or '').strip()
+        for r in (records or [])
+        if str(r.get('日付') or r.get('開催日') or '').strip()
+    }
+    for d in sorted(dates):
+        p = ARCH / f'scores_{d}.csv'
+        if p.exists():
+            frames.append(p)
+    frames.append(RUNNERS)
+    out = {}
+    for path in frames:
+        if not Path(path).exists():
+            continue
+        try:
+            df = pd.read_csv(
+                path, encoding='utf-8-sig',
+                usecols=lambda c: c in want,
+            )
+        except Exception:
+            continue
+        if df is None or df.empty or 'race_id' not in df.columns or '馬名' not in df.columns:
+            continue
+        df = df.copy()
+        df['_rid'] = df['race_id'].map(_norm_race_id)
+        df = df[df['_rid'].isin(rids)]
+        for _, row in df.iterrows():
+            rid = str(row.get('_rid') or '')
+            name = clean_horse(row.get('馬名', ''))
+            if not rid or not name:
+                continue
+            cur = out.setdefault((rid, name), {})
+            for dst, src, kind in (
+                ('枠番', '枠', '枠'),
+                ('騎手', '騎手', ''),
+                ('斤量', '斤量', '斤量'),
+                ('馬番', '馬番', '枠'),
+                ('日付', '日付', ''),
+                ('単勝オッズ', '単勝オッズ', ''),
+                ('人気', '人気', '枠'),
+            ):
+                if cur.get(dst):
+                    continue
+                txt = _fmt_display_num(row.get(src), kind=kind)
+                if txt:
+                    cur[dst] = txt
+    return out
+
+
+_EMPTY_MINUS = {
+    '特記すべき大きな不安は少ない',
+    '特記なし',
+    'なし',
+    '—',
+    '-',
+}
+
+
+def _display_factor_lists(card: dict) -> tuple[list, list, list]:
+    """既存カードのプラス/マイナス/判断根拠だけを返す。寄与度は作らない。"""
+    plus, minus = [], []
+    for src in (card.get('プラス材料一覧') or [], str(card.get('プラス材料') or '').split(' / ')):
+        for p in src:
+            s = str(p or '').strip()
+            if s and s not in plus and s not in _EMPTY_MINUS:
+                plus.append(s)
+    for src in (card.get('不安材料一覧') or [], str(card.get('不安材料') or '').split(' / ')):
+        for m in src:
+            s = str(m or '').strip()
+            if s and s not in minus and s not in _EMPTY_MINUS:
+                minus.append(s)
+    why = []
+    skip_eval = {'', '—', '-', 'なし', '対象外', 'データ不足'}
+    for row in card.get('判断根拠') or []:
+        if not isinstance(row, dict):
+            continue
+        item = str(row.get('項目') or '').strip()
+        ev = str(row.get('評価') or '').strip()
+        desc = str(row.get('説明') or '').strip()
+        if not item:
+            continue
+        if any(tok in desc for tok in ('データ不足', '未取得', '対象外')):
+            continue
+        if ev in skip_eval:
+            continue
+        why.append({'項目': item, '評価': ev or desc})
+    return plus[:6], minus[:6], why[:8]
+
+
 def _main_ban_map(selected_date: str) -> dict:
     """scores CSV から (race_id, 正規化馬名) → 馬番 を構築。"""
     p=ARCH/f'scores_{selected_date}.csv'
@@ -2083,7 +2224,20 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
                 r['AIリスク'] = build_ai_risks(r, limit=3)
         except Exception as e:
             print(f'[rank] ticket rebuild skip: {e}', flush=True)
+    _stamp_buy_display(out)
     return out
+
+
+def _stamp_buy_display(races: list) -> None:
+    """確定済みの投資判定を馬カードへ転写するだけ。再計算しない。"""
+    for r in races or []:
+        race_buy = str(r.get('投資判定') or '').startswith('買い')
+        honmei = str(r.get('本命') or '').strip()
+        for p in r.get('予想馬') or []:
+            if not isinstance(p, dict):
+                continue
+            is_honmei = (str(p.get('役割') or '') == '本命') or (str(p.get('馬名') or '') == honmei)
+            p['BUY表示'] = bool(race_buy and is_honmei)
 
 
 def build_buy_candidates(races: list, limit: int = 12) -> list:
@@ -2142,6 +2296,7 @@ def prep(records, ban_map=None):
     from race_sim import circle_ban
     from ev_analysis import safe_int
     ban_map=ban_map or {}
+    horse_meta=_horse_display_meta_for_records(records)
     for r in records:
         try: r['印一覧']=json.loads(str(r.get('印データ','[]')).replace('NaN','null'))
         except: r['印一覧']=[]
@@ -2202,7 +2357,7 @@ def prep(records, ban_map=None):
         if not r.get('投資判定'):
             try:
                 ev=float(str(r.get('レース期待回収率') or '').replace('%',''))
-                if ev>=100:
+                if ev>=BUY_EV_FLOOR:
                     r['投資判定']='買い'; r['投資判定アイコン']='🟢'; r['投資判定トーン']='buy'
                 else:
                     r['投資判定']='見送り'; r['投資判定アイコン']='🔴'; r['投資判定トーン']='skip'
@@ -2228,6 +2383,69 @@ def prep(records, ban_map=None):
         if not r.get('予想馬'):
             from pick_rationale import build_display_picks
             r['予想馬']=build_display_picks(r)
+        rid=_norm_race_id(r.get('race_id',''))
+        race_date=''
+        for p in r.get('予想馬') or []:
+            if not isinstance(p, dict):
+                continue
+            card=p.get('カード') if isinstance(p.get('カード'), dict) else {}
+            meta=horse_meta.get((rid, clean_horse(p.get('馬名') or card.get('馬名') or ''))) or {}
+            if not race_date:
+                race_date=str(meta.get('日付') or '')
+            p['枠番']=p.get('枠番') or card.get('枠番') or meta.get('枠番') or ''
+            p['騎手']=p.get('騎手') or card.get('騎手') or meta.get('騎手') or ''
+            p['斤量']=p.get('斤量') or card.get('斤量') or meta.get('斤量') or ''
+            if not p.get('馬番表示') and meta.get('馬番'):
+                p['馬番表示']=meta.get('馬番')
+            if not p.get('人気') and meta.get('人気'):
+                p['人気']=meta.get('人気')
+            if p.get('単勝オッズ表示') in (None, '', '—') and meta.get('単勝オッズ'):
+                p['単勝オッズ表示']=meta.get('単勝オッズ')
+            plus, minus, why=_display_factor_lists(card)
+            if not plus and p.get('要点'):
+                plus=[str(x).strip() for x in (p.get('要点') or []) if str(x).strip()]
+            p['プラス要因']=plus
+            p['マイナス要因']=minus
+            p['評価内訳']=why
+            score=card.get('AI評価')
+            try:
+                p['予想スコア']=round(float(score), 1) if score not in (None, '', '—') else None
+            except (TypeError, ValueError):
+                p['予想スコア']=None
+            p['単勝オッズ表示']=p.get('単勝オッズ表示') or card.get('単勝オッズ')
+            p['カード期待値']=card.get('期待値')
+        picks=[p for p in (r.get('予想馬') or []) if isinstance(p, dict)]
+        known={clean_horse(p.get('馬名') or '') for p in picks}
+        extras=[]
+        for (mrid, name), meta in horse_meta.items():
+            if mrid != rid or not name or name in known:
+                continue
+            extras.append({
+                '役割': '',
+                '馬名': name,
+                '馬番表示': meta.get('馬番') or '',
+                '馬番': meta.get('馬番') or '',
+                '枠番': meta.get('枠番') or '',
+                '騎手': meta.get('騎手') or '',
+                '斤量': meta.get('斤量') or '',
+                '人気': meta.get('人気') or '',
+                '単勝オッズ表示': meta.get('単勝オッズ') or '',
+                'BUY表示': False,
+                'プラス要因': [],
+                'マイナス要因': [],
+            })
+        def _ban_key(p):
+            try:
+                return int(float(str(p.get('馬番') or p.get('馬番表示') or 99)))
+            except (TypeError, ValueError):
+                return 99
+        extras.sort(key=_ban_key)
+        r['AI一覧']=picks + extras
+        n=len(picks)+len(extras)
+        if n:
+            r['表示頭数']=n
+        if race_date and not r.get('開催日'):
+            r['開催日']=race_date
         # 地方: 単勝・馬連・ワイドのシンプル買い目を優先表示
         # 中央: 本命軸の単勝・馬連・ワイドを先頭に保証（既存フォーメーションは後ろに残す）
         src=str(r.get('source') or '').lower()
@@ -3353,13 +3571,13 @@ def index():
                                         rid=_norm_race_id(row.get('race_id',''))
                                         row['purchase_ranks']=list(ranks_map.get(rid, []))
                                         row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
-                                venues=[{
+                                venues=_day_venues_for_nav(pred_path, source, fallback=[{
                                     'name': selected_venue,
                                     'count': len(races),
                                     'race_label': f'1-{len(races)}R' if races else '—',
                                     's': sum(1 for r in races if str(r.get('勝負ランク'))=='S'),
                                     'a': sum(1 for r in races if str(r.get('勝負ランク'))=='A'),
-                                }]
+                                }])
                                 show_venue_picker=False
                                 races_for_board=list(races)
                                 buy_candidates=build_buy_candidates(races_for_board)
@@ -3396,7 +3614,9 @@ def index():
                                 for row in races:
                                     if not _race_date(row):
                                         row['日付'] = selected
-                                venues = _venue_meetings(races)
+                                venues = _day_venues_for_nav(
+                                    pred_path, source, fallback=_venue_meetings(races)
+                                )
                                 show_venue_picker = False
                                 races_for_board = list(races)
                                 buy_candidates = build_buy_candidates(races_for_board)

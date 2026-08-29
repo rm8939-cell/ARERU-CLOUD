@@ -1,15 +1,17 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 {# 中身が無い初回取得中のみフルリロード。表示維持中(updating)は JS で静かに監視する #}
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
-<title>ARERU.EXE</title>
+<title>AREる予想</title>
+<meta http-equiv="Cache-Control" content="no-store, max-age=0">
+<meta name="areu-ui" content="app-v9">
 <style>
-:root{--bg:#f3f5f7;--card:#fff;--line:#e6ebf0;--text:#121820;--muted:#6a7682;--red:#d64545;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a7f4b;--soft:#eaf6f0;--purple:#6b4eff;--blue:#2f6fed;--radius:16px}
-body.nar{--brand:#176db0;--green:#176db0;--soft:#e8f3fb}
-body.all{--brand:#2f4858;--green:#2f4858;--soft:#eef2f5}
+:root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
+body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
+body.all{--brand:#0a1a3a;--green:#2f4858;--soft:#eef2f5}
 *{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;color-scheme:only light}body{margin:0;background:var(--bg);color:var(--text);font-family:"Avenir Next","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow-x:hidden;min-height:100vh}
-.wrap{max-width:760px;width:100%;margin:auto;padding:0 16px}.header{padding:28px 0 18px;border-bottom:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,#12352a 0%,var(--brand) 55%,#0d4a32 100%);color:#fff}
-.header .eyebrow,.header .sub{color:rgba(255,255,255,.78)}.header .logo{color:#fff}.header .logo b{color:#ffd4d0}
+.wrap{max-width:860px;width:100%;margin:auto;padding:0 16px}.header{padding:0;border-bottom:0;background:#161c18;color:#fff;position:sticky;top:0;z-index:30}
+.header .eyebrow,.header .sub{color:rgba(255,255,255,.78)}.header .logo{color:#fff}.header .logo b{color:#c8e6d0}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:28px;font-weight:800;letter-spacing:.05em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:4px;font-size:12px}
 /* 本日AI成績 */
 .ai-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 6px}
@@ -350,37 +352,73 @@ details.race-acc[open]>.race-acc-body{display:block}
   .areru-picks .ap-nums{grid-column:2;text-align:left;display:flex;gap:10px;align-items:baseline}
   .areru-picks .ap-index{margin-top:0}
 }
-.buy-card{display:block;text-decoration:none;color:inherit;background:#fff;border:2px solid #1a7f4b;border-radius:20px;padding:16px 16px 14px;box-shadow:0 10px 24px rgba(26,127,75,.14);overflow:hidden}
+.buy-board{margin:8px 0 22px}
+.sec-block.buy-board>h2{margin:0 0 4px;font-size:32px;font-weight:900;letter-spacing:.01em;color:var(--navy);line-height:1.1}
+.sec-block.buy-board>h2 small{display:block;margin-top:6px;font-size:13px;font-weight:800;color:var(--muted);letter-spacing:0}
+.buy-board-lead{display:none}
+.buy-card-grid{display:grid;gap:28px;margin:0 0 22px}
+.buy-card{display:block;text-decoration:none;color:inherit;background:#fff;border:2px solid #34d399;border-radius:28px;padding:18px 16px 16px;box-shadow:0 10px 24px rgba(21,128,61,.12);overflow:hidden;min-width:0}
+.buy-card.buy-card-static{cursor:default}
 .buy-card:active{transform:scale(.995)}
+.buy-card.buy-card-static:active{transform:none}
 .buy-card .bc-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.buy-card .bc-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:#e8f6ee;color:#145c37;font-size:14px;font-weight:900;border:1px solid #b7dbc8}
-.buy-card .bc-race{margin:12px 0 2px;font-size:18px;font-weight:900;color:#121820;letter-spacing:.01em;line-height:1.3;word-break:keep-all}
-.buy-card .bc-race small{display:block;margin-top:3px;font-size:13px;font-weight:700;color:#6a7682}
-.buy-card .bc-horse{display:flex;align-items:center;gap:12px;margin:12px 0 14px}
-.buy-card .bc-ban{min-width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#1a7f4b,#0f5a38);color:#fff;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12)}
-.buy-card .bc-name{font-size:26px;font-weight:900;line-height:1.2;word-break:keep-all;overflow-wrap:anywhere}
-.buy-card .bc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-@media (min-width:560px){.buy-card .bc-metrics{grid-template-columns:repeat(4,1fr)}}
-.buy-card .bc-metrics div{background:#f3faf6;border:1px solid #d5eadc;border-radius:14px;padding:10px 8px}
-.buy-card .bc-metrics b{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;color:#145c37;line-height:1.1}
-.buy-card .bc-metrics small{display:block;margin-top:3px;font-size:10px;font-weight:800;color:#6a7682;letter-spacing:.04em}
-.buy-card .bc-rank-badge{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border-radius:10px;font-size:16px;font-weight:900;color:#fff;background:linear-gradient(160deg,#1a7f4b,#0f5a38);margin-left:auto}
-.buy-card .bc-rank-badge.rank-s{background:linear-gradient(160deg,#c9a227,#8b6914)}
-.buy-card .bc-rank-badge.rank-a{background:linear-gradient(160deg,#1a7f4b,#0f5a38)}
-.buy-card .bc-edge{margin:10px 0 0;padding:10px 12px;background:#eef8f2;border:1px solid #c8e6d4;border-radius:12px;font-size:13px;font-weight:750;color:#145c37;line-height:1.45}
-.buy-card .bc-factors{margin:10px 0 0;display:grid;gap:6px}
-.buy-card .bc-plus,.buy-card .bc-minus{padding:8px 10px 8px 28px;border-radius:10px;font-size:13px;font-weight:700;line-height:1.4;position:relative}
-.buy-card .bc-plus{background:#f0faf4;border:1px solid #d0ead8;color:#1a5c3a}
-.buy-card .bc-plus:before{content:"+";position:absolute;left:10px;top:8px;color:#1a7f4b;font-weight:900}
-.buy-card .bc-minus{background:#fff8f6;border:1px solid #f0ddd8;color:#8a4a3a}
-.buy-card .bc-minus:before{content:"−";position:absolute;left:10px;top:8px;color:#c45a3a;font-weight:900}
-.buy-card .bc-risk{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:#fff8f0;border:1px solid #f0dcc4;font-size:13px;line-height:1.55;color:#6a4a2a}
-.buy-card .bc-risk b{color:#9a5b00;font-weight:900}
-.buy-card .bc-reasons-title{margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
-.buy-card .bc-reasons{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px}
-.buy-card .bc-reasons li{position:relative;padding:11px 12px 11px 34px;background:#f8fbf9;border:1px solid #e2eee6;border-radius:12px;font-size:15px;font-weight:750;line-height:1.45;color:#1f2a33}
-.buy-card .bc-reasons li:before{content:"◎";position:absolute;left:12px;top:11px;color:#1a7f4b;font-weight:900}
-.buy-card .bc-more{margin-top:12px;font-size:13px;font-weight:800;color:#1a7f4b}
+.buy-card .bc-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:linear-gradient(160deg,#34d399,#15803d);color:#fff;font-size:16px;font-weight:900;border:0}
+.buy-card .bc-rank{text-align:center;flex-shrink:0}
+.buy-card .bc-rank-badge{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;font-size:26px;font-weight:900;color:#fff;background:linear-gradient(160deg,#1a7f4b,#0f5a38);margin:0}
+.buy-card .bc-rank-badge.rank-s{background:linear-gradient(160deg,#eab308,#a16207)}
+.buy-card .bc-rank-badge.rank-a{background:linear-gradient(160deg,#34d399,#15803d)}
+.buy-card .bc-rank-badge.rank-b{background:linear-gradient(160deg,#60a5fa,#1d4ed8)}
+.buy-card .bc-rank-badge.rank-c,.buy-card .bc-rank-badge.rank-d{background:linear-gradient(160deg,#94a3b8,#475569)}
+.buy-card .bc-rank small{display:block;margin-top:4px;font-size:11px;font-weight:800;color:#6a7682;letter-spacing:.02em}
+.buy-card .bc-race{margin:14px 0 0;font-size:22px;font-weight:900;color:#0a1a3a;letter-spacing:.01em;line-height:1.3;word-break:break-word}
+.buy-card .bc-horse{display:flex;align-items:center;gap:12px;margin:12px 0 14px;min-width:0}
+.buy-card .bc-ban{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#0a1a3a;color:#fff;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;flex-shrink:0}
+.buy-card .bc-name{font-size:26px;font-weight:900;line-height:1.15;color:#0a1a3a;word-break:break-word;overflow-wrap:anywhere;min-width:0}
+.buy-card .bc-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+.buy-card .bc-metrics.bc-2{grid-template-columns:1fr 1fr}
+.buy-card .bc-cell{background:#f4f6f8;border:1px solid #e8eef5;border-radius:16px;padding:12px 6px;text-align:center;min-width:0}
+.buy-card .bc-cell b{display:block;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;color:#0a1a3a;line-height:1.15;word-break:break-word}
+.buy-card .bc-cell .bc-k, .buy-card .bc-cell small{display:block;margin-top:5px;font-size:12px;font-weight:800;color:#6a7682;letter-spacing:0;line-height:1.25}
+.buy-card .bc-cell.bc-ev{background:#f0fdf4;border-color:#bbf7d0}
+.buy-card .bc-cell.bc-ev b{font-size:28px;color:#15803d}
+.buy-card .bc-cell.bc-letter b{font-size:30px;color:#15803d;line-height:1}
+.buy-card .bc-more,.buy-card .bc-risk,.buy-card .bc-pm{display:none}
+.buy-why{margin:12px 0 0}
+.buy-why h4{margin:0 0 8px;font-size:15px;font-weight:900;letter-spacing:.04em;color:#15803d}
+.buy-why ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.buy-why li{position:relative;padding:12px 14px 12px 36px;background:#fff;border:1px solid #dcebdf;border-radius:16px;font-size:15px;font-weight:800;line-height:1.4;color:#0a1a3a;word-break:break-word}
+.buy-why li:before{content:"◎";position:absolute;left:12px;top:12px;color:#1a7f4b;font-weight:900}
+.field-more{margin-top:8px;border:1px solid #e6eaee;border-radius:16px;background:#fff}
+.field-more>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:14px;font-weight:800;color:#5c6b78}
+.field-more>summary::-webkit-details-marker{display:none}
+body.app-race:not(.race-open) .fx-nav{display:none !important}
+.race-pack{margin:0;min-width:0}
+.race-pack-title{display:none}
+.field-list{margin:14px 0 0;display:grid;gap:8px}
+.field-card{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid #e6eaee;border-radius:18px;padding:12px 14px;min-width:0;overflow:hidden}
+.field-card .fc-judge{display:inline-flex;align-items:center;font-size:12px;font-weight:900;padding:4px 10px;border-radius:999px;background:#f3f6f8;color:#5c6b78;margin:0 0 8px}
+.field-card .fc-horse{display:flex;align-items:center;gap:10px;min-width:0}
+.field-card .fc-ban{min-width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#eef1f4;color:#0a1a3a;font-size:16px;font-weight:900;flex-shrink:0}
+.field-card .fc-name{flex:1;min-width:0;font-size:17px;font-weight:850;line-height:1.25;color:#0a1a3a;word-break:break-word}
+.field-card .fc-meta{margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.field-card .fc-meta span{display:block;background:#f7f8fa;border-radius:12px;padding:8px 6px;font-size:12px;font-weight:800;color:#5c6b78;text-align:center;min-width:0}
+.field-card .fc-meta b{display:block;margin-top:2px;font-size:14px;font-weight:900;color:#0a1a3a;word-break:break-word}
+.buy-head{margin:4px 0 16px}
+.buy-head h2{margin:0;font-size:40px;font-weight:900;color:#102016;line-height:1.05;background:transparent;border:0;border-radius:0;padding:0;display:block;max-width:100%;box-sizing:border-box;word-break:break-word}
+.buy-head .buy-sub{margin:8px 0 0;font-size:16px;font-weight:800;color:#4d6156;line-height:1.4}
+.fx-race[data-race-judge="buy"] > .fx-hero,
+.fx-race[data-race-judge="buy"] > .fx-sum{display:none !important}
+body.race-open .buy-board,
+body.race-open .buy-empty-card,
+body.race-open .sec-block[aria-label="見送り"],
+body.race-open .skip-fold,
+body.race-open .areru-picks{display:none !important}
+.fx-rank-fold{margin:14px 0 0;border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden}
+.fx-rank-fold>summary{list-style:none;cursor:pointer;padding:14px 16px;font-size:15px;font-weight:900;color:var(--navy)}
+.fx-rank-fold>summary::-webkit-details-marker{display:none}
+.fx-rank-fold[open]>summary{border-bottom:1px solid var(--line)}
+.fx-rank-fold .fx-ai-wrap,.fx-rank-fold .fx-anal{margin:10px 12px}
+.fx-rank-fold .fx-detail,.fx-rank-fold .fx-analysis{margin:0 12px 10px}
 .buy-empty-card{padding:28px 18px;border-radius:20px;background:#f7faf8;border:2px dashed #b7dbc8;text-align:center;margin:0 0 22px}
 .buy-empty-card h3{margin:0 0 8px;font-size:22px;font-weight:900;color:#145c37}
 .buy-empty-card p{margin:0;font-size:15px;line-height:1.6;color:#55616c;font-weight:650}
@@ -427,6 +465,42 @@ details.race-acc[open]>.race-acc-body{display:block}
 .horse-table-p1 .ht-b small{color:var(--muted);font-size:9px;font-weight:800}
 .horse-table-p1 .ht-b .ev-hi b{color:#176b45}.horse-table-p1 .ht-b .ev-mid b{color:#9a6b00}.horse-table-p1 .ht-b .ev-lo b{color:#78909c}
 .horse-table-p1 .ht-note{margin-top:2px;font-size:11px;color:var(--muted);font-weight:600}
+.race-sum{margin:0 0 12px;padding:14px;border-radius:16px;background:#f7faf8;border:1px solid #d7e6dd}
+.race-sum h3{margin:0 0 10px;font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.race-sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.race-sum-grid div{background:#fff;border:1px solid #e4eaee;border-radius:12px;padding:10px}
+.race-sum-grid b{display:block;font-size:16px;font-weight:900;line-height:1.3;word-break:break-word}
+.race-sum-grid small{color:var(--muted);font-size:10px;font-weight:800}
+.race-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:0 0 12px}
+.race-meta div{background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 10px}
+.race-meta b{display:block;font-size:13px;font-weight:850}
+.race-meta small{color:var(--muted);font-size:10px;font-weight:800}
+.hc{border:1px solid #e4eaee;border-radius:16px;padding:14px;margin:0 0 10px;background:#fff}
+.hc.hc-buy{border-color:#b7dbc8;background:linear-gradient(180deg,#fff,#f3faf6)}
+.hc-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.hc-rank{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.08em}
+.hc-name{margin:6px 0 4px;font-size:18px;font-weight:900;line-height:1.3;word-break:break-word}
+.hc-sub{font-size:12px;font-weight:700;color:#556;line-height:1.45}
+.hc-metrics{margin-top:10px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.hc-metrics div{text-align:center;background:#f8fafb;border:1px solid #e4eaee;border-radius:10px;padding:8px 4px}
+.hc.hc-buy .hc-metrics div{background:#fff}
+.hc-metrics b{display:block;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+.hc-metrics small{font-size:10px;color:var(--muted);font-weight:800}
+.hc-fac{margin:10px 0 0}
+.hc-fac h4{margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:.08em}
+.hc-fac.plus h4{color:#176b45}
+.hc-fac.minus h4{color:#b23b3b}
+.hc-fac ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.hc-fac li{font-size:13px;font-weight:750;line-height:1.4;padding:7px 10px 7px 28px;border-radius:10px;position:relative}
+.hc-fac.plus li{background:#f0faf4;color:#1a5c3a}
+.hc-fac.plus li:before{content:"+";position:absolute;left:10px;font-weight:900;color:#1a7f4b}
+.hc-fac.minus li{background:#fff8f6;color:#8a4a3a}
+.hc-fac.minus li:before{content:"−";position:absolute;left:10px;font-weight:900;color:#c45a3a}
+.hc-why{margin:8px 0 0;display:grid;gap:4px}
+.hc-why div{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;padding:4px 0;border-bottom:1px solid #eef2f5}
+.hc-why span{color:var(--muted)}
+.hc-why b{color:var(--text);text-align:right}
+@media (min-width:520px){.race-sum-grid,.race-meta,.hc-metrics{grid-template-columns:repeat(4,1fr)}}
 .p1-sub{font-size:11px;color:var(--muted);font-weight:700;margin:0 0 8px;line-height:1.5}
 .buy-spotlight{margin:12px 18px;padding:14px;border-radius:14px;background:linear-gradient(180deg,#f3faf6,#eaf6f0);border:1px solid #cfe3d8}
 .buy-spotlight .bs-title{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--brand);margin-bottom:8px}
@@ -436,8 +510,223 @@ details.race-acc[open]>.race-acc-body{display:block}
 .buy-spotlight .bs-grid small{color:var(--muted);font-size:10px;font-weight:800}
 .buy-spotlight .bs-reasons{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}
 .buy-spotlight .bs-reasons li{font-size:12px;font-weight:700;line-height:1.45;color:#1f2a33;padding:8px 10px;background:#fff;border-radius:10px;border:1px solid #dcebdf}
+/* ===== 予想画面リデザイン（表示のみ） ===== */
+body.app-race{padding-bottom:env(safe-area-inset-bottom,0)}
+body.app-race .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));overflow-x:hidden}
+.fx-top-inner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:52px;padding:calc(8px + env(safe-area-inset-top,0)) 0 8px}
+.fx-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff;font-weight:900;letter-spacing:.02em;line-height:1;min-width:0}
+.fx-logo .mark{width:28px;height:28px;border-radius:9px;background:#1a7f4b;border:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;flex-shrink:0}
+.fx-logo b{font-size:17px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-venue-slot{display:flex;justify-content:center;min-width:0}
+.fx-venue-form{display:flex;gap:6px;align-items:center;max-width:100%}
+.fx-venue-slot select{max-width:100%;min-width:0;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%230a1a3a' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E") no-repeat right 10px center;background-size:10px;color:var(--navy);border:0;border-radius:999px;padding:7px 26px 7px 12px;font-size:13px;font-weight:900;box-shadow:0 4px 12px rgba(10,26,58,.18)}
+.fx-venue-form select[name="date"]{flex:0 0 auto;width:7.2em}
+.fx-venue-form select[name="venue"]{flex:1 1 auto;width:7.5em}
+.fx-icons{display:flex;gap:6px;align-items:center}
+.fx-icon{width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);color:#fff;text-decoration:none;font-size:13px;font-weight:900}
+body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back,body.app-race .areru-picks,body.app-race .today-hero{display:none !important}
+.fx-sr{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.fx-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px 0}
+.fx-nav a,.fx-nav button,.fx-nav-now{width:100%;min-width:0;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 4px;border-radius:11px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:12px;font-weight:850;line-height:1;white-space:nowrap;overflow:visible;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer}
+.fx-nav a.is-on,.fx-nav button.is-on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fx-nav-now{background:var(--navy);color:#fff;border-color:var(--navy);cursor:default}
+.fx-races{display:none}.fx-races.is-open{display:block}
+.fx-race{display:none;padding-bottom:20px;scroll-margin-top:86px}.fx-race.is-on{display:block}
+.fx-hero{margin:2px 0 10px;padding:12px 14px;border-radius:18px;background:#fff;border:1px solid #e8eef5;box-shadow:0 4px 14px rgba(10,26,58,.06);color:var(--navy)}
+.fx-hero-kicker{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+.fx-hero h2{margin:4px 0 0;font-size:clamp(20px,6vw,26px);font-weight:900;letter-spacing:.02em;line-height:1.15}
+.fx-hero h2 small{display:block;margin-top:3px;font-size:13px;font-weight:800;color:#445;letter-spacing:0}
+.fx-hero-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.fx-chip{background:#f4f7fb;border:1px solid #e8eef5;border-radius:10px;padding:6px 8px;min-width:52px}
+.fx-chip b{display:block;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15;color:var(--navy)}
+.fx-chip small{display:block;margin-top:2px;font-size:9px;font-weight:800;color:var(--muted)}
+.fx-hero-hl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.fx-hero-hl div{background:#f6f8fb;border:1px solid #e8eef5;border-radius:12px;padding:8px 10px}
+.fx-hero-hl b{display:block;font-size:13px;font-weight:900;line-height:1.25;word-break:break-word}
+.fx-hero-hl small{display:block;margin-bottom:2px;font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+.fx-hero-foot{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.fx-hero-foot div{background:#f6f8fb;border-radius:12px;padding:8px 10px}
+.fx-hero-foot b{display:block;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--navy)}
+.fx-hero-foot .hot{color:#15803d}
+.fx-hero-foot .buy{color:#c2410c}
+.fx-hero-foot small{display:block;margin-top:2px;font-size:9px;font-weight:800;color:var(--muted)}
+.fx-buy-btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 12px;border-radius:12px;font-size:13px;font-weight:900;text-decoration:none;border:0}
+.fx-buy-btn.buy{background:linear-gradient(160deg,#34d399,#15803d);color:#fff}
+.fx-buy-btn.skip{background:#f3f6f8;color:#5c6b78}
+.fx-sum{margin:0 0 10px;padding:10px;border-radius:16px;background:#fff;border:1px solid #e8eef5;box-shadow:0 4px 12px rgba(10,26,58,.05)}
+.fx-sum h3{margin:0 0 8px;font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;font-weight:900}
+.fx-sum .race-sum-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.fx-sum .race-sum-grid div{background:#f6f8fb;border:1px solid #e8eef5;border-radius:12px;padding:8px 8px;grid-column:span 3}
+.fx-sum .race-sum-grid div:nth-child(n+3){grid-column:span 2}
+.fx-sum .race-sum-grid b{display:block;font-size:13px;font-weight:900;line-height:1.25;word-break:break-word;color:var(--navy)}
+.fx-sum .race-sum-grid small{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.06em}
+.fx-sum .is-buy b{color:#c2410c}
+.fx-ai-wrap{background:transparent;border:0;box-shadow:none;padding:0;margin:0 0 10px;overflow:visible;display:flex;flex-direction:column;gap:8px}
+.fx-ai-wrap h3{margin:0;font-size:15px;font-weight:900;color:var(--navy)}
+.fx-ai-legend{display:none}
+.fx-ai-head{display:none}
+.fx-hrow{width:100%;display:block;text-align:left;border:1px solid #e8eef5;background:#fff;padding:10px 12px;margin:0;cursor:pointer;font:inherit;color:inherit;border-radius:16px;box-shadow:0 3px 10px rgba(10,26,58,.05)}
+.fx-hrow.is-on{border-color:#c5d4e8}
+.fx-hrow.buy{border:2.5px solid #34d399;background:linear-gradient(180deg,#f4fdf8 0%,#fff8f1 100%);box-shadow:0 4px 12px rgba(230,126,34,.12)}
+.fx-hrow.buy.is-on{border-color:#e67e22}
+.fx-hrow-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.fx-hrow .nm{font-size:17px;font-weight:900;line-height:1.2;word-break:break-word}
+.fx-hrow .nm small{display:block;margin-top:2px;font-size:11px;font-weight:700;color:var(--muted)}
+.fx-hrow-metrics{margin-top:8px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.fx-hrow-metrics div{text-align:center;background:#f6f8fb;border-radius:10px;padding:7px 2px}
+.fx-hrow.buy .fx-hrow-metrics div{background:#fff}
+.fx-hrow-metrics b{display:block;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--navy);line-height:1.1}
+.fx-hrow-metrics b.hot{color:#15803d}
+.fx-hrow-metrics small{display:block;margin-top:2px;font-size:9px;font-weight:800;color:var(--muted)}
+.fx-hrow .mini{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}
+.fx-hrow .mini.buy{background:linear-gradient(160deg,#fb923c,#ea580c);color:#fff}
+.fx-hrow .mini.skip{background:#f3f6f8;color:#5c6b78}
+.gpill{display:inline-flex;min-width:1.5em;justify-content:center;padding:1px 6px;border-radius:7px;background:#eef3fb;color:var(--navy)}
+.g-s{background:#fff4d6;color:#9a6b00}.g-a{background:#e7f7ee;color:#176b45}.g-b{background:#e8f1fb;color:#1a4f9a}.g-c{background:#f3f5f8;color:#5c6b78}.g-d{background:#f8f0f0;color:#8a4a3a}
+.ban-circle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:#fff;background:var(--navy);flex-shrink:0}
+.fx-hrow .ban-circle{width:36px;height:36px;font-size:15px}
+.fx-dname .ban-circle{width:34px;height:34px;font-size:14px}
+.waku-1{background:#fff;color:#111;border:1px solid #333}.waku-2{background:#111;color:#fff}.waku-3{background:#e53935}.waku-4{background:#1565c0}.waku-5{background:#f4d03f;color:#111}.waku-6{background:#2e7d32}.waku-7{background:#ef6c00}.waku-8{background:#ec407a}
+.fx-more>summary::-webkit-details-marker,.fx-why>summary::-webkit-details-marker{display:none}
+.fx-more>summary,.fx-why>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:14px;font-weight:900;background:#fff;border:1px solid #eef1f6;border-radius:16px;box-shadow:0 3px 10px rgba(10,26,58,.05)}
+.fx-why{margin:0 0 10px}
+.fx-why-body{margin-top:8px;padding:12px;background:#fff;border:1px solid #e8eef5;border-radius:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fx-why-body div{background:#f6f8fb;border-radius:10px;padding:8px}
+.fx-why-body b{display:block;font-size:14px;font-weight:900;color:var(--navy)}
+.fx-why-body small{display:block;font-size:9px;font-weight:800;color:var(--muted)}
+.fx-why-body .fx-why-note{grid-column:1/-1;background:transparent;padding:0;font-size:12px;font-weight:700;color:#445;line-height:1.5}
+.fx-detail{display:none;background:#fff;border-radius:16px;padding:12px;margin:0 0 8px;box-shadow:0 3px 10px rgba(10,26,58,.05);border:1px solid #e8eef5}
+.fx-detail.is-on{display:block}
+.fx-dtop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.fx-dname{font-size:16px;font-weight:900;line-height:1.25;word-break:break-word;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fx-dname small{display:block;width:100%;margin-top:0;font-size:11px;font-weight:700;color:#556}
+.fx-dmetrics{margin:10px 0;display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.fx-dmetrics div{text-align:center;background:#f7f9fc;border-radius:12px;padding:8px 4px;border:1px solid #eef1f6}
+.fx-dmetrics b{display:block;font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+.fx-dmetrics b.hot{color:#15803d}
+.fx-dmetrics small{font-size:9px;font-weight:800;color:var(--muted)}
+.fx-facs{display:grid;grid-template-columns:1fr;gap:8px}
+.fx-fac h4{margin:0 0 6px;font-size:12px;font-weight:900;letter-spacing:.06em}
+.fx-fac.plus h4{color:#15803d}.fx-fac.minus h4{color:#c2410c}
+.fx-fac ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.fx-fac li{font-size:12px;font-weight:750;line-height:1.4;padding:8px 10px 8px 26px;border-radius:10px;position:relative}
+.fx-fac.plus li{background:#f0fdf4;color:#166534}
+.fx-fac.plus li:before{content:"+";position:absolute;left:8px;font-weight:900;color:#15803d}
+.fx-fac.minus li{background:#fff7ed;color:#9a3412}
+.fx-fac.minus li:before{content:"−";position:absolute;left:8px;font-weight:900;color:#c2410c}
+.fx-empty{font-size:12px;font-weight:700;color:var(--muted);padding:6px}
+.fx-anal{display:flex;align-items:center;justify-content:space-between;width:100%;margin:4px 0 10px;padding:12px 14px;border-radius:16px;background:#fff;border:1px solid #e8eef5;box-shadow:0 3px 10px rgba(10,26,58,.05);color:var(--navy);font-size:14px;font-weight:900;cursor:pointer;font:inherit}
+.fx-anal span{font-size:16px}
+.fx-analysis{display:none;margin:0 0 10px}.fx-analysis.is-on{display:block}
+.mode-predict .source-tabs{padding:10px 0 4px}.mode-predict .mode-tabs{padding:0 0 2px}.mode-predict .toolbar{padding:8px 0}
+.mode-predict .race-sum{background:#fff;border-color:#eef1f6;box-shadow:0 4px 14px rgba(10,26,58,.08)}
+.mode-predict .venue-back{margin:4px 0 0}
+.mode-predict .today-hero{background:linear-gradient(155deg,#0a1a3a 0%,#163a72 58%,#1f4f9a 100%);box-shadow:0 12px 30px rgba(10,26,58,.28)}
+.mode-predict .buy-card{border-color:#34d399;box-shadow:0 10px 24px rgba(21,128,61,.12)}
+.mode-predict .buy-card .bc-badge{background:linear-gradient(160deg,#34d399,#15803d);color:#fff;border-color:transparent}
+.mode-predict .buy-card .bc-ban{background:linear-gradient(160deg,#163a72,#0a1a3a)}
+.mode-predict .buy-card .bc-metrics b{color:#0a1a3a}
+.mode-predict .buy-card .bc-cell.bc-ev b,.mode-predict .buy-card .bc-cell.bc-letter b{color:#15803d}
+body.app-race .fx-venue-form select[name="date"]{display:none}
+@media (max-width:560px){
+  .fx-top-inner{min-height:50px;gap:6px}
+  .fx-logo b{font-size:16px}
+  .header .wrap{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .fx-icons .fx-icon:first-child{display:none}
+  .fx-hrow-metrics b{font-size:14px}
+}
+@media (min-width:720px){
+  .fx-sum .race-sum-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .fx-sum .race-sum-grid div,.fx-sum .race-sum-grid div:nth-child(n+3){grid-column:auto}
+  .fx-hero-hl{grid-template-columns:1fr 1fr 1fr 1fr}
+  .fx-dmetrics{grid-template-columns:repeat(4,1fr)}
+  .fx-facs{grid-template-columns:1fr 1fr}
+}
+/* ===== AREU APP V8: 予想画面を旧Webレイアウトから切り離す ===== */
+body.app-race{background:#eef4f0 !important;color:#102016}
+body.app-race .header{background:#f7fbf8 !important;color:#102016 !important;border-bottom:1px solid #d7e8dc !important;box-shadow:none !important}
+body.app-race .fx-top-inner{grid-template-columns:minmax(0,1fr) auto;min-height:56px}
+body.app-race .fx-logo{display:none !important}
+body.app-race .fx-venue-slot{justify-content:flex-start}
+body.app-race .fx-venue-form select{background:#fff;color:#102016;border:1px solid #cfe5d6;box-shadow:none;font-size:15px;padding:9px 28px 9px 14px}
+body.app-race .fx-venue-form select[name="date"]{display:block;width:auto;flex:0 0 auto}
+body.app-race:not(.picker) .fx-venue-form select[name="date"]{display:none}
+body.app-race .fx-icon{background:#fff;border:1px solid #cfe5d6;color:#145c37}
+body.app-race .fx-icons .fx-icon:first-child{display:inline-flex}
+body.app-race .fx-icons .fx-icon:last-child{display:none}
+body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back,body.app-race .areru-picks,body.app-race .today-hero{display:none !important}
+body.app-race .venue-panel{background:transparent;border:0;border-radius:0;margin:12px 0 20px;overflow:visible}
+body.app-race .venue-panel>h2{font-size:22px;font-weight:900;letter-spacing:0;text-transform:none;color:#102016;padding:8px 2px 4px}
+body.app-race .venue-panel>p{font-size:15px;color:#4d6156;padding:0 2px 14px}
+body.app-race .venue-list{display:grid;gap:12px}
+body.app-race .venue-row{background:#fff;border:1px solid #d7e8dc;border-radius:22px;padding:18px 16px;grid-template-columns:1fr auto;box-shadow:0 6px 16px rgba(16,32,22,.05)}
+body.app-race .venue-row-name{font-size:22px;font-weight:900;color:#102016}
+body.app-race .venue-row-name small{font-size:13px;color:#4d6156}
+body.app-race .venue-chip.open-chip{background:#e7f6ee;border-color:#bbf7d0;color:#145c37;border-radius:999px;padding:8px 12px;font-size:13px}
+body.app-race .buy-head{margin:8px 0 18px}
+body.app-race .buy-head h2{font-size:40px;background:transparent;color:#102016;border:0;border-radius:0;padding:0;text-align:left;letter-spacing:.01em;line-height:1.05;font-weight:900}
+body.app-race .buy-head .buy-sub{margin:8px 0 0;font-size:16px;font-weight:800;color:#4d6156;line-height:1.4}
+body.app-race .buy-card{background:#fff;border:2px solid #22c55e;border-radius:28px;padding:20px 16px 18px;box-shadow:0 12px 28px rgba(20,92,55,.12)}
+body.app-race .buy-card .bc-badge{background:#145c37;font-size:17px;padding:9px 16px}
+body.app-race .buy-card .bc-rank-badge{width:58px;height:58px;border-radius:18px;background:#145c37}
+body.app-race .buy-card .bc-rank-badge.rank-a{background:#16a34a}
+body.app-race .buy-card .bc-race{font-size:24px;color:#102016}
+body.app-race .buy-card .bc-ban{width:72px;height:72px;border-radius:18px;background:#16a34a;color:#fff;font-size:30px}
+body.app-race .buy-card .bc-name{font-size:28px;color:#102016}
+body.app-race .buy-card .bc-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+body.app-race .buy-card .bc-cell{background:#f3faf6;border:1px solid #d9eee2;border-radius:16px;padding:12px 4px}
+body.app-race .buy-card .bc-cell b{font-size:18px;color:#102016}
+body.app-race .buy-card .bc-cell .bc-k{font-size:12px;color:#4d6156}
+body.app-race .buy-card .bc-cell.bc-ev{background:#e8f8ee;border-color:#86efac}
+body.app-race .buy-card .bc-cell.bc-ev b{font-size:28px;color:#15803d}
+body.app-race .buy-card .bc-edge{margin:10px 0 0;padding:12px 14px;background:#e8f8ee;border:1px solid #86efac;border-radius:16px;font-size:16px;font-weight:800;color:#145c37}
+body.app-race .buy-why h4,body.app-race .buy-grounds h4{font-size:16px;color:#145c37;margin:14px 0 8px}
+body.app-race .buy-why ul,body.app-race .buy-grounds ul{display:grid;gap:8px}
+body.app-race .buy-why li,body.app-race .buy-grounds li{position:relative;background:#fff;border:1px solid #d7e8dc;border-radius:16px;padding:14px 14px 14px 38px;font-size:16px;font-weight:800;color:#102016}
+body.app-race .buy-why li:before,body.app-race .buy-grounds li:before{content:"◎";position:absolute;left:12px;top:14px;color:#15803d;font-weight:900}
+body.app-race .buy-grounds:not(:has(li)){display:none}
+body.app-race .field-card{border-radius:18px;padding:14px;border:1px solid #dce6e0;background:#fff}
+body.app-race .field-card .fc-judge{background:#eef2f0;color:#5b6b63;font-size:13px}
+body.app-race .field-card .fc-ban{background:#e8f8ee;color:#145c37;border-radius:12px;min-width:42px;height:42px;font-size:17px}
+body.app-race .field-card .fc-name{font-size:18px}
+body.app-race .field-card .fc-meta{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.app-race .field-card .fc-meta span{font-size:12px;background:#f3faf6}
+body.app-race .field-card .fc-meta b{font-size:15px}
+@media (max-width:560px){
+  body.app-race .fx-icons .fx-icon:first-child{display:inline-flex !important}
+  body.app-race .buy-card .bc-name{font-size:24px}
+  body.app-race .buy-card .bc-ban{width:64px;height:64px;font-size:26px}
+}
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}}" id="top"><header class="header"><div class="wrap"><div class="eyebrow">EXPECTED VALUE INTELLIGENCE</div><div class="logo">ARERU<b>.CLOUD</b></div><div class="sub">{% if source=='nar' %}LOCAL RACING AI / 地方競馬{% elif source=='all' %}ALL MEETINGS AI / 中央・地方{% else %}CENTRAL RACING AI / JRA中央{% endif %}</div></div></header>
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v9"><header class="header"><div class="wrap fx-top-inner">
+<a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
+<span class="mark">A</span>
+<b>AREる予想</b>
+</a>
+<div class="fx-venue-slot">
+<form method="get" action="/" class="fx-venue-form">
+<input type="hidden" name="source" value="{{source}}">
+<input type="hidden" name="mode" value="{{mode}}">
+{% if selected_date and today and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}
+<select name="date" aria-label="開催日" onchange="this.form.submit()">
+{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}
+</select>
+{% if venues %}
+<select name="venue" aria-label="開催場所" onchange="this.form.submit()">
+<option value="">開催場一覧</option>
+{% for v in venues %}
+<option value="{{v.name}}" {% if v.name==selected_venue %}selected{% endif %}>{{v.name}}</option>
+{% endfor %}
+</select>
+{% endif %}
+</form>
+</div>
+<div class="fx-icons">
+<a class="fx-icon" href="/?source={{'jra' if source=='nar' else 'nar'}}&mode={{mode}}&date={{selected_date}}" aria-label="開催切替">{{'地' if source=='nar' else '中'}}</a>
+<a class="fx-icon" href="/?source={{source}}&mode=result&date={{selected_date}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}" aria-label="結果">結</a>
+<a class="fx-icon" href="#predict-targets" aria-label="今日の買い">🔥</a>
+</div>
+</div></header>
 <main class="wrap">
 <nav class="source-tabs">
 <a class="{{'active' if source=='jra' else ''}}" href="/?source=jra&mode={{mode}}&date={{selected_date}}">JRA</a>
@@ -465,7 +754,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source in ['nar','jra'] %} · 最終更新 {{data_updated_at}}{% endif %}</div>
 {% set _ds = data_status|default('ready') %}
 {% if _ds == 'generating' %}
-<div class="status-banner warn">初回データ準備中です。サーバー側の定期更新が完了次第、自動で表示します。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
+<div class="status-banner warn">初回データ準備中です。GitHub Actions の定期更新が完了次第、自動で表示します。この画面から再取得はしません。<br><a href="{{ status_refresh_url|default(request.url) }}">再読み込み</a></div>
 {% elif _ds == 'updating' %}
 <div class="status-banner info">バックグラウンドで更新中です。表示中の予想はそのまま見られます。完了後に最新へ切り替えます{% if data_updated_at|default('') %}（最終更新 {{data_updated_at}}）{% endif %}。</div>
 {% elif _ds == 'success' %}
@@ -477,8 +766,8 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endif %}
 {% if show_venue_picker %}
 <section class="venue-panel">
-<h2>{{selected_date}}｜開催場一覧</h2>
-<p>開催場を選ぶとレース一覧を表示します。</p>
+<h2>開催場を選ぶ</h2>
+<p>{{selected_date}} の開催です。場を選ぶとBUYカードを表示します。</p>
 {% if venues %}
 <div class="venue-list">
 {% for v in venues %}
@@ -995,130 +1284,213 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% set _buys_sorted = _grp.buy|sort(attribute='期待値', reverse=true) %}
 {% set _watch_sorted = _grp.watch|sort(attribute='期待値', reverse=true) %}
 {% set _races_ordered = _buys_sorted + _watch_sorted + _grp.skip %}
+{% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
+{% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="today-hero" id="predict-targets" aria-label="今日の買い">
-<div class="th-kicker">ARERU · {{selected_date}} · {{ 'JRA' if source == 'jra' else ('地方' if source == 'nar' else '全開催') }}</div>
-<h2>🔥 今日の買い</h2>
-<p class="th-sub">期待値のあるレースだけ表示</p>
-<div class="th-count"><b>{{_buys_sorted|length}}</b><span>件のBUY</span></div>
-</section>
+<nav class="fx-nav" aria-label="レースナビゲーション">
+<a href="/?source={{source}}&mode=result&date={{selected_date}}{{_hist}}{% if selected_venue %}&venue={{selected_venue|urlencode}}{% endif %}">結果</a>
+<button type="button" data-fx-prev>前R</button>
+<span class="fx-nav-now" data-fx-now>—</span>
+<button type="button" data-fx-next>次R</button>
+</nav>
 
 {% if _buys_sorted %}
-<section class="sec-block" aria-label="BUYカード">
-<h2>🔥 BUY<small>本番判定の買いのみ · {{_buys_sorted|length}}件</small></h2>
-<div class="buy-card-grid">
-{% for t in _buys_sorted %}
-  {% set _ai_rank = namespace(v='—') %}
-  {% for _p in (t.get('予想馬') or []) %}
-    {% if (_p.get('馬名') or '') == (t.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
-      {% set _ai_rank.v = _p.get('AI順位') or loop.index %}
-    {% endif %}
-  {% endfor %}
+<section class="sec-block buy-board" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v9">
+{% macro buy_horse_card(t, linked=true) %}
+  {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
+  {% set _idx = namespace(v=None) %}
+  {% if t.get('近走指数順位') not in [None, '', '—'] %}
+    {% set _idx.v = t.get('近走指数順位')|int %}
+  {% elif t.get('本命カード') is mapping and t.get('本命カード').get('近走指数順位') not in [None, '', '—'] %}
+    {% set _idx.v = t.get('本命カード').get('近走指数順位')|int %}
+  {% endif %}
+  {% if _idx.v is none %}
+    {% for _p in (t.get('予想馬') or []) %}
+      {% if (_p.get('馬名') or '') == (t.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
+        {% set _card = _p.get('カード') if _p.get('カード') is mapping else {} %}
+        {% if _card.get('近走指数順位') not in [None, '', '—'] %}
+          {% set _idx.v = _card.get('近走指数順位')|int %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
   {% set _conf = t.get('レース信頼度スコア') or t.get('AI信頼度スコア') %}
   {% set _reasons = t.get('AI買い理由') if t.get('AI買い理由') is sequence and t.get('AI買い理由') else [] %}
   {% set _buy_pack = t.get('BUY根拠') if t.get('BUY根拠') is mapping else {} %}
   {% set _main_card = t.get('本命カード') if t.get('本命カード') is mapping else {} %}
+  {% set _honp = namespace(p=none) %}
+  {% for _p in (t.get('予想馬') or []) %}
+    {% if _p.get('BUY表示') or (_p.get('役割') or '') == '本命' or (_p.get('馬名') or '') == (t.get('本命') or '') %}
+      {% if _honp.p is none %}{% set _honp.p = _p %}{% endif %}
+    {% endif %}
+  {% endfor %}
   {% if not _reasons and _main_card.get('プラス材料一覧') is sequence %}
     {% set _reasons = _main_card.get('プラス材料一覧') %}
   {% elif not _reasons and t.get('本命理由') %}
     {% set _reasons = [t.get('本命理由')] %}
   {% endif %}
-  {% set _risks = t.get('AIリスク') if t.get('AIリスク') is sequence and t.get('AIリスク') else [] %}
-  {% if not _risks and _main_card.get('不安材料一覧') is sequence %}
-    {% set _risks = _main_card.get('不安材料一覧') %}
-  {% elif not _risks and t.get('S降格理由') %}
-    {% set _risks = [t.get('S降格理由')] %}
-  {% endif %}
-  {% set _ban = t.get('本命馬番') or t.get('本命馬番表示') or '' %}
-  {% set _horse = t.get('本命') or '—' %}
-  {% set _ev_raw = t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') or '—' %}
-  {% set _ev_disp = (_ev_raw ~ '')|replace('%','') %}
+  {% set _ban = t.get('本命馬番表示') or (_honp.p.get('馬番表示') if _honp.p else '') or t.get('本命馬番') or (_honp.p.get('馬番') if _honp.p else '') %}
+  {% set _horse = t.get('本命') or (_honp.p.get('馬名') if _honp.p else '') %}
+  {% set _ev_raw = t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') %}
+  {% set _ev_disp = ((_ev_raw ~ '')|replace('%','')) if _ev_raw not in _blank else none %}
   {% set _rk = t.get('勝負ランク') or _buy_pack.get('ランク') or '' %}
-  {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') or t.get('シミュレーション勝率') or _main_card.get('勝率') %}
-  {% set _impl = _buy_pack.get('市場暗示勝率') or t.get('市場暗示勝率') %}
-  {% set _edge_pp = _buy_pack.get('実エッジpp') or t.get('実エッジpp') %}
-  {% set _ai_idx = _buy_pack.get('AI評価') or t.get('本命AREru指数') %}
-  {% set _qscore = _buy_pack.get('BUY品質スコア') or t.get('BUY品質スコア') %}
-  {% set _pop = _buy_pack.get('人気') or t.get('本命人気') %}
-  {% set _plus = _buy_pack.get('プラス') if _buy_pack.get('プラス') is sequence else [] %}
-  {% set _minus = _buy_pack.get('マイナス') if _buy_pack.get('マイナス') is sequence else [] %}
-  {% set _pop_gap = namespace(v='—') %}
-  {% if _pop is not none and _ai_rank.v != '—' %}
-    {% set _pop_gap.v = (_pop|int - _ai_rank.v|int) %}
+  {% set _adj = _buy_pack.get('補正勝率') or t.get('補正勝率') %}
+  {% set _pop = _buy_pack.get('人気') or t.get('本命人気') or (_honp.p.get('人気') if _honp.p else none) %}
+  {% set _odds = t.get('本命オッズ') %}
+  {% set _edge_pp = _buy_pack.get('実エッジpp') if _buy_pack.get('実エッジpp') not in _blank else t.get('実エッジpp') %}
+  {% set _grounds = _buy_pack.get('プラス') if _buy_pack.get('プラス') is sequence else [] %}
+  {% set _pop_gap = namespace(v=none) %}
+  {% if _pop is not none and _idx.v is not none %}
+    {% set _pop_gap.v = (_pop|int - _idx.v) %}
   {% endif %}
+{% if linked %}
 <a class="buy-card" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
-<div class="bc-top"><span class="bc-badge">🔥 BUY</span>{% if _rk %}<span class="bc-rank-badge rank-{{_rk|lower}}">{{_rk}}</span>{% endif %}</div>
-<div class="bc-race">{{t.get('開催地') or '—'}}{% if t.get('レース') is not none %}{{t['レース']|int}}R{% endif %}{% if t.get('レース名') %}　{{t.get('レース名')}}{% endif %}<small>タップで詳細</small></div>
+{% else %}
+<article class="buy-card buy-card-static">
+{% endif %}
+<div class="bc-top">
+<span class="bc-badge">🔥 BUY</span>
+{% if _rk %}
+<div class="bc-rank"><span class="bc-rank-badge rank-{{_rk|lower}}">{{_rk}}</span><small>勝負ランク</small></div>
+{% endif %}
+</div>
+{% if t.get('開催地') or t.get('レース') is not none %}
+<div class="bc-race">{{t.get('開催地') or ''}}{% if t.get('レース') is not none %}{{t['レース']|int}}R{% endif %}</div>
+{% endif %}
 <div class="bc-horse">
 {% if _ban %}<span class="bc-ban">{{_ban}}</span>{% endif %}
-<span class="bc-name">{{_horse}}</span>
+{% if _horse %}<span class="bc-name">{{_horse}}</span>{% endif %}
 </div>
+{% if _ev_disp is not none or _adj is not none or _odds not in _blank %}
 <div class="bc-metrics">
-<div><b>{{_ev_disp}}%</b><small>期待値</small></div>
-<div><b>{% if _adj is not none %}{{'%g'|format(_adj|float)}}%{% else %}—{% endif %}</b><small>推定勝率</small></div>
-<div><b>{% if t.get('本命オッズ') is not none %}{{t.get('本命オッズ')}}倍{% else %}—{% endif %}</b><small>オッズ</small></div>
-<div><b>{% if _pop is not none %}{{_pop|int}}番{% else %}—{% endif %}</b><small>人気</small></div>
-<div><b>{% if _pop_gap.v != '—' %}{% if _pop_gap.v > 0 %}+{% endif %}{{_pop_gap.v}}{% else %}—{% endif %}</b><small>人気との差</small></div>
-<div><b>{% if _ai_rank.v != '—' %}{{_ai_rank.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
-<div><b>{% if _rk %}{{_rk}}{% elif _ai_idx is not none %}{{'%g'|format(_ai_idx|float)}}{% else %}—{% endif %}</b><small>AI評価</small></div>
-<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+{% if _ev_disp is not none %}<div class="bc-cell bc-ev"><b>{{_ev_disp}}%</b><span class="bc-k">期待値</span></div>{% endif %}
+{% if _adj is not none %}<div class="bc-cell"><b>{{'%g'|format(_adj|float)}}%</b><span class="bc-k">推定勝率</span></div>{% endif %}
+{% if _odds not in _blank %}<div class="bc-cell"><b>{{_odds}}倍</b><span class="bc-k">オッズ</span></div>{% endif %}
 </div>
-{% if _edge_pp is not none %}
-<div class="bc-edge">実エッジ <b>+{{'%g'|format(_edge_pp|float)}}pp</b>（補正勝率が市場より高い）</div>
+{% endif %}
+{% if _pop is not none or _pop_gap.v is not none or _idx.v is not none %}
+<div class="bc-metrics">
+{% if _pop is not none %}<div class="bc-cell"><b>{{_pop|int}}番</b><span class="bc-k">人気</span></div>{% endif %}
+{% if _pop_gap.v is not none %}<div class="bc-cell"><b>{% if _pop_gap.v > 0 %}+{% endif %}{{_pop_gap.v}}</b><span class="bc-k">人気との差</span></div>{% endif %}
+{% if _idx.v is not none %}<div class="bc-cell"><b>{{_idx.v}}位</b><span class="bc-k">AI順位</span></div>{% endif %}
+</div>
+{% endif %}
+{% if _rk or _conf not in _blank %}
+<div class="bc-metrics bc-2">
+{% if _rk %}<div class="bc-cell bc-letter"><b>{{_rk}}</b><span class="bc-k">AI評価</span></div>{% endif %}
+{% if _conf not in _blank %}<div class="bc-cell"><b>{{'%g'|format(_conf|float)}}%</b><span class="bc-k">信頼度</span></div>{% endif %}
+</div>
+{% endif %}
+{% if _edge_pp not in _blank %}
+<div class="bc-edge">実エッジ <b>{{'%+.1f'|format(_edge_pp|float)}}pp</b></div>
+{% endif %}
+{% if linked %}
+</a>
+{% else %}
+</article>
 {% endif %}
 {% if _reasons %}
-<div class="bc-reasons-title">BUY理由</div>
-<ul class="bc-reasons">
-{% for tip in _reasons[:4] %}
+<section class="buy-why">
+<h4>BUY理由</h4>
+<ul>
+{% for tip in _reasons %}
 {% if (tip ~ '')|trim %}<li>{{(tip ~ '')|trim}}</li>{% endif %}
 {% endfor %}
 </ul>
+</section>
 {% endif %}
-{% if _plus or _minus %}
-<div class="bc-factors">
-{% for p in _plus[:2] %}<div class="bc-plus">{{p}}</div>{% endfor %}
-{% for m in _minus[:2] %}<div class="bc-minus">{{m}}</div>{% endfor %}
+{% if _grounds %}
+<section class="buy-grounds">
+<h4>BUY根拠</h4>
+<ul>
+{% for g in _grounds %}
+{% if (g ~ '')|trim and '実エッジ' not in (g ~ '') %}<li>{{(g ~ '')|trim}}</li>{% endif %}
+{% endfor %}
+</ul>
+</section>
+{% endif %}
+{% endmacro %}
+{% macro field_horse_row(p, race) %}
+  {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = p.get('単勝オッズ表示') if p.get('単勝オッズ表示') not in _blank else _card.get('単勝オッズ') %}
+  {% set _rank = p.get('AI順位') %}
+  {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
+  {% set _ban = p.get('馬番表示') or p.get('馬番') %}
+<a class="field-card" href="#race-{{race['race_id']}}" data-open-race="race-{{race['race_id']}}">
+<div class="fc-judge">見送り</div>
+<div class="fc-horse">
+{% if _ban %}<span class="fc-ban">{{_ban}}</span>{% endif %}
+{% if p.get('馬名') %}<span class="fc-name">{{p.get('馬名')}}</span>{% endif %}
+</div>
+{% if _ev not in _blank or _od not in _blank or _rank not in _blank %}
+<div class="fc-meta">
+{% if _ev not in _blank %}<span>期待値 <b>{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</b></span>{% endif %}
+{% if _od not in _blank %}<span>オッズ <b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b></span>{% endif %}
+{% if _rank not in _blank %}<span>AI順位 <b>{{_rank}}{% if '位' not in (_rank ~ '') %}位{% endif %}</b></span>{% endif %}
 </div>
 {% endif %}
-{% if _risks %}
-<div class="bc-risk"><b>リスク</b> {{ _risks[:3]|join(' · ') }}</div>
-{% endif %}
-<div class="bc-more">詳細予想を見る →</div>
 </a>
+{% endmacro %}
+<div class="buy-head">
+<h2>🔥 BUY</h2>
+<p class="buy-sub">本命判定の買いのみ・{{_buys_sorted|length}}件</p>
+</div>
+<p class="fx-sr">表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因</p>
+<div class="buy-card-grid">
+{% for t in _buys_sorted %}
+<article class="race-pack">
+<h3 class="race-pack-title">{{t.get('開催地') or '—'}}{% if t.get('レース') is not none %}{{t['レース']|int}}R{% endif %}</h3>
+{{ buy_horse_card(t, true) }}
+<div class="field-list">
+{% set _others = namespace(v=[], extra=[]) %}
+{% for p in (t.get('AI一覧') or t.get('予想馬') or []) %}
+{% if not p.get('BUY表示') %}
+  {% if _others.v|length < 3 %}{% set _ = _others.v.append(p) %}
+  {% else %}{% set _ = _others.extra.append(p) %}{% endif %}
+{% endif %}
+{% endfor %}
+{% for p in _others.v %}{{ field_horse_row(p, t) }}{% endfor %}
+{% if _others.extra %}
+<details class="field-more">
+<summary>他 {{_others.extra|length}}頭を見る</summary>
+{% for p in _others.extra %}{{ field_horse_row(p, t) }}{% endfor %}
+</details>
+{% endif %}
+</div>
+</article>
 {% endfor %}
 </div>
 </section>
 {% else %}
-<section class="buy-empty-card" aria-label="買いなし">
+<section class="buy-empty-card" id="predict-targets" aria-label="買いなし">
 <h3>本日は買いなし</h3>
-<p>期待値条件を満たすレースがありません</p>
+<p>表示期待値・勝負ランクS/A・信頼度の条件をすべて満たす買いがありません</p>
 </section>
 {% endif %}
 
 {% if _watch_sorted %}
-<section class="sec-block" aria-label="注目">
-<h2>⭐ 注目<small>BUYではないが期待値を確認できるレース · {{_watch_sorted|length}}件</small></h2>
+<section class="sec-block" aria-label="見送り">
+<h2>見送り<small>BUYではないが期待値を確認できるレース · {{_watch_sorted|length}}件</small></h2>
 <div class="watch-grid">
 {% for t in _watch_sorted %}
-  {% set _ai_rank = namespace(v='—') %}
-  {% for _p in (t.get('予想馬') or []) %}
-    {% if (_p.get('馬名') or '') == (t.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
-      {% set _ai_rank.v = _p.get('AI順位') or loop.index %}
-    {% endif %}
-  {% endfor %}
+  {% set _idx = namespace(v=None) %}
+  {% if t.get('近走指数順位') not in [None, '', '—'] %}
+    {% set _idx.v = t.get('近走指数順位')|int %}
+  {% endif %}
   {% set _conf = t.get('レース信頼度スコア') or t.get('AI信頼度スコア') %}
   {% set _ev_disp = ((t.get('期待回収率短') or t.get('期待値表示') or t.get('期待値') or '—') ~ '')|replace('%','') %}
 <a class="watch-card" href="#race-{{t['race_id']}}" data-open-race="race-{{t['race_id']}}">
 <div class="wc-top">
 <div class="wc-race">{{t.get('開催地') or '—'}}{% if t.get('レース') is not none %}{{t['レース']|int}}R{% endif %}</div>
-<span class="judge-pill watch">⭐ 注目</span>
+<span class="judge-pill skip">見送り</span>
 </div>
 <div class="wc-horse">{% if t.get('本命馬番') %}{{t.get('本命馬番')}}　{% endif %}{{t.get('本命') or '—'}}</div>
 <div class="wc-meta">
-<div><b>{{_ev_disp}}</b><small>期待値</small></div>
+<div><b>{{_ev_disp}}</b><small>表示期待値</small></div>
 <div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
 <div><b>{% if t.get('本命オッズ') is not none %}{{t.get('本命オッズ')}}倍{% else %}—{% endif %}</b><small>オッズ</small></div>
-<div><b>{% if _ai_rank.v != '—' %}{{_ai_rank.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
+<div><b>{% if _idx.v is not none %}{{_idx.v}}位{% else %}—{% endif %}</b><small>AI順位</small></div>
 </div>
 </a>
 {% endfor %}
@@ -1141,126 +1513,184 @@ details.race-acc[open]>.race-acc-body{display:block}
 </details>
 {% endif %}
 
-{% set _ap = areru_pipeline if areru_pipeline is defined and areru_pipeline else {} %}
-{% if _ap.get('あり') %}
-<section class="areru-picks" id="areru-pipeline" aria-label="AREru指数 本命一覧">
-<h2>AREru指数 本命一覧（{{_ap.get('件数')}}R）</h2>
-<div class="ap-meta">開催日 {{_ap.get('開催日') or 'データなし'}}{% if _ap.get('更新') %} · 更新 {{_ap.get('更新')}}{% endif %}</div>
-<div class="ap-list">
-{% for row in _ap.get('行') or [] %}
-<div class="ap-row">
-<div class="ap-no">{{row.get('レース')}}R</div>
-<div class="ap-main">
-<div class="ap-horse">{{row.get('本命') or 'データなし'}}</div>
-<div class="ap-sub">{{row.get('判定') or 'データなし'}}{% if row.get('荒れ度') is not none %} · 荒れ度 {{row.get('荒れ度')}}{% endif %}</div>
-</div>
-<div class="ap-nums">
-<div class="ap-odds">{% if row.get('本命オッズ') is not none %}{{row.get('本命オッズ')}}倍{% else %}データなし{% endif %}</div>
-<div class="ap-index">AREru {% if row.get('AREru指数') is not none %}{{row.get('AREru指数')}}{% else %}データなし{% endif %}</div>
-</div>
-</div>
-{% endfor %}
-</div>
-</section>
-{% endif %}
-
-<details class="detail-fold" id="predict-race-panel">
-<summary>馬券・詳細予想を開く{% if selected_venue %} · {{selected_venue}}{% endif %}</summary>
-<div class="race-acc-list" id="predict-acc-list">
+<div class="fx-races" id="predict-acc-list">
 {% for r in _races_ordered %}
   {% set _is_prod_buy = ('' ~ (r.get('投資判定') or '')).startswith('買い') %}
   {% set _ev_n = namespace(v=none) %}
   {% if r.get('期待値') is not none and ('' ~ r.get('期待値'))|trim not in ('', '—', '-', 'None', 'nan') %}
     {% set _ev_n.v = ('' ~ r.get('期待値'))|replace('%','')|float %}
   {% endif %}
-  {% if _is_prod_buy %}{% set _race_judge = 'buy' %}
-  {% elif _ev_n.v is not none and _ev_n.v >= P1_EV_WATCH %}{% set _race_judge = 'watch' %}
-  {% else %}{% set _race_judge = 'skip' %}{% endif %}
   {% set _conf = r.get('レース信頼度スコア') or r.get('AI信頼度スコア') %}
-  {% set _ai_rank = namespace(v='—') %}
-  {% for _p in (r.get('予想馬') or []) %}
-    {% if (_p.get('馬名') or '') == (r.get('本命') or '') or (_p.get('役割') or '') == '本命' %}
-      {% set _ai_rank.v = _p.get('AI順位') or loop.index %}
+  {% set _picks = r.get('予想馬') or [] %}
+  {% set _roles = namespace(hon=none, tai=none, tan=none, watch=none) %}
+  {% for p in _picks %}
+    {% if (p.get('役割') or '') == '本命' and _roles.hon is none %}{% set _roles.hon = p %}
+    {% elif (p.get('役割') or '') == '対抗' and _roles.tai is none %}{% set _roles.tai = p %}
+    {% elif (p.get('役割') or '') == '穴馬' and _roles.tan is none %}{% set _roles.tan = p %}
+    {% elif (p.get('役割') or '') == '注目馬' and _roles.watch is none %}{% set _roles.watch = p %}
     {% endif %}
   {% endfor %}
-<details class="race-acc predict-acc" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-judge="{{_race_judge}}">
-<summary class="race-acc-toggle">
-<div class="list-race">
-<span class="race-name">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %}{% if not selected_venue and r.get('開催地') %} {{r.get('開催地')}}{% endif %}</span>
-{% if _race_judge == 'buy' %}<span class="judge-pill buy">🔥 BUY</span>
-{% elif _race_judge == 'watch' %}<span class="judge-pill watch">⭐ 注目</span>
-{% else %}<span class="judge-pill skip">○ 見送り</span>{% endif %}
-</div>
-<div class="simple-summary" style="margin-top:8px">
-<div class="ss-row">
-<span class="ss-main">{{r.get('本命表示') or r.get('本命') or '—'}}</span>
-<span class="ss-invest {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定表示') or r.get('投資判定') or '—'}}</span>
-</div>
-<div class="ss-row">
-<span class="ss-ev {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}</span>
-<span class="ss-rank">信頼度 {% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %} · AI{% if _ai_rank.v != '—' %}{{_ai_rank.v}}{% else %}—{% endif %}位</span>
-</div>
-</div>
-</summary>
-<div class="race-acc-body">
-<section class="race {{r['荒れクラス']}}">
-<div class="race-head">
-<div class="venue">{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %} {{r.get('開催地') or ''}}<small>詳細予想</small></div>
-<div class="race-head-right">
-{% if _race_judge == 'buy' %}<span class="judge-pill buy">🔥 BUY</span>
-{% elif _race_judge == 'watch' %}<span class="judge-pill watch">⭐ 注目</span>
-{% else %}<span class="judge-pill skip">○ 見送り</span>{% endif %}
-</div>
-</div>
-<div class="betbar">
-<span class="ev-main {{r.get('期待値トーン','ev-none')}}">{{r.get('期待回収率短') or r.get('期待値表示') or '—'}}<small>期待値</small></span>
-<span class="invest-pill {{r.get('投資判定トーン','wait')}}">{{r.get('投資判定表示') or r.get('投資判定') or '—'}}</span>
-</div>
-
-<div class="section" style="padding-top:12px">
-<div class="section-title">評価馬</div>
-{% set _picks = r.get('予想馬') or [] %}
-{% if _picks %}
-<div class="horse-table-p1">
-{% for p in _picks %}
-  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
-  {% set _ev_raw = _card.get('期待値') if _card.get('期待値') is not none else p.get('期待値') %}
-  {% set _odds_raw = _card.get('単勝オッズ') if _card.get('単勝オッズ') is not none else none %}
-  {% set _ev_n = namespace(v=none) %}
-  {% if _ev_raw is not none and ('' ~ _ev_raw)|trim not in ('', '—', '-', 'None', 'nan') %}
-    {% set _ev_n.v = ('' ~ _ev_raw)|replace('%','')|float %}
-  {% endif %}
-  {% set _od_ok = false %}
-  {% set _odds_disp = '—' %}
-  {% if _odds_raw is not none and ('' ~ _odds_raw)|trim not in ('', '—', '-', 'None', 'nan') %}
-    {% set _odds_disp = ('' ~ _odds_raw)|replace('倍','') %}
-    {% if (_odds_disp|float) > 0 %}{% set _od_ok = true %}{% endif %}
-  {% endif %}
-  {% set _is_axis = (_is_prod_buy and (((p.get('馬名') or '') == (r.get('本命') or '')) or ((p.get('役割') or '') == '本命'))) %}
-  {% set _ev_tone = 'ev-hi' if (_ev_n.v is not none and _ev_n.v >= 115) else ('ev-mid' if (_ev_n.v is not none and _ev_n.v >= P1_EV_WATCH) else 'ev-lo') %}
-<div class="ht-row">
-<div class="ht-a">
-<span class="ht-ban">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
-<span class="ht-name">{{p.get('馬名') or '—'}}</span>
-{% if _is_axis %}<span class="judge-pill buy">🔥 BUY</span>{% endif %}
-</div>
-<div class="ht-b">
-<span><b>{{_odds_disp}}{% if _od_ok %}倍{% endif %}</b><small>オッズ</small></span>
-<span><b>{{p.get('AI評価') or '—'}}</b><small>AI評価</small></span>
-<span class="{{_ev_tone}}"><b>{% if _ev_n.v is not none %}{{'%g'|format(_ev_n.v)}}%{% else %}—{% endif %}</b><small>期待値</small></span>
-<span><b>AI{{p.get('AI順位') or loop.index}}</b><small>参考</small></span>
-</div>
-</div>
+  {% if _roles.tan is none %}{% set _roles.tan = _roles.watch %}{% endif %}
+  {% set _surface = r.get('芝ダ') or r.get('馬場種別') %}
+  {% set _dist = r.get('距離') or r.get('距離表示') %}
+  {% set _track = r.get('馬場状態') or r.get('馬場') %}
+  {% set _start = r.get('発走時刻') or r.get('発走') or r.get('発走時間') %}
+  {% set _ev_disp = r.get('期待回収率短') or r.get('期待値表示') or r.get('期待値') or '—' %}
+  {% set _rows = r.get('AI一覧') or _picks %}
+  {% set _buy_n = namespace(v=0) %}
+  {% for _bp in _rows %}
+    {% if _bp.get('BUY表示') %}{% set _buy_n.v = _buy_n.v + 1 %}{% endif %}
+  {% endfor %}
+  {% set _buy_pack = r.get('BUY根拠') if r.get('BUY根拠') is mapping else {} %}
+  {% set _buy_reasons = r.get('AI買い理由') if r.get('AI買い理由') is sequence else [] %}
+<article class="fx-race" id="race-{{r['race_id']}}" data-race-id="{{r.get('race_id','')}}" data-race-rank="{{r.get('勝負ランク','')}}" data-race-no="{% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}" data-race-judge="{% if _is_prod_buy %}buy{% else %}skip{% endif %}">
+{% if _is_prod_buy and buy_horse_card is defined %}
+<h3 class="race-pack-title">{{r.get('開催地') or '—'}}{% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}</h3>
+{{ buy_horse_card(r, false) }}
+<div class="field-list">
+{% for p in _rows %}
+{% if not p.get('BUY表示') and field_horse_row is defined %}{{ field_horse_row(p, r) }}{% endif %}
 {% endfor %}
 </div>
+{% endif %}
+{% if _is_prod_buy %}<details class="fx-rank-fold"><summary>全馬ランキング・レース分析</summary>{% endif %}
+
+<section class="fx-hero">
+<div class="fx-hero-kicker">
+<span>{% if r.get('開催日') %}{{r.get('開催日')}}{% else %}{{selected_date}}{% endif %}{% if r.get('開催地') %} · {{r.get('開催地')}}{% endif %}</span>
+</div>
+<h2>{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% endif %}</h2>
+<div class="fx-hero-meta">
+{% if _start not in _blank %}<div class="fx-chip"><b>{{_start}}</b><small>発走</small></div>{% endif %}
+{% if _surface not in _blank %}<div class="fx-chip"><b>{{_surface}}</b><small>芝/ダート</small></div>{% endif %}
+{% if _dist not in _blank %}<div class="fx-chip"><b>{{_dist}}</b><small>距離</small></div>{% endif %}
+{% if r.get('データ頭数') not in _blank %}<div class="fx-chip"><b>{{r.get('データ頭数')|int}}頭</b><small>頭数</small></div>
+{% elif r.get('表示頭数') not in _blank %}<div class="fx-chip"><b>{{r.get('表示頭数')|int}}頭</b><small>頭数</small></div>{% endif %}
+</div>
+<div class="fx-hero-hl">
+<div><small>本命</small><b>{% if _roles.hon %}{% if _roles.hon.get('馬番表示') or _roles.hon.get('馬番') %}{{_roles.hon.get('馬番表示') or _roles.hon.get('馬番')}} {% endif %}{{_roles.hon.get('馬名') or '—'}}{% else %}{{r.get('本命表示') or r.get('本命') or '—'}}{% endif %}</b></div>
+<div><small>対抗</small><b>{% if _roles.tai %}{% if _roles.tai.get('馬番表示') or _roles.tai.get('馬番') %}{{_roles.tai.get('馬番表示') or _roles.tai.get('馬番')}} {% endif %}{{_roles.tai.get('馬名') or '—'}}{% else %}—{% endif %}</b></div>
+</div>
+<div class="fx-hero-foot">
+<div><b class="{% if _buy_n.v %}buy{% endif %}">{{_buy_n.v}}件</b><small>BUY</small></div>
+<div><b class="{% if _ev_n.v is not none and _ev_n.v >= 100 %}hot{% endif %}">{{_ev_disp}}</b><small>最大期待値</small></div>
+</div>
+</section>
+
+<section class="race-sum fx-sum">
+<h3>予想サマリー</h3>
+<div class="race-sum-grid">
+<div><b>{% if _roles.hon %}{% if _roles.hon.get('馬番表示') or _roles.hon.get('馬番') %}{{_roles.hon.get('馬番表示') or _roles.hon.get('馬番')}} {% endif %}{{_roles.hon.get('馬名') or '—'}}{% else %}{{r.get('本命表示') or r.get('本命') or '—'}}{% endif %}</b><small>本命</small></div>
+<div><b>{% if _roles.tai %}{% if _roles.tai.get('馬番表示') or _roles.tai.get('馬番') %}{{_roles.tai.get('馬番表示') or _roles.tai.get('馬番')}} {% endif %}{{_roles.tai.get('馬名') or '—'}}{% else %}—{% endif %}</b><small>対抗</small></div>
+<div class="{% if _is_prod_buy %}is-buy{% endif %}"><b>{% if _is_prod_buy %}🔥 BUY{% else %}見送り{% endif %}</b><small>BUY</small></div>
+<div><b>{{_ev_disp}}</b><small>期待値</small></div>
+<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+</div>
+</section>
+
+<section class="fx-ai-wrap">
+<h3>全馬ランキング</h3>
+{% if _rows %}
+{% for p in _rows %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = namespace(v=p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ')) %}
+  {% if _od.v in _blank and (p.get('役割') or '') == '本命' %}{% set _od.v = r.get('本命オッズ') %}{% endif %}
+  {% set _odds_disp = (('' ~ _od.v)|replace('倍','') ~ '倍') if _od.v not in _blank else '—' %}
+  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
+  {% set _pe = namespace(v=none) %}
+  {% if p.get('BUY表示') %}{% set _pe.v = _ev_disp %}
+  {% elif _ev_raw not in _blank %}{% set _pe.v = (_ev_raw ~ '') %}
+  {% endif %}
+  {% set _row_n = namespace(v=none) %}
+  {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _row_n.v = (_pe.v ~ '')|replace('%','')|float %}
+  {% endif %}
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+  {% set _rank = p.get('AI順位') %}
+  {% set _grade = p.get('AI評価') or p.get('予想スコア') %}
+  {% set _gkey = (_grade ~ '')|trim|upper %}
+  {% set _sc = _conf if p.get('BUY表示') else (_pconf if _pconf not in _blank else _conf) %}
+<button type="button" class="fx-hrow{% if p.get('BUY表示') %} buy{% endif %}" data-horse-i="{{loop.index0}}">
+<div class="fx-hrow-top">
+<span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
+<div class="nm">{{p.get('馬名') or '—'}}{% if _sc not in _blank %}<small>信頼度 {{'%g'|format(_sc|float)}}%</small>{% endif %}</div>
+{% if p.get('BUY表示') %}<span class="mini buy">🔥 BUY</span>{% else %}<span class="mini skip">見送り</span>{% endif %}
+</div>
+<div class="fx-hrow-metrics">
+<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
+<div><b>{% if _grade not in _blank %}<span class="gpill{% if _gkey[:1] in ['S','A','B','C','D'] %} g-{{_gkey[:1]|lower}}{% endif %}">{{_grade}}</span>{% else %}—{% endif %}</b><small>AI評価</small></div>
+<div><b class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}">{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b><small>期待値</small></div>
+<div><b>{% if _rank not in _blank %}AI{{_rank}}{% else %}—{% endif %}</b><small>AI順位</small></div>
+</div>
+</button>
+{% if p.get('BUY表示') and _is_prod_buy %}
+<details class="fx-why">
+<summary>BUY理由を見る</summary>
+<div class="fx-why-body">
+{% if r.get('勝負ランク') not in _blank %}<div><small>勝負ランク</small><b>{{r.get('勝負ランク')}}</b></div>{% endif %}
+{% set _edge = _buy_pack.get('実エッジpp') if _buy_pack.get('実エッジpp') not in _blank else r.get('実エッジpp') %}
+{% if _edge not in _blank %}<div><small>実エッジ</small><b>{{'%+.1f'|format(_edge|float)}}pp</b></div>{% endif %}
+{% set _q = _buy_pack.get('BUY品質スコア') if _buy_pack.get('BUY品質スコア') not in _blank else r.get('BUY品質スコア') %}
+{% if _q not in _blank %}<div><small>品質スコア</small><b>{{_q}}</b></div>{% endif %}
+{% if _ev_disp not in _blank %}<div><small>表示期待値</small><b>{{_ev_disp}}</b></div>{% endif %}
+{% for x in _buy_reasons %}
+<div class="fx-why-note">{{x}}</div>
+{% endfor %}
+</div>
+</details>
+{% endif %}
+{% endfor %}
 {% else %}
 <div class="reason">予想馬データがありません</div>
 {% endif %}
-</div>
+</section>
 
+{% if _rows %}
+{% for p in _rows %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = namespace(v=p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ')) %}
+  {% if _od.v in _blank and (p.get('役割') or '') == '本命' %}{% set _od.v = r.get('本命オッズ') %}{% endif %}
+  {% set _odds_disp = (('' ~ _od.v)|replace('倍','') ~ '倍') if _od.v not in _blank else '—' %}
+  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
+  {% set _pe = namespace(v=none) %}
+  {% if p.get('BUY表示') %}{% set _pe.v = _ev_disp %}
+  {% elif _ev_raw not in _blank %}{% set _pe.v = (_ev_raw ~ '') %}
+  {% endif %}
+  {% set _row_n = namespace(v=none) %}
+  {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _row_n.v = (_pe.v ~ '')|replace('%','')|float %}
+  {% endif %}
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+<section class="fx-detail" data-horse-detail="{{loop.index0}}">
+<div class="fx-dtop">
+<div>
+<div class="fx-dname"><span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}{% if p.get('役割') %} · {{p.get('役割')}}{% endif %}</small></div>
+</div>
+{% if p.get('BUY表示') %}<span class="fx-buy-btn buy">🔥 BUY</span>{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
+</div>
+<div class="fx-dmetrics">
+<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
+<div><b class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}">{% if p.get('BUY表示') %}{{_ev_disp}}{% elif _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b><small>{% if p.get('BUY表示') %}表示期待値{% else %}期待値{% endif %}</small></div>
+<div><b>{{p.get('AI評価') or p.get('予想スコア') or '—'}}</b><small>AI評価</small></div>
+<div><b>{% if p.get('BUY表示') %}{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+</div>
+<div class="fx-facs">
+<div class="fx-fac plus"><h4>プラス要因</h4>
+{% if p.get('プラス要因') %}<ul>{% for x in p.get('プラス要因') %}<li>{{x}}</li>{% endfor %}</ul>{% else %}<div class="fx-empty">表示できる要因はありません</div>{% endif %}
+</div>
+<div class="fx-fac minus"><h4>マイナス要因</h4>
+{% if p.get('マイナス要因') %}<ul>{% for x in p.get('マイナス要因') %}<li>{{x}}</li>{% endfor %}</ul>{% else %}<div class="fx-empty">表示できる要因はありません</div>{% endif %}
+</div>
+</div>
+</section>
+{% endfor %}
+{% endif %}
+
+<button type="button" class="fx-anal" data-fx-anal>📄 レース分析を見る <span>＞</span></button>
+<div class="fx-analysis">
 {% set pace = r.get('展開予想データ') if r.get('展開予想データ') is mapping else {} %}
 {% if pace %}
-<div class="section">
+<div class="section" style="padding:0 0 12px;border:0">
 <div class="ai-card">
 <h3>展開予想</h3>
 <div class="kv">
@@ -1271,8 +1701,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 </div>
 </div>
 {% endif %}
-
-<div class="section">
+<div class="section" style="padding:0;border:0">
 <div class="section-title gold">推奨馬券</div>
 <div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '単勝'}}</strong><p>{{r.get('馬券戦略理由') or '地方は単勝・馬連・ワイドのシンプル買いを優先'}}</p></div>
 {% set tickets = r.get('推奨馬券一覧') or [] %}
@@ -1329,44 +1758,114 @@ details.race-acc[open]>.race-acc-body{display:block}
 {% endif %}
 {% endif %}
 </div>
-<div class="beta">期待値が最重要です · AI順位だけではBUYにしません · BUY 0件も正常</div><div class="toplink"><a href="#top">↑ TODAY'S AI へ戻る</a></div>
-</section>
+<div class="beta">期待値が最重要です · AI順位だけではBUYにしません · BUY 0件も正常</div>
 </div>
-</details>
+{% if _is_prod_buy %}</details>{% endif %}
+</article>
 {% endfor %}
 </div>
-</details>
+
+{% set _ap = areru_pipeline if areru_pipeline is defined and areru_pipeline else {} %}
+{% if mode != 'predict' and _ap.get('あり') %}
+<section class="areru-picks" id="areru-pipeline" aria-label="AREru指数 本命一覧">
+<h2>AREru指数 本命一覧（{{_ap.get('件数')}}R）</h2>
+<div class="ap-meta">開催日 {{_ap.get('開催日') or 'データなし'}}{% if _ap.get('更新') %} · 更新 {{_ap.get('更新')}}{% endif %}</div>
+<div class="ap-list">
+{% for row in _ap.get('行') or [] %}
+<div class="ap-row">
+<div class="ap-no">{{row.get('レース')}}R</div>
+<div class="ap-main">
+<div class="ap-horse">{{row.get('本命') or 'データなし'}}</div>
+<div class="ap-sub">{{row.get('判定') or 'データなし'}}{% if row.get('荒れ度') is not none %} · 荒れ度 {{row.get('荒れ度')}}{% endif %}</div>
+</div>
+<div class="ap-nums">
+<div class="ap-odds">{% if row.get('本命オッズ') is not none %}{{row.get('本命オッズ')}}倍{% else %}データなし{% endif %}</div>
+<div class="ap-index">AREru {% if row.get('AREru指数') is not none %}{{row.get('AREru指数')}}{% else %}データなし{% endif %}</div>
+</div>
+</div>
+{% endfor %}
+</div>
+</section>
+{% endif %}
+
 <script>
 (function(){
   try{
   var list=document.getElementById('predict-acc-list');
   if(!list) return;
-  var detailFold=document.getElementById('predict-race-panel');
+  var races=[].slice.call(list.querySelectorAll('.fx-race'));
 
-  function openCard(card, scroll){
+  function showRace(card, scroll){
     if(!card) return;
-    if(detailFold && detailFold.tagName === 'DETAILS') detailFold.open=true;
-    [].forEach.call(list.querySelectorAll('details.race-acc[open]'), function(other){
-      if(other!==card) other.open=false;
+    list.classList.add('is-open');
+    document.body.classList.add('race-open');
+    races.forEach(function(el){
+      el.classList.toggle('is-on', el===card);
+      if(el!==card){
+        [].forEach.call(el.querySelectorAll('.fx-detail.is-on, .fx-hrow.is-on, .fx-analysis.is-on'), function(x){
+          x.classList.remove('is-on');
+        });
+      }
     });
-    card.open=true;
+    var idx=races.indexOf(card);
+    [].forEach.call(document.querySelectorAll('[data-fx-prev]'), function(b){ b.disabled = idx<=0; });
+    [].forEach.call(document.querySelectorAll('[data-fx-next]'), function(b){ b.disabled = idx<0 || idx>=races.length-1; });
+    [].forEach.call(document.querySelectorAll('[data-fx-now]'), function(el){
+      el.textContent = card.getAttribute('data-race-no') || '—';
+    });
     if(scroll){
       try{ card.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){ card.scrollIntoView(true); }
     }
   }
 
-  // details/summary は JS なしでも開く。ここでは「1枚だけ開く」補助のみ
-  list.addEventListener('toggle', function(e){
-    var card=e.target;
-    if(!card || !card.classList || !card.classList.contains('race-acc')) return;
-    if(card.open){
-      [].forEach.call(list.querySelectorAll('details.race-acc[open]'), function(other){
-        if(other!==card) other.open=false;
-      });
-    }
-  });
-
   document.addEventListener('click', function(e){
+    var prev=e.target.closest('[data-fx-prev]');
+    var next=e.target.closest('[data-fx-next]');
+    if(prev || next){
+      e.preventDefault();
+      var cur=races.filter(function(r){return r.classList.contains('is-on');})[0];
+      var n=cur ? races.indexOf(cur) : -1;
+      var j=prev ? Math.max(0, n<0 ? 0 : n-1) : (n<0 ? 0 : Math.min(races.length-1, n+1));
+      if(races[j]){
+        showRace(races[j], true);
+        if(history && history.replaceState){
+          try{ history.replaceState(null,'','#'+races[j].id); }catch(err){}
+        }
+      }
+      return;
+    }
+    var row=e.target.closest('[data-horse-i]');
+    if(row && list.contains(row.closest('.fx-race'))){
+      var race=row.closest('.fx-race');
+      var hi=row.getAttribute('data-horse-i');
+      var wasOn=row.classList.contains('is-on');
+      [].forEach.call(race.querySelectorAll('[data-horse-i]'), function(el){
+        el.classList.remove('is-on');
+      });
+      [].forEach.call(race.querySelectorAll('.fx-detail'), function(el){
+        el.classList.remove('is-on');
+      });
+      if(!wasOn){
+        row.classList.add('is-on');
+        var detail=race.querySelector('.fx-detail[data-horse-detail="'+hi+'"]');
+        if(detail){
+          detail.classList.add('is-on');
+          var after=row.nextElementSibling;
+          if(after && after.classList && after.classList.contains('fx-why')) after=after.nextSibling;
+          if(row.parentNode && detail !== after){
+            row.parentNode.insertBefore(detail, after || null);
+          }
+          try{ detail.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(err){}
+        }
+      }
+      return;
+    }
+    var anal=e.target.closest('[data-fx-anal]');
+    if(anal){
+      var panel=anal.parentElement && anal.parentElement.querySelector('.fx-analysis');
+      if(panel) panel.classList.toggle('is-on');
+      return;
+    }
     var a=e.target.closest('[data-open-race]');
     if(!a) return;
     var id=a.getAttribute('data-open-race');
@@ -1374,7 +1873,7 @@ details.race-acc[open]>.race-acc-body{display:block}
     var card=document.getElementById(id);
     if(!card || !list.contains(card)) return;
     e.preventDefault();
-    openCard(card, true);
+    showRace(card, true);
     if(history && history.replaceState){
       try{ history.replaceState(null,'','#'+id); }catch(err){}
     }
@@ -1383,17 +1882,37 @@ details.race-acc[open]>.race-acc-body{display:block}
   function openFromHash(){
     var id=(location.hash||'').replace(/^#/,'');
     if(!id) return;
+    if(id==='predict-targets'){
+      list.classList.remove('is-open');
+      document.body.classList.remove('race-open');
+      races.forEach(function(el){ el.classList.remove('is-on'); });
+      var board=document.getElementById('predict-targets');
+      if(board){
+        try{ board.scrollIntoView({behavior:'smooth', block:'start'}); }catch(err){}
+      }
+      return;
+    }
     var card=document.getElementById(id);
-    if(card && list.contains(card)) openCard(card, true);
+    if(card && list.contains(card)) showRace(card, true);
   }
   openFromHash();
   window.addEventListener('hashchange', openFromHash);
+  if(!list.classList.contains('is-open')){
+    var buyRace=races.filter(function(r){return r.getAttribute('data-race-judge')==='buy';})[0] || races[0];
+    if(buyRace){
+      [].forEach.call(document.querySelectorAll('[data-fx-now]'), function(el){
+        el.textContent = buyRace.getAttribute('data-race-no') || 'BUY';
+      });
+      [].forEach.call(document.querySelectorAll('[data-fx-prev]'), function(b){ b.disabled = true; });
+      [].forEach.call(document.querySelectorAll('[data-fx-next]'), function(b){ b.disabled = races.length<=1; });
+    }
+  }
 
   function yen(n){ return (Math.round(n/100)*100).toLocaleString('ja-JP')+'円'; }
   function renderFund(box){
     var input=box.querySelector('[data-fund-input]');
     var out=box.querySelector('[data-fund-alloc]');
-    var section=box.closest('.section') || box.parentElement;
+    var section=box.closest('.fx-analysis') || box.closest('.section') || box.parentElement;
     var items=section ? [].slice.call(section.querySelectorAll('[data-fund-item]')) : [];
     var tickets=items.map(function(el){
       return {
