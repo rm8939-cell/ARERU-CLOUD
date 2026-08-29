@@ -4,7 +4,7 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
 <meta http-equiv="Cache-Control" content="no-store, max-age=0">
-<meta name="areu-ui" content="app-v8">
+<meta name="areu-ui" content="app-v9">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
@@ -404,7 +404,8 @@ body.app-race:not(.race-open) .fx-nav{display:none !important}
 .field-card .fc-meta span{display:block;background:#f7f8fa;border-radius:12px;padding:8px 6px;font-size:12px;font-weight:800;color:#5c6b78;text-align:center;min-width:0}
 .field-card .fc-meta b{display:block;margin-top:2px;font-size:14px;font-weight:900;color:#0a1a3a;word-break:break-word}
 .buy-head{margin:4px 0 16px}
-.buy-head h2{margin:0;font-size:17px;font-weight:900;color:#145c37;line-height:1.35;background:#e8f6ee;border:1px solid #bbf7d0;border-radius:999px;padding:12px 16px;display:block;max-width:100%;box-sizing:border-box;word-break:break-word}
+.buy-head h2{margin:0;font-size:40px;font-weight:900;color:#102016;line-height:1.05;background:transparent;border:0;border-radius:0;padding:0;display:block;max-width:100%;box-sizing:border-box;word-break:break-word}
+.buy-head .buy-sub{margin:8px 0 0;font-size:16px;font-weight:800;color:#4d6156;line-height:1.4}
 .fx-race[data-race-judge="buy"] > .fx-hero,
 .fx-race[data-race-judge="buy"] > .fx-sum{display:none !important}
 body.race-open .buy-board,
@@ -523,7 +524,7 @@ body.app-race .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-rig
 .fx-venue-form select[name="venue"]{flex:1 1 auto;width:7.5em}
 .fx-icons{display:flex;gap:6px;align-items:center}
 .fx-icon{width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);color:#fff;text-decoration:none;font-size:13px;font-weight:900}
-body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back{display:none !important}
+body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back,body.app-race .areru-picks,body.app-race .today-hero{display:none !important}
 .fx-sr{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .fx-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px 0}
 .fx-nav a,.fx-nav button,.fx-nav-now{width:100%;min-width:0;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 4px;border-radius:11px;background:#fff;border:1px solid var(--line);color:var(--navy);font-size:12px;font-weight:850;line-height:1;white-space:nowrap;overflow:visible;text-decoration:none;box-shadow:0 2px 8px rgba(10,26,58,.06);cursor:pointer}
@@ -653,7 +654,7 @@ body.app-race:not(.picker) .fx-venue-form select[name="date"]{display:none}
 body.app-race .fx-icon{background:#fff;border:1px solid #cfe5d6;color:#145c37}
 body.app-race .fx-icons .fx-icon:first-child{display:inline-flex}
 body.app-race .fx-icons .fx-icon:last-child{display:none}
-body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back{display:none !important}
+body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back,body.app-race .areru-picks,body.app-race .today-hero{display:none !important}
 body.app-race .venue-panel{background:transparent;border:0;border-radius:0;margin:12px 0 20px;overflow:visible}
 body.app-race .venue-panel>h2{font-size:22px;font-weight:900;letter-spacing:0;text-transform:none;color:#102016;padding:8px 2px 4px}
 body.app-race .venue-panel>p{font-size:15px;color:#4d6156;padding:0 2px 14px}
@@ -662,7 +663,9 @@ body.app-race .venue-row{background:#fff;border:1px solid #d7e8dc;border-radius:
 body.app-race .venue-row-name{font-size:22px;font-weight:900;color:#102016}
 body.app-race .venue-row-name small{font-size:13px;color:#4d6156}
 body.app-race .venue-chip.open-chip{background:#e7f6ee;border-color:#bbf7d0;color:#145c37;border-radius:999px;padding:8px 12px;font-size:13px}
-body.app-race .buy-head h2{font-size:18px;background:#145c37;color:#fff;border:0;border-radius:18px;padding:14px 16px;text-align:center;letter-spacing:.01em}
+body.app-race .buy-head{margin:8px 0 18px}
+body.app-race .buy-head h2{font-size:40px;background:transparent;color:#102016;border:0;border-radius:0;padding:0;text-align:left;letter-spacing:.01em;line-height:1.05;font-weight:900}
+body.app-race .buy-head .buy-sub{margin:8px 0 0;font-size:16px;font-weight:800;color:#4d6156;line-height:1.4}
 body.app-race .buy-card{background:#fff;border:2px solid #22c55e;border-radius:28px;padding:20px 16px 18px;box-shadow:0 12px 28px rgba(20,92,55,.12)}
 body.app-race .buy-card .bc-badge{background:#145c37;font-size:17px;padding:9px 16px}
 body.app-race .buy-card .bc-rank-badge{width:58px;height:58px;border-radius:18px;background:#145c37}
@@ -695,7 +698,7 @@ body.app-race .field-card .fc-meta b{font-size:15px}
   body.app-race .buy-card .bc-ban{width:64px;height:64px;font-size:26px}
 }
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v8"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v9"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1292,7 +1295,7 @@ body.app-race .field-card .fc-meta b{font-size:15px}
 </nav>
 
 {% if _buys_sorted %}
-<section class="sec-block buy-board" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v8">
+<section class="sec-block buy-board" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v9">
 {% macro buy_horse_card(t, linked=true) %}
   {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
   {% set _idx = namespace(v=None) %}
@@ -1430,7 +1433,8 @@ body.app-race .field-card .fc-meta b{font-size:15px}
 </a>
 {% endmacro %}
 <div class="buy-head">
-<h2>🔥 本命判定の買いのみ ・ {{_buys_sorted|length}}件</h2>
+<h2>🔥 BUY</h2>
+<p class="buy-sub">本命判定の買いのみ・{{_buys_sorted|length}}件</p>
 </div>
 <p class="fx-sr">表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因</p>
 <div class="buy-card-grid">
@@ -1762,7 +1766,7 @@ body.app-race .field-card .fc-meta b{font-size:15px}
 </div>
 
 {% set _ap = areru_pipeline if areru_pipeline is defined and areru_pipeline else {} %}
-{% if _ap.get('あり') %}
+{% if mode != 'predict' and _ap.get('あり') %}
 <section class="areru-picks" id="areru-pipeline" aria-label="AREru指数 本命一覧">
 <h2>AREru指数 本命一覧（{{_ap.get('件数')}}R）</h2>
 <div class="ap-meta">開催日 {{_ap.get('開催日') or 'データなし'}}{% if _ap.get('更新') %} · 更新 {{_ap.get('更新')}}{% endif %}</div>
