@@ -654,7 +654,9 @@ body.app-race .fx-venue-form select[name="date"]{display:block;width:auto;flex:0
 body.app-race:not(.picker) .fx-venue-form select[name="date"]{display:none}
 body.app-race .fx-icon{background:#fff;border:1px solid #cfe5d6;color:#145c37;width:24px;height:24px;border-radius:7px;font-size:11px}
 body.app-race .fx-icons{flex-shrink:0}
-body.app-race .fx-icons .fx-icon:last-child{display:none}
+body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !important}
+body.app-race .fx-top-inner .fx-icons .fx-icon:last-child{display:none}
+body.app-race .fx-id .fx-icon:last-child{display:inline-flex !important}
 body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back,body.app-race .areru-picks,body.app-race .today-hero{display:none !important}
 body.app-race .venue-panel{background:transparent;border:0;border-radius:0;margin:12px 0 20px;overflow:visible}
 body.app-race .venue-panel>h2{font-size:22px;font-weight:900;letter-spacing:0;text-transform:none;color:#102016;padding:8px 2px 4px}
@@ -787,6 +789,7 @@ body.app-race .fx-id{display:flex;align-items:flex-start;justify-content:space-b
 body.app-race .fx-id-1{font-size:17px;font-weight:900;line-height:1.15;letter-spacing:.01em}
 body.app-race .fx-id-1 .now{margin-left:8px;color:#fff;font-size:17px;font-weight:900}
 body.app-race .fx-id-2{margin-top:2px;font-size:13px;font-weight:800;line-height:1.2;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78vw}
+body.app-race .fx-id-2:empty{display:none}
 body.app-race .fx-id .fx-icons{flex-shrink:0;padding-top:1px}
 body.app-race .fx-id .fx-icon{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28);color:#fff;width:26px;height:26px}
 body.app-race .fx-vchips{margin:0 0 4px}
@@ -1983,7 +1986,7 @@ body.app-race .header .wrap.fx-stick{padding-top:4px;padding-bottom:4px}
   }
   openFromHash();
   window.addEventListener('hashchange', openFromHash);
-  var start=races.filter(function(r){return r.getAttribute('data-race-judge')==='buy';})[0] || races[0];
+  var start=races[0];
   if(!list.classList.contains('is-open') && start){
     showRace(start, false);
   }
