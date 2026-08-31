@@ -833,7 +833,11 @@ body.app-race .header .wrap.fx-stick{padding-top:4px;padding-bottom:4px}
 </div>
 {% if mode=='predict' and selected_venue and races %}
 {% set _rnav = races|sort(attribute='レース') %}
-{% set _r0 = _rnav[0] if _rnav else none %}
+{% set _buy0 = namespace(v=none) %}
+{% for rr in _rnav %}
+{% if _buy0.v is none and ('' ~ (rr.get('投資判定') or '')).startswith('買い') %}{% set _buy0.v = rr %}{% endif %}
+{% endfor %}
+{% set _r0 = _buy0.v if _buy0.v is not none else (_rnav[0] if _rnav else none) %}
 <div class="wrap fx-stick">
 <div class="fx-id" aria-label="開催レース">
 <div>
@@ -853,7 +857,7 @@ body.app-race .header .wrap.fx-stick{padding-top:4px;padding-bottom:4px}
 <div class="fx-rnose" aria-label="レース番号">
 {% for rr in _rnav %}
 {% if rr.get('レース') is not none %}
-<button type="button" data-open-race="race-{{rr['race_id']}}" data-fx-rno{% if loop.first %} class="is-on"{% endif %}>{{rr['レース']|int}}R</button>
+<button type="button" data-open-race="race-{{rr['race_id']}}" data-fx-rno{% if _r0 and rr.get('race_id')==_r0.get('race_id') %} class="is-on"{% endif %}>{{rr['レース']|int}}R</button>
 {% endif %}
 {% endfor %}
 </div>
@@ -1986,7 +1990,7 @@ body.app-race .header .wrap.fx-stick{padding-top:4px;padding-bottom:4px}
   }
   openFromHash();
   window.addEventListener('hashchange', openFromHash);
-  var start=races[0];
+  var start=races.filter(function(r){return r.getAttribute('data-race-judge')==='buy';})[0] || races[0];
   if(!list.classList.contains('is-open') && start){
     showRace(start, false);
   }

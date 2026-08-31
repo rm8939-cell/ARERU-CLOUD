@@ -3785,7 +3785,13 @@ def index():
                                     if mode == 'predict' and venues:
                                         from netkeiba_client import normalize_venue_name as _nv
                                         if not selected_venue:
-                                            selected_venue = venues[0]['name']
+                                            buy_v = ''
+                                            for r in races:
+                                                if str(r.get('投資判定') or '').startswith('買い'):
+                                                    buy_v = _nv(str(r.get('開催地') or '').strip())
+                                                    if buy_v:
+                                                        break
+                                            selected_venue = buy_v or venues[0]['name']
                                         if selected_venue:
                                             races = [
                                                 r for r in races
