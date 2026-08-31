@@ -646,14 +646,14 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
 /* ===== AREU APP V8: 予想画面を旧Webレイアウトから切り離す ===== */
 body.app-race{background:#eef4f0 !important;color:#102016}
 body.app-race .header{background:#f7fbf8 !important;color:#102016 !important;border-bottom:1px solid #d7e8dc !important;box-shadow:none !important}
-body.app-race .fx-top-inner{grid-template-columns:minmax(0,1fr) auto;min-height:32px;padding:2px 0 2px;gap:6px}
+body.app-race .fx-top-inner{grid-template-columns:minmax(0,1fr) auto;min-height:0;padding:2px 0;gap:6px;align-items:center}
 body.app-race .fx-logo{display:none !important}
 body.app-race .fx-venue-slot{justify-content:flex-start;flex:1;min-width:0}
 body.app-race .fx-venue-form select{background:#fff;color:#102016;border:1px solid #cfe5d6;box-shadow:none;font-size:12px;padding:3px 22px 3px 8px}
 body.app-race .fx-venue-form select[name="date"]{display:block;width:auto;flex:0 0 auto}
 body.app-race:not(.picker) .fx-venue-form select[name="date"]{display:none}
 body.app-race .fx-icon{background:#fff;border:1px solid #cfe5d6;color:#145c37;width:24px;height:24px;border-radius:7px;font-size:11px}
-body.app-race .fx-icons .fx-icon:first-child{display:inline-flex}
+body.app-race .fx-icons{flex-shrink:0}
 body.app-race .fx-icons .fx-icon:last-child{display:none}
 body.app-race .source-tabs,body.app-race .mode-tabs,body.app-race .toolbar,body.app-race main>.message,body.app-race .venue-back,body.app-race .areru-picks,body.app-race .today-hero{display:none !important}
 body.app-race .venue-panel{background:transparent;border:0;border-radius:0;margin:12px 0 20px;overflow:visible}
@@ -703,10 +703,10 @@ body.app-race .rb{padding:0 0 8px}
 body.app-race .rb-head{display:none}
 body.app-race .rb-hon-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin:0}
 body.app-race .rb-buy-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#145c37;color:#fff;font-size:12px;font-weight:900;line-height:1.15}
-body.app-race .rb-rank-box{display:flex;flex-direction:column;align-items:center;gap:0;line-height:1}
+body.app-race .rb-rank-box{display:flex;flex-direction:row;align-items:center;gap:4px;line-height:1}
 body.app-race .rb-rank-box b{width:22px;height:22px;border-radius:7px;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900}
-body.app-race .rb-rank-box small{display:block;margin-top:1px;font-size:9px;font-weight:800;color:#4d6156;letter-spacing:0;text-transform:none}
-body.app-race .rb-here{margin:2px 0 3px;font-size:14px;font-weight:900;color:#102016;line-height:1.15}
+body.app-race .rb-rank-box small{display:block;margin:0;font-size:9px;font-weight:800;color:#4d6156;letter-spacing:0;text-transform:none;line-height:1.1;max-width:3.2em}
+body.app-race .rb-here{margin:1px 0 2px;font-size:13px;font-weight:900;color:#102016;line-height:1.1}
 body.app-race .rb-here small{display:inline;margin-left:6px;font-size:12px;font-weight:800;color:#4d6156}
 body.app-race .rb-mark{display:block;font-size:12px;font-weight:900;white-space:nowrap;color:#145c37;line-height:1.15}
 body.app-race .rb-card.is-hon .rb-mark{display:none}
@@ -769,8 +769,8 @@ body.app-race .fx-vchips{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0
 body.app-race .fx-vchips::-webkit-scrollbar{display:none}
 body.app-race .fx-vchip{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:3px 10px;border-radius:999px;background:#fff;border:1px solid #cfe5d6;color:#145c37;font-size:12px;font-weight:900;text-decoration:none;white-space:nowrap}
 body.app-race .fx-vchip.is-on{background:#145c37;color:#fff;border-color:#145c37}
-body.app-race .fx-stick{padding:0 0 4px}
-body.app-race .fx-here{display:flex;align-items:baseline;gap:6px;min-width:0;padding:1px 0 3px}
+body.app-race .fx-here{display:flex;align-items:baseline;gap:6px;min-width:0;padding:0 0 2px}
+body.app-race .fx-stick{padding:0 0 2px}
 body.app-race .fx-here b,body.app-race .fx-here .now{font-size:15px;font-weight:900;color:#102016;line-height:1.1}
 body.app-race .fx-here .now{color:#145c37}
 body.app-race .fx-here small{min-width:0;font-size:12px;font-weight:800;color:#4d6156;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -807,6 +807,7 @@ body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !imp
 </form>
 {% if mode=='predict' and selected_venue and venues %}
 <nav class="fx-vchips" aria-label="開催場">
+<a class="fx-vchip" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}{% if selected_date and today and selected_date < today %}&history=1{% endif %}">一覧</a>
 {% for v in venues %}
 <a class="fx-vchip{% if v.name==selected_venue %} is-on{% endif %}" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}{% if selected_date and today and selected_date < today %}&history=1{% endif %}&venue={{v.name|urlencode}}">{{v.name}}</a>
 {% endfor %}
