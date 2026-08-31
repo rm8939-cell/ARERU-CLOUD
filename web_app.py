@@ -1109,11 +1109,15 @@ def _stay_on_selected_calendar_day(selected: str | None, source: str = '') -> bo
     """JRAのカレンダー当日は、別日の完成カードへフォールバックしない。
 
     地方は当日未完成なら最新の NAR 完成日を出してよい。
-    JRA非開催日に日曜カードを出すのは禁止。
+    当日開催なしが確定しているときは直近の完成カードを出す。
     """
     if str(source or '').lower() != 'jra':
         return False
-    return bool(selected) and selected == _today_jst()
+    if not selected or selected != _today_jst():
+        return False
+    if _today_source_has_no_meeting('jra', selected):
+        return False
+    return True
 
 
 def _today_source_has_no_meeting(source: str, today: str) -> bool:
@@ -3777,7 +3781,20 @@ def index():
                                     else:
                                         races = []
                                 else:
-                                    selected_venue = ''
+                                    # JRA予想: 会場未指定でも先頭開催場を開き、レースナビを出す
+                                    if mode == 'predict' and venues:
+                                        from netkeiba_client import normalize_venue_name as _nv
+                                        if not selected_venue:
+                                            selected_venue = venues[0]['name']
+                                        if selected_venue:
+                                            races = [
+                                                r for r in races
+                                                if _nv(str(r.get('開催地') or '').strip()) == selected_venue
+                                            ]
+                                            races_for_board = list(races)
+                                            show_venue_picker = False
+                                    else:
+                                        selected_venue = ''
                                 buy_candidates = build_buy_candidates(races_for_board)
                                 board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
                                 today_ai_board = build_today_ai_board(races_for_board, board_verify)
