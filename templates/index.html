@@ -4,7 +4,7 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
 <meta http-equiv="Cache-Control" content="no-store, max-age=0">
-<meta name="areu-ui" content="app-v12">
+<meta name="areu-ui" content="app-v13">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
@@ -391,7 +391,7 @@ details.race-acc[open]>.race-acc-body{display:block}
 .field-more{margin-top:8px;border:1px solid #e6eaee;border-radius:16px;background:#fff}
 .field-more>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:14px;font-weight:800;color:#5c6b78}
 .field-more>summary::-webkit-details-marker{display:none}
-body.app-race .fx-nav{display:grid !important;padding:2px 0 4px;gap:3px}
+body.app-race .fx-nav{display:grid !important;padding:1px 0 2px;gap:3px}
 body.app-race .fx-nav a,body.app-race .fx-nav button,body.app-race .fx-nav-now{min-height:24px;padding:3px 2px;font-size:11px;border-radius:7px;box-shadow:none}
 .race-pack{margin:0;min-width:0}
 .race-pack-title{display:none}
@@ -720,7 +720,7 @@ body.app-race .rb-card.mk-対抗 .rb-mark{color:#1d4ed8}
 body.app-race .rb-card.mk-単穴 .rb-mark{color:#c2410c}
 body.app-race .rb-card.mk-連下 .rb-mark{color:#4b5563}
 body.app-race .rb-buy-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#145c37;color:#fff;font-size:11px;font-weight:900;line-height:1.15;letter-spacing:.02em}
-body.app-race .rb-horse{display:flex;align-items:center;gap:6px;min-width:0;margin:2px 0 3px}
+body.app-race .rb-horse{display:flex;align-items:center;gap:6px;min-width:0;margin:1px 0 2px}
 body.app-race .rb-ban{flex-shrink:0;width:26px;height:26px;border-radius:7px;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums}
 body.app-race .rb-card.is-hon .rb-ban{width:28px;height:28px;border-radius:8px;font-size:14px;background:#145c37}
 body.app-race .rb-card.mk-対抗 .rb-ban{background:#2563eb}
@@ -731,14 +731,16 @@ body.app-race .rb-card.is-hon .rb-name{font-size:16px}
 body.app-race .rb-letter{flex-shrink:0;font-size:14px;font-weight:900;color:#145c37}
 body.app-race .rb-card.mk-対抗 .rb-letter{color:#1d4ed8}
 body.app-race .rb-card.mk-単穴 .rb-letter{color:#c2410c}
-body.app-race .rb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
-body.app-race .rb-cell{background:#f3faf6;border:1px solid #d9eee2;border-radius:7px;padding:3px 2px 2px;text-align:center;min-width:0}
-body.app-race .rb-cell b{display:block;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:#102016;line-height:1.1;word-break:break-word}
-body.app-race .rb-cell.is-ev b{color:#15803d;font-size:16px}
-body.app-race .rb-card.is-hon .rb-cell.is-ev b{font-size:17px}
+body.app-race .rb-card.mk-連下 .rb-letter{color:#4b5563}
+body.app-race .rb-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px}
+body.app-race .rb-cell{grid-column:span 2;background:#f3faf6;border:1px solid #d9eee2;border-radius:6px;padding:2px 2px 1px;text-align:center;min-width:0}
+body.app-race .rb-grid .rb-cell:nth-child(n+7){grid-column:span 3}
+body.app-race .rb-cell b{display:block;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;color:#102016;line-height:1.05;word-break:break-word}
+body.app-race .rb-cell.is-ev b{color:#15803d;font-size:15px}
+body.app-race .rb-card.is-hon .rb-cell.is-ev b{font-size:16px}
 body.app-race .rb-cell.is-edge b{color:#145c37;font-size:13px}
-body.app-race .rb-cell span,body.app-race .rb-cell .bc-k{display:block;margin-top:0;font-size:9px;font-weight:800;color:#4d6156;line-height:1.1}
-body.app-race .rb-why{margin:3px 0 0;padding-top:2px;border-top:1px solid #e7f3eb}
+body.app-race .rb-cell span,body.app-race .rb-cell .bc-k{display:block;margin-top:0;font-size:9px;font-weight:800;color:#4d6156;line-height:1.05}
+body.app-race .rb-why{margin:2px 0 0;padding-top:2px;border-top:1px solid #e7f3eb}
 body.app-race .rb-why h4{margin:0 0 1px;font-size:10px;font-weight:900;color:#145c37}
 body.app-race .rb-why ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;column-gap:8px;row-gap:0}
 body.app-race .rb-why li{position:relative;padding:0 0 0 12px;font-size:10px;font-weight:750;line-height:1.25;color:#102016;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent;border:0;border-radius:0}
@@ -753,11 +755,11 @@ body.app-race .rb-row2 b{color:#102016;font-size:12px}
 body.app-race .rb-row2 b.is-ev{color:#15803d}
 body.app-race .rb-row2 span{font-size:10px;font-weight:800;color:#6b7280;white-space:nowrap}
 body.app-race .rb-skip{display:grid;gap:0}
-body.app-race .rb-skip-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px;align-items:center;background:transparent;border:0;border-radius:0;padding:2px 1px;min-width:0;border-bottom:1px solid #eef2ef}
+body.app-race .rb-skip-row{display:grid;grid-template-columns:20px minmax(0,1fr) max-content;gap:4px;align-items:center;background:transparent;border:0;border-radius:0;padding:2px 1px;min-width:0;border-bottom:1px solid #eef2ef;overflow:hidden}
 body.app-race .rb-skip-row:last-child{border-bottom:0}
 body.app-race .rb-skip-row .rb-ban{width:20px;height:20px;border-radius:5px;font-size:10px;background:#e5e7eb;color:#4b5563}
 body.app-race .rb-skip-row .rb-name{font-size:11px;font-weight:800;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body.app-race .rb-skip-meta{display:flex;flex-wrap:nowrap;justify-content:flex-end;gap:5px;font-size:10px;font-weight:800;color:#6b7280;font-variant-numeric:tabular-nums;white-space:nowrap}
+body.app-race .rb-skip-meta{display:flex;flex-wrap:nowrap;justify-content:flex-end;gap:4px;font-size:9px;font-weight:800;color:#6b7280;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:0}
 body.app-race .rb-skip-meta b{color:#374151;font-weight:800}
 body.app-race .rb-skip-meta span{white-space:nowrap}
 body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#4d6156;padding:3px 2px;cursor:pointer}
@@ -767,7 +769,7 @@ body.app-race .fx-race{scroll-margin-top:56px;padding-bottom:8px}
 body.app-race .buy-board,body.app-race .buy-empty-card,body.app-race .watch-grid,body.app-race .skip-fold{display:none !important}
 body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !important}
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v12"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v13"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1345,7 +1347,7 @@ body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !imp
 <button type="button" data-fx-next>次R</button>
 </nav>
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v12">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v13">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -1405,11 +1407,19 @@ body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !imp
   {% if _evd not in _blank %}{% set _ = _why.v.append('表示期待値 ' ~ (_evd ~ '')) %}{% endif %}
   {% for tip in (race.get('AI買い理由') if race.get('AI買い理由') is sequence else []) %}
     {% set _t = (tip ~ '')|trim %}
-    {% if _t and _t not in _why.v and '実エッジ' not in _t %}{% set _ = _why.v.append(_t) %}{% endif %}
+    {% set _dup = namespace(v=false) %}
+    {% for k in ['勝負ランク','実エッジ','品質スコア','表示期待値'] %}
+      {% if k in _t %}{% set _dup.v = true %}{% endif %}
+    {% endfor %}
+    {% if _t and _t not in _why.v and not _dup.v %}{% set _ = _why.v.append(_t) %}{% endif %}
   {% endfor %}
   {% for g in (_pack.get('プラス') if _pack.get('プラス') is sequence else []) %}
     {% set _t = (g ~ '')|trim %}
-    {% if _t and _t not in _why.v and '実エッジ' not in _t %}{% set _ = _why.v.append(_t) %}{% endif %}
+    {% set _dup = namespace(v=false) %}
+    {% for k in ['勝負ランク','実エッジ','品質スコア','表示期待値'] %}
+      {% if k in _t %}{% set _dup.v = true %}{% endif %}
+    {% endfor %}
+    {% if _t and _t not in _why.v and not _dup.v %}{% set _ = _why.v.append(_t) %}{% endif %}
   {% endfor %}
   {% if not _why.v and race.get('本命理由') %}{% set _ = _why.v.append((race.get('本命理由') ~ '')|trim) %}{% endif %}
   {% if _why.v %}
@@ -1530,7 +1540,7 @@ body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !imp
 <div class="rb-skip-row">
 {% if _ban %}<span class="rb-ban">{{_ban}}</span>{% else %}<span class="rb-ban">—</span>{% endif %}
 <span class="rb-name">{{p.get('馬名') or '—'}}</span>
-<span class="rb-skip-meta">{% if p.get('AI順位') not in _blank %}<b>AI{{p.get('AI順位')}}位</b>{% endif %}{% if _ev not in _blank %}<span>期待値<b>{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</b></span>{% endif %}{% if _od not in _blank %}<b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b>{% endif %}</span>
+<span class="rb-skip-meta">{% if p.get('AI順位') not in _blank %}<b>AI{{p.get('AI順位')}}位</b>{% endif %}{% if _ev not in _blank %}<span>期待値{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</span>{% endif %}{% if _od not in _blank %}<b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b>{% endif %}</span>
 </div>
 {% endfor %}
 </div>
