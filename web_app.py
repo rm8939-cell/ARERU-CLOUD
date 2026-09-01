@@ -1109,11 +1109,15 @@ def _stay_on_selected_calendar_day(selected: str | None, source: str = '') -> bo
     """JRAのカレンダー当日は、別日の完成カードへフォールバックしない。
 
     地方は当日未完成なら最新の NAR 完成日を出してよい。
-    JRA非開催日に日曜カードを出すのは禁止。
+    当日開催なしが確定しているときは直近の完成カードを出す。
     """
     if str(source or '').lower() != 'jra':
         return False
-    return bool(selected) and selected == _today_jst()
+    if not selected or selected != _today_jst():
+        return False
+    if _today_source_has_no_meeting('jra', selected):
+        return False
+    return True
 
 
 def _today_source_has_no_meeting(source: str, today: str) -> bool:
@@ -2017,7 +2021,7 @@ def _horse_display_meta_for_records(records: list) -> dict:
     rids.discard('')
     if not rids:
         return {}
-    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気')
+    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数')
     frames = []
     dates = {
         str(r.get('日付') or r.get('開催日') or '').strip()
@@ -2065,6 +2069,13 @@ def _horse_display_meta_for_records(records: list) -> dict:
                 txt = _fmt_display_num(row.get(src), kind=kind)
                 if txt:
                     cur[dst] = txt
+            if cur.get('AREru指数') in (None, ''):
+                try:
+                    idx = float(row.get('AREru指数'))
+                except (TypeError, ValueError):
+                    idx = None
+                if idx is not None and idx == idx:  # not NaN
+                    cur['AREru指数'] = idx
     return out
 
 
@@ -2233,11 +2244,75 @@ def _stamp_buy_display(races: list) -> None:
     for r in races or []:
         race_buy = str(r.get('投資判定') or '').startswith('買い')
         honmei = str(r.get('本命') or '').strip()
-        for p in r.get('予想馬') or []:
+        for p in (r.get('予想馬') or []) + (r.get('AI一覧') or []):
             if not isinstance(p, dict):
                 continue
             is_honmei = (str(p.get('役割') or '') == '本命') or (str(p.get('馬名') or '') == honmei)
             p['BUY表示'] = bool(race_buy and is_honmei)
+
+
+_MARK_BY_RANK = {
+    1: ('◎', '本命'),
+    2: ('○', '対抗'),
+    3: ('▲', '単穴'),
+    4: ('△', '連下'),
+    5: ('△', '連下'),
+}
+
+
+def _ai_rank_sort_key(p: dict) -> tuple:
+    """既存スコアだけで安定した全馬順位を付ける。新しい予想は作らない。"""
+    from ev_analysis import safe_float, safe_int
+    card = p.get('カード') if isinstance(p.get('カード'), dict) else {}
+    idx = safe_float(p.get('AREru指数'), None)
+    if idx is None:
+        idx = safe_float(card.get('AREru指数'), None)
+    near = None
+    try:
+        raw = p.get('近走指数順位')
+        if raw in (None, '', '—'):
+            raw = card.get('近走指数順位')
+        if raw not in (None, '', '—'):
+            near = int(float(raw))
+    except (TypeError, ValueError):
+        near = None
+    score = safe_float(p.get('予想スコア'), None)
+    if score is None:
+        score = safe_float(card.get('AI評価'), None)
+    win = safe_float(p.get('勝率') or card.get('勝率'), None)
+    pop = safe_int(p.get('人気') or card.get('人気'), 999)
+    if pop <= 0:
+        pop = 999
+    ban = safe_int(p.get('馬番') or p.get('馬番表示'), 99)
+    name = str(p.get('馬名') or '')
+    has_idx = 0 if idx is None else 1
+    has_near = 0 if near is None else 1
+    return (
+        -has_idx,
+        -(idx if idx is not None else 0.0),
+        -has_near,
+        near if near is not None else 10 ** 6,
+        -(score if score is not None else 0.0),
+        -(win if win is not None else 0.0),
+        pop,
+        ban,
+        name,
+    )
+
+
+def _stamp_ai_field_ranks(race: dict) -> None:
+    """出走全馬に AI順位 と表示印を付ける。BUY判定は触らない。"""
+    rows = [p for p in (race.get('AI一覧') or []) if isinstance(p, dict)]
+    ranked = sorted(rows, key=_ai_rank_sort_key)
+    groups = {'本命': [], '対抗': [], '単穴': [], '連下': [], '見送り': []}
+    for i, p in enumerate(ranked, 1):
+        p['AI順位'] = i
+        mark, label = _MARK_BY_RANK.get(i, ('', '見送り'))
+        p['表示印'] = mark
+        p['表示印名'] = label
+        groups[label].append(p)
+    race['AI一覧'] = ranked
+    race['表示グループ'] = groups
 
 
 def build_buy_candidates(races: list, limit: int = 12) -> list:
@@ -2414,6 +2489,18 @@ def prep(records, ban_map=None):
                 p['予想スコア']=None
             p['単勝オッズ表示']=p.get('単勝オッズ表示') or card.get('単勝オッズ')
             p['カード期待値']=card.get('期待値')
+            if p.get('AREru指数') in (None, '') and meta.get('AREru指数') is not None:
+                p['AREru指数']=meta.get('AREru指数')
+            if p.get('近走指数順位') in (None, '', '—') and card.get('近走指数順位') not in (None, '', '—'):
+                p['近走指数順位']=card.get('近走指数順位')
+            if p.get('勝率') in (None, '', '—') and card.get('勝率') not in (None, '', '—'):
+                p['勝率']=card.get('勝率')
+            if not p.get('AI評価') and p.get('予想スコア') is not None:
+                from pick_rationale import horse_grade
+                try:
+                    p['AI評価']=horse_grade(p.get('AI信頼度スコア') or card.get('AI信頼度スコア'))
+                except Exception:
+                    pass
         picks=[p for p in (r.get('予想馬') or []) if isinstance(p, dict)]
         known={clean_horse(p.get('馬名') or '') for p in picks}
         extras=[]
@@ -2423,13 +2510,14 @@ def prep(records, ban_map=None):
             extras.append({
                 '役割': '',
                 '馬名': name,
-                '馬番表示': meta.get('馬番') or '',
+                '馬番表示': (circle_ban(meta.get('馬番')) if meta.get('馬番') else '') or meta.get('馬番') or '',
                 '馬番': meta.get('馬番') or '',
                 '枠番': meta.get('枠番') or '',
                 '騎手': meta.get('騎手') or '',
                 '斤量': meta.get('斤量') or '',
                 '人気': meta.get('人気') or '',
                 '単勝オッズ表示': meta.get('単勝オッズ') or '',
+                'AREru指数': meta.get('AREru指数'),
                 'BUY表示': False,
                 'プラス要因': [],
                 'マイナス要因': [],
@@ -2444,6 +2532,7 @@ def prep(records, ban_map=None):
         n=len(picks)+len(extras)
         if n:
             r['表示頭数']=n
+        _stamp_ai_field_ranks(r)
         if race_date and not r.get('開催日'):
             r['開催日']=race_date
         # 地方: 単勝・馬連・ワイドのシンプル買い目を優先表示
@@ -3692,7 +3781,26 @@ def index():
                                     else:
                                         races = []
                                 else:
-                                    selected_venue = ''
+                                    # JRA予想: 会場未指定でも先頭開催場を開き、レースナビを出す
+                                    if mode == 'predict' and venues:
+                                        from netkeiba_client import normalize_venue_name as _nv
+                                        if not selected_venue:
+                                            buy_v = ''
+                                            for r in races:
+                                                if str(r.get('投資判定') or '').startswith('買い'):
+                                                    buy_v = _nv(str(r.get('開催地') or '').strip())
+                                                    if buy_v:
+                                                        break
+                                            selected_venue = buy_v or venues[0]['name']
+                                        if selected_venue:
+                                            races = [
+                                                r for r in races
+                                                if _nv(str(r.get('開催地') or '').strip()) == selected_venue
+                                            ]
+                                            races_for_board = list(races)
+                                            show_venue_picker = False
+                                    else:
+                                        selected_venue = ''
                                 buy_candidates = build_buy_candidates(races_for_board)
                                 board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
                                 today_ai_board = build_today_ai_board(races_for_board, board_verify)
