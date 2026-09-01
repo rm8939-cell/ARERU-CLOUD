@@ -35,23 +35,7 @@ jobs:
             RESP=$(curl -fsS -H "Authorization: Bearer ${KEY}" \
               "https://api.render.com/v1/services?limit=50")
             export RESP
-            SID=$(python3 -c 'import json,os
-raw=os.environ.get("RESP") or ""
-data=json.loads(raw) if raw else []
-rows=data if isinstance(data,list) else (data.get("data") or [])
-sid=""
-for row in rows:
-    svc=row.get("service") if isinstance(row,dict) and "service" in row else row
-    if not isinstance(svc,dict):
-        continue
-    if str(svc.get("name") or "")=="areru-cloud" and svc.get("id"):
-        sid=str(svc.get("id")); break
-if not sid:
-    for row in rows:
-        svc=row.get("service") if isinstance(row,dict) and "service" in row else row
-        if isinstance(svc,dict) and svc.get("id"):
-            sid=str(svc.get("id")); break
-print(sid)')
+            SID=$(python3 -c 'import json,os; d=json.loads(os.environ.get("RESP") or "[]"); rows=d if isinstance(d,list) else (d.get("data") or []); svcs=[(r.get("service") if isinstance(r,dict) and "service" in r else r) for r in rows]; named=next((s.get("id") for s in svcs if isinstance(s,dict) and str(s.get("name") or "")=="areru-cloud" and s.get("id")), ""); first=next((s.get("id") for s in svcs if isinstance(s,dict) and s.get("id")), ""); print(named or first or "")')
             if [ -z "$SID" ]; then
               echo "RENDER_API_KEY set but no service id found"
               exit 1
