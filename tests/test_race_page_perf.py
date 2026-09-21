@@ -26,12 +26,18 @@ def _fingerprint(html: str) -> dict:
     buys = re.findall(r'🔥 BUY', html)
     ai = re.findall(r'>AI(\d+)<', html)
     honmei = re.findall(r'◎本命', html)
+    names = re.findall(r'<div class="nm">([^<]+)', html)
+    conf = re.findall(r'信頼度 ([0-9.]+)%', html)
+    ev = re.findall(r'<b[^>]*>\s*([^<]+?)\s*</b><small>期待値</small>', html)
     return {
         'ui': 'data-ui="areu-app-v20"' in html,
         'judges': judges,
         'buy_count': len(buys),
         'ai_ranks': ai[:40],
         'honmei': len(honmei),
+        'horses': names[:80],
+        'conf': conf[:40],
+        'ev': ev[:40],
         'bytes': len(html.encode('utf-8')),
     }
 

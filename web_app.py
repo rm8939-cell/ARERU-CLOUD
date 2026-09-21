@@ -68,6 +68,9 @@ _PRED_SOURCE_CACHE={}
 # プロセス再起動後も size が同じファイルは pandas で開き直さない（mtime は checkout で変わる）
 _PRED_SOURCE_INDEX_PATH=DATA/'pred_source_index.json'
 _PRED_SOURCE_INDEX={'loaded': False, 'files': {}, 'dates': {}, 'dates_sig': '', 'dirty': False}
+# 同一ファイルの DataFrame をリクエスト内・プロセス内で共有（key に size/mtime）
+_PRED_DF_CACHE={}
+_SCORES_DF_CACHE={}
 _VERIFY_CACHE={}
 _PRED_META_CACHE={'sig':None,'data':{}}
 _PREDICT_JOBS={}
@@ -542,6 +545,50 @@ def _need_regen(d, source='all') -> bool:
     return False
 
 
+def _load_pred_detail_df(path):
+    """開催詳細用の予想CSV。同一 (path, mtime, size) は開き直さない。"""
+    path=Path(path)
+    key=(str(path), _file_sig(path))
+    hit=_cache_get(_PRED_DF_CACHE, key)
+    if hit is not None:
+        return hit.copy()
+    want=set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付', '相対ランク', '投資判定', '勝負ランク'}
+    try:
+        df=pd.read_csv(
+            path, encoding='utf-8-sig',
+            usecols=lambda c: c in want,
+            dtype={'race_id': str},
+        )
+    except ValueError:
+        df=pd.read_csv(path, encoding='utf-8-sig', usecols=lambda c: c in want)
+    df=_fillna_pred_df(df)
+    try:
+        from ev_analysis import predictions_are_finalized, ensure_predictions_file_finalized
+        if not predictions_are_finalized(df):
+            if ensure_predictions_file_finalized(path):
+                _clear_runtime_caches()
+                print(f'[rank] finalized stale predictions: {path.name}', flush=True)
+                return _load_pred_detail_df(path)
+        _cache_put(_PRED_FINALIZED_CACHE, key, True, 128)
+    except Exception as e:
+        print(f'[rank] finalize skip {path}: {e}', flush=True)
+    _cache_put(_PRED_DF_CACHE, key, df, 16)
+    return df.copy()
+
+
+def _load_scores_display_df(path):
+    """枠・騎手・斤量用 scores。同一ファイルは開き直さない。"""
+    path=Path(path)
+    key=(str(path), _file_sig(path))
+    hit=_cache_get(_SCORES_DF_CACHE, key)
+    if hit is not None:
+        return hit
+    want={'race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数'}
+    df=pd.read_csv(path, encoding='utf-8-sig', usecols=lambda c: c in want, dtype=str)
+    _cache_put(_SCORES_DF_CACHE, key, df, 16)
+    return df
+
+
 def _ensure_pred_file_finalized(path) -> None:
     """読み込み前に未確定CSVを厳格確定へ昇格（日次後の相対ランク戻し防止）。"""
     if not path:
@@ -549,11 +596,21 @@ def _ensure_pred_file_finalized(path) -> None:
     key=(str(path), _file_sig(path))
     if _PRED_FINALIZED_CACHE.get(key):
         return
+    hit=_cache_get(_PRED_DF_CACHE, key)
+    if hit is not None:
+        try:
+            from ev_analysis import predictions_are_finalized
+            if predictions_are_finalized(hit):
+                _cache_put(_PRED_FINALIZED_CACHE, key, True, 128)
+                return
+        except Exception:
+            pass
     try:
         from ev_analysis import predictions_are_finalized, ensure_predictions_file_finalized
         light=pd.read_csv(
             path, encoding='utf-8-sig',
             usecols=lambda c: c in ('相対ランク', '投資判定', '勝負ランク'),
+            nrows=40,
         )
         if predictions_are_finalized(light):
             _cache_put(_PRED_FINALIZED_CACHE, key, True, 128)
@@ -712,13 +769,12 @@ def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
 
 def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
     """開催場一覧用の軽量読み込み（巨大JSON列をスキップ）。"""
-    _ensure_pred_file_finalized(pred_path)
     try:
-        cols=pd.read_csv(pred_path, encoding='utf-8-sig', nrows=0).columns.tolist()
-        use=[c for c in _NAR_VENUE_PICKER_COLS if c in cols]
-        if not use:
+        df=_load_pred_detail_df(pred_path)
+        keep=[c for c in _NAR_VENUE_PICKER_COLS if c in df.columns]
+        if not keep:
             return []
-        df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use))
+        df=df.loc[:, keep]
         if source in ('jra','nar') and 'source' in df.columns:
             df=df[df['source'].astype(str).str.lower()==source].copy()
         rows=df.to_dict('records')
@@ -730,30 +786,20 @@ def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
 
 def _read_predictions_for_venue_detail(pred_path, source: str, venue: str) -> list:
     """開催場詳細用。会場で絞り込んでから dict 化（Render のメモリ・タイムアウト対策）。"""
-    _ensure_pred_file_finalized(pred_path)
     from netkeiba_client import normalize_venue_name
     venue=normalize_venue_name(str(venue or '').strip())
     if not venue:
         return []
     try:
-        cols=pd.read_csv(pred_path, encoding='utf-8-sig', nrows=0).columns.tolist()
-        # 必要列＋開催地。無い列は無視
-        want=set(_NAR_VENUE_DETAIL_COLS) | {'開催地','source','race_id'}
-        use=[c for c in cols if c in want]
-        if '開催地' not in use:
-            # フォールバック: 全列（古いCSV）
-            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig'))
-        else:
-            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use))
+        df=_load_pred_detail_df(pred_path)
         if source in ('jra','nar') and 'source' in df.columns:
             df=df[df['source'].astype(str).str.lower()==source].copy()
-        if df.empty:
+        if df.empty or '開催地' not in df.columns:
             return []
         mask=df['開催地'].astype(str).map(lambda x: normalize_venue_name(str(x).strip())==venue)
         df=df.loc[mask].copy()
         if df.empty:
             return []
-        # 予測タブでは超巨大JSON列を落とす（既に usecols で制限済みだが保険）
         drop_cols=[c for c in (
             'ワイド詳細','馬連詳細','馬単詳細','三連複詳細','三連単詳細',
         ) if c in df.columns]
@@ -956,6 +1002,8 @@ def _clear_runtime_caches():
         _MAIN_BAN_CACHE.clear()
         _PREP_RACES_CACHE.clear()
         _PAGE_HTML_CACHE.clear()
+        _PRED_DF_CACHE.clear()
+        _SCORES_DF_CACHE.clear()
 
 
 def _clear_runtime_caches_logged(source: str, date_str: str = '', *, actor: str = 'pipeline') -> None:
@@ -1859,8 +1907,6 @@ def ensure_for_page(d, source='all'):
     """
     f=ARCH/f'predictions_{d}.csv'
     try:
-        if f.exists():
-            _ensure_pred_file_finalized(f)
         src = source if source in ('jra', 'nar') else 'all'
         today = _today_jst()
         if src in ('jra', 'nar') and _nar_pred_ready(str(d), src):
@@ -2282,20 +2328,24 @@ def _fmt_display_num(v, *, kind: str = '') -> str:
     return s
 
 
-def _horse_display_meta_for_records(records: list) -> dict:
+def _horse_display_meta_for_records(records: list, selected_date: str = '') -> dict:
     """表示専用: scores/runners から枠・騎手・斤量・日付を引く。スコア計算には使わない。"""
     rids = {_norm_race_id(r.get('race_id')) for r in (records or [])}
     rids.discard('')
     if not rids:
         return {}
-    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数')
     frames = []
     dates = {
         str(r.get('日付') or r.get('開催日') or '').strip()
         for r in (records or [])
         if str(r.get('日付') or r.get('開催日') or '').strip()
     }
+    dsel=str(selected_date or '').strip()
+    if dsel and re.fullmatch(r'\d{4}-\d{2}-\d{2}', dsel):
+        dates.add(dsel)
     for d in sorted(dates):
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(d)):
+            continue
         p = ARCH / f'scores_{d}.csv'
         if p.exists():
             frames.append(p)
@@ -2306,10 +2356,7 @@ def _horse_display_meta_for_records(records: list) -> dict:
         if not Path(path).exists():
             continue
         try:
-            df = pd.read_csv(
-                path, encoding='utf-8-sig',
-                usecols=lambda c: c in want,
-            )
+            df = _load_scores_display_df(path)
         except Exception:
             continue
         if df is None or df.empty or 'race_id' not in df.columns or '馬名' not in df.columns:
@@ -2657,7 +2704,7 @@ def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool)
     hit=_cache_get(_PREP_RACES_CACHE, key)
     if hit is not None:
         return copy.deepcopy(hit)
-    races=prep(list(rows))
+    races=prep(list(rows), selected_date=selected)
     races=_filter_records_by_source(races, source)
     races=apply_display_ranks(races, by_venue=by_venue)
     for row in races:
@@ -2667,12 +2714,12 @@ def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool)
     return races
 
 
-def prep(records, ban_map=None):
+def prep(records, ban_map=None, selected_date=''):
     from areru_engine import RANK_LABELS, RANK_CLASSES
     from race_sim import circle_ban
     from ev_analysis import safe_int
     ban_map=ban_map or {}
-    horse_meta=_horse_display_meta_for_records(records)
+    horse_meta=_horse_display_meta_for_records(records, selected_date=selected_date)
     if not ban_map and horse_meta:
         # scores.csv を ban_map 用に二度読まない（馬番は horse_meta と同じファイル）
         derived={}
@@ -4076,10 +4123,7 @@ def index():
                                 else:
                                     message = f'{selected} / {selected_venue} / 予想分析'
                             else:
-                                df = _fillna_pred_df(pd.read_csv(
-                                    pred_path, encoding='utf-8-sig',
-                                    usecols=lambda c: c in set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付'},
-                                ))
+                                df = _load_pred_detail_df(pred_path)
                                 if source in ('jra', 'nar') and 'source' in df.columns:
                                     df = df[df['source'].astype(str).str.lower() == source].copy()
                                 if mode == 'predict':
