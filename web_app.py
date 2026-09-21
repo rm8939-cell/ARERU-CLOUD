@@ -29,6 +29,11 @@ app=Flask(__name__)
 _TEMPLATE_RELOAD = str(os.environ.get('FLASK_DEBUG') or '').strip().lower() in ('1', 'true', 'yes')
 app.config['TEMPLATES_AUTO_RELOAD'] = _TEMPLATE_RELOAD
 app.jinja_env.auto_reload = _TEMPLATE_RELOAD
+# 初回リクエストから巨大 index.html のコンパイルを外す（表示内容は同じ）
+try:
+    app.jinja_env.get_template('index.html')
+except Exception:
+    pass
 @app.after_request
 def _html_no_store(resp):
     if 'text/html' in (resp.content_type or ''):
@@ -60,6 +65,9 @@ _HTML_CACHE_MAX=48
 # 中身が変わったファイルだけ読み直せばよい。日付ファイルは増える一方なので、
 # ここを毎回舐めると表示時間が日々伸びていく。
 _PRED_SOURCE_CACHE={}
+# プロセス再起動後も size が同じファイルは pandas で開き直さない（mtime は checkout で変わる）
+_PRED_SOURCE_INDEX_PATH=DATA/'pred_source_index.json'
+_PRED_SOURCE_INDEX={'loaded': False, 'files': {}, 'dates': {}, 'dates_sig': '', 'dirty': False}
 _VERIFY_CACHE={}
 _PRED_META_CACHE={'sig':None,'data':{}}
 _PREDICT_JOBS={}
@@ -273,6 +281,110 @@ def _runner_path():
     if LEGACY.exists(): return LEGACY
     return None
 
+def _load_pred_source_index() -> dict:
+    """size キーの source 索引。pandas で 160MB 分の CSV を開かないためのもの。"""
+    if _PRED_SOURCE_INDEX['loaded']:
+        return _PRED_SOURCE_INDEX['files']
+    files={}
+    dates={}
+    dates_sig=''
+    try:
+        raw=json.loads(_PRED_SOURCE_INDEX_PATH.read_text(encoding='utf-8'))
+        if isinstance(raw, dict):
+            cand=raw.get('files')
+            if isinstance(cand, dict):
+                files=cand
+            dc=raw.get('dates')
+            if isinstance(dc, dict):
+                dates=dc
+            dates_sig=str(raw.get('dates_sig') or '')
+    except Exception:
+        files={}
+        dates={}
+        dates_sig=''
+    _PRED_SOURCE_INDEX['files']=files
+    _PRED_SOURCE_INDEX['dates']=dates
+    _PRED_SOURCE_INDEX['dates_sig']=dates_sig
+    _PRED_SOURCE_INDEX['loaded']=True
+    return files
+
+
+def _save_pred_source_index() -> None:
+    if not _PRED_SOURCE_INDEX.get('dirty'):
+        return
+    try:
+        payload={
+            'files': _PRED_SOURCE_INDEX.get('files') or {},
+            'dates': _PRED_SOURCE_INDEX.get('dates') or {},
+            'dates_sig': _PRED_SOURCE_INDEX.get('dates_sig') or '',
+        }
+        tmp=_PRED_SOURCE_INDEX_PATH.with_suffix('.json.tmp')
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        tmp.replace(_PRED_SOURCE_INDEX_PATH)
+        _PRED_SOURCE_INDEX['dirty']=False
+    except Exception:
+        pass
+
+
+def _pred_dates_sig() -> str:
+    """mtime ではなく size。git checkout 後も同じ内容なら同じキー。"""
+    parts=[]
+    rp=_runner_path()
+    try:
+        st=rp.stat()
+        parts.append(f'{rp.name}:{st.st_size}')
+    except Exception:
+        parts.append('runners:0')
+    try:
+        st=ANALYSIS_CSV.stat()
+        parts.append(f'analysis:{st.st_size}')
+    except Exception:
+        parts.append('analysis:0')
+    try:
+        files=sorted(ARCH.glob('predictions_*.csv'))
+        parts.append(str(len(files)))
+        parts.append(','.join(f'{f.name}:{f.stat().st_size}' for f in files))
+    except Exception:
+        parts.append('pred:0')
+    return '|'.join(parts)
+
+
+def _scan_pred_file_sources(path: Path):
+    """source 列のユニーク値。pandas は巨大 JSON 列まで構文解析するので使わない。"""
+    try:
+        with path.open('rb') as fh:
+            header=fh.readline().lstrip(b'\xef\xbb\xbf')
+            cols=[c.strip() for c in header.decode('utf-8', 'replace').split(',')]
+            if 'source' in cols:
+                found=set()
+                while True:
+                    chunk=fh.read(1 << 20)
+                    if not chunk:
+                        break
+                    if b',jra,' in chunk:
+                        found.add('jra')
+                    if b',nar,' in chunk:
+                        found.add('nar')
+                    if found >= {'jra', 'nar'}:
+                        break
+                return frozenset(found) if found else None
+            if 'race_id' not in cols:
+                return None
+            from areru_engine import source_from_race_id
+            found=set()
+            rest=fh.read().decode('utf-8', 'replace')
+            for line in rest.splitlines():
+                rid=line.split(',', 1)[0].strip()
+                src=source_from_race_id(rid)
+                if src in ('jra', 'nar'):
+                    found.add(src)
+                    if found >= {'jra', 'nar'}:
+                        break
+            return frozenset(found) if found else None
+    except OSError:
+        return None
+
+
 def _pred_file_sources(path: Path):
     """予想 CSV に含まれる source（jra/nar）。判別できないときは None。
 
@@ -283,33 +395,33 @@ def _pred_file_sources(path: Path):
     try:
         st=path.stat()
         key=(str(path), st.st_mtime_ns, st.st_size)
+        size=st.st_size
+        name=path.name
     except OSError:
         return None
     hit=_PRED_SOURCE_CACHE.get(key)
     if hit is not None:
         return hit
-    # 全行読まず source / race_id 列だけ usecols
-    try:
-        pdf=pd.read_csv(path,encoding='utf-8-sig',usecols=lambda c: c in ('source','race_id'))
-        if 'source' in pdf.columns:
-            srcs=frozenset(
-                s for s in pdf['source'].astype(str).str.lower().unique()
-                if s in ('jra','nar')
-            )
-        elif 'race_id' in pdf.columns:
-            from areru_engine import source_from_race_id
-            srcs=frozenset(
-                s for s in pdf['race_id'].map(source_from_race_id).unique()
-                if s in ('jra','nar')
-            )
-        else:
+    index=_load_pred_source_index()
+    disk=index.get(name)
+    if isinstance(disk, dict) and int(disk.get('size') or -1)==size:
+        raw=disk.get('sources')
+        srcs=None if raw is None else frozenset(s for s in raw if s in ('jra', 'nar'))
+        if srcs is not None and not srcs:
             srcs=None
-    except Exception:
-        srcs=None
-    # 同じパスの古い世代を残さない（mtime が変わると別キーになるため）
+        for k in [k for k in _PRED_SOURCE_CACHE if k[0]==str(path)]:
+            _PRED_SOURCE_CACHE.pop(k, None)
+        _PRED_SOURCE_CACHE[key]=srcs
+        return srcs
+    srcs=_scan_pred_file_sources(path)
     for k in [k for k in _PRED_SOURCE_CACHE if k[0]==str(path)]:
         _PRED_SOURCE_CACHE.pop(k, None)
     _PRED_SOURCE_CACHE[key]=srcs
+    index[name]={
+        'size': size,
+        'sources': None if srcs is None else sorted(srcs),
+    }
+    _PRED_SOURCE_INDEX['dirty']=True
     return srcs
 
 
@@ -321,6 +433,14 @@ def dates(source='all'):
     hit=_DATES_CACHE.get(key)
     if hit is not None:
         return list(hit)
+    _load_pred_source_index()
+    disk_sig=_pred_dates_sig()
+    if disk_sig and disk_sig==_PRED_SOURCE_INDEX.get('dates_sig'):
+        stored=(_PRED_SOURCE_INDEX.get('dates') or {}).get(source)
+        if isinstance(stored, list):
+            out=list(stored)
+            _DATES_CACHE[key]=list(out)
+            return out
     found=set()
     if rp is not None:
         try:
@@ -360,6 +480,11 @@ def dates(source='all'):
     # 古いキャッシュ肥大化防止
     if len(_DATES_CACHE)>24:
         _DATES_CACHE.clear(); _DATES_CACHE[key]=list(out)
+    dates_map=_PRED_SOURCE_INDEX.setdefault('dates', {})
+    dates_map[source]=list(out)
+    _PRED_SOURCE_INDEX['dates_sig']=_pred_dates_sig()
+    _PRED_SOURCE_INDEX['dirty']=True
+    _save_pred_source_index()
     return out
 
 
@@ -2192,7 +2317,7 @@ def _horse_display_meta_for_records(records: list) -> dict:
         df = df.copy()
         df['_rid'] = df['race_id'].map(_norm_race_id)
         df = df[df['_rid'].isin(rids)]
-        for _, row in df.iterrows():
+        for row in df.to_dict('records'):
             rid = str(row.get('_rid') or '')
             name = clean_horse(row.get('馬名', ''))
             if not rid or not name:
@@ -2532,7 +2657,7 @@ def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool)
     hit=_cache_get(_PREP_RACES_CACHE, key)
     if hit is not None:
         return copy.deepcopy(hit)
-    races=prep(list(rows), ban_map=_main_ban_map(selected))
+    races=prep(list(rows))
     races=_filter_records_by_source(races, source)
     races=apply_display_ranks(races, by_venue=by_venue)
     for row in races:
@@ -2548,6 +2673,14 @@ def prep(records, ban_map=None):
     from ev_analysis import safe_int
     ban_map=ban_map or {}
     horse_meta=_horse_display_meta_for_records(records)
+    if not ban_map and horse_meta:
+        # scores.csv を ban_map 用に二度読まない（馬番は horse_meta と同じファイル）
+        derived={}
+        for (rid, name), info in horse_meta.items():
+            ban=_norm_ban((info or {}).get('馬番', ''))
+            if rid and name and ban:
+                derived[(rid, name)]=ban
+        ban_map=derived
     for r in records:
         try: r['印一覧']=json.loads(str(r.get('印データ','[]')).replace('NaN','null'))
         except: r['印一覧']=[]
@@ -3526,6 +3659,38 @@ def index():
     # 日付一覧のキャッシュはファイルsig+当日キー。force_refresh のときだけ捨てる
     if force_refresh:
         _clear_runtime_caches()
+    # HTML キャッシュ命中なら開催日スキャン（72 CSV）も結果CSVも不要
+    early_selected = today if force_cal_today else (
+        explicit_date or (today if source in ('nar', 'jra') else '')
+    )
+    early_venue=''
+    raw_venue=str(request.args.get('venue') or '').strip()
+    if want_today and not raw_venue:
+        raw_venue=''
+    elif force_cal_today and explicit_date and explicit_date < today and not allow_past:
+        raw_venue=''
+    if raw_venue:
+        try:
+            from netkeiba_client import normalize_venue_name
+            from urllib.parse import unquote
+            decoded=unquote(unquote(raw_venue))
+            early_venue=normalize_venue_name(decoded)
+        except Exception:
+            early_venue=raw_venue
+    if mode=='predict' and not force_refresh and early_selected:
+        try:
+            job_state=str((_read_job_status(source) or {}).get('state') or '') if source in ('jra','nar') else ''
+            html_key=_page_html_cache_key(
+                source=source, mode=mode, selected=early_selected, venue=early_venue,
+                allow_past=allow_past, today=today, job_state=job_state,
+            )
+            cached_html=_cache_get(_PAGE_HTML_CACHE, html_key)
+            if cached_html is not None:
+                _perf_mark('data')
+                _perf_finish(cache='hit')
+                return cached_html
+        except Exception as e:
+            print(f'[page-cache] early lookup skip: {e}', flush=True)
     meeting_dates=dates(source)
     av=list(meeting_dates)
     selected=explicit_date
@@ -3594,7 +3759,7 @@ def index():
     # - プルダウンは「本日以前の開催日 + 結果確定日」（最新開催日も選択可）
     # - 明示指定日に予想があれば結果未取込でも寄せない（結果待ち表示＋バックグラウンド取得）
     # - 本日開催指定時は結果日へ強制しない
-    result_days=dates_with_results(source)
+    result_days=dates_with_results(source) if mode=='result' else []
     if mode=='result' and not want_today and explicit_date and not force_cal_today:
         av=_result_available_dates(meeting_dates, result_days, today)
         if today not in av and source=='nar' and selected==today:
