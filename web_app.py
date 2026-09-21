@@ -1,5 +1,5 @@
-from flask import Flask,render_template,request
-import subprocess,sys,json,re,threading
+from flask import Flask,g,render_template,request
+import subprocess,sys,json,re,threading,time,copy
 from pathlib import Path
 from datetime import date, datetime, timezone, timedelta
 import os
@@ -25,14 +25,18 @@ from daily_ops import (
 )
 
 app=Flask(__name__)
-app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.jinja_env.auto_reload = True
-app.jinja_env.cache = {}
+# 本番ではテンプレートを毎回捨てない（巨大 index.html の再コンパイルが秒単位になる）
+_TEMPLATE_RELOAD = str(os.environ.get('FLASK_DEBUG') or '').strip().lower() in ('1', 'true', 'yes')
+app.config['TEMPLATES_AUTO_RELOAD'] = _TEMPLATE_RELOAD
+app.jinja_env.auto_reload = _TEMPLATE_RELOAD
 @app.after_request
 def _html_no_store(resp):
     if 'text/html' in (resp.content_type or ''):
         resp.headers['Cache-Control'] = 'no-store, max-age=0'
         resp.headers['Pragma'] = 'no-cache'
+    info = getattr(g, 'areru_perf', None)
+    if info:
+        resp.headers['X-ARERU-Perf'] = info
     return resp
 BASE=Path(__file__).resolve().parent
 DATA=BASE/'data'; ARCH=DATA/'predictions_by_date'; ARCH.mkdir(parents=True,exist_ok=True)
@@ -43,6 +47,15 @@ JST=timezone(timedelta(hours=9))
 
 # プロセス内キャッシュ / バックグラウンド生成（ページ表示をブロックしない）
 _DATES_CACHE={}
+_PRED_READY_CACHE={}
+_PRED_FINALIZED_CACHE={}
+_RUNNERS_NEED_CACHE={}
+_MAIN_BAN_CACHE={}
+_PREP_RACES_CACHE={}
+_PAGE_HTML_CACHE={}
+_PAGE_CACHE_LOCK=threading.Lock()
+_PREP_CACHE_MAX=16
+_HTML_CACHE_MAX=48
 # predictions_YYYY-MM-DD.csv に含まれる source。(path, mtime, size) キーなので
 # 中身が変わったファイルだけ読み直せばよい。日付ファイルは増える一方なので、
 # ここを毎回舐めると表示時間が日々伸びていく。
@@ -142,6 +155,94 @@ def _unhandled_error(exc):
     return html, 500
 
 
+def _file_sig(path) -> str:
+    """1ファイルの mtime/size。リアルタイム再計算せず、ファイル更新で無効化する。"""
+    try:
+        st=Path(path).stat()
+        return f'{st.st_mtime_ns}:{st.st_size}'
+    except OSError:
+        return '0'
+
+
+def _cache_get(store: dict, key):
+    with _PAGE_CACHE_LOCK:
+        val=store.get(key)
+        if val is None:
+            return None
+        store.pop(key, None)
+        store[key]=val
+        return val
+
+
+def _cache_put(store: dict, key, val, maxn: int) -> None:
+    with _PAGE_CACHE_LOCK:
+        store[key]=val
+        extra=len(store)-maxn
+        if extra<=0:
+            return
+        for k in list(store.keys())[:extra]:
+            store.pop(k, None)
+
+
+def _perf_start() -> float:
+    g.areru_t0=time.perf_counter()
+    g.areru_marks={}
+    return g.areru_t0
+
+
+def _perf_mark(name: str) -> None:
+    t0=getattr(g, 'areru_t0', None)
+    if t0 is None:
+        return
+    marks=getattr(g, 'areru_marks', None)
+    if marks is None:
+        marks={}
+        g.areru_marks=marks
+    marks[name]=round((time.perf_counter()-t0)*1000.0, 1)
+
+
+def _perf_finish(*, cache: str, extra: str = '') -> None:
+    t0=getattr(g, 'areru_t0', None)
+    if t0 is None:
+        t0=time.perf_counter()
+    total=round((time.perf_counter()-t0)*1000.0, 1)
+    marks=getattr(g, 'areru_marks', {}) or {}
+    parts=[f'cache={cache}', f'total={total}']
+    for k in ('data', 'prep', 'html'):
+        if k in marks:
+            parts.append(f'{k}={marks[k]}')
+    if extra:
+        parts.append(extra)
+    info=';'.join(parts)
+    g.areru_perf=info
+    print(f'[perf] {info}', flush=True)
+
+
+def _page_html_cache_key(
+    *,
+    source: str,
+    mode: str,
+    selected: str,
+    venue: str,
+    allow_past: bool,
+    today: str,
+    job_state: str = '',
+) -> tuple:
+    pred=ARCH/f'predictions_{selected}.csv' if selected else None
+    scores=ARCH/f'scores_{selected}.csv' if selected else None
+    return (
+        source,
+        mode,
+        selected or '',
+        venue or '',
+        int(bool(allow_past)),
+        today,
+        str(job_state or ''),
+        _file_sig(pred) if pred else '0',
+        _file_sig(scores) if scores else '0',
+    )
+
+
 def _fs_sig(*paths):
     """キャッシュ無効化用の簡易シグネチャ（mtime/size）。"""
     parts=[]
@@ -216,14 +317,14 @@ def dates(source='all'):
     """開催日一覧。runners.csv を正とし、生成済み predictions も合流する。"""
     rp=_runner_path()
     sig=_fs_sig(rp or Path('.'), ANALYSIS_CSV)
-    key=(source,sig)
+    key=(source, sig, _today_jst())
     hit=_DATES_CACHE.get(key)
     if hit is not None:
         return list(hit)
     found=set()
     if rp is not None:
         try:
-            rdf=pd.read_csv(rp,encoding='utf-8-sig')
+            rdf=pd.read_csv(rp,encoding='utf-8-sig', usecols=lambda c: c in ('日付','source','race_id'))
             if '日付' in rdf.columns:
                 if source in ('jra','nar'):
                     if 'source' in rdf.columns:
@@ -279,17 +380,24 @@ def _runners_need_source(d, source) -> bool:
     rp=_runner_path()
     if rp is None:
         return False
+    key=(d, source, _file_sig(rp))
+    hit=_RUNNERS_NEED_CACHE.get(key)
+    if hit is not None:
+        return bool(hit)
     try:
         rdf=pd.read_csv(rp,encoding='utf-8-sig',usecols=lambda c: c in ('日付','source','race_id'))
         day=parse_date(rdf['日付']).dt.strftime('%Y-%m-%d')==d
         if not day.any():
-            return False
-        if 'source' in rdf.columns:
-            return bool((day & (rdf['source'].astype(str).str.lower()==source)).any())
-        from areru_engine import source_from_race_id
-        return bool(rdf.loc[day,'race_id'].map(source_from_race_id).eq(source).any())
+            need=False
+        elif 'source' in rdf.columns:
+            need=bool((day & (rdf['source'].astype(str).str.lower()==source)).any())
+        else:
+            from areru_engine import source_from_race_id
+            need=bool(rdf.loc[day,'race_id'].map(source_from_race_id).eq(source).any())
     except Exception:
-        return False
+        need=False
+    _cache_put(_RUNNERS_NEED_CACHE, key, need, 64)
+    return need
 
 
 def _need_regen(d, source='all') -> bool:
@@ -313,11 +421,22 @@ def _ensure_pred_file_finalized(path) -> None:
     """読み込み前に未確定CSVを厳格確定へ昇格（日次後の相対ランク戻し防止）。"""
     if not path:
         return
+    key=(str(path), _file_sig(path))
+    if _PRED_FINALIZED_CACHE.get(key):
+        return
     try:
-        from ev_analysis import ensure_predictions_file_finalized
+        from ev_analysis import predictions_are_finalized, ensure_predictions_file_finalized
+        light=pd.read_csv(
+            path, encoding='utf-8-sig',
+            usecols=lambda c: c in ('相対ランク', '投資判定', '勝負ランク'),
+        )
+        if predictions_are_finalized(light):
+            _cache_put(_PRED_FINALIZED_CACHE, key, True, 128)
+            return
         if ensure_predictions_file_finalized(path):
             _clear_runtime_caches()
             print(f'[rank] finalized stale predictions: {Path(path).name}', flush=True)
+        _cache_put(_PRED_FINALIZED_CACHE, (str(path), _file_sig(path)), True, 128)
     except Exception as e:
         print(f'[rank] finalize skip {path}: {e}', flush=True)
 
@@ -701,10 +820,17 @@ def _jra_main_tickets(race: dict) -> list:
 
 def _clear_runtime_caches():
     """runners / predictions 更新後に日付・検証キャッシュを捨てる。"""
-    _DATES_CACHE.clear()
-    _VERIFY_CACHE.clear()
-    _PRED_META_CACHE['sig']=None
-    _PRED_META_CACHE['data']={}
+    with _PAGE_CACHE_LOCK:
+        _DATES_CACHE.clear()
+        _VERIFY_CACHE.clear()
+        _PRED_META_CACHE['sig']=None
+        _PRED_META_CACHE['data']={}
+        _PRED_READY_CACHE.clear()
+        _PRED_FINALIZED_CACHE.clear()
+        _RUNNERS_NEED_CACHE.clear()
+        _MAIN_BAN_CACHE.clear()
+        _PREP_RACES_CACHE.clear()
+        _PAGE_HTML_CACHE.clear()
 
 
 def _clear_runtime_caches_logged(source: str, date_str: str = '', *, actor: str = 'pipeline') -> None:
@@ -1094,15 +1220,31 @@ def _nar_pred_ready(date_str: str, source: str = 'nar') -> bool:
     f=ARCH/f'predictions_{date_str}.csv'
     if not f.exists() or f.stat().st_size < 32:
         return False
-    try:
-        pdf=pd.read_csv(f, encoding='utf-8-sig', usecols=lambda c: c in ('source','race_id','開催地'))
-        if pdf.empty:
-            return False
-        if source in ('jra','nar') and 'source' in pdf.columns:
-            return bool((pdf['source'].astype(str).str.lower()==source).any())
-        return True
-    except Exception:
-        return False
+    key=(str(f), _file_sig(f), source)
+    hit=_PRED_READY_CACHE.get(key)
+    if hit is not None:
+        return bool(hit)
+    srcs=_pred_file_sources(f)
+    if source in ('jra', 'nar'):
+        if srcs is not None:
+            ready=source in srcs
+            _cache_put(_PRED_READY_CACHE, key, ready, 256)
+            return ready
+        try:
+            pdf=pd.read_csv(f, encoding='utf-8-sig', usecols=lambda c: c in ('source','race_id','開催地'))
+            if pdf.empty:
+                ready=False
+            elif 'source' in pdf.columns:
+                ready=bool((pdf['source'].astype(str).str.lower()==source).any())
+            else:
+                ready=True
+        except Exception:
+            ready=False
+        _cache_put(_PRED_READY_CACHE, key, ready, 256)
+        return ready
+    ready=True
+    _cache_put(_PRED_READY_CACHE, key, ready, 256)
+    return ready
 
 
 def _stay_on_selected_calendar_day(selected: str | None, source: str = '') -> bool:
@@ -2032,7 +2174,8 @@ def _horse_display_meta_for_records(records: list) -> dict:
         p = ARCH / f'scores_{d}.csv'
         if p.exists():
             frames.append(p)
-    frames.append(RUNNERS)
+    if not frames:
+        frames.append(RUNNERS)
     out = {}
     for path in frames:
         if not Path(path).exists():
@@ -2124,6 +2267,10 @@ def _main_ban_map(selected_date: str) -> dict:
     p=ARCH/f'scores_{selected_date}.csv'
     if not p.exists():
         return {}
+    key=(str(p), _file_sig(p))
+    hit=_cache_get(_MAIN_BAN_CACHE, key)
+    if hit is not None:
+        return hit
     try:
         sdf=pd.read_csv(p).fillna('')
     except Exception:
@@ -2137,6 +2284,7 @@ def _main_ban_map(selected_date: str) -> dict:
         ban=_norm_ban(row.get('馬番',''))
         if rid and name and ban:
             m[(rid, name)]=ban
+    _cache_put(_MAIN_BAN_CACHE, key, m, 24)
     return m
 
 
@@ -2364,6 +2512,34 @@ def build_today_ai_board(races: list, verification: dict | None = None) -> dict:
             'roi-mid' if recovery is not None else 'roi-bad'
         ),
     }
+
+
+def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool) -> list:
+    """同じ predictions/scores なら prep + 印付け結果を再利用する。計算式は変えない。"""
+    pred=ARCH/f'predictions_{selected}.csv' if selected else None
+    scores=ARCH/f'scores_{selected}.csv' if selected else None
+    rids=tuple(_norm_race_id(r.get('race_id')) for r in (rows or []))
+    key=(
+        selected or '',
+        source,
+        int(bool(by_venue)),
+        _file_sig(pred) if pred else '0',
+        _file_sig(scores) if scores else '0',
+        len(rids),
+        rids[:8],
+        rids[-8:] if len(rids) > 8 else (),
+    )
+    hit=_cache_get(_PREP_RACES_CACHE, key)
+    if hit is not None:
+        return copy.deepcopy(hit)
+    races=prep(list(rows), ban_map=_main_ban_map(selected))
+    races=_filter_records_by_source(races, source)
+    races=apply_display_ranks(races, by_venue=by_venue)
+    for row in races:
+        if not _race_date(row):
+            row['日付']=selected
+    _cache_put(_PREP_RACES_CACHE, key, copy.deepcopy(races), _PREP_CACHE_MAX)
+    return races
 
 
 def prep(records, ban_map=None):
@@ -3270,6 +3446,7 @@ def bootstrap_source(source: str) -> bool:
 
 @app.route('/')
 def index():
+    _perf_start()
     source=request.args.get('source','jra')
     if source not in ('jra','nar','all'):
         source='jra'
@@ -3346,8 +3523,8 @@ def index():
                 source, state='error', stage='failed', message='取得失敗',
                 date_str=_today_jst(), error=str(e)[:200],
             )
-    # 日付キャッシュを当日判定前に捨て、古い開催日一覧を使わない
-    if source in ('nar', 'jra') and (force_cal_today or force_refresh or want_today):
+    # 日付一覧のキャッシュはファイルsig+当日キー。force_refresh のときだけ捨てる
+    if force_refresh:
         _clear_runtime_caches()
     meeting_dates=dates(source)
     av=list(meeting_dates)
@@ -3500,6 +3677,7 @@ def index():
     # 収支タブはレース詳細を組み立てない（高速化）
     if mode=='ledger':
         message=f'{label} / 収支分析'
+        _perf_finish(cache='miss', extra='mode=ledger')
         return render_template('index.html',races=[],targets=[],selected_date=selected,today=today,
             message=message,available_dates=av,source=source,mode=mode,has_results=False,
             analysis={'total':0,'verified':0,'ranks':[],'bands':[],'venues':[]},
@@ -3508,6 +3686,21 @@ def index():
             today_date=_pick_today_date(meeting_dates, today) if source=='nar' else today,
             day_stats=None,data_status='ready',
             buy_candidates=[],today_ai_board=today_ai_board,data_updated_at='')
+
+    if mode=='predict' and not force_refresh and selected:
+        try:
+            job_state=str((_read_job_status(source) or {}).get('state') or '') if source in ('jra','nar') else ''
+            html_key=_page_html_cache_key(
+                source=source, mode=mode, selected=selected, venue=selected_venue,
+                allow_past=allow_past, today=today, job_state=job_state,
+            )
+            cached_html=_cache_get(_PAGE_HTML_CACHE, html_key)
+            if cached_html is not None:
+                _perf_mark('data')
+                _perf_finish(cache='hit')
+                return cached_html
+        except Exception as e:
+            print(f'[page-cache] lookup skip: {e}', flush=True)
 
     if selected in av:
         try:
@@ -3642,12 +3835,7 @@ def index():
                                 except Exception:
                                     pass
                             else:
-                                races=prep(venue_rows, ban_map=_main_ban_map(selected))
-                                races=_filter_records_by_source(races, source)
-                                races=apply_display_ranks(races, by_venue=True)
-                                for row in races:
-                                    if not _race_date(row):
-                                        row['日付']=selected
+                                races=_prep_rank_cached(venue_rows, selected, source, by_venue=True)
                                 if mode=='result':
                                     races,has_results=attach_results(races, selected_date=selected)
                                     ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
@@ -3695,14 +3883,11 @@ def index():
                             # 全列読みは禁止（Render OOM）。会場詳細と同じ列制限で読む。
                             venue_rows = _read_predictions_for_venue_detail(
                                 pred_path, source, selected_venue
-                            ) if selected_venue else _read_predictions_for_venue_picker(pred_path, source)
+                            ) if selected_venue else []
                             if selected_venue and venue_rows:
-                                races = prep(venue_rows, ban_map=_main_ban_map(selected))
-                                races = _filter_records_by_source(races, source)
-                                races = apply_display_ranks(races, by_venue=(source == 'nar'))
-                                for row in races:
-                                    if not _race_date(row):
-                                        row['日付'] = selected
+                                races = _prep_rank_cached(
+                                    venue_rows, selected, source, by_venue=(source == 'nar')
+                                )
                                 venues = _day_venues_for_nav(
                                     pred_path, source, fallback=_venue_meetings(races)
                                 )
@@ -3738,13 +3923,10 @@ def index():
                                     ) if c in df.columns]
                                     if drop_cols:
                                         df = df.drop(columns=drop_cols, errors='ignore')
-                                races = prep(df.to_dict('records'), ban_map=_main_ban_map(selected))
+                                races = _prep_rank_cached(
+                                    df.to_dict('records'), selected, source, by_venue=(source == 'nar')
+                                )
                                 del df
-                                races = _filter_records_by_source(races, source)
-                                races = apply_display_ranks(races, by_venue=(source == 'nar'))
-                                for row in races:
-                                    if not _race_date(row):
-                                        row['日付'] = selected
                                 if mode == 'result':
                                     races, has_results = attach_results(races, selected_date=selected)
                                     ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
@@ -4116,7 +4298,13 @@ def index():
                 status=data_status, message=(message or '')[:80],
             )
 
-    return render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
+    _perf_mark('data')
+    pipeline = (
+        {'あり': False, '行': [], '開催日': '', '更新': '', '件数': 0}
+        if mode == 'predict'
+        else build_areru_pipeline_board(selected, source)
+    )
+    html = render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
         ledger=ledger,
@@ -4125,7 +4313,26 @@ def index():
         day_stats=day_stats,data_status=data_status,
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
         status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime,
-        areru_pipeline=build_areru_pipeline_board(selected, source))
+        areru_pipeline=pipeline)
+    _perf_mark('html')
+    if mode == 'predict' and not force_refresh and selected and data_status in ('ready', 'updating', 'success'):
+        try:
+            job_state=str((_read_job_status(source) or {}).get('state') or '') if source in ('jra','nar') else ''
+            html_key=_page_html_cache_key(
+                source=source, mode=mode, selected=selected, venue=selected_venue,
+                allow_past=allow_past, today=today, job_state=job_state,
+            )
+            url_key=_page_html_cache_key(
+                source=source, mode=mode, selected=selected, venue=str(request.args.get('venue') or '').strip(),
+                allow_past=allow_past, today=today, job_state=job_state,
+            )
+            _cache_put(_PAGE_HTML_CACHE, html_key, html, _HTML_CACHE_MAX)
+            if url_key != html_key:
+                _cache_put(_PAGE_HTML_CACHE, url_key, html, _HTML_CACHE_MAX)
+        except Exception as e:
+            print(f'[page-cache] store skip: {e}', flush=True)
+    _perf_finish(cache='miss', extra=f'races={len(races)}')
+    return html
 
 
 def attach_results(records, selected_date=''):
