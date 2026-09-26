@@ -27,7 +27,7 @@ def _fingerprint(html: str) -> dict:
     ai = re.findall(r'>AI(\d+)<', html)
     honmei = re.findall(r'◎本命', html)
     return {
-        'ui': 'data-ui="areu-app-v20"' in html,
+        'ui': 'data-ui="areu-app-v21"' in html,
         'judges': judges,
         'buy_count': len(buys),
         'ai_ranks': ai[:40],
