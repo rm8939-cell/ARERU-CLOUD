@@ -2163,7 +2163,10 @@ def _horse_display_meta_for_records(records: list) -> dict:
     rids.discard('')
     if not rids:
         return {}
-    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数')
+    want = (
+        'race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数',
+        '着順1', 'レース名1', 'レース名2', 'レース名3', 'レース名4', 'レース名5',
+    )
     frames = []
     dates = {
         str(r.get('日付') or r.get('開催日') or '').strip()
@@ -2206,6 +2209,12 @@ def _horse_display_meta_for_records(records: list) -> dict:
                 ('日付', '日付', ''),
                 ('単勝オッズ', '単勝オッズ', ''),
                 ('人気', '人気', '枠'),
+                ('着順1', '着順1', ''),
+                ('レース名1', 'レース名1', ''),
+                ('レース名2', 'レース名2', ''),
+                ('レース名3', 'レース名3', ''),
+                ('レース名4', 'レース名4', ''),
+                ('レース名5', 'レース名5', ''),
             ):
                 if cur.get(dst):
                     continue
@@ -2463,6 +2472,206 @@ def _stamp_ai_field_ranks(race: dict) -> None:
     race['表示グループ'] = groups
 
 
+def _disp_blank(v) -> bool:
+    if v is None:
+        return True
+    s = str(v).strip()
+    return s in ('', '—', '-', 'None', 'nan', 'なし')
+
+
+def _grade_from_race_name(name) -> str:
+    """既存レース名から GⅠ/GⅡ/GⅢ/重賞 を読む。無いときは空。"""
+    s = str(name or '')
+    if not s or s in ('—', '-', 'nan'):
+        return ''
+    if re.search(r'G\s*III|GIII|ＧⅢ|Ｇ３|Jpn\s*III|JpnIII', s, re.I):
+        return 'GⅢ'
+    if re.search(r'G\s*II|GII|ＧⅡ|Ｇ２|Jpn\s*II|JpnII', s, re.I):
+        return 'GⅡ'
+    if re.search(r'G\s*I\b|GI\b|ＧⅠ|Ｇ１|Jpn\s*I\b|JpnI\b', s, re.I):
+        return 'GⅠ'
+    if '重賞' in s:
+        return '重賞'
+    return ''
+
+
+def _style_from_text(text):
+    """展開相性の既存文字列から脚質とポジション番号を復元する。新規予想はしない。"""
+    s = str(text or '')
+    if '追込' in s:
+        return 0.78, '追込', 4
+    if '差し' in s:
+        return 0.62, '差し', 3
+    if '逃げ' in s:
+        return 0.22, '逃げ', 1
+    if '先行' in s:
+        return 0.40, '先行', 2
+    return None, '', None
+
+
+def _why_eval(card: dict, key: str):
+    for row in (card.get('判断根拠') or []):
+        if isinstance(row, dict) and str(row.get('項目') or '') == key:
+            ev = str(row.get('評価') or '').strip()
+            if ev and ev not in ('—', '-', 'なし', '対象外', 'データ不足'):
+                return ev
+    return None
+
+
+def _stamp_horse_analysis_fields(p: dict, pace_label: str, past: dict | None = None) -> None:
+    """既存カード/履歴だけを可視化用に転写。AI順位・BUY・指数は触らない。"""
+    card = p.get('カード') if isinstance(p.get('カード'), dict) else {}
+    past = past or {}
+    for k in (
+        '距離適性', 'コース適性', '馬場適性', 'ラップ適性', '上がり評価',
+        '上がり順位', '展開相性', '勝率', '連対率', '複勝率', 'AI信頼度スコア',
+    ):
+        if _disp_blank(p.get(k)) and not _disp_blank(card.get(k)):
+            p[k] = card.get(k)
+    if _disp_blank(p.get('カード期待値')) and not _disp_blank(card.get('期待値')):
+        p['カード期待値'] = card.get('期待値')
+    if _disp_blank(p.get('予想スコア')) and not _disp_blank(card.get('AI評価')):
+        try:
+            p['予想スコア'] = round(float(card.get('AI評価')), 1)
+        except (TypeError, ValueError):
+            pass
+
+    style_txt = p.get('展開相性') or card.get('展開相性') or ''
+    style_f, pos_label, pos_n = _style_from_text(style_txt)
+    lap_label = p.get('ラップ適性') or card.get('ラップ適性') or ''
+    lap_fit = None
+    if style_f is not None and pace_label:
+        try:
+            from race_sim import lap_aptitude
+            lap_fit, computed = lap_aptitude(style_f, str(pace_label))
+            if _disp_blank(lap_label):
+                lap_label = computed
+        except Exception:
+            lap_fit = None
+    p['ラップ適合度'] = round(float(lap_fit), 1) if lap_fit is not None else None
+    p['ラップ適性表示'] = lap_label if not _disp_blank(lap_label) else None
+    p['想定ポジション'] = pos_label or None
+    p['想定ポジション番号'] = pos_n
+    p['展開適性'] = pos_label or (style_txt if not _disp_blank(style_txt) else None)
+
+    names = [past.get(f'レース名{i}') for i in range(1, 6)]
+    finishes = [past.get(f'着順{i}') for i in range(1, 6)]
+    graded = []
+    for nm, fin in zip(names, finishes):
+        g = _grade_from_race_name(nm)
+        if g:
+            fin_s = str(fin or '').strip()
+            try:
+                fin_s = f'{int(float(fin_s))}着' if fin_s else ''
+            except (TypeError, ValueError):
+                fin_s = fin_s if fin_s.endswith('着') else ''
+            graded.append((g, str(nm).strip(), fin_s))
+    if graded:
+        bits = [f'{g}{(" "+fn) if fn else ""}' for g, _nm, fn in graded[:3]]
+        p['重賞実績'] = f'{len(graded)}走（' + ' / '.join(bits) + '）'
+    else:
+        p['重賞実績'] = None
+
+    last_name = str(past.get('レース名1') or '').strip()
+    last_fin = str(past.get('着順1') or '').strip()
+    if last_name or last_fin:
+        try:
+            last_fin = f'{int(float(last_fin))}着' if last_fin else ''
+        except (TypeError, ValueError):
+            if last_fin and not last_fin.endswith('着'):
+                last_fin = ''
+        p['前走内容'] = ' '.join(x for x in (last_fin, last_name) if x) or None
+    else:
+        p['前走内容'] = None
+
+    cls = _why_eval(card, 'クラス適性')
+    if not cls:
+        reasons = str(card.get('プラス材料') or '') + ' ' + ' '.join(str(x) for x in (p.get('プラス要因') or []))
+        if 'クラス条件好転' in reasons or 'クラス' in reasons:
+            cls = '好転'
+    p['クラス適性'] = cls if not _disp_blank(cls) else None
+
+    last3 = p.get('上がり評価') if not _disp_blank(p.get('上がり評価')) else None
+    last3_rank = p.get('上がり順位') if not _disp_blank(p.get('上がり順位')) else None
+    if last3 is not None or last3_rank is not None:
+        p['上がり性能'] = (
+            (f'{last3_rank}位' if last3_rank not in (None, '') else '')
+            + (f' {last3}' if last3 not in (None, '') else '')
+        ).strip() or None
+    else:
+        p['上がり性能'] = None
+
+
+def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> None:
+    """レース分析・ラップマップを既存データから組み立てる。予想ロジックは変更しない。"""
+    pace = race.get('展開予想データ') if isinstance(race.get('展開予想データ'), dict) else {}
+    front = pace.get('逃げ有利度')
+    senko = pace.get('先行有利度')
+    sashi = pace.get('差し有利度')
+    oikomi = pace.get('追込有利度')
+    try:
+        fv = float(front) if front not in (None, '') else None
+        sv = float(sashi) if sashi not in (None, '') else None
+    except (TypeError, ValueError):
+        fv = sv = None
+    if fv is not None and sv is not None:
+        if sv > fv + 8:
+            trend = '差し有利'
+        elif fv > sv + 8:
+            trend = '前有利'
+        else:
+            trend = '互角'
+    else:
+        trend = None
+    pace_label = pace.get('想定ペース')
+    if pace_label == 'ハイ':
+        lap_trend = '前傾'
+    elif pace_label == 'スロー':
+        lap_trend = '後傾'
+    elif pace_label:
+        lap_trend = '平均'
+    else:
+        lap_trend = None
+    name = race.get('レース名') or ''
+    grade = _grade_from_race_name(name)
+    race['重賞グレード'] = grade or None
+    race['重賞レース'] = bool(grade)
+    race['レース分析'] = {
+        '想定ペース': pace_label if not _disp_blank(pace_label) else None,
+        '展開傾向': trend,
+        '前有利': senko if senko not in (None, '') else front,
+        '差し有利': sashi if sashi not in (None, '') else None,
+        '追込適性': oikomi if oikomi not in (None, '') else None,
+        'ラップ傾向': lap_trend,
+        '勝ち時計予想': None,
+        '有利枠': pace.get('有利枠') if not _disp_blank(pace.get('有利枠')) else None,
+        '荒れ指数': pace.get('荒れ指数') if not _disp_blank(pace.get('荒れ指数')) else None,
+        '総評': pace.get('AI総評') if not _disp_blank(pace.get('AI総評')) else None,
+        '逃げ馬数': pace.get('逃げ馬数'),
+        '先行馬数': pace.get('先行馬数'),
+        '差し馬数': pace.get('差し馬数'),
+        '追込馬数': pace.get('追込馬数'),
+    }
+    rid = _norm_race_id(race.get('race_id', ''))
+    horse_meta = horse_meta or {}
+    pts = []
+    for p in race.get('AI一覧') or []:
+        if not isinstance(p, dict):
+            continue
+        meta = horse_meta.get((rid, clean_horse(p.get('馬名') or ''))) or {}
+        _stamp_horse_analysis_fields(p, str(pace_label or ''), meta)
+        if p.get('ラップ適合度') is not None and p.get('想定ポジション番号'):
+            pos = int(p['想定ポジション番号'])
+            pts.append({
+                '馬番': p.get('馬番表示') or p.get('馬番') or '',
+                '馬名': p.get('馬名') or '',
+                'AI順位': p.get('AI順位'),
+                'x': round((pos - 1) / 3.0 * 100.0, 1),
+                'y': float(p['ラップ適合度']),
+            })
+    race['ラップマップ'] = pts
+
+
 def build_buy_candidates(races: list, limit: int = 12) -> list:
     """厳選後の買いレースを期待値順（本日の買い候補）。"""
     from ev_analysis import safe_float, safe_int
@@ -2709,6 +2918,7 @@ def prep(records, ban_map=None):
         if n:
             r['表示頭数']=n
         _stamp_ai_field_ranks(r)
+        _stamp_race_analysis_display(r, horse_meta)
         if race_date and not r.get('開催日'):
             r['開催日']=race_date
         # 地方: 単勝・馬連・ワイドのシンプル買い目を優先表示
