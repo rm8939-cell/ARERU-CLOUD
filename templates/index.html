@@ -4,7 +4,7 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
 <meta http-equiv="Cache-Control" content="no-store, max-age=0">
-<meta name="areu-ui" content="app-v20">
+<meta name="areu-ui" content="app-v23">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
@@ -923,8 +923,8 @@ body.app-race .rb-card.is-hon{padding:5px 7px;border:1.5px solid #16a34a}
 body.app-race .rb-card.is-row{display:block;padding:4px 8px;margin:0 0 4px}
 body.app-race .rb-card.is-row .rb-line{display:flex;align-items:center;gap:6px;min-width:0}
 body.app-race .rb-card.is-row .rb-mark{display:none}
-body.app-race .rb-card.is-row .rb-name{flex:1 1 auto;min-width:72px}
-body.app-race .rb-card.is-row .rb-stats{margin-left:auto;display:flex;gap:6px;font-size:11px;font-weight:800;color:#0a1a3a;white-space:nowrap;flex:0 0 auto}
+body.app-race .rb-card.is-row .rb-name{flex:1 1 88px;min-width:88px}
+body.app-race .rb-card.is-row .rb-stats{margin-left:auto;display:flex;gap:4px;font-size:10px;font-weight:800;color:#0a1a3a;white-space:nowrap;flex:0 0 auto}
 body.app-race .rb-card.mk-対抗{border-color:#93c5fd;background:#f8fbff}
 body.app-race .rb-card.mk-単穴{border-color:#fdba74;background:#fffaf5}
 body.app-race .rb-card.mk-連下,body.app-race .rb-card.is-pack{border-color:#d1d5db;background:#fafafa}
@@ -1000,8 +1000,26 @@ body.app-race .fx-rnose{flex-wrap:nowrap}
   body.app-race .fx-rnose button{font-size:13px;min-height:32px}
   body.app-race .fx-rnose button.fx-step{flex-basis:48px}
 }
+/* ===== v23: 巨大BUYカード廃止。本命はテキスト行、対抗以下は1行 ===== */
+body.app-race .fx-morebtn{display:none !important}
+body.app-race .fx-id-1 [data-fx-start]{display:none !important}
+body.app-race .fx-id-2{display:flex !important;flex-wrap:wrap;gap:6px 10px;margin-top:1px}
+body.app-race .fx-id-2 [data-fx-surf],body.app-race .fx-id-2 [data-fx-dist]{display:none !important}
+body.app-race .fx-id-2 [data-fx-heads]{display:inline !important;font-size:13px;font-weight:900;color:#0a1a3a}
+body.app-race .rb-grid{display:none !important}
+body.app-race .rb-metrics{display:grid;gap:1px;margin:0 0 3px}
+body.app-race .rb-mrow{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:11px;font-weight:700;color:#4b5563;line-height:1.35}
+body.app-race .rb-mrow span{white-space:nowrap;min-width:0}
+body.app-race .rb-mrow b{color:#0a1a3a;font-weight:900}
+body.app-race .rb-mrow b.is-ev{color:#15803d}
+body.app-race .rb-card.is-hon{padding:5px 7px 6px}
+body.app-race .rb-hon-head{margin:0 0 3px}
+body.app-race .rb-rank-box small{display:none}
+body.app-race .rb-rank-box b{width:18px;height:18px;font-size:11px}
+body.app-race .rb-why{padding:3px 6px}
+body.app-race .rb-why li{font-size:10px;line-height:1.3}
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v22"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v23"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1624,7 +1642,7 @@ body.app-race .fx-rnose{flex-wrap:nowrap}
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v22">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v23">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -1659,34 +1677,40 @@ body.app-race .fx-rnose{flex-wrap:nowrap}
 <div class="rb-hon-head">
 {% if p.get('BUY表示') %}<span class="rb-buy-tag">🔥 BUY</span>{% endif %}
 <span class="rb-role">{{p.get('表示印名') or '本命'}}</span>
-{% if _sr not in _blank %}<span class="rb-rank-box"><b>{{_sr}}</b><small>勝負ランク</small></span>{% endif %}
+{% if _sr not in _blank %}<span class="rb-rank-box"><b>{{_sr}}</b></span>{% endif %}
 </div>
 <div class="rb-horse">
 {% if _ban %}<span class="rb-ban">{{_ban}}</span>{% endif %}
 <span class="rb-name">{{p.get('馬名') or '—'}}</span>
 {% if _rank not in _blank %}<span class="rb-ai">AI{{_rank}}</span>{% endif %}
 </div>
-<div class="rb-grid">
-{% if _ev not in _blank %}<div class="rb-cell is-ev"><b>{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</b><span>期待値</span></div>{% endif %}
-{% if _win not in _blank %}<div class="rb-cell"><b>{{'%g'|format(_win|float)}}%</b><span>勝率</span></div>{% endif %}
-{% if _od not in _blank %}<div class="rb-cell"><b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b><span>オッズ</span></div>{% endif %}
-{% if _pop not in _blank %}<div class="rb-cell"><b>{{_pop|int}}番</b><span>人気</span></div>{% endif %}
-{% if _pop not in _blank and _rank not in _blank %}<div class="rb-cell"><b>{{'%+d'|format((_pop|int) - (_rank|int))}}</b><span>人気差</span></div>{% endif %}
-{% if _conf not in _blank %}<div class="rb-cell"><b>{{'%g'|format(_conf|float)}}%</b><span>信頼度</span></div>{% endif %}
-{% if _grade not in _blank %}<div class="rb-cell"><b>{{_grade}}</b><span class="bc-k">AI評価</span></div>{% endif %}
-{% if p.get('BUY表示') and _edge not in _blank %}<div class="rb-cell is-ev"><b>{{'%+.1f'|format(_edge|float)}}pp</b><span>実エッジ</span></div>{% endif %}
+<div class="rb-metrics">
+{% if _ev not in _blank or _win not in _blank or _od not in _blank %}
+<div class="rb-mrow">
+{% if _ev not in _blank %}<span>期待値 <b class="is-ev">{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</b></span>{% endif %}
+{% if _win not in _blank %}<span>勝率 <b>{{'%g'|format(_win|float)}}%</b></span>{% endif %}
+{% if _od not in _blank %}<span>オッズ <b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b></span>{% endif %}
+</div>
+{% endif %}
+{% if _pop not in _blank or _conf not in _blank %}
+<div class="rb-mrow">
+{% if _pop not in _blank %}<span>人気 <b>{{_pop|int}}番</b></span>{% endif %}
+{% if _pop not in _blank and _rank not in _blank %}<span>人気差 <b>{{'%+d'|format((_pop|int) - (_rank|int))}}</b></span>{% endif %}
+{% if _conf not in _blank %}<span>信頼度 <b>{{'%g'|format(_conf|float)}}%</b></span>{% endif %}
+</div>
+{% endif %}
+{% if _grade not in _blank or (p.get('BUY表示') and _edge not in _blank) %}
+<div class="rb-mrow">
+{% if _grade not in _blank %}<span>AI評価 <b>{{_grade}}</b></span>{% endif %}
+{% if p.get('BUY表示') and _edge not in _blank %}<span>実エッジ <b class="is-ev">{{'%+.1f'|format(_edge|float)}}pp</b></span>{% endif %}
+</div>
+{% endif %}
 </div>
 {% if p.get('BUY表示') %}
   {% set _why = namespace(v=[]) %}
   {% if race.get('勝負ランク') not in _blank %}{% set _ = _why.v.append('勝負ランク' ~ race.get('勝負ランク')) %}{% endif %}
   {% if _edge not in _blank %}
-    {% set _eline = '実エッジ ' ~ ('%+.1f'|format(_edge|float)) ~ 'pp' %}
-    {% set _adj = race.get('補正勝率') %}
-    {% set _mkt = race.get('市場暗示勝率') %}
-    {% if _adj not in _blank and _mkt not in _blank %}
-      {% set _eline = _eline ~ '（想定' ~ ('%g'|format(_adj|float)) ~ '% / 市場' ~ ('%g'|format(_mkt|float)) ~ '%）' %}
-    {% endif %}
-    {% set _ = _why.v.append(_eline) %}
+    {% set _ = _why.v.append('実エッジ' ~ ('%+.1f'|format(_edge|float)) ~ 'pp') %}
   {% endif %}
   {% set _q = _pack.get('BUY品質スコア') if _pack.get('BUY品質スコア') not in _blank else race.get('BUY品質スコア') %}
   {% if _q not in _blank %}{% set _ = _why.v.append('品質スコア' ~ (_q ~ '')) %}{% endif %}
@@ -1791,7 +1815,7 @@ body.app-race .fx-rnose{flex-wrap:nowrap}
 {% endif %}
 {% if _g.get('対抗') %}
 <section class="rb-sec">
-<h3>○ 対抗</h3>
+<h3>対抗</h3>
 {% for p in _g.get('対抗') %}
 {% if not p.get('BUY表示') %}{{ rb_card(p, r, 'row') }}{% endif %}
 {% endfor %}
@@ -1799,7 +1823,7 @@ body.app-race .fx-rnose{flex-wrap:nowrap}
 {% endif %}
 {% if _g.get('単穴') %}
 <section class="rb-sec">
-<h3>▲ 単穴</h3>
+<h3>単穴</h3>
 {% for p in _g.get('単穴') %}
 {% if not p.get('BUY表示') %}{{ rb_card(p, r, 'row') }}{% endif %}
 {% endfor %}
@@ -1833,7 +1857,7 @@ body.app-race .fx-rnose{flex-wrap:nowrap}
 {% endif %}
 {% if _g.get('見送り') %}
 <section class="rb-sec">
-<h3 class="skip">見送り一覧（AI順位6位以下）</h3>
+<h3 class="skip">見送り一覧</h3>
 <table class="rb-tbl">
 <thead><tr><th>AI</th><th>馬番</th><th>馬名</th><th>期待値</th><th>オッズ</th><th>信頼度</th></tr></thead>
 <tbody>

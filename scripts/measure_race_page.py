@@ -104,12 +104,12 @@ def run(url: str, label: str, stats) -> dict:
     buy = html.count('🔥 BUY') + html.count('class="fx-buy"') + html.count('data-race-judge="buy"')
     marks = {
         'honmei': html.count('◎本命') + html.count('本命'),
-        'ui': 'areu-app-v22' in html or 'data-ui="areu-app-v22"' in html,
+        'ui': 'areu-app-v23' in html or 'data-ui="areu-app-v23"' in html,
         'bytes': len(resp.data),
         'status': resp.status_code,
     }
     print(f'\n=== {label} {url} ===')
-    print(f'total={total*1000:.0f}ms status={resp.status_code} bytes={len(resp.data)} buy_markers={buy} v22={marks["ui"]}')
+    print(f'total={total*1000:.0f}ms status={resp.status_code} bytes={len(resp.data)} buy_markers={buy} v23={marks["ui"]}')
     rows = sorted(stats.items(), key=lambda kv: -kv[1]['sec'])
     for name, rec in rows:
         if rec['n'] == 0:
