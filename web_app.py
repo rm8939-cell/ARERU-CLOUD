@@ -53,6 +53,7 @@ _RUNNERS_NEED_CACHE={}
 _MAIN_BAN_CACHE={}
 _PREP_RACES_CACHE={}
 _PAGE_HTML_CACHE={}
+_RACE_NAME_LOOKUP={'sig': None, 'data': {}}
 _PAGE_CACHE_LOCK=threading.Lock()
 _PREP_CACHE_MAX=16
 _HTML_CACHE_MAX=48
@@ -831,6 +832,8 @@ def _clear_runtime_caches():
         _MAIN_BAN_CACHE.clear()
         _PREP_RACES_CACHE.clear()
         _PAGE_HTML_CACHE.clear()
+        _RACE_NAME_LOOKUP['sig']=None
+        _RACE_NAME_LOOKUP['data']={}
 
 
 def _clear_runtime_caches_logged(source: str, date_str: str = '', *, actor: str = 'pipeline') -> None:
@@ -2602,6 +2605,53 @@ def _stamp_horse_analysis_fields(p: dict, pace_label: str, past: dict | None = N
         p['上がり性能'] = None
 
 
+def _later_race_name_map() -> dict:
+    """表示専用。次走のレース名1が2頭以上一致したら、その名前を当レース名とする。"""
+    sig = _file_sig(RUNNERS) if RUNNERS.exists() else ''
+    cached = _RACE_NAME_LOOKUP
+    if cached.get('sig') == sig and cached.get('data'):
+        return cached['data']
+    out = {}
+    try:
+        df = pd.read_csv(
+            RUNNERS, encoding='utf-8-sig',
+            usecols=lambda c: c in ('race_id', '日付', '馬名', 'レース名1'),
+        )
+    except Exception:
+        cached['sig'] = sig
+        cached['data'] = {}
+        return {}
+    if df is None or df.empty or 'レース名1' not in df.columns:
+        cached['sig'] = sig
+        cached['data'] = {}
+        return {}
+    from collections import Counter, defaultdict
+    by_horse = defaultdict(list)
+    for _, row in df.iterrows():
+        horse = clean_horse(row.get('馬名', ''))
+        rid = _norm_race_id(row.get('race_id', ''))
+        day = str(row.get('日付') or '').strip()
+        if not horse or not rid or not day:
+            continue
+        by_horse[horse].append((day, rid, str(row.get('レース名1') or '').strip()))
+    votes = defaultdict(Counter)
+    for events in by_horse.values():
+        events.sort(key=lambda x: x[0])
+        for i in range(len(events) - 1):
+            d0, rid0, _prev = events[i]
+            d1, _rid1, later_last = events[i + 1]
+            if d1 <= d0 or not later_last or later_last in ('—', '-', 'nan', 'None'):
+                continue
+            votes[rid0][later_last] += 1
+    for rid, ctr in votes.items():
+        name, n = ctr.most_common(1)[0]
+        if n >= 2 and not _disp_blank(name):
+            out[rid] = name
+    cached['sig'] = sig
+    cached['data'] = out
+    return out
+
+
 def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> None:
     """レース分析・ラップマップを既存データから組み立てる。予想ロジックは変更しない。"""
     pace = race.get('展開予想データ') if isinstance(race.get('展開予想データ'), dict) else {}
@@ -2633,6 +2683,11 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
     else:
         lap_trend = None
     name = race.get('レース名') or ''
+    if _disp_blank(name):
+        recovered = _later_race_name_map().get(_norm_race_id(race.get('race_id', '')))
+        if recovered:
+            name = recovered
+            race['レース名'] = recovered
     grade = _grade_from_race_name(name)
     race['重賞グレード'] = grade or None
     race['重賞レース'] = bool(grade)

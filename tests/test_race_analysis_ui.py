@@ -10,6 +10,7 @@ os.environ.setdefault('ARERU_ENABLE_GENERATION', '0')
 
 from web_app import (
     _grade_from_race_name,
+    _later_race_name_map,
     _stamp_ai_field_ranks,
     _stamp_buy_display,
     _stamp_race_analysis_display,
@@ -114,6 +115,17 @@ class TestRaceAnalysisUi(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('小倉記念(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('佐賀皐月賞(重賞)'), '重賞')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
+
+    def test_later_starts_recover_sapporo_kinen_name(self):
+        names = _later_race_name_map()
+        self.assertEqual(names.get('202601010811'), '札幌記念(GII)')
+        race = _sample_race('3歳未勝利')
+        race['race_id'] = '202601010811'
+        race['レース名'] = ''
+        _stamp_race_analysis_display(race, {})
+        self.assertEqual(race.get('レース名'), '札幌記念(GII)')
+        self.assertEqual(race.get('重賞グレード'), 'GⅡ')
+        self.assertEqual(race['AI一覧'][0]['AI順位'], 1)
 
 
 if __name__ == '__main__':
