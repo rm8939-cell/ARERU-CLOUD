@@ -230,6 +230,7 @@ def _page_html_cache_key(
 ) -> tuple:
     pred=ARCH/f'predictions_{selected}.csv' if selected else None
     scores=ARCH/f'scores_{selected}.csv' if selected else None
+    tpl=BASE/'templates'/'index.html'
     return (
         source,
         mode,
@@ -238,6 +239,7 @@ def _page_html_cache_key(
         int(bool(allow_past)),
         today,
         str(job_state or ''),
+        _file_sig(tpl) if tpl.exists() else '0',
         _file_sig(pred) if pred else '0',
         _file_sig(scores) if scores else '0',
     )

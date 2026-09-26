@@ -905,6 +905,7 @@ body.app-race .fx-id-1 b{font-size:15px}
 body.app-race .fx-id-1 .now{color:#145c37;font-size:18px}
 body.app-race .fx-id-1 [data-fx-start]{font-size:12px;font-weight:800;color:#4b5563}
 body.app-race .fx-id-2{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:2px;font-size:12px;font-weight:800;color:#4b5563}
+body.app-race .fx-id-2 [data-fx-heads]{font-size:13px;font-weight:900;color:#0a1a3a}
 body.app-race .fx-id-2:empty,body.app-race .fx-id-2 span:empty{display:none}
 body.app-race .fx-morebtn{flex-shrink:0;min-height:26px;padding:3px 8px;border-radius:8px;border:1px solid #cfe5d6;background:#f3faf6;color:#145c37;font-size:11px;font-weight:900}
 body.app-race .fx-rnose{display:flex;gap:2px;overflow:hidden;padding:0;align-items:stretch}
@@ -914,14 +915,15 @@ body.app-race .fx-rnose button.is-on{background:#16a34a;color:#fff;border-color:
 body.app-race .fx-rnose button:disabled{opacity:.35}
 body.app-race .fx-race{scroll-margin-top:126px;padding-bottom:8px}
 body.app-race .rb-sec{margin:0 0 6px}
-body.app-race .rb-sec>h3{display:none}
-body.app-race .rb-sec>h3.skip{display:block;margin:2px 0 4px;font-size:11px;font-weight:900;color:#4b5563}
+body.app-race .rb-sec>h3{display:block;margin:0 0 2px;font-size:11px;font-weight:900;color:#4b5563}
+body.app-race .rb-sec>h3.skip{display:block;margin:6px 0 3px;font-size:11px;font-weight:900;color:#4b5563}
 body.app-race .rb-here{display:none}
 body.app-race .rb-card{background:#fff;border:1px solid #d7deea;border-radius:10px;padding:6px 8px;margin:0 0 6px;box-shadow:none;overflow:hidden}
 body.app-race .rb-card.is-hon{padding:5px 7px;border:1.5px solid #16a34a}
-body.app-race .rb-card.is-row{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:6px;padding:5px 8px;margin:0 0 5px}
-body.app-race .rb-card.is-row .rb-line{flex:1 1 auto;min-width:0}
-body.app-race .rb-card.is-row .rb-stats{flex:0 1 auto;margin:0;width:auto;max-width:58%;justify-content:flex-end;gap:6px;font-size:10px}
+body.app-race .rb-card.is-row{display:block;padding:4px 8px;margin:0 0 4px}
+body.app-race .rb-card.is-row .rb-line{display:flex;align-items:center;gap:6px;min-width:0}
+body.app-race .rb-card.is-row .rb-mark{display:none}
+body.app-race .rb-card.is-row .rb-stats{margin-left:auto;display:flex;gap:6px;font-size:11px;font-weight:800;color:#0a1a3a;white-space:nowrap;flex-shrink:0}
 body.app-race .rb-card.mk-対抗{border-color:#93c5fd;background:#f8fbff}
 body.app-race .rb-card.mk-単穴{border-color:#fdba74;background:#fffaf5}
 body.app-race .rb-card.mk-連下,body.app-race .rb-card.is-pack{border-color:#d1d5db;background:#fafafa}
@@ -932,7 +934,7 @@ body.app-race .rb-rank-box{margin-left:auto;display:flex;align-items:center;gap:
 body.app-race .rb-rank-box b{width:20px;height:20px;border-radius:6px;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
 body.app-race .rb-rank-box small{font-size:9px;font-weight:800;color:#4d6156;letter-spacing:0;text-transform:none;max-width:4.2em}
 body.app-race .rb-horse{display:flex;align-items:center;gap:6px;margin:0 0 4px}
-body.app-race .rb-mark-i{font-size:11px;font-weight:900;color:#145c37}
+body.app-race .rb-mark-i{display:none}
 body.app-race .rb-ban{width:22px;height:22px;border-radius:999px;background:#0a1a3a;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0}
 body.app-race .rb-card.is-hon .rb-ban{background:#145c37}
 body.app-race .rb-card.mk-対抗 .rb-ban{background:#2563eb}
@@ -942,20 +944,20 @@ body.app-race .rb-ban.mini{width:20px;height:20px;font-size:10px;margin:0 auto}
 body.app-race .rb-name{font-size:13px;font-weight:900;color:#0a1a3a;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.app-race .rb-card.is-hon .rb-name{font-size:14px;flex:1}
 body.app-race .rb-ai{margin-left:auto;font-size:11px;font-weight:900;color:#0a1a3a;flex-shrink:0}
-body.app-race .rb-split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:6px;align-items:stretch}
-body.app-race .rb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin:0}
+body.app-race .rb-split{display:block}
+body.app-race .rb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin:0 0 4px}
 body.app-race .rb-grid.g2{display:none}
 body.app-race .rb-cell{background:#f3f6fb;border:1px solid #e4eaf2;border-radius:6px;padding:2px 1px;text-align:center}
 body.app-race .rb-cell b{display:block;font-size:11px;font-weight:900;line-height:1.15}
 body.app-race .rb-cell.is-ev b{color:#15803d}
 body.app-race .rb-cell span,.rb-cell .bc-k{display:block;font-size:8px;font-weight:800;color:#6b7280}
 body.app-race .rb-edge{display:none}
-body.app-race .rb-why{margin:0;padding:4px 6px;background:#f3faf6;border:1px solid #d9eee2;border-radius:6px;min-width:0}
-body.app-race .rb-why h4,body.app-race .rb-why summary{margin:0 0 2px;font-size:10px;color:#145c37;font-weight:900}
+body.app-race .rb-why{margin:2px 0 0;padding:3px 6px;background:#f3faf6;border:1px solid #d9eee2;border-radius:6px;min-width:0}
+body.app-race .rb-why h4,body.app-race .rb-why summary{margin:0 0 1px;font-size:10px;color:#145c37;font-weight:900}
 body.app-race .rb-why ul{margin:0;padding:0;list-style:none}
-body.app-race .rb-why li{position:relative;padding:0 0 0 10px;font-size:10px;font-weight:700;line-height:1.25;color:#102016;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+body.app-race .rb-why li{position:relative;padding:0 0 0 10px;font-size:10px;font-weight:700;line-height:1.25;color:#102016;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.app-race .rb-why li:before{content:"・";position:absolute;left:0;top:0;color:#15803d;font-size:10px}
-body.app-race .rb-why li:nth-child(n+5){display:none}
+body.app-race .rb-why li:nth-child(n+6){display:none}
 body.app-race .rb-line{display:flex;flex-wrap:nowrap;align-items:center;gap:4px 6px;min-width:0;overflow:hidden}
 body.app-race .rb-mark{font-size:11px;font-weight:900;color:#145c37;white-space:nowrap}
 body.app-race .rb-card.mk-対抗 .rb-mark,body.app-race .rb-card.mk-対抗 .rb-role{color:#1d4ed8}
@@ -979,12 +981,12 @@ body.app-race .rb-tbl th:nth-child(6),body.app-race .rb-tbl td:nth-child(6){widt
 body.app-race .rb-tbl th:nth-child(3),body.app-race .rb-tbl td:nth-child(3),body.app-race .rb-tbl th:nth-child(4),body.app-race .rb-tbl td:nth-child(4),body.app-race .rb-tbl th:nth-child(5),body.app-race .rb-tbl td:nth-child(5){width:44px}
 body.app-race .rb-note{margin:4px 0 0;font-size:10px;font-weight:700;color:#6b7280;line-height:1.35}
 body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#6b7280;padding:4px 2px}
+body.app-race .buy-card,body.app-race .buy-card-grid,body.app-race .buy-board{display:none !important}
+body.app-race .fx-rnose{flex-wrap:nowrap}
 @media (max-width:389px){
   body.app-race .fx-rnose{gap:1px}
   body.app-race .fx-rnose button{font-size:9px;min-height:24px}
   body.app-race .fx-rnose button.fx-step{flex-basis:26px}
-  body.app-race .rb-split{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:4px}
-  body.app-race .rb-card.is-row .rb-stats{max-width:54%;font-size:9px}
 }
 @media (min-width:430px){
   body.app-race .fx-rnose button{font-size:11px;min-height:28px}
@@ -994,11 +996,9 @@ body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#6b7280;padd
   body.app-race .fx-rnose{gap:4px}
   body.app-race .fx-rnose button{font-size:13px;min-height:32px}
   body.app-race .fx-rnose button.fx-step{flex-basis:48px}
-  body.app-race .rb-split{grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:10px}
-  body.app-race .rb-card.is-hon{padding:10px 12px}
 }
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v20"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v22"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1621,7 +1621,7 @@ body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#6b7280;padd
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v20">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v22">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -1660,20 +1660,17 @@ body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#6b7280;padd
 </div>
 <div class="rb-horse">
 {% if _ban %}<span class="rb-ban">{{_ban}}</span>{% endif %}
-<span class="rb-mark-i">{{p.get('表示印名') or '本命'}}</span>
 <span class="rb-name">{{p.get('馬名') or '—'}}</span>
 {% if _rank not in _blank %}<span class="rb-ai">AI{{_rank}}</span>{% endif %}
 </div>
-<div class="rb-split">
 <div class="rb-grid">
 {% if _ev not in _blank %}<div class="rb-cell is-ev"><b>{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</b><span>期待値</span></div>{% endif %}
-{% if _win not in _blank %}<div class="rb-cell"><b>{{'%g'|format(_win|float)}}%</b><span>推定勝率</span></div>{% endif %}
+{% if _win not in _blank %}<div class="rb-cell"><b>{{'%g'|format(_win|float)}}%</b><span>勝率</span></div>{% endif %}
 {% if _od not in _blank %}<div class="rb-cell"><b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b><span>オッズ</span></div>{% endif %}
-{% if _pop not in _blank %}<div class="rb-cell"><b>{{_pop|int}}番人気</b><span>人気</span></div>{% endif %}
-{% if _pop not in _blank and _rank not in _blank %}<div class="rb-cell"><b>{{'%+d'|format((_pop|int) - (_rank|int))}}</b><span>人気との差</span></div>{% endif %}
-{% if _rank not in _blank %}<div class="rb-cell"><b>AI{{_rank}}</b><span>AI順位</span></div>{% endif %}
-{% if _grade not in _blank %}<div class="rb-cell"><b>{{_grade}}</b><span class="bc-k">AI評価</span></div>{% endif %}
+{% if _pop not in _blank %}<div class="rb-cell"><b>{{_pop|int}}番</b><span>人気</span></div>{% endif %}
+{% if _pop not in _blank and _rank not in _blank %}<div class="rb-cell"><b>{{'%+d'|format((_pop|int) - (_rank|int))}}</b><span>人気差</span></div>{% endif %}
 {% if _conf not in _blank %}<div class="rb-cell"><b>{{'%g'|format(_conf|float)}}%</b><span>信頼度</span></div>{% endif %}
+{% if _grade not in _blank %}<div class="rb-cell"><b>{{_grade}}</b><span class="bc-k">AI評価</span></div>{% endif %}
 {% if p.get('BUY表示') and _edge not in _blank %}<div class="rb-cell is-ev"><b>{{'%+.1f'|format(_edge|float)}}pp</b><span>実エッジ</span></div>{% endif %}
 </div>
 {% if p.get('BUY表示') %}
@@ -1690,8 +1687,6 @@ body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#6b7280;padd
   {% endif %}
   {% set _q = _pack.get('BUY品質スコア') if _pack.get('BUY品質スコア') not in _blank else race.get('BUY品質スコア') %}
   {% if _q not in _blank %}{% set _ = _why.v.append('品質スコア' ~ (_q ~ '')) %}{% endif %}
-  {% set _evd = race.get('期待回収率短') or race.get('期待値表示') or race.get('期待値') %}
-  {% if _evd not in _blank %}{% set _ = _why.v.append('表示期待値 ' ~ (_evd ~ '')) %}{% endif %}
   {% for tip in (race.get('AI買い理由') if race.get('AI買い理由') is sequence else []) %}
     {% set _t = (tip ~ '')|trim %}
     {% set _dup = namespace(v=false) %}
@@ -1720,18 +1715,16 @@ body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#6b7280;padd
 </section>
   {% endif %}
 {% endif %}
-</div>
 {% else %}
 <div class="rb-line">
 <span class="rb-mark">{{_mark|trim}}</span>
 {% if _ban %}<span class="rb-ban">{{_ban}}</span>{% endif %}
 <span class="rb-name">{{p.get('馬名') or '—'}}</span>
-</div>
-<div class="rb-stats">
-{% if _ev not in _blank %}<b class="is-ev">{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</b>{% endif %}
+<span class="rb-stats">
 {% if _od not in _blank %}<b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b>{% endif %}
 {% if _conf not in _blank %}<b>{{'%g'|format(_conf|float)}}%</b>{% endif %}
 {% if _rank not in _blank %}<b>AI{{_rank}}</b>{% endif %}
+</span>
 </div>
 {% endif %}
 </article>
@@ -1825,7 +1818,6 @@ body.app-race .rb-more>summary{font-size:11px;font-weight:800;color:#6b7280;padd
 {% if _ban %}<span class="rb-ban">{{_ban}}</span>{% endif %}
 <span class="rb-name">{{p.get('馬名') or '—'}}</span>
 <span class="rb-nums">
-{% if _ev not in _blank %}<b class="is-ev">{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}</b>{% endif %}
 {% if _od not in _blank %}<b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b>{% endif %}
 {% if _cf not in _blank %}<b>{{'%g'|format(_cf|float)}}%</b>{% endif %}
 {% if _rank not in _blank %}<b class="rb-ai">AI{{_rank}}</b>{% endif %}
