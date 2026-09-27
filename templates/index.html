@@ -4,7 +4,7 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
 <meta http-equiv="Cache-Control" content="no-store, max-age=0">
-<meta name="areu-ui" content="app-v25">
+<meta name="areu-ui" content="app-v26">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
@@ -1034,9 +1034,10 @@ body.app-race .ra-id .ra-grade{display:inline-block;padding:1px 7px;border-radiu
 body.app-race .ra-id .ra-id-name{margin:6px 0 0;font-size:14px;font-weight:850;color:#145c37;line-height:1.3}
 body.app-race .ra-id-meta{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;padding:0;list-style:none}
 body.app-race .ra-id-meta li{padding:3px 8px;border-radius:999px;background:#fff;border:1px solid #d7e6dc;font-size:11px;font-weight:800;color:#374151}
-body.app-race .ra-dl{display:grid;grid-template-columns:6.2em minmax(0,1fr);gap:5px 8px;margin:0;font-size:12px}
-body.app-race .ra-dl dt{margin:0;color:#6b7280;font-weight:800}
-body.app-race .ra-dl dd{margin:0;font-weight:900;color:#0a1a3a;min-width:0;overflow-wrap:anywhere}
+body.app-race .ra-metrics{display:grid;gap:5px;margin:0}
+body.app-race .ra-m{display:grid;grid-template-columns:6.2em minmax(0,1fr);gap:6px;align-items:baseline;min-width:0}
+body.app-race .ra-m .k{color:#6b7280;font-size:12px;font-weight:800}
+body.app-race .ra-m .v{font-size:12px;font-weight:900;color:#0a1a3a;min-width:0;overflow-wrap:anywhere}
 body.app-race .ra-empty{margin:0;font-size:12px;font-weight:700;color:#6b7280}
 body.app-race .ra-scatter{position:relative;width:100%;min-height:220px;padding:8px 4px 8px 22px}
 body.app-race .ra-plot{position:relative;height:200px;max-width:100%;border:1px solid #d7deea;border-radius:10px;background:
@@ -1052,6 +1053,8 @@ body.app-race .ra-q.sw{left:7px;bottom:6px}
 body.app-race .ra-dot{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;line-height:1;border:1px solid rgba(0,0,0,.28);z-index:2}
 body.app-race .ra-axis-y{position:absolute;left:0;top:8px;bottom:28px;width:18px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;font-size:9px;font-weight:800;color:#6b7280}
 body.app-race .ra-axis-y span{writing-mode:vertical-rl}
+body.app-race .ra-m-axis{display:none;margin:0}
+body.app-race .ra-ax-m{display:none}
 body.app-race .ra-axis-x{margin:4px 0 0 22px;text-align:center;font-size:10px;font-weight:800;color:#6b7280}
 body.app-race .ra-rk{display:grid;gap:4px;max-height:none}
 body.app-race .ra-rk-row{display:grid;grid-template-columns:22px minmax(0,1fr) 36px minmax(48px,72px);gap:6px;align-items:center;min-width:0}
@@ -1091,9 +1094,45 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 @media (max-width:767px){
   body.app-race .ra-tbl-wrap{display:none}
   body.app-race .ra-hcards{display:grid}
-  body.app-race .ra-scatter{min-height:200px;padding:6px 0 6px 18px}
-  body.app-race .ra-plot{height:180px}
-  body.app-race .ra-card{padding:9px 8px 8px}
+}
+@media (max-width:600px){
+  body.app-race .ra-board{margin:6px 0}
+  body.app-race .ra-cols{gap:6px}
+  body.app-race .ra-card{padding:8px 8px 7px;border-radius:10px}
+  body.app-race .ra-card>h3{margin:0 0 6px;padding:0 0 5px;font-size:14px}
+  body.app-race .ra-id .ra-id-ttl{font-size:18px}
+  body.app-race .ra-id-meta{margin:6px 0 0;gap:4px}
+  body.app-race .ra-id-meta li{padding:2px 7px;font-size:11px}
+  body.app-race .ra-metrics{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;border:1px solid #dce4ee;border-radius:8px;overflow:hidden;background:#fff}
+  body.app-race .ra-m{display:flex;flex-direction:column;gap:2px;padding:7px 8px;border-right:1px solid #e8eef3;border-bottom:1px solid #e8eef3;min-width:0}
+  body.app-race .ra-m:nth-child(2n){border-right:0}
+  body.app-race .ra-m:nth-last-child(-n+2){border-bottom:0}
+  body.app-race .ra-m .k{font-size:10px;font-weight:800;color:#6b7280;line-height:1.2}
+  body.app-race .ra-m .v{font-size:13px;font-weight:900;color:#0a1a3a;line-height:1.25;overflow-wrap:anywhere}
+  body.app-race .ra-m .v[data-short]{font-size:0;line-height:0}
+  body.app-race .ra-m .v[data-short]:after{content:attr(data-short);font-size:13px;font-weight:900;line-height:1.25;color:#0a1a3a}
+  body.app-race .ra-scatter{min-height:318px;padding:0;width:100%}
+  body.app-race .ra-m-axis{display:block;margin:0 0 4px;font-size:11px;font-weight:800;color:#6b7280}
+  body.app-race .ra-axis-y{display:none}
+  body.app-race .ra-plot{height:292px;border-radius:8px}
+  body.app-race .ra-q{font-size:0;line-height:0}
+  body.app-race .ra-q:after{content:attr(data-m);font-size:11px;font-weight:900;line-height:1.2;color:#4b5563}
+  body.app-race .ra-q.nw{left:8px;top:8px}
+  body.app-race .ra-q.ne{right:8px;top:8px}
+  body.app-race .ra-q.sw{left:8px;bottom:8px}
+  body.app-race .ra-axis-x{margin:4px 0 0;font-size:11px}
+  body.app-race .ra-ax-full{display:none}
+  body.app-race .ra-ax-m{display:inline}
+  body.app-race .ra-plot .ra-dot{width:30px;height:30px;margin:-15px 0 0 -15px;font-size:14px;border-width:1.5px;transform:translateX(calc((var(--i,0) % 3 - 1) * 8px))}
+  body.app-race .ra-rk{gap:8px}
+  body.app-race .ra-rk-row{grid-template-columns:28px minmax(0,1fr) 34px;grid-template-areas:"dot nm sc" "bar bar bar";gap:2px 8px;align-items:center}
+  body.app-race .ra-rk-row .ra-dot{grid-area:dot;position:static;width:26px;height:26px;margin:0;font-size:12px;transform:none}
+  body.app-race .ra-rk-row .nm{grid-area:nm;font-size:14px;font-weight:850}
+  body.app-race .ra-rk-row .sc{grid-area:sc;font-size:15px;font-weight:900}
+  body.app-race .ra-rk-row .ra-bar{grid-area:bar;height:8px;margin-top:1px}
+  body.app-race .ra-hcard{padding:7px}
+  body.app-race .ra-hcard .hd{font-size:14px;margin:0 0 5px}
+  body.app-race .ra-hcard .kv{font-size:12px;gap:4px 8px}
 }
 @media (min-width:768px){
   body.app-race .ra-cols{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,.95fr);align-items:stretch}
@@ -1101,7 +1140,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
   body.app-race .ra-plot{height:240px}
 }
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v25"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v26"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1724,7 +1763,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v25">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v26">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -1968,7 +2007,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 {% set _lapmap = r.get('ラップマップ') if r.get('ラップマップ') is sequence else [] %}
 {% set _laprk = r.get('ラップ適合ランキング') if r.get('ラップ適合ランキング') is sequence else [] %}
 {% set _det = _rows_all %}
-<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v25">
+<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v26">
 <div class="ra-cols">
 <div class="ra-col ra-left">
 <article class="ra-card ra-id">
@@ -1982,16 +2021,16 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 </article>
 <article class="ra-card">
 <h3>レース分析</h3>
-<dl class="ra-dl">
-<dt>想定ペース</dt><dd>{% if _anal.get('想定ペース表示') not in _blank %}{{_anal.get('想定ペース表示')}}{% else %}データなし{% endif %}</dd>
-<dt>展開傾向</dt><dd>{% if _anal.get('展開傾向') not in _blank %}{{_anal.get('展開傾向')}}{% else %}データなし{% endif %}</dd>
-<dt>前有利度</dt><dd>{% if _anal.get('前有利表示') not in _blank %}{{_anal.get('前有利表示')}}{% else %}データなし{% endif %}</dd>
-<dt>差し有利度</dt><dd>{% if _anal.get('差し有利表示') not in _blank %}{{_anal.get('差し有利表示')}}{% else %}データなし{% endif %}</dd>
-<dt>追込有利度</dt><dd>{% if _anal.get('追込適性表示') not in _blank %}{{_anal.get('追込適性表示')}}{% else %}データなし{% endif %}</dd>
-<dt>馬場傾向</dt><dd>{% if _anal.get('馬場傾向') not in _blank %}{{_anal.get('馬場傾向')}}{% else %}データなし{% endif %}</dd>
-<dt>ラップ傾向</dt><dd>{% if _anal.get('ラップ傾向')=='前傾' %}前半厳しい→後半消耗{% elif _anal.get('ラップ傾向')=='後傾' %}前半緩み→後半加速{% elif _anal.get('ラップ傾向')=='平均' %}平均的な流れ{% else %}データなし{% endif %}</dd>
-<dt>勝ち時計予想</dt><dd>{% if _anal.get('勝ち時計予想') not in _blank %}{{_anal.get('勝ち時計予想')}}{% else %}データなし{% endif %}</dd>
-</dl>
+<div class="ra-metrics">
+<div class="ra-m"><span class="k">想定ペース</span><span class="v">{% if _anal.get('想定ペース表示') not in _blank %}{{_anal.get('想定ペース表示')}}{% else %}データなし{% endif %}</span></div>
+<div class="ra-m"><span class="k">展開傾向</span><span class="v">{% if _anal.get('展開傾向') not in _blank %}{{_anal.get('展開傾向')}}{% else %}データなし{% endif %}</span></div>
+<div class="ra-m"><span class="k">前有利度</span><span class="v">{% if _anal.get('前有利表示') not in _blank %}{{_anal.get('前有利表示')}}{% else %}データなし{% endif %}</span></div>
+<div class="ra-m"><span class="k">差し有利度</span><span class="v">{% if _anal.get('差し有利表示') not in _blank %}{{_anal.get('差し有利表示')}}{% else %}データなし{% endif %}</span></div>
+<div class="ra-m"><span class="k">追込有利度</span><span class="v">{% if _anal.get('追込適性表示') not in _blank %}{{_anal.get('追込適性表示')}}{% else %}データなし{% endif %}</span></div>
+<div class="ra-m"><span class="k">馬場傾向</span><span class="v">{% if _anal.get('馬場傾向') not in _blank %}{{_anal.get('馬場傾向')}}{% else %}データなし{% endif %}</span></div>
+<div class="ra-m"><span class="k">ラップ傾向</span><span class="v"{% if _anal.get('ラップ傾向')=='前傾' %} data-short="後半消耗"{% elif _anal.get('ラップ傾向')=='後傾' %} data-short="後半加速"{% elif _anal.get('ラップ傾向')=='平均' %} data-short="平均"{% endif %}>{% if _anal.get('ラップ傾向')=='前傾' %}前半厳しい→後半消耗{% elif _anal.get('ラップ傾向')=='後傾' %}前半緩み→後半加速{% elif _anal.get('ラップ傾向')=='平均' %}平均的な流れ{% else %}データなし{% endif %}</span></div>
+<div class="ra-m"><span class="k">勝ち時計</span><span class="v">{% if _anal.get('勝ち時計予想') not in _blank %}{{_anal.get('勝ち時計予想')}}{% else %}データなし{% endif %}</span></div>
+</div>
 </article>
 </div>
 <div class="ra-col ra-mid">
@@ -1999,18 +2038,19 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 <h3>ラップ適合度 × 展開ポジション</h3>
 {% if _lapmap %}
 <div class="ra-scatter">
+<p class="ra-m-axis">ラップ適合度 ↑</p>
 <div class="ra-axis-y"><b>高</b><span>ラップ適合度</span><small>低</small></div>
 <div class="ra-plot">
-<span class="ra-q nw">差し向き</span>
-<span class="ra-q ne">逃げ・先行向き</span>
-<span class="ra-q sw">追込向き</span>
+<span class="ra-q nw" data-m="差し">差し向き</span>
+<span class="ra-q ne" data-m="逃げ・先行">逃げ・先行向き</span>
+<span class="ra-q sw" data-m="追込">追込向き</span>
 {% for pt in _lapmap %}
   {% set _bn = (pt.get('馬番数字') or pt.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
-<i class="ra-dot ub-{{_ub}}" style="left:{{pt.get('x')}}%;bottom:{{pt.get('y')}}%" title="{{pt.get('馬番')}} {{pt.get('馬名')}}">{{pt.get('馬番') or _bn}}</i>
+<i class="ra-dot ub-{{_ub}}" style="left:{{pt.get('x')}}%;bottom:{{pt.get('y')}}%;--i:{{loop.index0}}" title="{{pt.get('馬番')}} {{pt.get('馬名')}}">{{_bn or pt.get('馬番')}}</i>
 {% endfor %}
 </div>
-<div class="ra-axis-x">後方 ← 想定ポジション → 前方</div>
+<div class="ra-axis-x"><span class="ra-ax-full">後方 ← 想定ポジション → 前方</span><span class="ra-ax-m">後方　　前方</span></div>
 </div>
 {% else %}
 <p class="ra-empty">既存の展開・ラップ適合データがある馬だけをプロットします</p>
