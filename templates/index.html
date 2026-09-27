@@ -2041,7 +2041,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 <div class="ra-rk-row">
 <span class="ra-dot ub-{{_ub}}" style="position:static;margin:0">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
 <span class="nm">{{p.get('馬名') or '—'}}</span>
-<span class="sc">{% if _fit not in _blank %}{{_fit|int}}{% else %}—{% endif %}</span>
+<span class="sc">{% if _fit not in _blank %}{{_fit|int}}{% else %}データなし{% endif %}</span>
 <span class="ra-bar">{% if _fit not in _blank %}<i style="width:{{[100, _fit]|min}}%"></i>{% endif %}</span>
 </div>
 {% endfor %}
