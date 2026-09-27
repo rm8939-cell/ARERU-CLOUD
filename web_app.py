@@ -53,6 +53,7 @@ _RUNNERS_NEED_CACHE={}
 _MAIN_BAN_CACHE={}
 _PREP_RACES_CACHE={}
 _PAGE_HTML_CACHE={}
+_JINJA_TPL_SIG=''
 _PAGE_CACHE_LOCK=threading.Lock()
 _PREP_CACHE_MAX=16
 _HTML_CACHE_MAX=48
@@ -216,6 +217,19 @@ def _perf_finish(*, cache: str, extra: str = '') -> None:
     info=';'.join(parts)
     g.areru_perf=info
     print(f'[perf] {info}', flush=True)
+
+
+def _refresh_jinja_if_template_changed() -> None:
+    """index.html が変わったら Jinja のコンパイル済みテンプレートを捨てる。"""
+    global _JINJA_TPL_SIG
+    sig=_file_sig(BASE/'templates'/'index.html')
+    if sig==_JINJA_TPL_SIG:
+        return
+    _JINJA_TPL_SIG=sig
+    try:
+        app.jinja_env.cache.clear()
+    except Exception:
+        pass
 
 
 def _page_html_cache_key(
@@ -3689,6 +3703,7 @@ def index():
             day_stats=None,data_status='ready',
             buy_candidates=[],today_ai_board=today_ai_board,data_updated_at='')
 
+    _refresh_jinja_if_template_changed()
     if mode=='predict' and not force_refresh and selected:
         try:
             job_state=str((_read_job_status(source) or {}).get('state') or '') if source in ('jra','nar') else ''

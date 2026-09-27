@@ -1018,6 +1018,11 @@ body.app-race .rb-rank-box small{display:none}
 body.app-race .rb-rank-box b{width:18px;height:18px;font-size:11px}
 body.app-race .rb-why{padding:3px 6px}
 body.app-race .rb-why li{font-size:10px;line-height:1.3}
+body.app-race .rb-card.is-row .rb-line{display:flex;align-items:center;gap:6px;width:100%;min-width:0}
+body.app-race .rb-card.is-row .rb-name{flex:1 1 auto;min-width:0}
+body.app-race .rb-card.is-row .rb-stats{width:auto !important;flex:0 0 auto;margin-left:auto;white-space:nowrap}
+body.app-race .rb-pack-row .rb-name{flex:1 1 auto;min-width:0}
+body.app-race .rb-pack-row .rb-nums{width:auto;flex:0 0 auto}
 </style></head>
 <body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v23"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
