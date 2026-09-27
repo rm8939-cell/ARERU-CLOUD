@@ -29,6 +29,11 @@ app=Flask(__name__)
 _TEMPLATE_RELOAD = str(os.environ.get('FLASK_DEBUG') or '').strip().lower() in ('1', 'true', 'yes')
 app.config['TEMPLATES_AUTO_RELOAD'] = _TEMPLATE_RELOAD
 app.jinja_env.auto_reload = _TEMPLATE_RELOAD
+# 初回リクエストから巨大 index.html のコンパイルを外す（表示内容は同じ）
+try:
+    app.jinja_env.get_template('index.html')
+except Exception:
+    pass
 @app.after_request
 def _html_no_store(resp):
     if 'text/html' in (resp.content_type or ''):
@@ -60,6 +65,12 @@ _HTML_CACHE_MAX=48
 # 中身が変わったファイルだけ読み直せばよい。日付ファイルは増える一方なので、
 # ここを毎回舐めると表示時間が日々伸びていく。
 _PRED_SOURCE_CACHE={}
+# プロセス再起動後も size が同じファイルは pandas で開き直さない（mtime は checkout で変わる）
+_PRED_SOURCE_INDEX_PATH=DATA/'pred_source_index.json'
+_PRED_SOURCE_INDEX={'loaded': False, 'files': {}, 'dates': {}, 'dates_sig': '', 'dirty': False}
+# 同一ファイルの DataFrame をリクエスト内・プロセス内で共有（key に size/mtime）
+_PRED_DF_CACHE={}
+_SCORES_DF_CACHE={}
 _VERIFY_CACHE={}
 _PRED_META_CACHE={'sig':None,'data':{}}
 _PREDICT_JOBS={}
@@ -273,6 +284,110 @@ def _runner_path():
     if LEGACY.exists(): return LEGACY
     return None
 
+def _load_pred_source_index() -> dict:
+    """size キーの source 索引。pandas で 160MB 分の CSV を開かないためのもの。"""
+    if _PRED_SOURCE_INDEX['loaded']:
+        return _PRED_SOURCE_INDEX['files']
+    files={}
+    dates={}
+    dates_sig=''
+    try:
+        raw=json.loads(_PRED_SOURCE_INDEX_PATH.read_text(encoding='utf-8'))
+        if isinstance(raw, dict):
+            cand=raw.get('files')
+            if isinstance(cand, dict):
+                files=cand
+            dc=raw.get('dates')
+            if isinstance(dc, dict):
+                dates=dc
+            dates_sig=str(raw.get('dates_sig') or '')
+    except Exception:
+        files={}
+        dates={}
+        dates_sig=''
+    _PRED_SOURCE_INDEX['files']=files
+    _PRED_SOURCE_INDEX['dates']=dates
+    _PRED_SOURCE_INDEX['dates_sig']=dates_sig
+    _PRED_SOURCE_INDEX['loaded']=True
+    return files
+
+
+def _save_pred_source_index() -> None:
+    if not _PRED_SOURCE_INDEX.get('dirty'):
+        return
+    try:
+        payload={
+            'files': _PRED_SOURCE_INDEX.get('files') or {},
+            'dates': _PRED_SOURCE_INDEX.get('dates') or {},
+            'dates_sig': _PRED_SOURCE_INDEX.get('dates_sig') or '',
+        }
+        tmp=_PRED_SOURCE_INDEX_PATH.with_suffix('.json.tmp')
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        tmp.replace(_PRED_SOURCE_INDEX_PATH)
+        _PRED_SOURCE_INDEX['dirty']=False
+    except Exception:
+        pass
+
+
+def _pred_dates_sig() -> str:
+    """mtime ではなく size。git checkout 後も同じ内容なら同じキー。"""
+    parts=[]
+    rp=_runner_path()
+    try:
+        st=rp.stat()
+        parts.append(f'{rp.name}:{st.st_size}')
+    except Exception:
+        parts.append('runners:0')
+    try:
+        st=ANALYSIS_CSV.stat()
+        parts.append(f'analysis:{st.st_size}')
+    except Exception:
+        parts.append('analysis:0')
+    try:
+        files=sorted(ARCH.glob('predictions_*.csv'))
+        parts.append(str(len(files)))
+        parts.append(','.join(f'{f.name}:{f.stat().st_size}' for f in files))
+    except Exception:
+        parts.append('pred:0')
+    return '|'.join(parts)
+
+
+def _scan_pred_file_sources(path: Path):
+    """source 列のユニーク値。pandas は巨大 JSON 列まで構文解析するので使わない。"""
+    try:
+        with path.open('rb') as fh:
+            header=fh.readline().lstrip(b'\xef\xbb\xbf')
+            cols=[c.strip() for c in header.decode('utf-8', 'replace').split(',')]
+            if 'source' in cols:
+                found=set()
+                while True:
+                    chunk=fh.read(1 << 20)
+                    if not chunk:
+                        break
+                    if b',jra,' in chunk:
+                        found.add('jra')
+                    if b',nar,' in chunk:
+                        found.add('nar')
+                    if found >= {'jra', 'nar'}:
+                        break
+                return frozenset(found) if found else None
+            if 'race_id' not in cols:
+                return None
+            from areru_engine import source_from_race_id
+            found=set()
+            rest=fh.read().decode('utf-8', 'replace')
+            for line in rest.splitlines():
+                rid=line.split(',', 1)[0].strip()
+                src=source_from_race_id(rid)
+                if src in ('jra', 'nar'):
+                    found.add(src)
+                    if found >= {'jra', 'nar'}:
+                        break
+            return frozenset(found) if found else None
+    except OSError:
+        return None
+
+
 def _pred_file_sources(path: Path):
     """予想 CSV に含まれる source（jra/nar）。判別できないときは None。
 
@@ -283,33 +398,33 @@ def _pred_file_sources(path: Path):
     try:
         st=path.stat()
         key=(str(path), st.st_mtime_ns, st.st_size)
+        size=st.st_size
+        name=path.name
     except OSError:
         return None
     hit=_PRED_SOURCE_CACHE.get(key)
     if hit is not None:
         return hit
-    # 全行読まず source / race_id 列だけ usecols
-    try:
-        pdf=pd.read_csv(path,encoding='utf-8-sig',usecols=lambda c: c in ('source','race_id'))
-        if 'source' in pdf.columns:
-            srcs=frozenset(
-                s for s in pdf['source'].astype(str).str.lower().unique()
-                if s in ('jra','nar')
-            )
-        elif 'race_id' in pdf.columns:
-            from areru_engine import source_from_race_id
-            srcs=frozenset(
-                s for s in pdf['race_id'].map(source_from_race_id).unique()
-                if s in ('jra','nar')
-            )
-        else:
+    index=_load_pred_source_index()
+    disk=index.get(name)
+    if isinstance(disk, dict) and int(disk.get('size') or -1)==size:
+        raw=disk.get('sources')
+        srcs=None if raw is None else frozenset(s for s in raw if s in ('jra', 'nar'))
+        if srcs is not None and not srcs:
             srcs=None
-    except Exception:
-        srcs=None
-    # 同じパスの古い世代を残さない（mtime が変わると別キーになるため）
+        for k in [k for k in _PRED_SOURCE_CACHE if k[0]==str(path)]:
+            _PRED_SOURCE_CACHE.pop(k, None)
+        _PRED_SOURCE_CACHE[key]=srcs
+        return srcs
+    srcs=_scan_pred_file_sources(path)
     for k in [k for k in _PRED_SOURCE_CACHE if k[0]==str(path)]:
         _PRED_SOURCE_CACHE.pop(k, None)
     _PRED_SOURCE_CACHE[key]=srcs
+    index[name]={
+        'size': size,
+        'sources': None if srcs is None else sorted(srcs),
+    }
+    _PRED_SOURCE_INDEX['dirty']=True
     return srcs
 
 
@@ -321,6 +436,14 @@ def dates(source='all'):
     hit=_DATES_CACHE.get(key)
     if hit is not None:
         return list(hit)
+    _load_pred_source_index()
+    disk_sig=_pred_dates_sig()
+    if disk_sig and disk_sig==_PRED_SOURCE_INDEX.get('dates_sig'):
+        stored=(_PRED_SOURCE_INDEX.get('dates') or {}).get(source)
+        if isinstance(stored, list):
+            out=list(stored)
+            _DATES_CACHE[key]=list(out)
+            return out
     found=set()
     if rp is not None:
         try:
@@ -360,6 +483,11 @@ def dates(source='all'):
     # 古いキャッシュ肥大化防止
     if len(_DATES_CACHE)>24:
         _DATES_CACHE.clear(); _DATES_CACHE[key]=list(out)
+    dates_map=_PRED_SOURCE_INDEX.setdefault('dates', {})
+    dates_map[source]=list(out)
+    _PRED_SOURCE_INDEX['dates_sig']=_pred_dates_sig()
+    _PRED_SOURCE_INDEX['dirty']=True
+    _save_pred_source_index()
     return out
 
 
@@ -417,6 +545,50 @@ def _need_regen(d, source='all') -> bool:
     return False
 
 
+def _load_pred_detail_df(path):
+    """開催詳細用の予想CSV。同一 (path, mtime, size) は開き直さない。"""
+    path=Path(path)
+    key=(str(path), _file_sig(path))
+    hit=_cache_get(_PRED_DF_CACHE, key)
+    if hit is not None:
+        return hit.copy()
+    want=set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付', '相対ランク', '投資判定', '勝負ランク'}
+    try:
+        df=pd.read_csv(
+            path, encoding='utf-8-sig',
+            usecols=lambda c: c in want,
+            dtype={'race_id': str},
+        )
+    except ValueError:
+        df=pd.read_csv(path, encoding='utf-8-sig', usecols=lambda c: c in want)
+    df=_fillna_pred_df(df)
+    try:
+        from ev_analysis import predictions_are_finalized, ensure_predictions_file_finalized
+        if not predictions_are_finalized(df):
+            if ensure_predictions_file_finalized(path):
+                _clear_runtime_caches()
+                print(f'[rank] finalized stale predictions: {path.name}', flush=True)
+                return _load_pred_detail_df(path)
+        _cache_put(_PRED_FINALIZED_CACHE, key, True, 128)
+    except Exception as e:
+        print(f'[rank] finalize skip {path}: {e}', flush=True)
+    _cache_put(_PRED_DF_CACHE, key, df, 16)
+    return df.copy()
+
+
+def _load_scores_display_df(path):
+    """枠・騎手・斤量用 scores。同一ファイルは開き直さない。"""
+    path=Path(path)
+    key=(str(path), _file_sig(path))
+    hit=_cache_get(_SCORES_DF_CACHE, key)
+    if hit is not None:
+        return hit
+    want={'race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数'}
+    df=pd.read_csv(path, encoding='utf-8-sig', usecols=lambda c: c in want, dtype=str)
+    _cache_put(_SCORES_DF_CACHE, key, df, 16)
+    return df
+
+
 def _ensure_pred_file_finalized(path) -> None:
     """読み込み前に未確定CSVを厳格確定へ昇格（日次後の相対ランク戻し防止）。"""
     if not path:
@@ -424,11 +596,21 @@ def _ensure_pred_file_finalized(path) -> None:
     key=(str(path), _file_sig(path))
     if _PRED_FINALIZED_CACHE.get(key):
         return
+    hit=_cache_get(_PRED_DF_CACHE, key)
+    if hit is not None:
+        try:
+            from ev_analysis import predictions_are_finalized
+            if predictions_are_finalized(hit):
+                _cache_put(_PRED_FINALIZED_CACHE, key, True, 128)
+                return
+        except Exception:
+            pass
     try:
         from ev_analysis import predictions_are_finalized, ensure_predictions_file_finalized
         light=pd.read_csv(
             path, encoding='utf-8-sig',
             usecols=lambda c: c in ('相対ランク', '投資判定', '勝負ランク'),
+            nrows=40,
         )
         if predictions_are_finalized(light):
             _cache_put(_PRED_FINALIZED_CACHE, key, True, 128)
@@ -587,13 +769,12 @@ def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
 
 def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
     """開催場一覧用の軽量読み込み（巨大JSON列をスキップ）。"""
-    _ensure_pred_file_finalized(pred_path)
     try:
-        cols=pd.read_csv(pred_path, encoding='utf-8-sig', nrows=0).columns.tolist()
-        use=[c for c in _NAR_VENUE_PICKER_COLS if c in cols]
-        if not use:
+        df=_load_pred_detail_df(pred_path)
+        keep=[c for c in _NAR_VENUE_PICKER_COLS if c in df.columns]
+        if not keep:
             return []
-        df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use))
+        df=df.loc[:, keep]
         if source in ('jra','nar') and 'source' in df.columns:
             df=df[df['source'].astype(str).str.lower()==source].copy()
         rows=df.to_dict('records')
@@ -605,30 +786,20 @@ def _read_predictions_for_venue_picker(pred_path, source: str) -> list:
 
 def _read_predictions_for_venue_detail(pred_path, source: str, venue: str) -> list:
     """開催場詳細用。会場で絞り込んでから dict 化（Render のメモリ・タイムアウト対策）。"""
-    _ensure_pred_file_finalized(pred_path)
     from netkeiba_client import normalize_venue_name
     venue=normalize_venue_name(str(venue or '').strip())
     if not venue:
         return []
     try:
-        cols=pd.read_csv(pred_path, encoding='utf-8-sig', nrows=0).columns.tolist()
-        # 必要列＋開催地。無い列は無視
-        want=set(_NAR_VENUE_DETAIL_COLS) | {'開催地','source','race_id'}
-        use=[c for c in cols if c in want]
-        if '開催地' not in use:
-            # フォールバック: 全列（古いCSV）
-            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig'))
-        else:
-            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use))
+        df=_load_pred_detail_df(pred_path)
         if source in ('jra','nar') and 'source' in df.columns:
             df=df[df['source'].astype(str).str.lower()==source].copy()
-        if df.empty:
+        if df.empty or '開催地' not in df.columns:
             return []
         mask=df['開催地'].astype(str).map(lambda x: normalize_venue_name(str(x).strip())==venue)
         df=df.loc[mask].copy()
         if df.empty:
             return []
-        # 予測タブでは超巨大JSON列を落とす（既に usecols で制限済みだが保険）
         drop_cols=[c for c in (
             'ワイド詳細','馬連詳細','馬単詳細','三連複詳細','三連単詳細',
         ) if c in df.columns]
@@ -831,6 +1002,8 @@ def _clear_runtime_caches():
         _MAIN_BAN_CACHE.clear()
         _PREP_RACES_CACHE.clear()
         _PAGE_HTML_CACHE.clear()
+        _PRED_DF_CACHE.clear()
+        _SCORES_DF_CACHE.clear()
 
 
 def _clear_runtime_caches_logged(source: str, date_str: str = '', *, actor: str = 'pipeline') -> None:
@@ -1734,8 +1907,6 @@ def ensure_for_page(d, source='all'):
     """
     f=ARCH/f'predictions_{d}.csv'
     try:
-        if f.exists():
-            _ensure_pred_file_finalized(f)
         src = source if source in ('jra', 'nar') else 'all'
         today = _today_jst()
         if src in ('jra', 'nar') and _nar_pred_ready(str(d), src):
@@ -2157,20 +2328,24 @@ def _fmt_display_num(v, *, kind: str = '') -> str:
     return s
 
 
-def _horse_display_meta_for_records(records: list) -> dict:
+def _horse_display_meta_for_records(records: list, selected_date: str = '') -> dict:
     """表示専用: scores/runners から枠・騎手・斤量・日付を引く。スコア計算には使わない。"""
     rids = {_norm_race_id(r.get('race_id')) for r in (records or [])}
     rids.discard('')
     if not rids:
         return {}
-    want = ('race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数')
     frames = []
     dates = {
         str(r.get('日付') or r.get('開催日') or '').strip()
         for r in (records or [])
         if str(r.get('日付') or r.get('開催日') or '').strip()
     }
+    dsel=str(selected_date or '').strip()
+    if dsel and re.fullmatch(r'\d{4}-\d{2}-\d{2}', dsel):
+        dates.add(dsel)
     for d in sorted(dates):
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(d)):
+            continue
         p = ARCH / f'scores_{d}.csv'
         if p.exists():
             frames.append(p)
@@ -2181,10 +2356,7 @@ def _horse_display_meta_for_records(records: list) -> dict:
         if not Path(path).exists():
             continue
         try:
-            df = pd.read_csv(
-                path, encoding='utf-8-sig',
-                usecols=lambda c: c in want,
-            )
+            df = _load_scores_display_df(path)
         except Exception:
             continue
         if df is None or df.empty or 'race_id' not in df.columns or '馬名' not in df.columns:
@@ -2192,7 +2364,7 @@ def _horse_display_meta_for_records(records: list) -> dict:
         df = df.copy()
         df['_rid'] = df['race_id'].map(_norm_race_id)
         df = df[df['_rid'].isin(rids)]
-        for _, row in df.iterrows():
+        for row in df.to_dict('records'):
             rid = str(row.get('_rid') or '')
             name = clean_horse(row.get('馬名', ''))
             if not rid or not name:
@@ -2532,7 +2704,7 @@ def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool)
     hit=_cache_get(_PREP_RACES_CACHE, key)
     if hit is not None:
         return copy.deepcopy(hit)
-    races=prep(list(rows), ban_map=_main_ban_map(selected))
+    races=prep(list(rows), selected_date=selected)
     races=_filter_records_by_source(races, source)
     races=apply_display_ranks(races, by_venue=by_venue)
     for row in races:
@@ -2542,12 +2714,20 @@ def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool)
     return races
 
 
-def prep(records, ban_map=None):
+def prep(records, ban_map=None, selected_date=''):
     from areru_engine import RANK_LABELS, RANK_CLASSES
     from race_sim import circle_ban
     from ev_analysis import safe_int
     ban_map=ban_map or {}
-    horse_meta=_horse_display_meta_for_records(records)
+    horse_meta=_horse_display_meta_for_records(records, selected_date=selected_date)
+    if not ban_map and horse_meta:
+        # scores.csv を ban_map 用に二度読まない（馬番は horse_meta と同じファイル）
+        derived={}
+        for (rid, name), info in horse_meta.items():
+            ban=_norm_ban((info or {}).get('馬番', ''))
+            if rid and name and ban:
+                derived[(rid, name)]=ban
+        ban_map=derived
     for r in records:
         try: r['印一覧']=json.loads(str(r.get('印データ','[]')).replace('NaN','null'))
         except: r['印一覧']=[]
@@ -3526,6 +3706,38 @@ def index():
     # 日付一覧のキャッシュはファイルsig+当日キー。force_refresh のときだけ捨てる
     if force_refresh:
         _clear_runtime_caches()
+    # HTML キャッシュ命中なら開催日スキャン（72 CSV）も結果CSVも不要
+    early_selected = today if force_cal_today else (
+        explicit_date or (today if source in ('nar', 'jra') else '')
+    )
+    early_venue=''
+    raw_venue=str(request.args.get('venue') or '').strip()
+    if want_today and not raw_venue:
+        raw_venue=''
+    elif force_cal_today and explicit_date and explicit_date < today and not allow_past:
+        raw_venue=''
+    if raw_venue:
+        try:
+            from netkeiba_client import normalize_venue_name
+            from urllib.parse import unquote
+            decoded=unquote(unquote(raw_venue))
+            early_venue=normalize_venue_name(decoded)
+        except Exception:
+            early_venue=raw_venue
+    if mode=='predict' and not force_refresh and early_selected:
+        try:
+            job_state=str((_read_job_status(source) or {}).get('state') or '') if source in ('jra','nar') else ''
+            html_key=_page_html_cache_key(
+                source=source, mode=mode, selected=early_selected, venue=early_venue,
+                allow_past=allow_past, today=today, job_state=job_state,
+            )
+            cached_html=_cache_get(_PAGE_HTML_CACHE, html_key)
+            if cached_html is not None:
+                _perf_mark('data')
+                _perf_finish(cache='hit')
+                return cached_html
+        except Exception as e:
+            print(f'[page-cache] early lookup skip: {e}', flush=True)
     meeting_dates=dates(source)
     av=list(meeting_dates)
     selected=explicit_date
@@ -3594,7 +3806,7 @@ def index():
     # - プルダウンは「本日以前の開催日 + 結果確定日」（最新開催日も選択可）
     # - 明示指定日に予想があれば結果未取込でも寄せない（結果待ち表示＋バックグラウンド取得）
     # - 本日開催指定時は結果日へ強制しない
-    result_days=dates_with_results(source)
+    result_days=dates_with_results(source) if mode=='result' else []
     if mode=='result' and not want_today and explicit_date and not force_cal_today:
         av=_result_available_dates(meeting_dates, result_days, today)
         if today not in av and source=='nar' and selected==today:
@@ -3911,10 +4123,7 @@ def index():
                                 else:
                                     message = f'{selected} / {selected_venue} / 予想分析'
                             else:
-                                df = _fillna_pred_df(pd.read_csv(
-                                    pred_path, encoding='utf-8-sig',
-                                    usecols=lambda c: c in set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付'},
-                                ))
+                                df = _load_pred_detail_df(pred_path)
                                 if source in ('jra', 'nar') and 'source' in df.columns:
                                     df = df[df['source'].astype(str).str.lower() == source].copy()
                                 if mode == 'predict':

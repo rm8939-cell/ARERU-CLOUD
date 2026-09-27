@@ -26,14 +26,71 @@ def _fingerprint(html: str) -> dict:
     buys = re.findall(r'🔥 BUY', html)
     ai = re.findall(r'>AI(\d+)<', html)
     honmei = re.findall(r'◎本命', html)
+    names = re.findall(r'<div class="nm">([^<]+)', html)
+    conf = re.findall(r'信頼度 ([0-9.]+)%', html)
+    ev = re.findall(r'<b[^>]*>\s*([^<]+?)\s*</b><small>期待値</small>', html)
     return {
         'ui': 'data-ui="areu-app-v20"' in html,
         'judges': judges,
         'buy_count': len(buys),
         'ai_ranks': ai[:40],
         'honmei': len(honmei),
+        'horses': names[:80],
+        'conf': conf[:40],
+        'ev': ev[:40],
         'bytes': len(html.encode('utf-8')),
     }
+
+
+class TestPredSourceIndex(unittest.TestCase):
+    def test_source_scan_matches_pandas(self):
+        import pandas as pd
+        from areru_engine import source_from_race_id
+        from web_app import ARCH, _scan_pred_file_sources
+
+        files = sorted(ARCH.glob('predictions_*.csv'))
+        self.assertGreater(len(files), 20)
+        for path in files:
+            got = _scan_pred_file_sources(path)
+            pdf = pd.read_csv(
+                path, encoding='utf-8-sig', usecols=lambda c: c in ('source', 'race_id')
+            )
+            if 'source' in pdf.columns:
+                expect = frozenset(
+                    s for s in pdf['source'].astype(str).str.lower().unique()
+                    if s in ('jra', 'nar')
+                ) or None
+            elif 'race_id' in pdf.columns:
+                expect = frozenset(
+                    s for s in pdf['race_id'].map(source_from_race_id).unique()
+                    if s in ('jra', 'nar')
+                ) or None
+            else:
+                expect = None
+            self.assertEqual(got, expect, path.name)
+
+    def test_dates_match_across_sources(self):
+        from web_app import dates, _DATES_CACHE
+        _DATES_CACHE.clear()
+        jra = dates('jra')
+        nar = dates('nar')
+        all_days = dates('all')
+        self.assertIn('2026-08-29', jra)
+        self.assertTrue(set(jra).issubset(set(all_days)))
+        self.assertTrue(set(nar).issubset(set(all_days)))
+        self.assertGreater(len(jra), 5)
+        self.assertGreater(len(nar), 5)
+
+    def test_predict_skips_result_csv(self):
+        from unittest.mock import patch
+        from web_app import app, _clear_runtime_caches
+
+        client = app.test_client()
+        _clear_runtime_caches()
+        with patch('web_app.dates_with_results', side_effect=AssertionError('result csv on predict')):
+            resp = client.get(URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('data-ui="areu-app-v20"', resp.get_data(as_text=True))
 
 
 class TestRacePageCache(unittest.TestCase):
