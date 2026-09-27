@@ -3069,12 +3069,22 @@ def prep(records, ban_map=None):
                 except Exception:
                     pass
         picks=[p for p in (r.get('予想馬') or []) if isinstance(p, dict)]
+        pick_by_name={}
+        for c in r.get('ピックカード一覧') or []:
+            if isinstance(c, dict):
+                cn=clean_horse(c.get('馬名') or '')
+                if cn:
+                    pick_by_name[cn]=c
+        for p in picks:
+            nm=clean_horse(p.get('馬名') or '')
+            if nm and not isinstance(p.get('カード'), dict) and pick_by_name.get(nm):
+                p['カード']=pick_by_name[nm]
         known={clean_horse(p.get('馬名') or '') for p in picks}
         extras=[]
         for (mrid, name), meta in horse_meta.items():
             if mrid != rid or not name or name in known:
                 continue
-            extras.append({
+            extra={
                 '役割': '',
                 '馬名': name,
                 '馬番表示': (circle_ban(meta.get('馬番')) if meta.get('馬番') else '') or meta.get('馬番') or '',
@@ -3088,7 +3098,10 @@ def prep(records, ban_map=None):
                 'BUY表示': False,
                 'プラス要因': [],
                 'マイナス要因': [],
-            })
+            }
+            if pick_by_name.get(name):
+                extra['カード']=pick_by_name[name]
+            extras.append(extra)
         def _ban_key(p):
             try:
                 return int(float(str(p.get('馬番') or p.get('馬番表示') or 99)))

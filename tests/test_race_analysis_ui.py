@@ -143,6 +143,20 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(anal['注目ポイント'], [])
         self.assertEqual(race['ラップマップ'], [])
 
+    def test_board_is_shared_and_does_not_invent_clock(self):
+        maiden = _race('3歳以上2勝クラス')
+        g1 = _race('スプリンターズS(GI)')
+        for r in (maiden, g1):
+            _stamp_ai_field_ranks(r)
+            _stamp_race_analysis_display(r, {})
+            self.assertIn('レース分析', r)
+            self.assertIn('ラップマップ', r)
+            self.assertIn('ラップ適合ランキング', r)
+            self.assertIsNone(r['レース分析']['勝ち時計予想'])
+            self.assertIsNone(r['レース分析']['馬場傾向'])
+        self.assertTrue(g1['重賞レース'])
+        self.assertEqual(g1['重賞グレード'], 'GⅠ')
+
     def test_grade_parser(self):
         self.assertEqual(_grade_from_race_name('桜花賞(GI)'), 'GⅠ')
         self.assertEqual(_grade_from_race_name('毎日王冠(GII)'), 'GⅡ')

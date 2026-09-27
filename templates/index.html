@@ -4,7 +4,7 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
 <meta http-equiv="Cache-Control" content="no-store, max-age=0">
-<meta name="areu-ui" content="app-v24">
+<meta name="areu-ui" content="app-v25">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
@@ -1023,55 +1023,51 @@ body.app-race .rb-card.is-row .rb-name{flex:1 1 auto;min-width:0}
 body.app-race .rb-card.is-row .rb-stats{width:auto !important;flex:0 0 auto;margin-left:auto;white-space:nowrap}
 body.app-race .rb-pack-row .rb-name{flex:1 1 auto;min-width:0}
 body.app-race .rb-pack-row .rb-nums{width:auto;flex:0 0 auto}
-/* ===== v24: レース分析 3カラム＋詳細タブ ===== */
-body.app-race .ra-board{margin:8px 0 6px;color:#0a1a3a}
-body.app-race .ra-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
-body.app-race .ra-card{background:#fff;border:1px solid #e4eaf2;border-radius:10px;padding:7px 8px;min-width:0;overflow:hidden}
-body.app-race .ra-card>h3{margin:0 0 5px;font-size:11px;font-weight:900;color:#145c37;letter-spacing:.02em}
-body.app-race .ra-id b{display:block;font-size:15px;font-weight:900;line-height:1.2}
-body.app-race .ra-id .ra-grade{display:inline-block;margin-left:4px;padding:0 5px;border-radius:999px;background:#145c37;color:#fff;font-size:10px}
-body.app-race .ra-id p{margin:2px 0 0;font-size:11px;font-weight:800;color:#4b5563;line-height:1.35}
-body.app-race .ra-dl{display:grid;grid-template-columns:5.6em 1fr;gap:2px 6px;margin:0;font-size:11px}
+/* ===== v25: 指定のレース分析ボード（左情報+分析 / 中央散布図 / 右ランキング / 下全馬） ===== */
+body.app-race .ra-board{margin:8px 0 8px;color:#0a1a3a;max-width:100%}
+body.app-race .ra-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+body.app-race .ra-card{background:#fff;border:1px solid #dce4ee;border-radius:12px;padding:10px 10px 9px;min-width:0;overflow:hidden;box-shadow:0 1px 0 rgba(10,26,58,.03)}
+body.app-race .ra-card>h3{margin:0 0 8px;padding:0 0 6px;border-bottom:1px solid #eef2f6;font-size:13px;font-weight:900;color:#0f3d28;letter-spacing:.01em}
+body.app-race .ra-id{background:#f4faf6;border-color:#cfe3d6}
+body.app-race .ra-id .ra-id-ttl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:20px;font-weight:900;line-height:1.15}
+body.app-race .ra-id .ra-grade{display:inline-block;padding:1px 7px;border-radius:999px;background:#145c37;color:#fff;font-size:11px;font-weight:900}
+body.app-race .ra-id .ra-id-name{margin:6px 0 0;font-size:14px;font-weight:850;color:#145c37;line-height:1.3}
+body.app-race .ra-id-meta{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;padding:0;list-style:none}
+body.app-race .ra-id-meta li{padding:3px 8px;border-radius:999px;background:#fff;border:1px solid #d7e6dc;font-size:11px;font-weight:800;color:#374151}
+body.app-race .ra-dl{display:grid;grid-template-columns:6.2em minmax(0,1fr);gap:5px 8px;margin:0;font-size:12px}
 body.app-race .ra-dl dt{margin:0;color:#6b7280;font-weight:800}
-body.app-race .ra-dl dd{margin:0;font-weight:900;color:#0a1a3a}
-body.app-race .ra-tips{margin:0;padding:0;list-style:none}
-body.app-race .ra-tips li{position:relative;padding:1px 0 1px 14px;font-size:11px;font-weight:700;line-height:1.35;color:#102016}
-body.app-race .ra-tips li:before{content:"✓";position:absolute;left:0;top:1px;color:#16a34a;font-size:11px;font-weight:900}
-body.app-race .ra-empty{margin:0;font-size:11px;font-weight:700;color:#6b7280}
-body.app-race .ra-scatter{position:relative;min-height:210px;padding:18px 6px 22px 22px}
-body.app-race .ra-plot{position:relative;height:170px;border:1px solid #d7deea;border-radius:8px;background:
-  linear-gradient(to right, rgba(20,92,55,.04) 50%, rgba(37,99,235,.04) 50%),
-  linear-gradient(to top, rgba(107,114,128,.05) 50%, rgba(22,163,74,.06) 50%);overflow:hidden}
-body.app-race .ra-plot:before,body.app-race .ra-plot:after{content:"";position:absolute;background:#d1d5db}
+body.app-race .ra-dl dd{margin:0;font-weight:900;color:#0a1a3a;min-width:0;overflow-wrap:anywhere}
+body.app-race .ra-empty{margin:0;font-size:12px;font-weight:700;color:#6b7280}
+body.app-race .ra-scatter{position:relative;width:100%;min-height:220px;padding:8px 4px 8px 22px}
+body.app-race .ra-plot{position:relative;height:200px;max-width:100%;border:1px solid #d7deea;border-radius:10px;background:
+  linear-gradient(to right, rgba(20,92,55,.05) 50%, rgba(37,99,235,.05) 50%),
+  linear-gradient(to top, rgba(107,114,128,.04) 50%, rgba(22,163,74,.07) 50%);overflow:hidden}
+body.app-race .ra-plot:before,body.app-race .ra-plot:after{content:"";position:absolute;background:#cbd5e1}
 body.app-race .ra-plot:before{left:50%;top:0;bottom:0;width:1px}
 body.app-race .ra-plot:after{top:50%;left:0;right:0;height:1px}
-body.app-race .ra-q{position:absolute;font-size:9px;font-weight:800;color:#6b7280;z-index:1}
-body.app-race .ra-q.nw{left:6px;top:4px}
-body.app-race .ra-q.ne{right:6px;top:4px}
-body.app-race .ra-q.sw{left:6px;bottom:4px}
-body.app-race .ra-q.se{right:6px;bottom:4px}
-body.app-race .ra-dot{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;line-height:1;border:1px solid rgba(0,0,0,.25);z-index:2}
-body.app-race .ra-axis-y{position:absolute;left:0;top:18px;bottom:22px;width:18px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;font-size:8px;font-weight:800;color:#6b7280;writing-mode:vertical-rl}
-body.app-race .ra-axis-x{margin:3px 0 0 22px;text-align:center;font-size:9px;font-weight:800;color:#6b7280}
-body.app-race .ra-rk{display:grid;gap:3px;max-height:280px;overflow:auto}
-body.app-race .ra-rk-row{display:grid;grid-template-columns:22px minmax(0,1fr) 28px 56px;gap:4px;align-items:center;min-width:0}
-body.app-race .ra-rk-row .nm{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body.app-race .ra-rk-row .sc{font-size:11px;font-weight:900;text-align:right}
-body.app-race .ra-bar{height:6px;background:#eef2f5;border-radius:99px;overflow:hidden}
+body.app-race .ra-q{position:absolute;font-size:10px;font-weight:800;color:#4b5563;z-index:1}
+body.app-race .ra-q.nw{left:7px;top:6px}
+body.app-race .ra-q.ne{right:7px;top:6px}
+body.app-race .ra-q.sw{left:7px;bottom:6px}
+body.app-race .ra-dot{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;line-height:1;border:1px solid rgba(0,0,0,.28);z-index:2}
+body.app-race .ra-axis-y{position:absolute;left:0;top:8px;bottom:28px;width:18px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;font-size:9px;font-weight:800;color:#6b7280}
+body.app-race .ra-axis-y span{writing-mode:vertical-rl}
+body.app-race .ra-axis-x{margin:4px 0 0 22px;text-align:center;font-size:10px;font-weight:800;color:#6b7280}
+body.app-race .ra-rk{display:grid;gap:4px;max-height:none}
+body.app-race .ra-rk-row{display:grid;grid-template-columns:22px minmax(0,1fr) 36px minmax(48px,72px);gap:6px;align-items:center;min-width:0}
+body.app-race .ra-rk-row .nm{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.app-race .ra-rk-row .sc{font-size:12px;font-weight:900;text-align:right;font-variant-numeric:tabular-nums}
+body.app-race .ra-bar{height:7px;background:#eef2f5;border-radius:99px;overflow:hidden}
 body.app-race .ra-bar i{display:block;height:100%;background:#16a34a;border-radius:99px}
-body.app-race .ra-tabs{display:flex;flex-wrap:wrap;gap:3px;margin:0 0 6px}
-body.app-race .ra-tabs button{border:1px solid #d7deea;background:#fff;color:#374151;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:800}
-body.app-race .ra-tabs button.is-on{background:#145c37;border-color:#145c37;color:#fff}
-body.app-race .ra-pane{display:none}
-body.app-race .ra-pane.is-on{display:block}
-body.app-race .ra-tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}
-body.app-race .ra-tbl th,body.app-race .ra-tbl td{padding:3px 2px;border-bottom:1px solid #eef1f5;text-align:center;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-body.app-race .ra-tbl th{color:#6b7280;font-size:9px;background:#f8fafc}
+body.app-race .ra-tbl-wrap{width:100%;max-width:100%;overflow-x:auto}
+body.app-race .ra-tbl{width:100%;min-width:720px;border-collapse:collapse;table-layout:auto;font-size:11px}
+body.app-race .ra-tbl th,body.app-race .ra-tbl td{padding:5px 4px;border-bottom:1px solid #eef1f5;text-align:center;font-weight:800;white-space:nowrap}
+body.app-race .ra-tbl th{color:#6b7280;font-size:10px;background:#f8fafc}
 body.app-race .ra-tbl td.nm,body.app-race .ra-tbl th.nm{text-align:left}
-body.app-race .ra-hcards{display:none;gap:5px}
-body.app-race .ra-hcard{background:#f8fafc;border:1px solid #e8eef5;border-radius:8px;padding:6px}
-body.app-race .ra-hcard .hd{display:flex;align-items:center;gap:6px;margin:0 0 4px;font-size:12px;font-weight:900}
-body.app-race .ra-hcard .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px;font-size:10px;font-weight:700;color:#4b5563}
+body.app-race .ra-hcards{display:none;gap:6px}
+body.app-race .ra-hcard{background:#f8fafc;border:1px solid #e8eef5;border-radius:10px;padding:8px}
+body.app-race .ra-hcard .hd{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:13px;font-weight:900}
+body.app-race .ra-hcard .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 8px;font-size:11px;font-weight:700;color:#4b5563}
 body.app-race .ra-hcard .kv b{color:#0a1a3a}
 .ub-0{background:#6b7280;color:#fff}
 .ub-1{background:#fff;color:#111;border-color:#111}
@@ -1093,16 +1089,19 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 .ub-17{background:#ef6c00;color:#fff;box-shadow:inset 0 0 0 2px #fff}
 .ub-18{background:#145c37;color:#fff}
 @media (max-width:767px){
-  body.app-race .ra-tbl{display:none}
+  body.app-race .ra-tbl-wrap{display:none}
   body.app-race .ra-hcards{display:grid}
-  body.app-race .ra-scatter{min-height:200px}
+  body.app-race .ra-scatter{min-height:200px;padding:6px 0 6px 18px}
+  body.app-race .ra-plot{height:180px}
+  body.app-race .ra-card{padding:9px 8px 8px}
 }
 @media (min-width:768px){
-  body.app-race .ra-cols{grid-template-columns:minmax(0,1.05fr) minmax(0,1.15fr) minmax(0,.95fr);align-items:start}
-  body.app-race .ra-rk{max-height:320px}
+  body.app-race .ra-cols{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,.95fr);align-items:stretch}
+  body.app-race .ra-rk{max-height:360px;overflow:auto}
+  body.app-race .ra-plot{height:240px}
 }
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v24"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v25"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1725,7 +1724,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v24">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v25">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -1968,41 +1967,31 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 {% set _anal = r.get('レース分析') if r.get('レース分析') is mapping else {} %}
 {% set _lapmap = r.get('ラップマップ') if r.get('ラップマップ') is sequence else [] %}
 {% set _laprk = r.get('ラップ適合ランキング') if r.get('ラップ適合ランキング') is sequence else [] %}
-{% set _focus = _anal.get('注目ポイント') if _anal.get('注目ポイント') is sequence else [] %}
-<section class="ra-board" aria-label="レース分析">
+{% set _det = _rows_all %}
+<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v25">
 <div class="ra-cols">
 <div class="ra-col ra-left">
 <article class="ra-card ra-id">
-<b>{{r.get('開催地') or '—'}} {% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}{% if r.get('重賞グレード') %}<span class="ra-grade">{{r.get('重賞グレード')}}</span>{% endif %}</b>
-{% if r.get('レース名') not in _blank %}<p>{{r.get('レース名')}}</p>{% endif %}
-<p>
-{% if _surface not in _blank or _dist not in _blank %}{{_surface}}{{_dist}}{% endif %}
-{% if r.get('表示頭数') not in _blank %} {{r.get('表示頭数')|int}}頭立て{% elif r.get('データ頭数') not in _blank %} {{r.get('データ頭数')|int}}頭立て{% endif %}
-{% if _start not in _blank %} {{_start}}発走{% endif %}
-</p>
+<div class="ra-id-ttl">{{r.get('開催地') or '—'}} {% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}{% if r.get('重賞グレード') %}<span class="ra-grade">{{r.get('重賞グレード')}}</span>{% endif %}</div>
+{% if r.get('レース名') not in _blank %}<p class="ra-id-name">{{r.get('レース名')}}</p>{% endif %}
+<ul class="ra-id-meta">
+{% if _surface not in _blank or _dist not in _blank %}<li>{{_surface}}{{_dist}}</li>{% endif %}
+{% if r.get('表示頭数') not in _blank %}<li>{{r.get('表示頭数')|int}}頭立て</li>{% elif r.get('データ頭数') not in _blank %}<li>{{r.get('データ頭数')|int}}頭立て</li>{% endif %}
+{% if _start not in _blank %}<li>{{_start}}発走</li>{% endif %}
+</ul>
 </article>
 <article class="ra-card">
-<h3>📈 レース分析</h3>
+<h3>レース分析</h3>
 <dl class="ra-dl">
 <dt>想定ペース</dt><dd>{% if _anal.get('想定ペース表示') not in _blank %}{{_anal.get('想定ペース表示')}}{% else %}データなし{% endif %}</dd>
 <dt>展開傾向</dt><dd>{% if _anal.get('展開傾向') not in _blank %}{{_anal.get('展開傾向')}}{% else %}データなし{% endif %}</dd>
 <dt>前有利度</dt><dd>{% if _anal.get('前有利表示') not in _blank %}{{_anal.get('前有利表示')}}{% else %}データなし{% endif %}</dd>
 <dt>差し有利度</dt><dd>{% if _anal.get('差し有利表示') not in _blank %}{{_anal.get('差し有利表示')}}{% else %}データなし{% endif %}</dd>
 <dt>追込有利度</dt><dd>{% if _anal.get('追込適性表示') not in _blank %}{{_anal.get('追込適性表示')}}{% else %}データなし{% endif %}</dd>
-<dt>馬場傾向</dt><dd>データなし</dd>
+<dt>馬場傾向</dt><dd>{% if _anal.get('馬場傾向') not in _blank %}{{_anal.get('馬場傾向')}}{% else %}データなし{% endif %}</dd>
 <dt>ラップ傾向</dt><dd>{% if _anal.get('ラップ傾向')=='前傾' %}前半厳しい→後半消耗{% elif _anal.get('ラップ傾向')=='後傾' %}前半緩み→後半加速{% elif _anal.get('ラップ傾向')=='平均' %}平均的な流れ{% else %}データなし{% endif %}</dd>
-<dt>勝ち時計予想</dt><dd>データなし</dd>
+<dt>勝ち時計予想</dt><dd>{% if _anal.get('勝ち時計予想') not in _blank %}{{_anal.get('勝ち時計予想')}}{% else %}データなし{% endif %}</dd>
 </dl>
-</article>
-<article class="ra-card">
-<h3>💡 注目ポイント</h3>
-{% if _focus %}
-<ul class="ra-tips">
-{% for tip in _focus %}<li>{{tip}}</li>{% endfor %}
-</ul>
-{% else %}
-<p class="ra-empty">データなし</p>
-{% endif %}
 </article>
 </div>
 <div class="ra-col ra-mid">
@@ -2012,10 +2001,9 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 <div class="ra-scatter">
 <div class="ra-axis-y"><b>高</b><span>ラップ適合度</span><small>低</small></div>
 <div class="ra-plot">
-<span class="ra-q nw">差し有利</span>
-<span class="ra-q ne">先行有利</span>
+<span class="ra-q nw">差し向き</span>
+<span class="ra-q ne">逃げ・先行向き</span>
 <span class="ra-q sw">追込向き</span>
-<span class="ra-q se">逃げ・先行向き</span>
 {% for pt in _lapmap %}
   {% set _bn = (pt.get('馬番数字') or pt.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
@@ -2025,7 +2013,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 <div class="ra-axis-x">後方 ← 想定ポジション → 前方</div>
 </div>
 {% else %}
-<p class="ra-empty">ラップ適合度のデータがありません</p>
+<p class="ra-empty">既存の展開・ラップ適合データがある馬だけをプロットします</p>
 {% endif %}
 </article>
 </div>
@@ -2041,7 +2029,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 <div class="ra-rk-row">
 <span class="ra-dot ub-{{_ub}}" style="position:static;margin:0">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
 <span class="nm">{{p.get('馬名') or '—'}}</span>
-<span class="sc">{% if _fit not in _blank %}{{_fit|int}}{% else %}データなし{% endif %}</span>
+<span class="sc">{% if _fit not in _blank %}{{_fit|int}}{% else %}—{% endif %}</span>
 <span class="ra-bar">{% if _fit not in _blank %}<i style="width:{{[100, _fit]|min}}%"></i>{% endif %}</span>
 </div>
 {% endfor %}
@@ -2053,23 +2041,10 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 </div>
 </div>
 <article class="ra-card ra-detail">
-<h3>🏇 全馬 詳細データ</h3>
-<div class="ra-tabs" role="tablist">
-<button type="button" class="is-on" data-ra-tab="総合">総合</button>
-<button type="button" data-ra-tab="ラップ">ラップ</button>
-<button type="button" data-ra-tab="上がり">上がり</button>
-<button type="button" data-ra-tab="展開">展開</button>
-<button type="button" data-ra-tab="距離">距離</button>
-<button type="button" data-ra-tab="コース">コース</button>
-<button type="button" data-ra-tab="馬場">馬場</button>
-<button type="button" data-ra-tab="クラス">クラス</button>
-<button type="button" data-ra-tab="前走">前走</button>
-<button type="button" data-ra-tab="血統">血統</button>
-</div>
-{% set _det = _rows_all %}
-<div class="ra-pane is-on" data-ra-pane="総合">
+<h3>全馬 詳細データ</h3>
+<div class="ra-tbl-wrap">
 <table class="ra-tbl">
-<thead><tr><th>AI</th><th>馬番</th><th class="nm">馬名</th><th>AIスコア</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>オッズ</th><th>人気</th><th>信頼度</th><th>ラップ</th><th>展開</th><th>評価</th></tr></thead>
+<thead><tr><th>AI順位</th><th>馬番</th><th class="nm">馬名</th><th>AIスコア</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>オッズ</th><th>人気</th><th>信頼度</th><th>ラップ適合度</th><th>展開適性</th><th>評価</th></tr></thead>
 <tbody>
 {% for p in _det %}
   {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
@@ -2091,6 +2066,7 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 {% endfor %}
 </tbody>
 </table>
+</div>
 <div class="ra-hcards">
 {% for p in _det %}
   {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
@@ -2104,54 +2080,13 @@ body.app-race .ra-hcard .kv b{color:#0a1a3a}
 <span>オッズ <b>{% if p.get('単勝オッズ表示') not in _blank %}{{p.get('単勝オッズ表示')}}{% else %}データなし{% endif %}</b></span>
 <span>人気 <b>{% if p.get('人気') not in _blank %}{{p.get('人気')}}{% else %}データなし{% endif %}</b></span>
 <span>信頼度 <b>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% else %}データなし{% endif %}</b></span>
-<span>ラップ <b>{% if p.get('ラップ適合度') not in _blank %}{{p.get('ラップ適合度')|int}}{% else %}データなし{% endif %}</b></span>
-<span>展開 <b>{% if p.get('展開適性') not in _blank %}{{p.get('展開適性')}}{% else %}データなし{% endif %}</b></span>
+<span>ラップ適合度 <b>{% if p.get('ラップ適合度') not in _blank %}{{p.get('ラップ適合度')|int}}{% else %}データなし{% endif %}</b></span>
+<span>展開適性 <b>{% if p.get('展開適性') not in _blank %}{{p.get('展開適性')}}{% else %}データなし{% endif %}</b></span>
 <span>評価 <b>{% if p.get('AI評価') not in _blank %}{{p.get('AI評価')}}{% else %}データなし{% endif %}</b></span>
 </div>
 </div>
 {% endfor %}
 </div>
-</div>
-{% macro ra_simple_pane(key, fields) %}
-<div class="ra-pane" data-ra-pane="{{key}}">
-<table class="ra-tbl">
-<thead><tr><th>AI</th><th>馬番</th><th class="nm">馬名</th>{% for lab,_fk in fields %}<th>{{lab}}</th>{% endfor %}</tr></thead>
-<tbody>
-{% for p in _det %}
-<tr>
-<td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
-<td>{{p.get('馬番表示') or p.get('馬番') or '—'}}</td>
-<td class="nm">{{p.get('馬名') or '—'}}</td>
-{% for lab,fk in fields %}
-<td>{% if p.get(fk) not in _blank %}{{p.get(fk)}}{% else %}データなし{% endif %}</td>
-{% endfor %}
-</tr>
-{% endfor %}
-</tbody>
-</table>
-<div class="ra-hcards">
-{% for p in _det %}
-<div class="ra-hcard">
-<div class="hd"><b>{{p.get('馬番表示') or p.get('馬番') or ''}} {{p.get('馬名') or '—'}}</b></div>
-<div class="kv">
-{% for lab,fk in fields %}
-<span>{{lab}} <b>{% if p.get(fk) not in _blank %}{{p.get(fk)}}{% else %}データなし{% endif %}</b></span>
-{% endfor %}
-</div>
-</div>
-{% endfor %}
-</div>
-</div>
-{% endmacro %}
-{{ ra_simple_pane('ラップ', [('ラップ適性','ラップ適性表示'),('適合度','ラップ適合度'),('前半3F','_none'),('後半3F','_none'),('上がり3F','_none'),('平均ラップ','_none'),('持続力','_none'),('瞬発力','_none')]) }}
-{{ ra_simple_pane('上がり', [('上がり評価','上がり評価'),('上がり順位','上がり順位'),('末脚','上がり性能')]) }}
-{{ ra_simple_pane('展開', [('脚質','脚質'),('想定位置','想定ポジション'),('展開適性','展開適性'),('展開相性','展開相性')]) }}
-{{ ra_simple_pane('距離', [('距離適性','距離適性')]) }}
-{{ ra_simple_pane('コース', [('コース適性','コース適性')]) }}
-{{ ra_simple_pane('馬場', [('馬場適性','馬場適性')]) }}
-{{ ra_simple_pane('クラス', [('クラス適性','クラス適性')]) }}
-{{ ra_simple_pane('前走', [('前走','前走内容'),('着順','前走着順'),('レース','前走レース名'),('タイム','前走タイム'),('馬場','前走馬場')]) }}
-{{ ra_simple_pane('血統', [('血統適性','血統適性表示')]) }}
 </article>
 </section>
 
