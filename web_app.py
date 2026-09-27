@@ -2834,9 +2834,23 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
                 'y': float(fit),
             })
         rank_src.append(p)
+    from collections import defaultdict
+    buckets = defaultdict(list)
+    for pt in pts:
+        buckets[(round(float(pt['x'])), round(float(pt['y'])))].append(pt)
+    for group in buckets.values():
+        if len(group) < 2:
+            continue
+        mid = (len(group) - 1) / 2.0
+        for i, pt in enumerate(group):
+            pt['x'] = round(min(96.0, max(4.0, float(pt['x']) + (i - mid) * 7.0)), 1)
     race['ラップマップ'] = pts
-    ranked = [p for p in rank_src if p.get('ラップ適合度') is not None]
-    ranked.sort(key=lambda x: (-float(x.get('ラップ適合度') or 0), int(x.get('AI順位') or 99)))
+    ranked = list(rank_src)
+    ranked.sort(key=lambda x: (
+        0 if x.get('ラップ適合度') is not None else 1,
+        -float(x.get('ラップ適合度') or 0),
+        int(x.get('AI順位') or 99),
+    ))
     race['ラップ適合ランキング'] = ranked
 
 
