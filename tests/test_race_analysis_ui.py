@@ -163,6 +163,24 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
+    def test_template_v27_is_responsive_and_valid(self):
+        from pathlib import Path
+        html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('data-ui="areu-app-v27"', html)
+        self.assertIn('data-ra-ui="v27"', html)
+        self.assertIn('ra-metrics', html)
+        self.assertIn('全馬 詳細データ', html)
+        self.assertIn('ラップ適合度 × 展開ポジション', html)
+        self.assertNotIn('var(--i', html)
+        self.assertNotIn('% 3', html)
+        self.assertIn('@media (max-width:899px)', html)
+        self.assertIn('@media (min-width:900px)', html)
+        self.assertIn('grid-template-columns:1fr 1fr', html)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
 
 if __name__ == '__main__':
     unittest.main()
