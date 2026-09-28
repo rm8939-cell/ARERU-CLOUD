@@ -16,6 +16,7 @@ os.environ.setdefault('ARERU_SKIP_BOOT', '1')
 os.environ.setdefault('ARERU_LEGACY_SCORE', '1')
 os.environ.setdefault('ARERU_ENABLE_GENERATION', '0')
 os.environ.setdefault('ARERU_PERF', '1')
+os.environ['ARERU_WARM_PAGE'] = '0'
 
 WATCH = (
     'web_app.dates',
