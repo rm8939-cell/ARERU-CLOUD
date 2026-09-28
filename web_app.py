@@ -53,11 +53,16 @@ _RUNNERS_NEED_CACHE={}
 _MAIN_BAN_CACHE={}
 _PREP_RACES_CACHE={}
 _PAGE_HTML_CACHE={}
+_PRED_DF_CACHE={}
+_SCORES_DF_CACHE={}
 _JINJA_TPL_SIG=''
 _RACE_NAME_LOOKUP={'sig':None,'data':{}}
 _PAGE_CACHE_LOCK=threading.Lock()
 _PREP_CACHE_MAX=16
 _HTML_CACHE_MAX=48
+_DF_CACHE_MAX=12
+_PAGE_WARM_STARTED=False
+_PAGE_WARM_LOCK=threading.Lock()
 # predictions_YYYY-MM-DD.csv に含まれる source。(path, mtime, size) キーなので
 # 中身が変わったファイルだけ読み直せばよい。日付ファイルは増える一方なので、
 # ここを毎回舐めると表示時間が日々伸びていく。
@@ -186,6 +191,124 @@ def _cache_put(store: dict, key, val, maxn: int) -> None:
             store.pop(k, None)
 
 
+def _read_csv_limited(path, *, usecols, dtype=None):
+    """同一ファイルを何度も全列で開かない。予想ロジックは実行しない。"""
+    kw={'encoding':'utf-8-sig', 'low_memory':False}
+    if dtype is not None:
+        kw['dtype']=dtype
+    try:
+        return pd.read_csv(path, usecols=usecols, **kw)
+    except ValueError:
+        return pd.read_csv(path, usecols=usecols, encoding='utf-8-sig', low_memory=False)
+
+
+def _load_pred_detail_df(path):
+    """開催場詳細列だけを読み、ファイルmtime単位で使い回す。"""
+    if not path:
+        return None
+    p=Path(path)
+    key=(str(p), _file_sig(p), 'detail')
+    hit=_cache_get(_PRED_DF_CACHE, key)
+    if hit is not None:
+        return hit
+    want=set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付'}
+    try:
+        df=_fillna_pred_df(_read_csv_limited(
+            p, usecols=lambda c: c in want, dtype={'race_id': str},
+        ))
+    except Exception as e:
+        print(f'[pred-df] read fail {p}: {e}', flush=True)
+        return None
+    drop_cols=[c for c in (
+        'ワイド詳細', '馬連詳細', '馬単詳細', '三連複詳細', '三連単詳細',
+    ) if c in df.columns]
+    if drop_cols:
+        df=df.drop(columns=drop_cols, errors='ignore')
+    _cache_put(_PRED_DF_CACHE, key, df, _DF_CACHE_MAX)
+    return df
+
+
+def _load_scores_display_df(path):
+    """枠・騎手・斤量・馬番用。scores を全列で開かない。"""
+    if not path:
+        return None
+    p=Path(path)
+    if not p.exists():
+        return None
+    key=(str(p), _file_sig(p), 'scores')
+    hit=_cache_get(_SCORES_DF_CACHE, key)
+    if hit is not None:
+        return hit
+    want=(
+        'race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数',
+        '着順1', '着順2', '着順3', '着順4', '着順5',
+        'レース名1', 'レース名2', 'レース名3', 'レース名4', 'レース名5',
+        'タイム1', '馬場1', '場1', '人気1',
+    )
+    try:
+        df=_read_csv_limited(p, usecols=lambda c: c in want, dtype=str)
+    except Exception as e:
+        print(f'[scores-df] read fail {p}: {e}', flush=True)
+        return None
+    _cache_put(_SCORES_DF_CACHE, key, df, _DF_CACHE_MAX)
+    return df
+
+
+def _url_html_cache_key():
+    """dates() の前に同じURLを返すためのキー。計算結果はファイルmtimeで無効化。"""
+    today=_today_jst()
+    source=request.args.get('source', 'jra')
+    if source not in ('jra', 'nar', 'all'):
+        source='jra'
+    mode=request.args.get('mode', 'predict')
+    if mode not in ('predict', 'result', 'analysis', 'ledger'):
+        mode='predict'
+    explicit=str(request.args.get('date') or '').strip()
+    days={today}
+    if explicit and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit):
+        days.add(explicit)
+    job_state=''
+    if source in ('jra', 'nar'):
+        try:
+            job_state=str((_read_job_status(source) or {}).get('state') or '')
+        except Exception:
+            job_state=''
+    ordered=tuple(sorted(days))
+    return (
+        'url',
+        source,
+        mode,
+        request.query_string.decode('utf-8', 'replace'),
+        today,
+        job_state,
+        _file_sig(BASE/'templates'/'index.html'),
+        tuple(_file_sig(ARCH/f'predictions_{d}.csv') for d in ordered),
+        tuple(_file_sig(ARCH/f'scores_{d}.csv') for d in ordered),
+    )
+
+
+def _kick_page_warm() -> None:
+    """healthz はブロックせず、デフォルト画面を裏で組み立ててキャッシュする。"""
+    global _PAGE_WARM_STARTED
+    if not str(os.environ.get('ARERU_WARM_PAGE') or '1').strip().lower() in ('1', 'true', 'yes'):
+        return
+    with _PAGE_WARM_LOCK:
+        if _PAGE_WARM_STARTED:
+            return
+        _PAGE_WARM_STARTED=True
+
+    def _body():
+        global _PAGE_WARM_STARTED
+        try:
+            with app.test_client() as c:
+                c.get('/')
+        except Exception as e:
+            print(f'[warm] skip: {e}', flush=True)
+            with _PAGE_WARM_LOCK:
+                _PAGE_WARM_STARTED=False
+    threading.Thread(target=_body, daemon=True, name='areru-page-warm').start()
+
+
 def _perf_start() -> float:
     g.areru_t0=time.perf_counter()
     g.areru_marks={}
@@ -290,6 +413,42 @@ def _runner_path():
     if LEGACY.exists(): return LEGACY
     return None
 
+def _scan_pred_file_sources(path: Path):
+    """source 列だけ見る。pandas で巨大JSON列を構文解析しない。"""
+    try:
+        with path.open('rb') as fh:
+            header=fh.readline().lstrip(b'\xef\xbb\xbf')
+            cols=[c.strip() for c in header.decode('utf-8', 'replace').split(',')]
+            if 'source' in cols:
+                found=set()
+                while True:
+                    chunk=fh.read(1 << 20)
+                    if not chunk:
+                        break
+                    if b',jra,' in chunk or b',jra\n' in chunk:
+                        found.add('jra')
+                    if b',nar,' in chunk or b',nar\n' in chunk:
+                        found.add('nar')
+                    if found >= {'jra', 'nar'}:
+                        break
+                return frozenset(found) if found else None
+            if 'race_id' not in cols:
+                return None
+            from areru_engine import source_from_race_id
+            found=set()
+            rest=fh.read(1 << 20).decode('utf-8', 'replace')
+            for line in rest.splitlines()[:80]:
+                rid=line.split(',', 1)[0].strip()
+                src=source_from_race_id(rid)
+                if src in ('jra', 'nar'):
+                    found.add(src)
+                    if found >= {'jra', 'nar'}:
+                        break
+            return frozenset(found) if found else None
+    except OSError:
+        return None
+
+
 def _pred_file_sources(path: Path):
     """予想 CSV に含まれる source（jra/nar）。判別できないときは None。
 
@@ -305,25 +464,7 @@ def _pred_file_sources(path: Path):
     hit=_PRED_SOURCE_CACHE.get(key)
     if hit is not None:
         return hit
-    # 全行読まず source / race_id 列だけ usecols
-    try:
-        pdf=pd.read_csv(path,encoding='utf-8-sig',usecols=lambda c: c in ('source','race_id'))
-        if 'source' in pdf.columns:
-            srcs=frozenset(
-                s for s in pdf['source'].astype(str).str.lower().unique()
-                if s in ('jra','nar')
-            )
-        elif 'race_id' in pdf.columns:
-            from areru_engine import source_from_race_id
-            srcs=frozenset(
-                s for s in pdf['race_id'].map(source_from_race_id).unique()
-                if s in ('jra','nar')
-            )
-        else:
-            srcs=None
-    except Exception:
-        srcs=None
-    # 同じパスの古い世代を残さない（mtime が変わると別キーになるため）
+    srcs=_scan_pred_file_sources(path)
     for k in [k for k in _PRED_SOURCE_CACHE if k[0]==str(path)]:
         _PRED_SOURCE_CACHE.pop(k, None)
     _PRED_SOURCE_CACHE[key]=srcs
@@ -341,7 +482,7 @@ def dates(source='all'):
     found=set()
     if rp is not None:
         try:
-            rdf=pd.read_csv(rp,encoding='utf-8-sig', usecols=lambda c: c in ('日付','source','race_id'))
+            rdf=pd.read_csv(rp,encoding='utf-8-sig', usecols=lambda c: c in ('日付','source','race_id'), dtype=str, low_memory=False)
             if '日付' in rdf.columns:
                 if source in ('jra','nar'):
                     if 'source' in rdf.columns:
@@ -360,6 +501,9 @@ def dates(source='all'):
         day=m.group(1)
         if source not in ('jra','nar'):
             found.add(day)
+            continue
+        # runners.csv で既に分かっている開催日は CSV を開かない
+        if day in found:
             continue
         srcs=_pred_file_sources(f)
         if srcs is None or source in srcs:
@@ -567,7 +711,7 @@ def _latest_ready_pred_date(source: str, *, on_or_before: str = '') -> str:
     """ソースの最新完成予想日（キャッシュ即表示用）。"""
     src = source if source in ('jra', 'nar') else 'nar'
     cutoff = str(on_or_before or _today_jst())
-    best = ''
+    days=[]
     for f in ARCH.glob('predictions_*.csv'):
         m = re.fullmatch(r'predictions_(\d{4}-\d{2}-\d{2})\.csv', f.name)
         if not m:
@@ -575,9 +719,11 @@ def _latest_ready_pred_date(source: str, *, on_or_before: str = '') -> str:
         day = m.group(1)
         if day > cutoff:
             continue
-        if _nar_pred_ready(day, src) and day > best:
-            best = day
-    return best
+        days.append(day)
+    for day in sorted(set(days), reverse=True):
+        if _nar_pred_ready(day, src):
+            return day
+    return ''
 
 
 def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -628,29 +774,17 @@ def _read_predictions_for_venue_detail(pred_path, source: str, venue: str) -> li
     if not venue:
         return []
     try:
-        cols=pd.read_csv(pred_path, encoding='utf-8-sig', nrows=0).columns.tolist()
-        # 必要列＋開催地。無い列は無視
-        want=set(_NAR_VENUE_DETAIL_COLS) | {'開催地','source','race_id'}
-        use=[c for c in cols if c in want]
-        if '開催地' not in use:
-            # フォールバック: 全列（古いCSV）
-            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig'))
-        else:
-            df=_fillna_pred_df(pd.read_csv(pred_path, encoding='utf-8-sig', usecols=use))
+        df=_load_pred_detail_df(pred_path)
+        if df is None or df.empty:
+            return []
         if source in ('jra','nar') and 'source' in df.columns:
-            df=df[df['source'].astype(str).str.lower()==source].copy()
-        if df.empty:
+            df=df[df['source'].astype(str).str.lower()==source]
+        if df.empty or '開催地' not in df.columns:
             return []
         mask=df['開催地'].astype(str).map(lambda x: normalize_venue_name(str(x).strip())==venue)
-        df=df.loc[mask].copy()
+        df=df.loc[mask]
         if df.empty:
             return []
-        # 予測タブでは超巨大JSON列を落とす（既に usecols で制限済みだが保険）
-        drop_cols=[c for c in (
-            'ワイド詳細','馬連詳細','馬単詳細','三連複詳細','三連単詳細',
-        ) if c in df.columns]
-        if drop_cols:
-            df=df.drop(columns=drop_cols, errors='ignore')
         rows=df.to_dict('records')
         return _filter_records_by_source(rows, source)
     except Exception as e:
@@ -837,6 +971,7 @@ def _jra_main_tickets(race: dict) -> list:
 
 def _clear_runtime_caches():
     """runners / predictions 更新後に日付・検証キャッシュを捨てる。"""
+    global _PAGE_WARM_STARTED
     with _PAGE_CACHE_LOCK:
         _DATES_CACHE.clear()
         _VERIFY_CACHE.clear()
@@ -848,6 +983,9 @@ def _clear_runtime_caches():
         _MAIN_BAN_CACHE.clear()
         _PREP_RACES_CACHE.clear()
         _PAGE_HTML_CACHE.clear()
+        _PRED_DF_CACHE.clear()
+        _SCORES_DF_CACHE.clear()
+        _PAGE_WARM_STARTED=False
 
 
 def _clear_runtime_caches_logged(source: str, date_str: str = '', *, actor: str = 'pipeline') -> None:
@@ -2174,49 +2312,61 @@ def _fmt_display_num(v, *, kind: str = '') -> str:
     return s
 
 
-def _horse_display_meta_for_records(records: list) -> dict:
-    """表示専用: scores/runners から枠・騎手・斤量・日付を引く。スコア計算には使わない。"""
+def _horse_display_meta_for_records(records: list, selected_date: str = '') -> dict:
+    """表示専用: scores から枠・騎手・斤量・日付を引く。スコア計算には使わない。"""
     rids = {_norm_race_id(r.get('race_id')) for r in (records or [])}
     rids.discard('')
     if not rids:
         return {}
-    want = (
-        'race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数',
-        '着順1', '着順2', '着順3', '着順4', '着順5',
-        'レース名1', 'レース名2', 'レース名3', 'レース名4', 'レース名5',
-        'タイム1', '馬場1', '場1', '人気1',
-    )
     frames = []
     dates = {
         str(r.get('日付') or r.get('開催日') or '').strip()
         for r in (records or [])
         if str(r.get('日付') or r.get('開催日') or '').strip()
     }
+    if selected_date:
+        dates.add(str(selected_date).strip())
     for d in sorted(dates):
         p = ARCH / f'scores_{d}.csv'
         if p.exists():
             frames.append(p)
     if not frames:
-        frames.append(RUNNERS)
+        # 日付列が空のときだけ当日 scores、それも無ければ runners
+        if selected_date:
+            p = ARCH / f'scores_{selected_date}.csv'
+            if p.exists():
+                frames.append(p)
+        if not frames:
+            frames.append(RUNNERS)
     out = {}
     for path in frames:
         if not Path(path).exists():
             continue
-        try:
-            df = pd.read_csv(
-                path, encoding='utf-8-sig',
-                usecols=lambda c: c in want,
-            )
-        except Exception:
-            continue
+        df = _load_scores_display_df(path) if Path(path).name.startswith('scores_') else None
+        if df is None:
+            try:
+                df = _read_csv_limited(
+                    path,
+                    usecols=lambda c: c in (
+                        'race_id', '日付', '馬名', '馬番', '枠', '騎手', '斤量', '単勝オッズ', '人気', 'AREru指数',
+                        '着順1', '着順2', '着順3', '着順4', '着順5',
+                        'レース名1', 'レース名2', 'レース名3', 'レース名4', 'レース名5',
+                        'タイム1', '馬場1', '場1', '人気1',
+                    ),
+                    dtype=str,
+                )
+            except Exception:
+                continue
         if df is None or df.empty or 'race_id' not in df.columns or '馬名' not in df.columns:
             continue
-        df = df.copy()
-        df['_rid'] = df['race_id'].map(_norm_race_id)
-        df = df[df['_rid'].isin(rids)]
-        for _, row in df.iterrows():
-            rid = str(row.get('_rid') or '')
-            name = clean_horse(row.get('馬名', ''))
+        work = df
+        rid_series = work['race_id'].map(_norm_race_id)
+        work = work.loc[rid_series.isin(rids)]
+        if work.empty:
+            continue
+        for rec in work.to_dict('records'):
+            rid = _norm_race_id(rec.get('race_id'))
+            name = clean_horse(rec.get('馬名', ''))
             if not rid or not name:
                 continue
             cur = out.setdefault((rid, name), {})
@@ -2231,15 +2381,15 @@ def _horse_display_meta_for_records(records: list) -> dict:
             ):
                 if cur.get(dst):
                     continue
-                txt = _fmt_display_num(row.get(src), kind=kind)
+                txt = _fmt_display_num(rec.get(src), kind=kind)
                 if txt:
                     cur[dst] = txt
             if cur.get('AREru指数') in (None, ''):
                 try:
-                    idx = float(row.get('AREru指数'))
+                    idx = float(rec.get('AREru指数'))
                 except (TypeError, ValueError):
                     idx = None
-                if idx is not None and idx == idx:  # not NaN
+                if idx is not None and idx == idx:
                     cur['AREru指数'] = idx
             for src in (
                 '着順1', '着順2', '着順3', '着順4', '着順5',
@@ -2248,7 +2398,7 @@ def _horse_display_meta_for_records(records: list) -> dict:
             ):
                 if cur.get(src):
                     continue
-                raw = row.get(src)
+                raw = rec.get(src)
                 if raw is None or (isinstance(raw, float) and raw != raw):
                     continue
                 txt = str(raw).strip()
@@ -2306,17 +2456,16 @@ def _main_ban_map(selected_date: str) -> dict:
     hit=_cache_get(_MAIN_BAN_CACHE, key)
     if hit is not None:
         return hit
-    try:
-        sdf=pd.read_csv(p).fillna('')
-    except Exception:
+    sdf=_load_scores_display_df(p)
+    if sdf is None or sdf.empty:
         return {}
     if 'race_id' not in sdf.columns or '馬名' not in sdf.columns or '馬番' not in sdf.columns:
         return {}
     m={}
-    for _, row in sdf.iterrows():
-        rid=_norm_race_id(row.get('race_id',''))
-        name=clean_horse(row.get('馬名',''))
-        ban=_norm_ban(row.get('馬番',''))
+    for rec in sdf.to_dict('records'):
+        rid=_norm_race_id(rec.get('race_id',''))
+        name=clean_horse(rec.get('馬名',''))
+        ban=_norm_ban(rec.get('馬番',''))
         if rid and name and ban:
             m[(rid, name)]=ban
     _cache_put(_MAIN_BAN_CACHE, key, m, 24)
@@ -2695,7 +2844,10 @@ def _later_race_name_map() -> dict:
         return {}
     from collections import Counter, defaultdict
     by_horse = defaultdict(list)
-    for _, row in df.iterrows():
+    recs = df[['race_id', '日付', '馬名', 'レース名1']].to_dict('records') if set(
+        ('race_id', '日付', '馬名', 'レース名1')
+    ).issubset(df.columns) else df.to_dict('records')
+    for row in recs:
         horse = clean_horse(row.get('馬名', ''))
         rid = _norm_race_id(row.get('race_id', ''))
         day = str(row.get('日付') or '').strip()
@@ -2923,7 +3075,7 @@ def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool)
     hit=_cache_get(_PREP_RACES_CACHE, key)
     if hit is not None:
         return copy.deepcopy(hit)
-    races=prep(list(rows), ban_map=_main_ban_map(selected))
+    races=prep(list(rows), ban_map=_main_ban_map(selected), selected_date=selected)
     races=_filter_records_by_source(races, source)
     races=apply_display_ranks(races, by_venue=by_venue)
     for row in races:
@@ -2933,12 +3085,12 @@ def _prep_rank_cached(rows: list, selected: str, source: str, *, by_venue: bool)
     return races
 
 
-def prep(records, ban_map=None):
+def prep(records, ban_map=None, selected_date=''):
     from areru_engine import RANK_LABELS, RANK_CLASSES
     from race_sim import circle_ban
     from ev_analysis import safe_int
     ban_map=ban_map or {}
-    horse_meta=_horse_display_meta_for_records(records)
+    horse_meta=_horse_display_meta_for_records(records, selected_date=selected_date)
     for r in records:
         try: r['印一覧']=json.loads(str(r.get('印データ','[]')).replace('NaN','null'))
         except: r['印一覧']=[]
@@ -3928,6 +4080,16 @@ def index():
                 source, state='error', stage='failed', message='取得失敗',
                 date_str=_today_jst(), error=str(e)[:200],
             )
+    # 同じURLなら dates()/CSV/prep の前に完成HTMLを返す
+    if mode=='predict' and not force_refresh:
+        try:
+            url_hit=_cache_get(_PAGE_HTML_CACHE, _url_html_cache_key())
+            if url_hit is not None:
+                _perf_mark('data')
+                _perf_finish(cache='hit', extra='url')
+                return url_hit
+        except Exception as e:
+            print(f'[page-cache] url lookup skip: {e}', flush=True)
     # 日付一覧のキャッシュはファイルsig+当日キー。force_refresh のときだけ捨てる
     if force_refresh:
         _clear_runtime_caches()
@@ -4286,156 +4448,119 @@ def index():
                                     flush=True,
                                 )
                         else:
-                            # 全列読みは禁止（Render OOM）。会場詳細と同じ列制限で読む。
-                            venue_rows = _read_predictions_for_venue_detail(
-                                pred_path, source, selected_venue
-                            ) if selected_venue else []
-                            if selected_venue and venue_rows:
-                                races = _prep_rank_cached(
-                                    venue_rows, selected, source, by_venue=(source == 'nar')
-                                )
-                                venues = _day_venues_for_nav(
-                                    pred_path, source, fallback=_venue_meetings(races)
-                                )
-                                show_venue_picker = False
-                                races_for_board = list(races)
-                                buy_candidates = build_buy_candidates(races_for_board)
-                                board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
-                                today_ai_board = build_today_ai_board(races_for_board, board_verify)
-                                data_updated_at = ''
-                                try:
-                                    if pred_path and Path(pred_path).exists():
-                                        from datetime import datetime as _dt
-                                        data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                                except Exception:
-                                    data_updated_at = ''
-                                targets = buy_candidates[:8]
-                                if data_status == 'updating':
-                                    message = f'{selected} / {selected_venue} / データ更新中'
-                                elif mode == 'result':
-                                    message = f'{selected} / {selected_venue} / 結果検証'
-                                else:
-                                    message = f'{selected} / {selected_venue} / 予想分析'
-                            else:
-                                df = _fillna_pred_df(pd.read_csv(
-                                    pred_path, encoding='utf-8-sig',
-                                    usecols=lambda c: c in set(_NAR_VENUE_DETAIL_COLS) | {'開催地', 'source', 'race_id', '日付'},
-                                ))
-                                if source in ('jra', 'nar') and 'source' in df.columns:
-                                    df = df[df['source'].astype(str).str.lower() == source].copy()
-                                if mode == 'predict':
-                                    drop_cols = [c for c in (
-                                        'ワイド詳細', '馬連詳細', '馬単詳細', '三連複詳細', '三連単詳細', '本命詳細'
-                                    ) if c in df.columns]
-                                    if drop_cols:
-                                        df = df.drop(columns=drop_cols, errors='ignore')
-                                races = _prep_rank_cached(
-                                    df.to_dict('records'), selected, source, by_venue=(source == 'nar')
-                                )
-                                del df
-                                if mode == 'result':
-                                    races, has_results = attach_results(races, selected_date=selected)
-                                    ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
-                                    tickets_by_race = {}
-                                    for t in (verification or {}).get('recent_rows') or []:
-                                        tid = _norm_race_id(t.get('race_id', ''))
-                                        if tid:
-                                            tickets_by_race.setdefault(tid, []).append(t)
-                                    for row in races:
-                                        rid = _norm_race_id(row.get('race_id', ''))
-                                        row['purchase_ranks'] = list(ranks_map.get(rid, []))
-                                        row['購入馬券一覧'] = list(tickets_by_race.get(rid, []))
-                                venues = _venue_meetings(races)
-                                venue_names = {v['name'] for v in venues}
-                                races_for_board = list(races)
-                                if source == 'nar' and mode in ('predict', 'result') and not today_live_card:
-                                    show_venue_picker = True
-                                    if selected_venue and selected_venue not in venue_names:
+                            # 日次CSVは1回だけ読み、会場はメモリで絞る（BUYは日次のまま）。
+                            df = _load_pred_detail_df(pred_path)
+                            if df is None:
+                                df = pd.DataFrame()
+                            if source in ('jra', 'nar') and 'source' in df.columns:
+                                df = df[df['source'].astype(str).str.lower() == source]
+                            races = _prep_rank_cached(
+                                df.to_dict('records') if df is not None and not df.empty else [],
+                                selected, source, by_venue=(source == 'nar'),
+                            )
+                            if mode == 'result':
+                                races, has_results = attach_results(races, selected_date=selected)
+                                ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
+                                tickets_by_race = {}
+                                for t in (verification or {}).get('recent_rows') or []:
+                                    tid = _norm_race_id(t.get('race_id', ''))
+                                    if tid:
+                                        tickets_by_race.setdefault(tid, []).append(t)
+                                for row in races:
+                                    rid = _norm_race_id(row.get('race_id', ''))
+                                    row['purchase_ranks'] = list(ranks_map.get(rid, []))
+                                    row['購入馬券一覧'] = list(tickets_by_race.get(rid, []))
+                            venues = _venue_meetings(races)
+                            venue_names = {v['name'] for v in venues}
+                            races_for_board = list(races)
+                            if source == 'nar' and mode in ('predict', 'result') and not today_live_card:
+                                show_venue_picker = True
+                                if selected_venue and selected_venue not in venue_names:
+                                    selected_venue = ''
+                                if selected_venue:
+                                    from netkeiba_client import normalize_venue_name as _nv
+                                    races = [
+                                        r for r in races
+                                        if _nv(str(r.get('開催地') or '').strip()) == selected_venue
+                                    ]
+                                    show_venue_picker = False
+                                    races_for_board = list(races)
+                                    if not races:
+                                        # キャッシュ一覧へ戻す（ページから会場再取得しない）
                                         selected_venue = ''
+                                        show_venue_picker = True
+                                        data_status = 'ready'
+                                        message = f'{selected} / {label} / 開催場 {len(venues)}場'
+                                else:
+                                    races = []
+                            else:
+                                # JRA予想: 会場未指定でも先頭開催場を開き、レースナビを出す
+                                if mode == 'predict' and venues:
+                                    from netkeiba_client import normalize_venue_name as _nv
+                                    if not selected_venue:
+                                        buy_v = ''
+                                        for r in races:
+                                            if str(r.get('投資判定') or '').startswith('買い'):
+                                                buy_v = _nv(str(r.get('開催地') or '').strip())
+                                                if buy_v:
+                                                    break
+                                        selected_venue = buy_v or venues[0]['name']
                                     if selected_venue:
-                                        from netkeiba_client import normalize_venue_name as _nv
                                         races = [
                                             r for r in races
                                             if _nv(str(r.get('開催地') or '').strip()) == selected_venue
                                         ]
-                                        show_venue_picker = False
                                         races_for_board = list(races)
-                                        if not races:
-                                            # キャッシュ一覧へ戻す（ページから会場再取得しない）
-                                            selected_venue = ''
-                                            show_venue_picker = True
-                                            data_status = 'ready'
-                                            message = f'{selected} / {label} / 開催場 {len(venues)}場'
-                                    else:
-                                        races = []
+                                        show_venue_picker = False
                                 else:
-                                    # JRA予想: 会場未指定でも先頭開催場を開き、レースナビを出す
-                                    if mode == 'predict' and venues:
-                                        from netkeiba_client import normalize_venue_name as _nv
-                                        if not selected_venue:
-                                            buy_v = ''
-                                            for r in races:
-                                                if str(r.get('投資判定') or '').startswith('買い'):
-                                                    buy_v = _nv(str(r.get('開催地') or '').strip())
-                                                    if buy_v:
-                                                        break
-                                            selected_venue = buy_v or venues[0]['name']
-                                        if selected_venue:
-                                            races = [
-                                                r for r in races
-                                                if _nv(str(r.get('開催地') or '').strip()) == selected_venue
-                                            ]
-                                            races_for_board = list(races)
-                                            show_venue_picker = False
-                                    else:
-                                        selected_venue = ''
-                                buy_candidates = build_buy_candidates(races_for_board)
-                                board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
-                                today_ai_board = build_today_ai_board(races_for_board, board_verify)
+                                    selected_venue = ''
+                            buy_candidates = build_buy_candidates(races_for_board)
+                            board_verify = verification if mode in ('result', 'analysis') else dict(_EMPTY_VERIFY)
+                            today_ai_board = build_today_ai_board(races_for_board, board_verify)
+                            data_updated_at = ''
+                            try:
+                                if pred_path and Path(pred_path).exists():
+                                    from datetime import datetime as _dt
+                                    data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
+                            except Exception:
                                 data_updated_at = ''
-                                try:
-                                    if pred_path and Path(pred_path).exists():
-                                        from datetime import datetime as _dt
-                                        data_updated_at = _dt.fromtimestamp(Path(pred_path).stat().st_mtime, JST).strftime('%m/%d %H:%M')
-                                except Exception:
-                                    data_updated_at = ''
-                                targets = buy_candidates[:8]
-                                if data_status == 'updating':
-                                    message = f'{selected} / {label} / データ更新中（表示はキャッシュ）'
-                                    if data_updated_at:
-                                        message += f' · 最終更新 {data_updated_at}'
-                                elif data_status == 'generating':
-                                    message = 'データ取得中'
-                                elif source == 'nar' and show_venue_picker:
-                                    if venues:
-                                        if selected == today:
-                                            message = f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
-                                        else:
-                                            message = f'{selected} / {label} / 開催場 {len(venues)}場'
+                            targets = buy_candidates[:8]
+                            if data_status == 'updating':
+                                message = f'{selected} / {label} / データ更新中（表示はキャッシュ）'
+                                if data_updated_at:
+                                    message += f' · 最終更新 {data_updated_at}'
+                            elif data_status == 'generating':
+                                message = 'データ取得中'
+                            elif source == 'nar' and show_venue_picker:
+                                if venues:
+                                    if selected == today:
+                                        message = f'本日開催 {selected} / {label} / 開催場 {len(venues)}場'
                                     else:
-                                        if data_status == 'error':
-                                            message = '取得失敗'
-                                        elif selected == today:
-                                            message = '本日は地方競馬の開催はありません'
-                                        else:
-                                            message = f'{selected} の地方開催データがありません'
-                                elif not races:
-                                    if source == 'nar' and selected_venue and data_status == 'generating':
-                                        message = 'データ取得中'
-                                    else:
-                                        message = f'{selected} / {label} のレースがありません'
-                                elif mode == 'result':
-                                    if selected_venue:
-                                        message = f'{selected} / {selected_venue} / 結果検証'
-                                    else:
-                                        message = f'{selected} / {label} / 結果検証モード'
-                                elif mode == 'analysis':
-                                    message = f'{selected} / {label} / AI期待値分析'
+                                        message = f'{selected} / {label} / 開催場 {len(venues)}場'
                                 else:
-                                    if selected_venue:
-                                        message = f'{selected} / {selected_venue} / 予想分析'
+                                    if data_status == 'error':
+                                        message = '取得失敗'
+                                    elif selected == today:
+                                        message = '本日は地方競馬の開催はありません'
                                     else:
-                                        message = f'{selected} / {label} / AI期待値分析'
+                                        message = f'{selected} の地方開催データがありません'
+                            elif not races:
+                                if source == 'nar' and selected_venue and data_status == 'generating':
+                                    message = 'データ取得中'
+                                else:
+                                    message = f'{selected} / {label} のレースがありません'
+                            elif mode == 'result':
+                                if selected_venue:
+                                    message = f'{selected} / {selected_venue} / 結果検証'
+                                else:
+                                    message = f'{selected} / {label} / 結果検証モード'
+                            elif mode == 'analysis':
+                                message = f'{selected} / {label} / AI期待値分析'
+                            else:
+                                if selected_venue:
+                                    message = f'{selected} / {selected_venue} / 予想分析'
+                                else:
+                                    message = f'{selected} / {label} / AI期待値分析'
         except FileNotFoundError as e:
             if (
                 source in ('nar', 'jra')
@@ -4735,6 +4860,7 @@ def index():
             _cache_put(_PAGE_HTML_CACHE, html_key, html, _HTML_CACHE_MAX)
             if url_key != html_key:
                 _cache_put(_PAGE_HTML_CACHE, url_key, html, _HTML_CACHE_MAX)
+            _cache_put(_PAGE_HTML_CACHE, _url_html_cache_key(), html, _HTML_CACHE_MAX)
         except Exception as e:
             print(f'[page-cache] store skip: {e}', flush=True)
     _perf_finish(cache='miss', extra=f'races={len(races)}')
@@ -5523,6 +5649,7 @@ def healthz():
     pandas で CSV 本文を開かない。重い / 描画と独立して 200 を返す必要がある。
     """
     today = _today_jst()
+    _kick_page_warm()
     latest_date = ''
     latest_mtime = ''
     try:
