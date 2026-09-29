@@ -163,11 +163,11 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v27_is_responsive_and_valid(self):
+    def test_template_v28_is_responsive_and_valid(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v27"', html)
-        self.assertIn('data-ra-ui="v27"', html)
+        self.assertIn('data-ui="areu-app-v28"', html)
+        self.assertIn('data-ra-ui="v28"', html)
         self.assertIn('ra-metrics', html)
         self.assertIn('全馬 詳細データ', html)
         self.assertIn('ラップ適合度 × 展開ポジション', html)
@@ -176,6 +176,13 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertIn('@media (max-width:899px)', html)
         self.assertIn('@media (min-width:900px)', html)
         self.assertIn('grid-template-columns:1fr 1fr', html)
+        self.assertIn('color:#087443', html)
+        self.assertIn('background:#159447', html)
+        self.assertIn('background:#E8EEF0', html)
+        self.assertIn('background:#CBD8E3', html)
+        self.assertIn('color:#526174', html)
+        self.assertIn('border:1px solid #DDE5E2', html)
+        self.assertIn('border-radius:18px', html)
 
 
 if __name__ == '__main__':
