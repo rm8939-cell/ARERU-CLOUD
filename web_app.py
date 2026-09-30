@@ -2980,6 +2980,7 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
             pts.append({
                 '馬番': p.get('馬番表示') or p.get('馬番') or '',
                 '馬番数字': p.get('馬番') or '',
+                '枠番': p.get('枠番') or '',
                 '馬名': p.get('馬名') or '',
                 'AI順位': p.get('AI順位'),
                 'x': x,

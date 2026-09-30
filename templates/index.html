@@ -1043,12 +1043,12 @@ body.app-race .ra-m .k{color:#5E6B7A;font-size:11px;font-weight:800;line-height:
 body.app-race .ra-m .v{margin:0;color:#10233F;font-size:13px;font-weight:900;min-width:0;overflow-wrap:anywhere;line-height:1.3}
 body.app-race .ra-empty{margin:0;font-size:12px;font-weight:700;color:#5E6B7A}
 body.app-race .ra-scatter{position:relative;width:100%;max-width:100%;padding:4px 0 0 20px;box-sizing:border-box}
-body.app-race .ra-plot{position:relative;height:220px;width:100%;max-width:100%;border:1px solid #DDE5E2;border-radius:14px;background:
-  linear-gradient(135deg, rgba(234,246,240,.95) 0%, rgba(234,246,240,0) 48%),
-  linear-gradient(225deg, rgba(238,245,255,.95) 0%, rgba(238,245,255,0) 48%),
-  linear-gradient(45deg, rgba(232,238,236,.92) 0%, rgba(232,238,236,0) 48%),
-  linear-gradient(315deg, rgba(238,245,255,.88) 0%, rgba(238,245,255,0) 48%),
-  #f6f9f8;overflow:hidden;box-sizing:border-box}
+body.app-race .ra-plot{position:relative;height:220px;width:100%;max-width:100%;border:1px solid #CBD8E3;border-radius:14px;background:
+  linear-gradient(135deg, rgba(234,246,240,.92) 0%, rgba(234,246,240,0) 58%),
+  linear-gradient(225deg, rgba(238,245,255,.92) 0%, rgba(238,245,255,0) 58%),
+  linear-gradient(45deg, rgba(234,246,240,.55) 0%, rgba(234,246,240,0) 58%),
+  linear-gradient(315deg, rgba(238,245,255,.75) 0%, rgba(238,245,255,0) 58%),
+  #E4EBF1;overflow:hidden;box-sizing:border-box}
 body.app-race .ra-plot:before,body.app-race .ra-plot:after{content:"";position:absolute;background:#CBD8E3}
 body.app-race .ra-plot:before{left:50%;top:0;bottom:0;width:1px}
 body.app-race .ra-plot:after{top:50%;left:0;right:0;height:1px}
@@ -1104,6 +1104,15 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 .ub-16{background:#111;color:#ec407a}
 .ub-17{background:#ef6c00;color:#fff;box-shadow:inset 0 0 0 2px #fff}
 .ub-18{background:#145c37;color:#fff}
+/* 枠番が判っている馬は JRA の枠色をそのまま使う（馬番からの推定より正確） */
+.wk-1{background:#fff;color:#111;border-color:#111;box-shadow:none}
+.wk-2{background:#111;color:#fff;box-shadow:none}
+.wk-3{background:#e53935;color:#fff;box-shadow:none}
+.wk-4{background:#1565c0;color:#fff;box-shadow:none}
+.wk-5{background:#f4c20d;color:#111;box-shadow:none}
+.wk-6{background:#2e7d32;color:#fff;box-shadow:none}
+.wk-7{background:#ef6c00;color:#fff;box-shadow:none}
+.wk-8{background:#ec407a;color:#fff;box-shadow:none}
 @media (max-width:899px){
   body.app-race .ra-metrics{grid-template-columns:1fr 1fr}
   body.app-race .ra-m{grid-template-columns:minmax(0,1fr);min-height:62px;align-content:center}
@@ -2033,7 +2042,8 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 {% for pt in _lapmap %}
   {% set _bn = (pt.get('馬番数字') or pt.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
-<i class="ra-dot ub-{{_ub}}" style="left:{{pt.get('x')}}%;bottom:{{pt.get('y')}}%" title="{{pt.get('馬番')}} {{pt.get('馬名')}}">{{pt.get('馬番') or _bn}}</i>
+  {% set _wk = (pt.get('枠番') or '')|string|replace('.0','')|trim %}
+<i class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}" style="left:{{pt.get('x')}}%;bottom:{{pt.get('y')}}%" title="{{pt.get('馬番')}} {{pt.get('馬名')}}">{{pt.get('馬番') or _bn}}</i>
 {% endfor %}
 </div>
 <div class="ra-axis-x">後方 ← 想定ポジション → 前方</div>
@@ -2051,9 +2061,10 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 {% for p in _laprk %}
   {% set _bn = (p.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
   {% set _fit = p.get('ラップ適合度') %}
 <div class="ra-rk-row">
-<span class="ra-dot ub-{{_ub}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
+<span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
 <div class="ra-rk-main">
 <span class="nm">{{p.get('馬名') or '—'}}</span>
 <div class="ra-rk-sc">

@@ -184,6 +184,29 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertIn('border:1px solid #DDE5E2', html)
         self.assertIn('border-radius:18px', html)
 
+    def test_badges_use_jra_frame_colors_from_waku(self):
+        from pathlib import Path
+        html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
+        for cls, color in (
+            ('.wk-1', '#fff'), ('.wk-2', '#111'), ('.wk-3', '#e53935'), ('.wk-4', '#1565c0'),
+            ('.wk-5', '#f4c20d'), ('.wk-6', '#2e7d32'), ('.wk-7', '#ef6c00'), ('.wk-8', '#ec407a'),
+        ):
+            self.assertIn(f'{cls}{{background:{color}', html)
+        self.assertEqual(html.count("wk-{{_wk|int}}"), 2)
+
+    def test_lap_map_carries_waku_for_badge_color(self):
+        race = _race('中山8R', pace='ハイ', horses=[
+            _horse('逃げ馬', 1, '本命', '逃げ残り', 枠番='1', AREru指数=99),
+            _horse('差し馬', 10, '対抗', '差し向き', 枠番='6', AREru指数=80),
+        ])
+        _stamp_ai_field_ranks(race)
+        _stamp_race_analysis_display(race, {})
+        waku = {pt['馬名']: pt['枠番'] for pt in race['ラップマップ']}
+        self.assertEqual(waku['逃げ馬'], '1')
+        self.assertEqual(waku['差し馬'], '6')
+        ranked = {p['馬名']: p.get('枠番') for p in race['ラップ適合ランキング']}
+        self.assertEqual(ranked['差し馬'], '6')
+
 
 if __name__ == '__main__':
     unittest.main()
