@@ -808,6 +808,26 @@ def _blend_ai_market(ai_pct, market_pct, ai_weight):
     return e/e.sum()*100.0
 
 
+def _past_feature_term(g):
+    """過去走特徴量の線形項。学習済み係数が無ければ None（＝何もしない）。"""
+    try:
+        import past_feature_model as pfm
+    except Exception:
+        return None
+    if not pfm.enabled():
+        return None
+    rid=g["race_id"].iloc[0] if "race_id" in g.columns and len(g) else None
+    if rid is None or "馬名" not in g.columns:
+        return None
+    try:
+        term=pfm.linear_term(str(rid), g["馬名"].tolist())
+    except Exception:
+        return None
+    if term is None or len(term)!=len(g):
+        return None
+    return np.asarray(term, dtype=float)
+
+
 def _place_probs_from_win(win_pct):
     """勝率から 2着内率・3着内率を Plackett-Luce で導く。
 
@@ -903,6 +923,12 @@ def simulate_race(g, runs=None, profiles=None, pace=None):
         else:
             g["市場勝率"]=market_pct
             final=_blend_ai_market(win, market_pct, measured_ai_weight())
+        past_term=_past_feature_term(g)
+        if past_term is not None:
+            g["過去走補正"]=past_term
+            eta=np.log(np.clip(final, 1e-6, None))+past_term
+            e=np.exp(eta-eta.max())
+            final=e/e.sum()*100.0
         final=_cap_sim_win_rates(final)
         if float(final.sum())>0:
             final=_cap_sim_win_rates(final*(100.0/float(final.sum())))
