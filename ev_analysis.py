@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -274,6 +275,19 @@ def calc_ai_confidence(record: dict, pick: dict | None = None, repro: float | No
     market = parse_odds_value(record.get('本命オッズ') or record.get('現在オッズ'))
     reasons = str(record.get('本命理由') or '')
 
+    if prob_v2_enabled():
+        # 旧式は「市場と乖離した本命」ほど高得点になり、実績と逆相関していた。
+        # v2 は本命がどれだけ勝ちやすいかと、根拠データの厚みだけで決める。
+        if win is None:
+            return 5.0
+        s = _clamp(14.0 + 1.6 * float(win), 5, 95)
+        s = min(s, 30.0 + 13.0 * n)                      # 履歴が薄ければ上限を下げる
+        if not record.get('本命市場勝率'):
+            s = min(s, 45.0)                              # オッズ不完全
+        if '地方実績を中央換算' in reasons or 'サンプル少' in reasons:
+            s = min(s, 70.0)
+        return round(_clamp(s, 5, 95), 1)
+
     score = 0.0
     score += min(22.0, n * 4.4)                         # データ件数
     score += repro * 0.28                                 # 再現率
@@ -516,15 +530,30 @@ def calc_race_confidence(record: dict) -> dict:
     bias = _venue_bias_match_score(record)
     correction = _result_correction_delta(record)
 
-    score = (
-        conf * 0.28
-        + ability * 0.18
-        + pace * 0.15
-        + data_score * 0.12
-        + repro * 0.15
-        + bias * 0.12
-        + correction * 0.4
-    )
+    if prob_v2_enabled():
+        # 旧合成は実績と逆相関していた（信頼度70-80帯の回収率 64.9%、50-60帯 96.6%、
+        # 勝負ランク A 36.6% / D 93.0%）。原因は AI と市場の乖離が大きいほど
+        # 高得点になる設計だったこと。v2 は「本命がどれだけ勝ちやすいか」だけで測る。
+        win_pct = safe_float(record.get('シミュレーション勝率'), None)
+        if win_pct is None:
+            score = 8.0
+        else:
+            # 勝率 10% → 30、25% → 60、45% → 86 あたりに写す
+            score = _clamp(14.0 + 1.6 * float(win_pct), 8, 96)
+            if n <= 1:
+                score = min(score, 55.0)   # 履歴が無い馬で高い確度は主張しない
+            if not record.get('本命市場勝率'):
+                score = min(score, 48.0)   # オッズ不完全なレースは確度を下げる
+    else:
+        score = (
+            conf * 0.28
+            + ability * 0.18
+            + pace * 0.15
+            + data_score * 0.12
+            + repro * 0.15
+            + bias * 0.12
+            + correction * 0.4
+        )
     score = round(_clamp(score, 8, 96), 1)
     return {
         'レース信頼度スコア': score,
@@ -730,6 +759,7 @@ def score_horse_ev(
     n: int,
     apt: float,
     reasons: str = '',
+    market_prob: float | None = None,
 ) -> dict:
     """単頭の信頼度補正期待値。100%＝現在オッズと同値の勝率想定。"""
     empty = {
@@ -749,7 +779,12 @@ def score_horse_ev(
     else:
         return empty
 
-    implied = 1.0 / market  # 100% EV の基準（控除は別途信頼度で織り込み）
+    if market_prob is not None and market_prob > 0:
+        # 控除率を抜いた市場勝率。これを使って初めて「期待値100% = トントン」になる。
+        # 1/オッズ をそのまま使うと race 合計が約126%になり、基準が 26% 甘くなる。
+        implied = float(market_prob) / 100.0
+    else:
+        implied = 1.0 / market
     ai_eff = _claimable_ai_prob(ai_p, implied, conf, repro, n)
     take = _edge_take_rate(conf, repro, n, apt, market, reasons)
     edge_p = ai_eff - implied
@@ -782,6 +817,11 @@ def score_horse_ev(
     }
 
 
+def prob_v2_enabled() -> bool:
+    """確率v2（AI独自確率と市場確率の分離）。areru_engine と同じフラグを見る。"""
+    return str(os.environ.get('ARERU_PROB_V2') or '').strip().lower() in ('1', 'true', 'yes')
+
+
 def calc_confidence_adjusted_ev(record: dict) -> dict:
     """信頼度・再現率・適性でAI勝率を縮約した期待値。
 
@@ -805,7 +845,16 @@ def calc_confidence_adjusted_ev(record: dict) -> dict:
         '適性内訳': apt_detail,
         'データ件数': n,
     }
-    scored = score_horse_ev(market, win_pct, fair, conf, repro, n, apt, reasons)
+    market_prob = parse_odds_value(record.get('本命市場勝率'))
+    if prob_v2_enabled() and not market_prob:
+        # オッズが1頭でも欠けているレース。控除率を抜いた基準が作れない以上、
+        # 期待値を出すと必ず水増しになるので出さない（買い判定も保留になる）。
+        scored = score_horse_ev(None, None, None, conf, repro, n, apt, reasons)
+        scored.update(base)
+        scored['期待値コメント'] = 'オッズ未確定のため期待値は算出しない'
+        return scored
+    scored = score_horse_ev(market, win_pct, fair, conf, repro, n, apt, reasons,
+                            market_prob=market_prob)
     scored.update(base)
     return scored
 

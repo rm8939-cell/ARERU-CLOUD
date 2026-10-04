@@ -51,6 +51,33 @@ def legacy_score_enabled() -> bool:
     return str(os.environ.get('ARERU_LEGACY_SCORE') or '').strip().lower() in ('1', 'true', 'yes')
 
 
+def prob_v2_enabled() -> bool:
+    """確率v2: AI独自確率と市場確率を分離し、控除率を抜いた期待値を出す。
+
+    旧実装は SIM勝率 に市場暗示確率を 38〜72% 混ぜていたため、AI の独自性も
+    市場との比較も成立していなかった。v2 は両者を別々に持ち、最終確率は
+    train で測った重みだけで合成する（measured_ai_weight を参照）。
+    """
+    return str(os.environ.get('ARERU_PROB_V2') or '').strip().lower() in ('1', 'true', 'yes')
+
+
+def measured_ai_weight() -> float:
+    """最終確率に載せる AI 指数の重み。
+
+    条件付きロジット（train 1013R / holdout 661R）で測った値は全セグメントで
+    0 以下だった。つまり現行の AI 指数は市場に対する上乗せ情報を持たない。
+    ここを勝手に正の値にすると「人気より賢いふり」になるので、既定は 0。
+    上乗せ情報を持つ特徴が見つかったときだけ、計測値をここへ入れる。
+    """
+    raw = os.environ.get('ARERU_AI_WEIGHT')
+    if raw is None:
+        return 0.0
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def calib_v2_enabled() -> bool:
     """BUYセグメント診断で train/holdout 双方悪化が再現した層の較正。
 
@@ -737,6 +764,88 @@ def _cap_sim_win_rates(win_pct, max_win=SIM_WIN_MAX_PCT, min_fair=AI_FAIR_ODDS_M
     return win
 
 
+def _market_win_pct(g, n_h, win_fallback=None, *, strict=True):
+    """単勝オッズから控除率を抜いた市場勝率（%、合計100）。
+
+    1/オッズ をそのまま確率扱いすると合計が約 1.27 になり、
+    「期待値 100% = トントン」が成立しない。必ず正規化して使う。
+
+    strict=True では 1 頭でも欠損・1.0 倍（地方の未取得マーカー）があれば
+    None を返す。欠損馬に平均を割り当てると人気馬の確率が数倍に化けるため。
+    strict=False は旧実装の挙動（部分欠損を埋める）をそのまま残す。
+    """
+    if "単勝オッズ" not in g.columns:
+        return None
+    market=pd.to_numeric(g["単勝オッズ"], errors="coerce").to_numpy(dtype=float)
+    valid=np.isfinite(market) & (market > 1.01)
+    if strict:
+        if not valid.all():
+            return None
+        impl=1.0/market
+    else:
+        if int(valid.sum()) < max(3, n_h // 2):
+            return None
+        impl=np.zeros(n_h, dtype=float)
+        impl[valid]=1.0/market[valid]
+        if (~valid).any() and win_fallback is not None:
+            fb=np.maximum(np.asarray(win_fallback, dtype=float), 0.01)
+            impl[~valid]=fb[~valid]/max(float(fb[~valid].sum()), 1e-9)
+    total=float(impl.sum())
+    return impl/total*100.0 if total > 0 else None
+
+
+def _blend_ai_market(ai_pct, market_pct, ai_weight):
+    """最終勝率 = 市場確率を基準に、AI の相対評価を ai_weight だけ乗せる。
+
+    ai_weight=0 なら市場そのまま。計測で上乗せが確認できた分しか足さない。
+    """
+    if not ai_weight:
+        return np.asarray(market_pct, dtype=float).copy()
+    a=np.log(np.clip(np.asarray(ai_pct, dtype=float), 1e-6, None))
+    z=(a-a.mean())/(a.std() or 1.0)
+    eta=np.log(np.clip(np.asarray(market_pct, dtype=float), 1e-6, None))+ai_weight*z
+    e=np.exp(eta-eta.max())
+    return e/e.sum()*100.0
+
+
+def _place_probs_from_win(win_pct):
+    """勝率から 2着内率・3着内率を Plackett-Luce で導く。
+
+    P(i が2着) = Σ_j p_j * p_i/(1-p_j) の形。勝率と矛盾しない複勝確率になる。
+    """
+    p=np.clip(np.asarray(win_pct, dtype=float)/100.0, 1e-9, 1.0)
+    p=p/p.sum()
+    n=len(p)
+    if n <= 1:
+        return np.full(n, 100.0), np.full(n, 100.0)
+    # 2着確率: Σ_{j≠i} P(j が1着) * p_i/(1-p_j)
+    second=np.zeros(n)
+    for j in range(n):
+        share=p/np.clip(1.0-p[j], 1e-9, None)
+        share[j]=0.0
+        second+=p[j]*share
+    top2=np.clip(p+second, 0.0, 1.0)
+    if n == 2:
+        return top2*100.0, np.full(n, 100.0)
+    # 3着確率: Σ_{j≠i} Σ_{k≠i,j} P(j,k が1-2着) * p_i/(1-p_j-p_k)
+    third=np.zeros(n)
+    for j in range(n):
+        head=p[j]
+        share_j=p/np.clip(1.0-head, 1e-9, None)
+        for k in range(n):
+            if k == j:
+                continue
+            pair=head*share_j[k]
+            if pair <= 0:
+                continue
+            share=p/np.clip(1.0-head-p[k], 1e-9, None)
+            share[j]=0.0
+            share[k]=0.0
+            third+=pair*share
+    top3=np.clip(top2+third, 0.0, 1.0)
+    return top2*100.0, top3*100.0
+
+
 def simulate_race(g, runs=None, profiles=None, pace=None):
     """段階シミュレーション（デフォルト10万回）。profiles/pace が無い場合は指数ガウスにフォールバック。"""
     # 純旧ロジックのみガウス。アブレーションで特徴をONにした旧ベースは段階SIMを使う
@@ -784,27 +893,34 @@ def simulate_race(g, runs=None, profiles=None, pace=None):
     # 合計が理論値に近づくよう再スケール
     if place2.sum()>0: place2=place2*(200.0/place2.sum())
     if place3.sum()>0: place3=place3*(300.0/place3.sum())
-    # 単勝オッズがある場合は市場暗示確率へ部分収縮（大穴の過大勝率→極端EVを抑制）
-    if "単勝オッズ" in g.columns:
-        market_arr=pd.to_numeric(g["単勝オッズ"], errors="coerce").to_numpy(dtype=float)
-        valid=np.isfinite(market_arr) & (market_arr > 1.01)
-        if int(valid.sum()) >= max(3, n_h // 2):
-            impl=np.zeros(n_h, dtype=float)
-            impl[valid]=1.0/market_arr[valid]
-            # オッズ欠損馬は現状SIM比率で埋める
-            if (~valid).any():
-                fallback=np.maximum(win, 0.01)
-                impl[~valid]=fallback[~valid]/max(float(fallback[~valid].sum()), 1e-9)
-            impl=impl/max(float(impl.sum()), 1e-9)*100.0
-            # SIMが市場より強いほど市場寄りへ（長穴の37%勝ち等を潰す）
-            ratio=np.maximum(win, 0.01)/np.maximum(impl, 0.05)
-            sim_w=np.clip(0.58 - 0.12*np.log1p(np.maximum(ratio-1.0, 0.0)), 0.28, 0.62)
-            win=sim_w*win+(1.0-sim_w)*impl
+    market_pct=_market_win_pct(g, n_h, win_fallback=win, strict=prob_v2_enabled())
+    if prob_v2_enabled():
+        # v2: AI だけの確率と市場確率を別々に持ち、合成は計測した重みだけで行う。
+        g["AI独自勝率"]=win
+        if market_pct is None:
+            final=win
+            g["市場勝率"]=np.nan
+        else:
+            g["市場勝率"]=market_pct
+            final=_blend_ai_market(win, market_pct, measured_ai_weight())
+        final=_cap_sim_win_rates(final)
+        if float(final.sum())>0:
+            final=_cap_sim_win_rates(final*(100.0/float(final.sum())))
+        win=final
+        # 2着内・3着内は Plackett-Luce で勝率と整合させる（場当たりな縮小をやめる）
+        place2, place3=_place_probs_from_win(win)
+    elif "単勝オッズ" in g.columns and market_pct is not None:
+        # 旧実装: 市場暗示確率へ部分収縮（大穴の過大勝率→極端EVを抑制）
+        impl=market_pct
+        # SIMが市場より強いほど市場寄りへ（長穴の37%勝ち等を潰す）
+        ratio=np.maximum(win, 0.01)/np.maximum(impl, 0.05)
+        sim_w=np.clip(0.58 - 0.12*np.log1p(np.maximum(ratio-1.0, 0.0)), 0.28, 0.62)
+        win=sim_w*win+(1.0-sim_w)*impl
+        win=_cap_sim_win_rates(win)
+        # 合計100%へ再正規化
+        if float(win.sum()) > 0:
+            win=win*(100.0/float(win.sum()))
             win=_cap_sim_win_rates(win)
-            # 合計100%へ再正規化
-            if float(win.sum()) > 0:
-                win=win*(100.0/float(win.sum()))
-                win=_cap_sim_win_rates(win)
     g["SIM勝率"]=win
     g["SIM2着内率"]=place2
     g["SIM3着内率"]=place3
@@ -1149,7 +1265,12 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         def _n_valid_row(rr):
             return int(sum(pd.notna(num(rr.get(f'着順{i}'))) for i in range(1,6)))
 
-        main_order=g.sort_values(['SIM3着内率','AREru指数'],ascending=False)
+        if prob_v2_enabled():
+            # 本命は最終勝率が最大の馬。SIM3着内率は勝率から導く従属量なので
+            # 一次ソートに使うと「勝てないが崩れにくい中位人気」に寄ってしまう。
+            main_order=g.sort_values(['SIM勝率','SIM3着内率'],ascending=False)
+        else:
+            main_order=g.sort_values(['SIM3着内率','AREru指数'],ascending=False)
         main=main_order.iloc[0]
         for _,cand in main_order.iterrows():
             nv=_n_valid_row(cand)
@@ -1158,11 +1279,18 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 main=cand
                 break
 
-        # 対抗=勝率2位、穴=期待値/穴スコア上位
-        hole_score=(
-            g['AREru指数']*.30+g['因子_upset']*.20+g['因子_value']*.20+g['SIM3着内率']*.20
-            +np.where(market_pop>=6,10,0)+np.where(num(g.get('単勝期待値')).fillna(0)>=120,8,0)
-        )
+        if prob_v2_enabled():
+            # 相手は複勝確率順。「人気薄だから穴」をやめる。
+            # 人気帯を揃えて測ると、どの穴定義も同人気帯の平均と同じ複勝率にしかならず、
+            # 市場より妙味のある馬を当てる力は確認できなかった（pick_rule_lab）。
+            # 一方で複勝確率順に並べるだけで相手の複勝率は 16% → 35% に上がる。
+            hole_score=g['SIM3着内率']
+        else:
+            # 対抗=勝率2位、穴=期待値/穴スコア上位
+            hole_score=(
+                g['AREru指数']*.30+g['因子_upset']*.20+g['因子_value']*.20+g['SIM3着内率']*.20
+                +np.where(market_pop>=6,10,0)+np.where(num(g.get('単勝期待値')).fillna(0)>=120,8,0)
+            )
         rest=g[g['馬名']!=main['馬名']].copy().assign(_hole=hole_score.loc[g['馬名']!=main['馬名']])
         rival=rest.sort_values(['SIM勝率','SIM3着内率'],ascending=False).head(1)
         hole_pool=rest.sort_values(['_hole','SIM3着内率'],ascending=False)
@@ -1286,7 +1414,19 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
             win_ev=float(mo)/float(fo)*100
             ai_r=int(ai_rank_map.loc[idx])
             overbet=float(mo)<float(fo)*0.85  # 適正より安い＝売れ過ぎ
-            if ai_r>=max(5,int(n*0.45)) and win_ev<80 and overbet:
+            if prob_v2_enabled():
+                # 「AI順位が低いから危険」はやめる。AI 指数は市場に対する上乗せ情報を
+                # 持たないので、それでは同人気帯の平均と変わらない（上乗せ +0.5pp）。
+                # 代わりに市場構造で測る。支持の薄い1番人気は同人気帯より約13pp多く飛ぶ。
+                mk_p=num(row.get('市場勝率'))
+                if pd.isna(mk_p) or float(mk_p)<=0:
+                    continue
+                mk=float(mk_p)
+                if float(pop)==1 and mk<30.0:
+                    cand_danger.append((100.0-mk, row, win_ev, ai_r, True))
+                elif mk<22.0 and n>=12:
+                    cand_danger.append((60.0-mk, row, win_ev, ai_r, True))
+            elif ai_r>=max(5,int(n*0.45)) and win_ev<80 and overbet:
                 score=(5-float(pop))*8+(ai_r)+max(0,80-win_ev)*0.5+(float(fo)-float(mo))*2
                 cand_danger.append((score,row,win_ev,ai_r,overbet))
         if cand_danger:
@@ -1296,9 +1436,16 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
             danger_name=str(drow['馬名'])
             dban=_ban_str(drow)
             reasons=[]
-            reasons.append(f"AI順位{ai_r}位と人気の乖離")
-            reasons.append(f"期待値{win_ev:.0f}%未満")
-            reasons.append(f"現在{float(num(drow['単勝オッズ'])):.1f}倍 < 適正{float(num(drow['AI適正オッズ'])):.1f}倍で売れ過ぎ")
+            if prob_v2_enabled():
+                mk=float(num(drow.get('市場勝率')) or 0)
+                base3=1.0 if float(num(drow.get('人気')) or 9)==1 else 3.0
+                reasons.append(f"{int(base3)}番人気だが支持率{mk:.0f}%しかない薄い人気馬")
+                reasons.append(f"単勝{float(num(drow['単勝オッズ'])):.1f}倍（同じ人気でも割れている）")
+                reasons.append(f"{n}頭立て" if n>=12 else "支持が1頭に集中していない")
+            else:
+                reasons.append(f"AI順位{ai_r}位と人気の乖離")
+                reasons.append(f"期待値{win_ev:.0f}%未満")
+                reasons.append(f"現在{float(num(drow['単勝オッズ'])):.1f}倍 < 適正{float(num(drow['AI適正オッズ'])):.1f}倍で売れ過ぎ")
             danger_reason=' / '.join(reasons)
             danger_card={
                 '馬名':danger_name,'馬番':dban,'馬番表示':circle_ban(dban),
@@ -1475,6 +1622,11 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
           'AI適正オッズ':fair_odds,'本命理由':main_detail['プラス材料'],
           '本命詳細':json.dumps(main_detail,ensure_ascii=False),
           '本命オッズ':main_odds_disp,'本命人気':main_pop_disp,
+          # 控除率を抜いた市場勝率。期待値の損益分岐を正しく 100% にするために渡す。
+          '本命市場勝率':(round(float(main['市場勝率']),2) if '市場勝率' in g.columns
+                     and pd.notna(main.get('市場勝率')) else None),
+          '本命AI独自勝率':(round(float(main['AI独自勝率']),2) if 'AI独自勝率' in g.columns
+                       and pd.notna(main.get('AI独自勝率')) else None),
           '人気馬危険':danger_name or '該当なし',
           '危険度':round(danger_score_val,1),
           '危険理由':danger_reason,
