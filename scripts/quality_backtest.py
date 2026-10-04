@@ -466,7 +466,9 @@ def run(label: str, dates: list[str], *, sim_runs: int, use_cache: bool) -> dict
         '設計': {'holdout開始日': HOLDOUT_FROM, 'SIM_RUNS': sim_runs,
                '対象日数': len(dates), '1点': STAKE,
                '環境': {k: os.environ.get(k) for k in
-                      ('ARERU_LEGACY_SCORE', 'ARERU_LOGIC_PRESET', 'ARERU_AI_PROB_V2') if os.environ.get(k)}},
+                      ('ARERU_LEGACY_SCORE', 'ARERU_LOGIC_PRESET', 'ARERU_PROB_V2',
+                       'ARERU_AI_WEIGHT', 'ARERU_PAST_FEATURES', 'ARERU_PAST_PANEL',
+                       'ARERU_PAST_MODEL') if os.environ.get(k)}},
         'full': section('full', race, runner),
         'train': section('train', train_r, train_n),
         'holdout': section('holdout', hold_r, hold_n),
