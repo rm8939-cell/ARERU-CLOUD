@@ -1,0 +1,115 @@
+{
+ "設計": {
+  "label": "prod_old",
+  "holdout開始": "2026-08-10",
+  "train_races": 1013,
+  "holdout_races": 661,
+  "注": "オッズは予想時点の単勝オッズのみ。確定オッズは不使用。"
+ },
+ "results": [
+  {
+   "model": "M0_市場のみ",
+   "係数": {
+    "log_impl": 1.0583
+   },
+   "train_logloss": 1.68982,
+   "holdout_logloss": 1.7364,
+   "holdout_AUC": 0.8278,
+   "holdout_1位的中": 41.3,
+   "holdout_logloss差_vs市場": 0.0
+  },
+  {
+   "model": "M1_AI指数のみ",
+   "係数": {
+    "z_idx": 0.3844
+   },
+   "train_logloss": 2.27586,
+   "holdout_logloss": 2.28435,
+   "holdout_AUC": 0.6189,
+   "holdout_1位的中": 14.83,
+   "holdout_logloss差_vs市場": 0.54795
+  },
+  {
+   "model": "M2_市場+AI指数",
+   "係数": {
+    "log_impl": 1.0733,
+    "z_idx": -0.0765
+   },
+   "train_logloss": 1.68814,
+   "holdout_logloss": 1.73604,
+   "holdout_AUC": 0.8278,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss差_vs市場": -0.00036
+  },
+  {
+   "model": "M3_市場+6因子",
+   "係数": {
+    "log_impl": 1.1099,
+    "z_perf": -0.1001,
+    "z_upset": 0.1093,
+    "z_cons": -0.0478,
+    "z_trend": -0.0211,
+    "z_value": -0.0119,
+    "z_ctx": -0.0513
+   },
+   "train_logloss": 1.68264,
+   "holdout_logloss": 1.74999,
+   "holdout_AUC": 0.8244,
+   "holdout_1位的中": 40.7,
+   "holdout_logloss差_vs市場": 0.01359
+  },
+  {
+   "model": "M4_市場+SIM3着内率",
+   "係数": {
+    "log_impl": 1.0663,
+    "z_sim3": -0.0338
+   },
+   "train_logloss": 1.68935,
+   "holdout_logloss": 1.73569,
+   "holdout_AUC": 0.8279,
+   "holdout_1位的中": 41.3,
+   "holdout_logloss差_vs市場": -0.00071
+  },
+  {
+   "model": "M5_市場+市場非依存4因子",
+   "係数": {
+    "log_impl": 1.0938,
+    "z_perf": -0.0695,
+    "z_cons": -0.0584,
+    "z_trend": 0.0061,
+    "z_ctx": -0.0478
+   },
+   "train_logloss": 1.68518,
+   "holdout_logloss": 1.73955,
+   "holdout_AUC": 0.8269,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss差_vs市場": 0.00315
+  },
+  {
+   "model": "M6_全部",
+   "係数": {
+    "log_impl": 1.1037,
+    "z_idx": 0.0334,
+    "z_perf": -0.1432,
+    "z_cons": -0.0974,
+    "z_trend": -0.035,
+    "z_ctx": -0.0628,
+    "z_sim3": 0.0913
+   },
+   "train_logloss": 1.6834,
+   "holdout_logloss": 1.74245,
+   "holdout_AUC": 0.8261,
+   "holdout_1位的中": 41.0,
+   "holdout_logloss差_vs市場": 0.00605
+  },
+  {
+   "model": "参考_本番SIM勝率そのまま",
+   "係数": {},
+   "train_logloss": null,
+   "holdout_logloss": 1.92417,
+   "holdout_AUC": 0.7821,
+   "holdout_1位的中": 34.64,
+   "holdout_logloss差_vs市場": 0.18777
+  }
+ ]
+}

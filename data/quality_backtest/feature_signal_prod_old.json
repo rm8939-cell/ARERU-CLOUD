@@ -1,0 +1,164 @@
+{
+ "設計": {
+  "label": "prod_old",
+  "holdout開始": "2026-08-10",
+  "train_races": 1013,
+  "holdout_races": 661,
+  "カバレッジ": {
+   "速度指数が付いた割合": 9.4,
+   "履歴が紐づいた割合": 9.4,
+   "頭数": 17686,
+   "レース数": 1674
+  },
+  "注": "コース基準タイム・馬の特徴ともレース日より前のみ。確定オッズ不使用。"
+ },
+ "results": [
+  {
+   "model": "M0_市場のみ",
+   "係数": {
+    "log_impl": 1.0583
+   },
+   "train_logloss": 1.68982,
+   "holdout_logloss": 1.7364,
+   "holdout_AUC": 0.8278,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss改善": 0.0
+  },
+  {
+   "model": "S1_市場+速度指数(直近)",
+   "係数": {
+    "log_impl": 1.0574,
+    "z_spd_last": 0.0738
+   },
+   "train_logloss": 1.68972,
+   "holdout_logloss": 1.73623,
+   "holdout_AUC": 0.8278,
+   "holdout_1位的中": 41.6,
+   "holdout_logloss改善": 0.00017
+  },
+  {
+   "model": "S2_市場+速度指数(直近3best)",
+   "係数": {
+    "log_impl": 1.0579,
+    "z_spd_best3": 0.0228
+   },
+   "train_logloss": 1.68981,
+   "holdout_logloss": 1.7364,
+   "holdout_AUC": 0.8278,
+   "holdout_1位的中": 41.6,
+   "holdout_logloss改善": 0.0
+  },
+  {
+   "model": "S3_市場+速度指数(直近3平均)",
+   "係数": {
+    "log_impl": 1.0599,
+    "z_spd_avg3": -0.0835
+   },
+   "train_logloss": 1.68967,
+   "holdout_logloss": 1.73615,
+   "holdout_AUC": 0.8279,
+   "holdout_1位的中": 41.6,
+   "holdout_logloss改善": 0.00025
+  },
+  {
+   "model": "S4_市場+クラス",
+   "係数": {
+    "log_impl": 1.0579,
+    "z_cls_best3": 0.323
+   },
+   "train_logloss": 1.68843,
+   "holdout_logloss": 1.7361,
+   "holdout_AUC": 0.8279,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss改善": 0.0003
+  },
+  {
+   "model": "S5_市場+距離変化",
+   "係数": {
+    "log_impl": 1.0587,
+    "z_dist_chg": -0.046
+   },
+   "train_logloss": 1.68979,
+   "holdout_logloss": 1.73627,
+   "holdout_AUC": 0.8279,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss改善": 0.00013
+  },
+  {
+   "model": "S6_市場+休養明け",
+   "係数": {
+    "log_impl": 1.0589,
+    "z_layoff": 0.2526
+   },
+   "train_logloss": 1.68859,
+   "holdout_logloss": 1.73813,
+   "holdout_AUC": 0.8273,
+   "holdout_1位的中": 42.06,
+   "holdout_logloss改善": -0.00173
+  },
+  {
+   "model": "S7_市場+出走回数",
+   "係数": {
+    "log_impl": 1.0557,
+    "z_runs": -0.1619
+   },
+   "train_logloss": 1.68933,
+   "holdout_logloss": 1.7354,
+   "holdout_AUC": 0.8282,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss改善": 0.001
+  },
+  {
+   "model": "S8_市場+速度3best+クラス",
+   "係数": {
+    "log_impl": 1.0581,
+    "z_spd_best3": -0.0251,
+    "z_cls_best3": 0.3282
+   },
+   "train_logloss": 1.68842,
+   "holdout_logloss": 1.73612,
+   "holdout_AUC": 0.8279,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss改善": 0.00028
+  },
+  {
+   "model": "S9_市場+速度3best+クラス+休養+距離変化",
+   "係数": {
+    "log_impl": 1.0592,
+    "z_spd_best3": -0.0013,
+    "z_cls_best3": 0.2854,
+    "z_layoff": 0.2371,
+    "z_dist_chg": -0.0601
+   },
+   "train_logloss": 1.68742,
+   "holdout_logloss": 1.73735,
+   "holdout_AUC": 0.8276,
+   "holdout_1位的中": 41.6,
+   "holdout_logloss改善": -0.00095
+  },
+  {
+   "model": "S10_速度指数のみ(市場なし)",
+   "係数": {
+    "z_spd_best3": 0.5354
+   },
+   "train_logloss": 2.32236,
+   "holdout_logloss": 2.32611,
+   "holdout_AUC": 0.5735,
+   "holdout_1位的中": 11.65,
+   "holdout_logloss改善": -0.58971
+  },
+  {
+   "model": "S11_市場+現行AI指数+速度3best",
+   "係数": {
+    "log_impl": 1.0693,
+    "z_idx": -0.0751,
+    "z_spd_best3": 0.0481
+   },
+   "train_logloss": 1.68812,
+   "holdout_logloss": 1.73602,
+   "holdout_AUC": 0.8278,
+   "holdout_1位的中": 41.45,
+   "holdout_logloss改善": 0.00038
+  }
+ ]
+}

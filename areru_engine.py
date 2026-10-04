@@ -10,6 +10,9 @@ CONFIG_FILE=DATA_DIR/'areru_v2_config.json'
 HORSE_CACHE_DIR=DATA_DIR/'cache'/'horse_results'
 DEFAULT_WEIGHTS={'performance':0.28,'upset':0.24,'consistency':0.12,'trend':0.12,'value':0.14,'context':0.10}
 RECENCY=np.array([1.0,.82,.65,.48,.34])
+# バックテストが本番と同一経路の馬単位確率を取り出すための受け皿。
+# None の間は何も起きないので本番挙動は変わらない。
+RUNNER_PROB_SINK: list | None = None
 log=logging.getLogger('areru')
 # 地方→中央転入時の着順品質スケール（1.0=中央と同格）
 NAR_TO_JRA_SCALE_DEFAULT=0.55
@@ -1125,6 +1128,16 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
             elif fit<=40: p['minus'].append(lab)
 
         g, orders=simulate_race(g_base, runs=SIM_RUNS, profiles=profiles, pace=pace); n=len(g)
+        if RUNNER_PROB_SINK is not None:
+            _snap_cols=[c for c in (
+                'race_id','馬名','馬番','source','単勝オッズ','人気','AREru指数',
+                '因子_performance','因子_upset','因子_consistency','因子_trend','因子_value','因子_context',
+                'SIM勝率','SIM2着内率','SIM3着内率','AI適正オッズ',
+            ) if c in g.columns]
+            _snap=g[_snap_cols].copy()
+            _snap['想定ペース']=pace.get('想定ペース')
+            _snap['頭数']=n
+            RUNNER_PROB_SINK.append(_snap)
         # プロファイルを馬名で引けるように
         prof_by_name={str(g_base.iloc[i]['馬名']):profiles[i] for i in range(len(profiles))}
 

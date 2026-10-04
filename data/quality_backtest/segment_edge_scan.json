@@ -1,0 +1,158 @@
+{
+ "ブレンド重み走査": [
+  {
+   "AI重みw": -0.2,
+   "train_logloss": 1.69664,
+   "train_ROI": -17.69,
+   "train_1位的中": 39.59,
+   "holdout_logloss": 1.74817,
+   "holdout_ROI": -13.0,
+   "holdout_1位的中": 40.54
+  },
+  {
+   "AI重みw": -0.1,
+   "train_logloss": 1.69094,
+   "train_ROI": -18.92,
+   "train_1位的中": 39.59,
+   "holdout_logloss": 1.73978,
+   "holdout_ROI": -10.26,
+   "holdout_1位的中": 41.6
+  },
+  {
+   "AI重みw": 0.0,
+   "train_logloss": 1.69135,
+   "train_ROI": -21.41,
+   "train_1位的中": 39.39,
+   "holdout_logloss": 1.73818,
+   "holdout_ROI": -12.19,
+   "holdout_1位的中": 41.3
+  },
+  {
+   "AI重みw": 0.1,
+   "train_logloss": 1.69766,
+   "train_ROI": -21.92,
+   "train_1位的中": 39.29,
+   "holdout_logloss": 1.7432,
+   "holdout_ROI": -12.8,
+   "holdout_1位的中": 41.3
+  },
+  {
+   "AI重みw": 0.2,
+   "train_logloss": 1.70967,
+   "train_ROI": -22.96,
+   "train_1位的中": 38.7,
+   "holdout_logloss": 1.75464,
+   "holdout_ROI": -16.67,
+   "holdout_1位的中": 39.49
+  },
+  {
+   "AI重みw": 0.3,
+   "train_logloss": 1.72714,
+   "train_ROI": -23.84,
+   "train_1位的中": 37.91,
+   "holdout_logloss": 1.77227,
+   "holdout_ROI": -19.82,
+   "holdout_1位的中": 38.12
+  },
+  {
+   "AI重みw": 0.5,
+   "train_logloss": 1.77747,
+   "train_ROI": -24.65,
+   "train_1位的中": 36.13,
+   "holdout_logloss": 1.82512,
+   "holdout_ROI": -20.74,
+   "holdout_1位的中": 36.76
+  },
+  {
+   "AI重みw": 0.8,
+   "train_logloss": 1.88752,
+   "train_ROI": -23.12,
+   "train_1位的中": 34.85,
+   "holdout_logloss": 1.94437,
+   "holdout_ROI": -26.99,
+   "holdout_1位的中": 33.28
+  }
+ ],
+ "セグメント検定": [
+  {
+   "セグメント": "JRA",
+   "train_R": 253,
+   "holdout_R": 108,
+   "train係数_AI指数": -0.0825,
+   "holdout係数_AI指数": -0.0795,
+   "符号一致": true,
+   "holdout_logloss改善": 0.00273,
+   "判定": "信号なし"
+  },
+  {
+   "セグメント": "地方",
+   "train_R": 760,
+   "holdout_R": 553,
+   "train係数_AI指数": -0.0771,
+   "holdout係数_AI指数": -0.0376,
+   "符号一致": true,
+   "holdout_logloss改善": -6e-05,
+   "判定": "信号なし"
+  },
+  {
+   "セグメント": "少頭数(≤9)",
+   "train_R": 319,
+   "holdout_R": 198,
+   "train係数_AI指数": -0.1368,
+   "holdout係数_AI指数": -0.213,
+   "符号一致": true,
+   "holdout_logloss改善": 0.011,
+   "判定": "信号あり"
+  },
+  {
+   "セグメント": "中頭数(10-13)",
+   "train_R": 545,
+   "holdout_R": 379,
+   "train係数_AI指数": -0.0494,
+   "holdout係数_AI指数": 0.0888,
+   "符号一致": false,
+   "holdout_logloss改善": -0.00352,
+   "判定": "信号なし"
+  },
+  {
+   "セグメント": "多頭数(≥14)",
+   "train_R": 149,
+   "holdout_R": 84,
+   "train係数_AI指数": -0.0269,
+   "holdout係数_AI指数": -0.2804,
+   "符号一致": true,
+   "holdout_logloss改善": 0.00517,
+   "判定": "信号あり"
+  },
+  {
+   "セグメント": "上位人気(1-3)",
+   "train_R": 1013,
+   "holdout_R": 661,
+   "train係数_AI指数": -0.0765,
+   "holdout係数_AI指数": -0.0436,
+   "符号一致": true,
+   "holdout_logloss改善": 0.00036,
+   "判定": "信号なし"
+  },
+  {
+   "セグメント": "中人気(4-8)",
+   "train_R": 1013,
+   "holdout_R": 661,
+   "train係数_AI指数": -0.0765,
+   "holdout係数_AI指数": -0.0436,
+   "符号一致": true,
+   "holdout_logloss改善": 0.00036,
+   "判定": "信号なし"
+  },
+  {
+   "セグメント": "人気薄(≥9)",
+   "train_R": 826,
+   "holdout_R": 541,
+   "train係数_AI指数": -0.0596,
+   "holdout係数_AI指数": -0.0197,
+   "符号一致": true,
+   "holdout_logloss改善": -0.00026,
+   "判定": "信号なし"
+  }
+ ]
+}
