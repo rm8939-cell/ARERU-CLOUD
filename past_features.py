@@ -253,18 +253,47 @@ def load_history_frame(horse_ids=None) -> pd.DataFrame:
     return df
 
 
-def speed_baseline(hist: pd.DataFrame, before: pd.Timestamp) -> pd.DataFrame:
-    """(会場, 芝ダ, 距離, 馬場) ごとの走破タイム基準。before より前の行だけで作る。"""
-    src = hist[(hist["date"] < before) & hist["time_sec"].notna() & (hist["dist"] > 0)]
+# レース前半（残り3Fまで）に要した時間。上がり3Fが98%取れるのでほぼ全場で計算できる。
+def add_split_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["early_sec"] = df["time_sec"] - df["last3f"]
+    # 前半区間の距離。600m以下のレースは前半が存在しないので除く。
+    early_dist = df["dist"] - 600.0
+    df.loc[early_dist <= 0, "early_sec"] = np.nan
+    return df
+
+
+BASELINE_COLUMNS = [
+    "venue", "surface", "dist", "going",
+    "t_med", "t_std", "t_n", "l_med", "l_std", "l_n", "e_med", "e_std", "e_n",
+]
+
+
+def course_baselines(hist: pd.DataFrame, before: pd.Timestamp) -> pd.DataFrame:
+    """(会場, 芝ダ, 距離, 馬場) ごとの走破タイム・上がり・前半区間の基準。
+
+    `before` より前の行だけで作るので、後の開催の情報が前に漏れることはない。
+    """
+    src = hist[(hist["date"] < before) & (hist["dist"] > 0)]
     if src.empty:
-        return pd.DataFrame(columns=["venue", "surface", "dist", "going", "t_med", "t_std", "t_n"])
-    g = src.groupby(["venue", "surface", "dist", "going"])["time_sec"]
-    out = g.agg(t_med="median", t_std="std", t_n="size").reset_index()
-    return out[out["t_n"] >= 5]
+        return pd.DataFrame(columns=BASELINE_COLUMNS)
+    keys = ["venue", "surface", "dist", "going"]
+    g = src.groupby(keys)
+    out = g.agg(
+        t_med=("time_sec", "median"), t_std=("time_sec", "std"), t_n=("time_sec", "count"),
+        l_med=("last3f", "median"), l_std=("last3f", "std"), l_n=("last3f", "count"),
+        e_med=("early_sec", "median"), e_std=("early_sec", "std"), e_n=("early_sec", "count"),
+    ).reset_index()
+    # 標本が薄い区分の基準は信用しない。
+    for med, std, n in (("t_med", "t_std", "t_n"), ("l_med", "l_std", "l_n"),
+                        ("e_med", "e_std", "e_n")):
+        thin = out[n] < 5
+        out.loc[thin, [med, std]] = np.nan
+    return out
 
 
 def pace_baseline(hist: pd.DataFrame, before: pd.Timestamp) -> pd.DataFrame:
-    """(会場, 芝ダ, 距離) ごとの前半3F基準。ペースの速い遅いを測るのに使う。"""
+    """(会場, 芝ダ, 距離) ごとの前半3F基準。ペース列が公開される場だけで使える。"""
     src = hist[(hist["date"] < before) & hist["race_first3f"].notna() & (hist["dist"] > 0)]
     if src.empty:
         return pd.DataFrame(columns=["venue", "surface", "dist", "p_med", "p_std", "p_n"])
@@ -273,28 +302,69 @@ def pace_baseline(hist: pd.DataFrame, before: pd.Timestamp) -> pd.DataFrame:
     return out[out["p_n"] >= 5]
 
 
-def attach_baselines(past: pd.DataFrame, spd: pd.DataFrame, pac: pd.DataFrame) -> pd.DataFrame:
-    """過去走に基準値を結合して、スピード指数とペース偏差を出す。"""
+def race_pace_table(hist: pd.DataFrame, before: pd.Timestamp,
+                    base: pd.DataFrame) -> pd.DataFrame:
+    """各過去レースの「前半が速かったか」を、出走各馬の前半区間タイムから推定する。
+
+    netkeiba のペース列は中央と南関東くらいしか公開されないので、
+    それ以外の場でも使える代用値を作る。同一レースに属する行
+    （同じ日・同じ場・同じR）の前半区間偏差を平均したもの。
+    """
+    src = hist[hist["date"] < before]
+    if src.empty or base.empty:
+        return pd.DataFrame(columns=["date", "venue", "race_no", "race_pace_fig", "race_pace_n"])
+    m = src.merge(base[["venue", "surface", "dist", "going", "e_med", "e_std"]],
+                  on=["venue", "surface", "dist", "going"], how="left")
+    std = m["e_std"].replace(0, np.nan)
+    # プラス＝基準より前半が速い＝ハイペース。
+    m["e_fig"] = (-(m["early_sec"] - m["e_med"]) / std).clip(-4, 4)
+    m["race_no"] = pd.to_numeric(m["レース"], errors="coerce")
+    m = m[m["e_fig"].notna() & m["race_no"].notna()]
+    if m.empty:
+        return pd.DataFrame(columns=["date", "venue", "race_no", "race_pace_fig", "race_pace_n"])
+    out = m.groupby(["date", "venue", "race_no"])["e_fig"].agg(
+        race_pace_fig="mean", race_pace_n="size").reset_index()
+    return out
+
+
+def attach_baselines(past: pd.DataFrame, base: pd.DataFrame, pac: pd.DataFrame,
+                     race_pace: pd.DataFrame | None = None) -> pd.DataFrame:
+    """過去走に基準値を結合して、スピード指数・上がり指数・ペース偏差を出す。"""
     out = past
-    if not spd.empty:
-        out = out.merge(spd, on=["venue", "surface", "dist", "going"], how="left")
+    if not base.empty:
+        out = out.merge(base, on=["venue", "surface", "dist", "going"], how="left")
     else:
-        out = out.assign(t_med=np.nan, t_std=np.nan, t_n=np.nan)
+        for c in BASELINE_COLUMNS[4:]:
+            out[c] = np.nan
     if not pac.empty:
         out = out.merge(pac, on=["venue", "surface", "dist"], how="left")
     else:
         out = out.assign(p_med=np.nan, p_std=np.nan, p_n=np.nan)
-    std = out["t_std"].replace(0, np.nan)
+
     # 速い＝プラスになるよう符号を反転。斤量差はここでは補正しない。
-    out["speed_fig"] = -(out["time_sec"] - out["t_med"]) / std
-    out["speed_fig"] = out["speed_fig"].clip(-4, 4)
-    pstd = out["p_std"].replace(0, np.nan)
-    # プラス＝そのコースの平均より前半が速い（ハイペース）。
-    out["pace_dev"] = -(out["race_first3f"] - out["p_med"]) / pstd
-    out["pace_dev"] = out["pace_dev"].clip(-4, 4)
-    # 上がりがレース全体の後半3Fよりどれだけ速かったか（秒、プラスが速い）。
-    out["last3f_edge"] = out["race_last3f"] - out["last3f"]
-    out["last3f_edge"] = out["last3f_edge"].clip(-5, 5)
+    out["speed_fig"] = (-(out["time_sec"] - out["t_med"])
+                        / out["t_std"].replace(0, np.nan)).clip(-4, 4)
+    # 上がり3Fがそのコース・馬場の標準よりどれだけ速かったか。ほぼ全場で取れる。
+    out["last3f_fig"] = (-(out["last3f"] - out["l_med"])
+                         / out["l_std"].replace(0, np.nan)).clip(-4, 4)
+    # 自身の前半区間の速さ。脚質とペース耐性を見るのに使う。
+    out["early_fig"] = (-(out["early_sec"] - out["e_med"])
+                        / out["e_std"].replace(0, np.nan)).clip(-4, 4)
+    # ペース列が公開される場での実測ペース偏差。
+    out["pace_dev_true"] = (-(out["race_first3f"] - out["p_med"])
+                            / out["p_std"].replace(0, np.nan)).clip(-4, 4)
+    # 上がりがレース全体の後半3Fよりどれだけ速かったか（秒）。公開場のみ。
+    out["last3f_edge"] = (out["race_last3f"] - out["last3f"]).clip(-5, 5)
+
+    out["race_no"] = pd.to_numeric(out["レース"], errors="coerce")
+    if race_pace is not None and not race_pace.empty:
+        out = out.merge(race_pace, on=["date", "venue", "race_no"], how="left")
+    else:
+        out["race_pace_fig"] = np.nan
+        out["race_pace_n"] = np.nan
+    # 実測が取れるならそちらを優先し、取れない場では代用値を使う。
+    out["pace_dev"] = out["pace_dev_true"].where(
+        out["pace_dev_true"].notna(), out["race_pace_fig"])
     return out
 
 
@@ -322,9 +392,9 @@ def _content_score(row) -> float:
     spd = row.get("speed_fig")
     if pd.notna(spd):
         parts.append(float(np.clip(spd, -2, 2)) / 2.0)
-    edge = row.get("last3f_edge")
-    if pd.notna(edge):
-        parts.append(float(np.clip(edge, -2, 2)) / 2.0)
+    close = row.get("last3f_fig")
+    if pd.notna(close):
+        parts.append(float(np.clip(close, -2, 2)) / 2.0)
     # 後方から上がって着順をまとめた＝展開不利を克服した、と読む。
     pe, pl = row.get("pos_early"), row.get("rel_finish")
     if pd.notna(pe) and pd.notna(pl):
@@ -358,7 +428,7 @@ def build_features(
     # 1. 前走内容
     out["前走内容"] = _content_score(prev)
     out["前走着順"] = float(prev.get("rel_finish")) if pd.notna(prev.get("rel_finish")) else np.nan
-    out["前走上がり差"] = float(prev["last3f_edge"]) if pd.notna(prev.get("last3f_edge")) else np.nan
+    out["前走上がり"] = float(prev["last3f_fig"]) if pd.notna(prev.get("last3f_fig")) else np.nan
     out["前走位置取り"] = float(prev["pos_early"]) if pd.notna(prev.get("pos_early")) else np.nan
     out["前走ペース"] = float(prev["pace_dev"]) if pd.notna(prev.get("pace_dev")) else np.nan
     out["前走不利"] = float(prev["trouble"]) if pd.notna(prev.get("trouble")) else np.nan
@@ -380,12 +450,13 @@ def build_features(
     )
 
     # 3. 上がり性能
-    out["上がり性能"] = _wmean(past["last3f_edge"].head(5), w)
-    out["上がり性能件数"] = float(past["last3f_edge"].head(5).notna().sum())
+    out["上がり性能"] = _wmean(past["last3f_fig"].head(5), w)
+    out["上がり性能件数"] = float(past["last3f_fig"].head(5).notna().sum())
     out["上がり最速"] = (
-        float(past["last3f_edge"].head(10).max())
-        if past["last3f_edge"].head(10).notna().any() else np.nan
+        float(past["last3f_fig"].head(10).max())
+        if past["last3f_fig"].head(10).notna().any() else np.nan
     )
+    out["前半性能"] = _wmean(past["early_fig"].head(5), w)
 
     t_surf, t_dist = target.get("surface"), target.get("dist")
     t_venue, t_going = target.get("venue"), target.get("going")
@@ -482,10 +553,10 @@ def build_features(
 
 
 FEATURE_COLUMNS = [
-    "過去走数", "前走内容", "前走着順", "前走上がり差", "前走位置取り", "前走ペース",
+    "過去走数", "前走内容", "前走着順", "前走上がり", "前走位置取り", "前走ペース",
     "前走不利", "前走スピード", "休養日数",
     "近5走内容", "近5走内容件数", "近5走スピード", "近5走スピード最高", "近5走安定度",
-    "上がり性能", "上がり性能件数", "上がり最速",
+    "上がり性能", "上がり性能件数", "上がり最速", "前半性能",
     "同距離適性", "同距離適性件数", "同コース適性", "同コース適性件数",
     "芝ダ適性", "芝ダ適性件数", "馬場適性", "馬場適性件数",
     "ハイペース適性", "スローペース適性", "ハイペース件数", "スローペース件数",

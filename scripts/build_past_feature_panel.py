@@ -123,13 +123,15 @@ def main() -> None:
     hist = pf.load_history_frame(ids)
     if hist.empty:
         raise SystemExit("戦績キャッシュが空")
+    hist = pf.add_split_columns(hist)
     print(f"戦績行 {len(hist)} / 馬 {hist['horse_id'].nunique()}")
 
     by_horse = {h: g for h, g in hist.groupby("horse_id")}
     rows: list[dict] = []
     for when, day in runners.groupby("date"):
-        spd = pf.speed_baseline(hist, when)
+        base = pf.course_baselines(hist, when)
         pac = pf.pace_baseline(hist, when)
+        rpace = pf.race_pace_table(hist, when, base)
         day_ids = {h for h in day["horse_id"] if h}
         day_hist = hist[hist["horse_id"].isin(day_ids)]
         cond_cache: dict[str, dict] = {}
@@ -141,23 +143,23 @@ def main() -> None:
                 )
             cond = cond_cache[rid]
             for _, r in race.iterrows():
-                base = {"race_id": rid, "馬名": r["馬名"], "date": when,
+                rec = {"race_id": rid, "馬名": r["馬名"], "date": when,
                         "horse_id": r["horse_id"],
                         "当日芝ダ": cond["surface"], "当日距離": cond["dist"],
                         "当日馬場": cond["going"], "当日会場": cond["venue"],
                         "当日クラス": cond["class_lv"]}
                 hid = r["horse_id"]
                 if not hid or hid not in by_horse:
-                    rows.append(base | {"過去走数": 0.0})
+                    rows.append(rec | {"過去走数": 0.0})
                     continue
                 past = by_horse[hid]
                 past = past[past["date"] < when]
                 if past.empty:
-                    rows.append(base | {"過去走数": 0.0})
+                    rows.append(rec | {"過去走数": 0.0})
                     continue
-                past = pf.attach_baselines(past.copy(), spd, pac)
+                past = pf.attach_baselines(past.copy(), base, pac, rpace)
                 feats = pf.build_features(past, cond)
-                rows.append(base | feats)
+                rows.append(rec | feats)
         print(f"  {when.date()} {day['race_id'].nunique()}R 完了", flush=True)
 
     out = pd.DataFrame(rows)
