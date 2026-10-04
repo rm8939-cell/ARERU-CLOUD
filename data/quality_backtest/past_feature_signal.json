@@ -1,0 +1,306 @@
+{
+  "基準_市場のみ": {
+    "train": {
+      "logloss": 1.68982,
+      "brier": 0.06942,
+      "auc": 0.8392,
+      "top1勝率": 39.39
+    },
+    "holdout": {
+      "logloss": 1.7364,
+      "brier": 0.07064,
+      "auc": 0.8278,
+      "top1勝率": 41.3
+    },
+    "係数": [
+      1.0583
+    ]
+  },
+  "特徴量": {
+    "前走内容": {
+      "被覆率": 88.5,
+      "係数": -0.0038,
+      "holdout_logloss差": 6e-05,
+      "holdout_brier差": 0.0,
+      "holdout_AUC差": 0.0,
+      "train_logloss差": -1e-05
+    },
+    "前走着順": {
+      "被覆率": 88.5,
+      "係数": 0.0631,
+      "holdout_logloss差": 0.00051,
+      "holdout_brier差": 4e-05,
+      "holdout_AUC差": -0.0002,
+      "train_logloss差": -0.00104
+    },
+    "前走上がり": {
+      "被覆率": 84.5,
+      "係数": 0.0634,
+      "holdout_logloss差": -0.00235,
+      "holdout_brier差": -0.00015,
+      "holdout_AUC差": 0.0004,
+      "train_logloss差": -0.00096
+    },
+    "前走位置取り": {
+      "被覆率": 84.6,
+      "係数": 0.1012,
+      "holdout_logloss差": 0.00984,
+      "holdout_brier差": 0.00024,
+      "holdout_AUC差": -0.0025,
+      "train_logloss差": -0.00283
+    },
+    "前走ペース": {
+      "被覆率": 85.3,
+      "係数": -0.0022,
+      "holdout_logloss差": 6e-05,
+      "holdout_brier差": 0.0,
+      "holdout_AUC差": 0.0,
+      "train_logloss差": 0.0
+    },
+    "前走不利": {
+      "被覆率": 4.0,
+      "判定": "データ不足で評価不能"
+    },
+    "前走スピード": {
+      "被覆率": 84.5,
+      "係数": 0.0012,
+      "holdout_logloss差": -9e-05,
+      "holdout_brier差": -1e-05,
+      "holdout_AUC差": 0.0,
+      "train_logloss差": 0.0
+    },
+    "休養日数": {
+      "被覆率": 89.9,
+      "係数": -0.0598,
+      "holdout_logloss差": -0.00056,
+      "holdout_brier差": -8e-05,
+      "holdout_AUC差": 0.0,
+      "train_logloss差": -0.00122
+    },
+    "近5走内容": {
+      "被覆率": 89.9,
+      "係数": -0.0337,
+      "holdout_logloss差": 0.00128,
+      "holdout_brier差": 4e-05,
+      "holdout_AUC差": -0.0003,
+      "train_logloss差": -0.00032
+    },
+    "近5走スピード": {
+      "被覆率": 85.7,
+      "係数": -0.0626,
+      "holdout_logloss差": 0.0064,
+      "holdout_brier差": 0.00023,
+      "holdout_AUC差": -0.0014,
+      "train_logloss差": -0.00092
+    },
+    "近5走スピード最高": {
+      "被覆率": 85.7,
+      "係数": -0.0168,
+      "holdout_logloss差": 0.00186,
+      "holdout_brier差": 7e-05,
+      "holdout_AUC差": -0.0004,
+      "train_logloss差": -9e-05
+    },
+    "近5走安定度": {
+      "被覆率": 81.9,
+      "係数": -0.0276,
+      "holdout_logloss差": 0.00017,
+      "holdout_brier差": 1e-05,
+      "holdout_AUC差": 0.0,
+      "train_logloss差": -0.00023
+    },
+    "上がり性能": {
+      "被覆率": 85.7,
+      "係数": 0.0494,
+      "holdout_logloss差": -0.00146,
+      "holdout_brier差": -8e-05,
+      "holdout_AUC差": 0.0003,
+      "train_logloss差": -0.00053
+    },
+    "上がり最速": {
+      "被覆率": 85.7,
+      "係数": 0.0826,
+      "holdout_logloss差": -0.00361,
+      "holdout_brier差": -0.00013,
+      "holdout_AUC差": 0.0008,
+      "train_logloss差": -0.00176
+    },
+    "前半性能": {
+      "被覆率": 85.7,
+      "係数": -0.0942,
+      "holdout_logloss差": 0.01139,
+      "holdout_brier差": 0.00038,
+      "holdout_AUC差": -0.0025,
+      "train_logloss差": -0.00255
+    },
+    "同距離適性": {
+      "被覆率": 77.7,
+      "係数": 0.0316,
+      "holdout_logloss差": -0.00149,
+      "holdout_brier差": -4e-05,
+      "holdout_AUC差": 0.0004,
+      "train_logloss差": -0.00016
+    },
+    "同コース適性": {
+      "被覆率": 68.5,
+      "係数": 0.0703,
+      "holdout_logloss差": -0.00339,
+      "holdout_brier差": -0.00013,
+      "holdout_AUC差": 0.0008,
+      "train_logloss差": -0.00073
+    },
+    "芝ダ適性": {
+      "被覆率": 83.9,
+      "係数": 0.0182,
+      "holdout_logloss差": -0.00088,
+      "holdout_brier差": -2e-05,
+      "holdout_AUC差": 0.0002,
+      "train_logloss差": -5e-05
+    },
+    "馬場適性": {
+      "被覆率": 82.2,
+      "係数": 0.0118,
+      "holdout_logloss差": -0.0005,
+      "holdout_brier差": -2e-05,
+      "holdout_AUC差": 0.0001,
+      "train_logloss差": -3e-05
+    },
+    "ハイペース適性": {
+      "被覆率": 69.5,
+      "係数": -0.0276,
+      "holdout_logloss差": -0.00074,
+      "holdout_brier差": -2e-05,
+      "holdout_AUC差": 0.0002,
+      "train_logloss差": -0.00019
+    },
+    "スローペース適性": {
+      "被覆率": 79.2,
+      "係数": -0.0161,
+      "holdout_logloss差": 0.00148,
+      "holdout_brier差": 4e-05,
+      "holdout_AUC差": -0.0004,
+      "train_logloss差": -6e-05
+    },
+    "ペース適性差": {
+      "被覆率": 66.0,
+      "係数": -0.0215,
+      "holdout_logloss差": -0.00156,
+      "holdout_brier差": -4e-05,
+      "holdout_AUC差": 0.0004,
+      "train_logloss差": -0.00013
+    },
+    "平均位置取り": {
+      "被覆率": 85.7,
+      "係数": 0.1194,
+      "holdout_logloss差": 0.0102,
+      "holdout_brier差": 0.00023,
+      "holdout_AUC差": -0.0026,
+      "train_logloss差": -0.0039
+    },
+    "回り適性": {
+      "被覆率": 82.1,
+      "係数": 0.0585,
+      "holdout_logloss差": -0.00364,
+      "holdout_brier差": -0.0001,
+      "holdout_AUC差": 0.0008,
+      "train_logloss差": -0.00071
+    },
+    "距離変化": {
+      "被覆率": 85.7,
+      "係数": -0.0788,
+      "holdout_logloss差": 0.0043,
+      "holdout_brier差": 0.0002,
+      "holdout_AUC差": -0.0011,
+      "train_logloss差": -0.00177
+    },
+    "距離変化適性": {
+      "被覆率": 31.7,
+      "係数": -0.0534,
+      "holdout_logloss差": 0.00069,
+      "holdout_brier差": 3e-05,
+      "holdout_AUC差": -0.0002,
+      "train_logloss差": -0.00029
+    },
+    "前走クラス": {
+      "被覆率": 82.4,
+      "係数": 0.0603,
+      "holdout_logloss差": 0.00154,
+      "holdout_brier差": 0.0001,
+      "holdout_AUC差": -0.0003,
+      "train_logloss差": -0.00096
+    },
+    "最高経験クラス": {
+      "被覆率": 89.7,
+      "係数": 0.0048,
+      "holdout_logloss差": -4e-05,
+      "holdout_brier差": 0.0,
+      "holdout_AUC差": 0.0,
+      "train_logloss差": 0.0
+    },
+    "クラス変化": {
+      "被覆率": 78.8,
+      "係数": -0.055,
+      "holdout_logloss差": 0.00118,
+      "holdout_brier差": 7e-05,
+      "holdout_AUC差": -0.0002,
+      "train_logloss差": -0.00077
+    },
+    "同クラス適性": {
+      "被覆率": 73.6,
+      "係数": -0.0691,
+      "holdout_logloss差": 0.0023,
+      "holdout_brier差": 4e-05,
+      "holdout_AUC差": -0.0005,
+      "train_logloss差": -0.0011
+    },
+    "格上経験": {
+      "被覆率": 82.1,
+      "係数": -0.004,
+      "holdout_logloss差": -0.00016,
+      "holdout_brier差": -1e-05,
+      "holdout_AUC差": 0.0,
+      "train_logloss差": 0.0
+    }
+  },
+  "合成_市場＋採用候補": {
+    "採用候補": [
+      "回り適性",
+      "上がり最速",
+      "同コース適性",
+      "前走上がり",
+      "ペース適性差",
+      "同距離適性",
+      "上がり性能",
+      "芝ダ適性",
+      "ハイペース適性",
+      "休養日数",
+      "馬場適性"
+    ],
+    "train": {
+      "logloss": 1.6853,
+      "brier": 0.06931,
+      "auc": 0.8403,
+      "top1勝率": 40.08
+    },
+    "holdout": {
+      "logloss": 1.72733,
+      "brier": 0.07026,
+      "auc": 0.8296,
+      "top1勝率": 41.91
+    },
+    "係数": [
+      1.0439,
+      0.0734,
+      0.0794,
+      0.0306,
+      0.0394,
+      0.0145,
+      0.0105,
+      -0.0262,
+      -0.0626,
+      -0.0649,
+      -0.0521,
+      0.0004
+    ]
+  }
+}
