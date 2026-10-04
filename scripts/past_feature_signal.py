@@ -65,7 +65,7 @@ def evaluate(df: pd.DataFrame, cols: list[str], tr: np.ndarray, ho: np.ndarray) 
             "logloss": round(race_logloss(p, y[m], g[m]), 5),
             "brier": round(brier(p, y[m]), 5),
             "auc": round(auc(p, y[m]), 4),
-            "top1勝率": round(top1_rate(p, y[m], g[m]) * 100, 2),
+            "top1勝率": round(top1_rate(p, y[m], g[m]), 2),
         }
     out["係数"] = [round(float(b), 4) for b in beta]
     return out
