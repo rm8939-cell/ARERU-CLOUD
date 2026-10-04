@@ -5,3 +5,4 @@ data/cache/
 .env
 .venv/
 venv/
+data/quality_backtest_cache/

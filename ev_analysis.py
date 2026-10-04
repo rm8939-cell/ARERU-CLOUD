@@ -20,6 +20,9 @@ EV_DISPLAY_MIN = 78
 BUY_EV_FLOOR = 108
 # レース信頼度の最低ライン
 BUY_CONF_FLOOR = 58
+# 確率v2 の買い条件。レース信頼度 70 = 本命の最終勝率 35%。
+# train で決め、holdout（678R）で ROI -11.6% / 的中 約50% を確認した水準。
+V2_BUY_CONF_FLOOR = 70.0
 
 # Sランク厳格条件（すべて満たした場合のみ S。不足は A へ降格）
 S_MIN_AI_CONF = 72.0       # AI信頼度が非常に高い
@@ -874,6 +877,22 @@ def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds:
     e = float(ev)
     conf = float(confidence or 0)
     rc = float(race_conf if race_conf is not None else conf)
+    if prob_v2_enabled():
+        # 控除率を抜いた期待値は、単勝では構造的に 100% を超えない。
+        # 「期待値が高いレース」で選ぶと乖離の大きい＝外れやすい馬だけが残るため
+        # （holdout 回収率 25.7%）、v2 は当たりやすさで選ぶ。
+        # レース信頼度 70 = 本命の最終勝率 35%。train -15.7% / holdout -11.6% で再現。
+        if rc >= V2_BUY_CONF_FLOOR:
+            return {
+                '一覧判定': '買い', '一覧判定トーン': 'buy',
+                '投資判定': '買い', '投資判定アイコン': '🔵', '投資判定トーン': 'buy',
+                '投資判定表示': '買い',
+            }
+        return {
+            '一覧判定': '見送り', '一覧判定トーン': 'skip',
+            '投資判定': '見送り', '投資判定アイコン': '⚪', '投資判定トーン': 'skip',
+            '投資判定表示': '見送り',
+        }
     # 厳選: EV・信頼度・レース信頼度の三重ゲート
     if e >= BUY_EV_FLOOR and conf >= BUY_CONF_FLOOR and rc >= BUY_CONF_FLOOR and float(repro or 0) >= 42:
         return {
@@ -926,8 +945,9 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
     record.update(conf_pack)
     rc = safe_float(conf_pack.get('レース信頼度スコア'), 50.0) or 50.0
     rk = rank_from_race_confidence(rc)
-    # EVが極端に弱い（見送り帯）ならランクを1段落とす
-    if ev is not None:
+    # EVが極端に弱い（見送り帯）ならランクを1段落とす。
+    # v2 では控除率を抜いた期待値が構造的に 100% 未満なので、この降格は効かせない。
+    if ev is not None and not prob_v2_enabled():
         try:
             e = float(ev)
             if e < 100 and rk in ('S', 'A'):
@@ -1110,6 +1130,12 @@ def tighten_buy_selection(races: list, by_venue: bool = False) -> list:
             rc = safe_float(r.get('レース信頼度スコア'), conf) or conf
             repro = safe_float(r.get('シミュレーション再現率'), 0.0) or 0.0
             has_odds = bool(r.get('オッズ取得済')) or ev is not None
+            if prob_v2_enabled():
+                # v2 は当たりやすさで絞る。控除率を抜いた期待値は単勝では
+                # 100% を超えないので、EV 閾値をそのまま使うと買いが 0 件になる。
+                if rc >= V2_BUY_CONF_FLOOR and r.get('本命市場勝率'):
+                    candidates.append((idx, r))
+                continue
             if rk not in ('S', 'A'):
                 continue
             if not has_odds or ev is None:
