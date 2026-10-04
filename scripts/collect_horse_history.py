@@ -53,6 +53,19 @@ def race_ids_from_cache(pattern: str) -> list[str]:
     return sorted(ids)
 
 
+def with_retry(fn, attempts: int = 4, base_wait: float = 2.0):
+    """netkeiba は同じURLでも 400 を返すことがある。指数バックオフで数回試す。"""
+    last: Exception | None = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except Exception as e:  # noqa: BLE001
+            last = e
+            if i < attempts - 1:
+                time.sleep(base_wait * (2 ** i))
+    raise last if last else RuntimeError("retry failed")
+
+
 def resolve_race_horses(rid: str, sleep: float) -> dict[str, str]:
     """レース結果ページから {馬名: horse_id} を取る。"""
     out_path = RACE_IDS_CACHE / f"{rid}.json"
@@ -61,10 +74,11 @@ def resolve_race_horses(rid: str, sleep: float) -> dict[str, str]:
             return json.loads(out_path.read_text(encoding="utf-8"))
         except Exception:
             pass
-    soup = client(sleep)._get(f"{nk.DB}/race/{rid}/", encoding="euc-jp")
+    soup = with_retry(lambda: client(sleep)._get(f"{nk.DB}/race/{rid}/", encoding="euc-jp"))
     mapping: dict[str, str] = {}
     for a in soup.select("a[href*='/horse/']"):
-        m = re.search(r"/horse/(\d{6,12})", a.get("href", "") or "")
+        # ばんえい（帯広）の馬IDは B202300178 のように英字が付く。
+        m = re.search(r"/horse/([A-Za-z]?\d{6,12})/", a.get("href", "") or "")
         name = a.get_text(strip=True)
         if m and name:
             mapping.setdefault(name, m.group(1))
@@ -76,7 +90,7 @@ def resolve_race_horses(rid: str, sleep: float) -> dict[str, str]:
 
 
 def fetch_one_horse(hid: str, sleep: float) -> int:
-    rows = client(sleep).fetch_horse_history(hid, use_cache=True)
+    rows = with_retry(lambda: client(sleep).fetch_horse_history(hid, use_cache=True))
     time.sleep(sleep)
     return len(rows)
 
