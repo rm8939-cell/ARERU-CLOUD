@@ -48,23 +48,53 @@ HISTORY_EXTRA_HEADERS: dict[str, tuple[str, ...]] = {
     "通過": ("通過",),
     "ペース": ("ペース",),
     "上り": ("上り", "上がり", "後3F"),
+    "天気": ("天気",),
+    "備考": ("備考",),
+    "オッズ": ("オッズ",),
+    "枠番": ("枠番",),
+    "馬番": ("馬番",),
+    "賞金": ("賞金",),
 }
 HISTORY_EXTRA_KEYS = tuple(HISTORY_EXTRA_HEADERS.keys())
 HISTORY_ROW_KEYS = HISTORY_BASE_KEYS + HISTORY_EXTRA_KEYS
 
+# 基本項目の見出し候補。見出しが取れたときはこちらを優先し、
+# 取れないときだけ従来の固定インデックスにフォールバックする。
+# 旧実装は 馬場 に cells[2]（＝天気）を入れていたため、
+# キャッシュ済みの「馬場」はほぼ全行が天気になっていた。
+HISTORY_BASE_HEADERS: dict[str, tuple[str, ...]] = {
+    "年月日": ("日付",),
+    "場": ("開催",),
+    "レース": ("R",),
+    "レース名": ("レース名",),
+    "頭数": ("頭数",),
+    "人気": ("人気",),
+    "着順": ("着順",),
+    "騎手": ("騎手",),
+    "斤量": ("斤量",),
+    "距離": ("距離",),
+    "馬場": ("馬場",),
+}
 
-def _history_extra_indexes(headers: list[str]) -> dict[str, int]:
-    """戦績テーブルの見出しから追加項目の列位置を引く。無い項目は返さない。"""
+
+def _history_header_indexes(
+    headers: list[str], wanted: dict[str, tuple[str, ...]]
+) -> dict[str, int]:
+    """戦績テーブルの見出しから列位置を引く。無い項目は返さない。"""
     if not headers:
         return {}
     pos: dict[str, int] = {}
     normalized = [str(h or "").strip() for h in headers]
-    for key, names in HISTORY_EXTRA_HEADERS.items():
+    for key, names in wanted.items():
         for name in names:
             if name in normalized:
                 pos[key] = normalized.index(name)
                 break
     return pos
+
+
+def _history_extra_indexes(headers: list[str]) -> dict[str, int]:
+    return _history_header_indexes(headers, HISTORY_EXTRA_HEADERS)
 
 
 def normalize_history_row(row: dict) -> dict:
@@ -762,28 +792,32 @@ class NetkeibaClient:
         table = soup.select_one("table.db_h_race_results") or soup.select_one("table")
         hist = []
         if table:
-            headers = [th.get_text(strip=True) for th in table.select("tr")[0].find_all(["th", "td"])] if table.select("tr") else []
+            rows = table.select("tr")
+            headers = (
+                [th.get_text(strip=True) for th in rows[0].find_all(["th", "td"])]
+                if rows else []
+            )
+            base_idx = _history_header_indexes(headers, HISTORY_BASE_HEADERS)
             extra_idx = _history_extra_indexes(headers)
-            for tr in table.select("tr")[1:]:
+            # 見出しが読めなかったときだけ使う旧レイアウト:
+            # 日付,開催,天気,R,レース名,...,頭数,枠番,馬番,オッズ,人気,着順,騎手,斤量,距離
+            fallback_idx = {
+                "年月日": 0, "場": 1, "レース": 3, "レース名": 4, "頭数": 6,
+                "人気": 10, "着順": 11, "騎手": 12, "斤量": 13, "距離": 14,
+            }
+            for tr in rows[1:]:
                 cells = [td.get_text(strip=True) for td in tr.find_all("td")]
                 if len(cells) < 12:
                     continue
-                # 標準レイアウト: 日付,開催,天気,R,レース名,...,頭数,枠番,馬番,オッズ,人気,着順,...
-                row = {
-                    "年月日": cells[0].replace("/", "-") if cells[0] else "",
-                    "場": cells[1],
-                    "レース": cells[3] if len(cells) > 3 else "",
-                    "レース名": cells[4] if len(cells) > 4 else "",
-                    "頭数": cells[6] if len(cells) > 6 else "",
-                    "人気": cells[10] if len(cells) > 10 else "",
-                    "着順": cells[11] if len(cells) > 11 else "",
-                    "騎手": cells[12] if len(cells) > 12 else "",
-                    "斤量": cells[13] if len(cells) > 13 else "",
-                    "距離": cells[14] if len(cells) > 14 else "",
-                    "馬場": cells[2] if len(cells) > 2 else "",
-                }
+                row: dict[str, str] = {}
+                for key in HISTORY_BASE_KEYS:
+                    idx = base_idx.get(key, fallback_idx.get(key))
+                    if idx is not None and 0 <= idx < len(cells):
+                        row[key] = cells[idx]
+                if row.get("年月日"):
+                    row["年月日"] = row["年月日"].replace("/", "-")
                 # 距離列がずれる場合のフォールバック
-                if not re.search(r"(芝|ダ|障)", str(row["距離"])):
+                if not re.search(r"(芝|ダ|障)", str(row.get("距離") or "")):
                     for c in cells:
                         if re.match(r"^(芝|ダ|障)\d+", c):
                             row["距離"] = c
