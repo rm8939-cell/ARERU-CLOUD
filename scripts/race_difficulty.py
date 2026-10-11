@@ -271,6 +271,8 @@ def main() -> int:
     label[pu >= hi_u] = "荒れる可能性が高い"
     label[ph >= hi_h] = "予想しやすい"
     rows = class_report(ho, label)
+    per_period = {t: class_report(ho[ho["期間"] == t], label[ho["期間"] == t])
+                  for t in sorted(ho["期間"].unique())}
     print(f"\n{'区分':<12}{'件数':>7}{'AI1位勝率':>10}{'AI3位内':>9}{'荒れ率':>8}"
           f"{'勝馬人気':>9}")
     for r in rows:
@@ -290,6 +292,7 @@ def main() -> int:
                    for c, v in zip(RACE_FEATURES, bh[1:])},
         "係数_荒れ": {c: round(float(v), 4) for c, v in zip(RACE_FEATURES, bu[1:])},
         "区分別実績": rows,
+        "区分別実績_期間ごと": per_period,
     }
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=2),

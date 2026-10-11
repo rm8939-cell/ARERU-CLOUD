@@ -39,6 +39,9 @@ from market_edge_probe import (  # noqa: E402
 
 BUY_WIN_FLOOR = 0.35
 
+# 1,979レースのholdoutで上位だった4本。サンプルを増やしたあとも通用するかの対照群。
+LEGACY_TOP4 = ["回り適性", "上がり最速", "同コース適性", "前走上がり"]
+
 
 def place_probs_from_win(p: np.ndarray) -> np.ndarray:
     """勝率から3着内率を Plackett-Luce で導く（engine の実装と同じ考え方）。"""
@@ -230,6 +233,10 @@ def main() -> int:
     }
     if stable and set(stable) != set(topk):
         models["B2_安定選択"] = (stable, 1e-4)
+    # 1,979レース時点で上位だった4本。そのまま固定していたらどうなったかを見る。
+    legacy = [c for c in LEGACY_TOP4 if c in zc]
+    if legacy:
+        models["B3_旧上位4"] = (legacy, 1e-4)
 
     # 学習は「評価期間より前」だけ。最も新しい期間を本番相当の評価に使う。
     prior_all = np.zeros(len(d), dtype=bool)
@@ -274,7 +281,8 @@ def main() -> int:
                       "Brier": round(brier(pp, y[m]), 6),
                       "AUC": round(auc(pp, y[m]), 4),
                       "較正誤差ECE": calib_error(pp, y[m]),
-                      **topk_metrics(d, pp, m)}
+                      **topk_metrics(d, pp, m),
+                      "運用指標": operational(d, pp, m)}
         entry["期間別"] = per
         if cols:
             entry["係数"] = {c: round(float(v), 5) for c, v in zip(cols, beta[1:])}

@@ -6,3 +6,7 @@ data/cache/
 .venv/
 venv/
 data/quality_backtest_cache/
+# 12,468レース分の検証パネル。70MB超なので置かない。
+# scripts/build_corpus_panel.py で作り直せる。
+data/past_features/corpus_panel.csv
+data/past_features/corpus_panel.csv.gz
