@@ -199,7 +199,7 @@ def main() -> int:
     ap.add_argument("--panel", default="data/past_features/corpus_panel.csv")
     ap.add_argument("--stability", default="data/quality_backtest/feature_stability.json")
     ap.add_argument("--out", default="data/quality_backtest/race_difficulty.json")
-    ap.add_argument("--periods", type=int, default=3)
+    ap.add_argument("--periods", type=int, default=4)
     args = ap.parse_args()
 
     d = load_panel(args.panel)

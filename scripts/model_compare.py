@@ -192,10 +192,11 @@ def main() -> int:
     ap.add_argument("--stability", default="data/quality_backtest/feature_stability.json")
     ap.add_argument("--out", default="data/quality_backtest/model_compare.json")
     ap.add_argument("--top-k", type=int, default=4)
+    ap.add_argument("--periods", type=int, default=4)
     args = ap.parse_args()
 
     d = load_panel(args.panel)
-    periods = split_periods(d, 3)
+    periods = split_periods(d, args.periods)
     tags = [t for t, _ in periods]
     print(f"パネル {d['race_id'].nunique()}R / {len(d)}頭")
     for t, m in periods:
@@ -230,9 +231,11 @@ def main() -> int:
     if stable and set(stable) != set(topk):
         models["B2_安定選択"] = (stable, 1e-4)
 
-    # 学習は「評価期間より前」だけ。直近期間Cを本番相当の評価に使う。
-    prior_all = periods[0][1] | periods[1][1]
-    test_c = periods[2][1]
+    # 学習は「評価期間より前」だけ。最も新しい期間を本番相当の評価に使う。
+    prior_all = np.zeros(len(d), dtype=bool)
+    for _, m in periods[:-1]:
+        prior_all |= m
+    test_c = periods[-1][1]
 
     report: dict = {"パネル": {"レース数": int(d["race_id"].nunique()), "頭数": len(d)},
                     "期間": [{"期間": t, "レース数": int(d.loc[m, "race_id"].nunique())}

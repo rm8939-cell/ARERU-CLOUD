@@ -61,13 +61,18 @@ def load_panel(path: str) -> pd.DataFrame:
 
 
 def split_periods(d: pd.DataFrame, n: int = 3) -> list[tuple[str, np.ndarray]]:
-    """評価期間をレース数が揃うように日付で n 分割する。"""
+    """期間をレース数が揃うように日付で n 分割する。
+
+    先頭の塊は前に学習データが無いので評価できない。そこを「助走」と呼び、
+    残りを古い順に A / B / C と並べる。どの期間も自分より前の期間だけで
+    係数を推定して測るので、未来の情報は入らない。
+    """
     races = d[["race_id", "date"]].drop_duplicates().sort_values("date")
     chunks = np.array_split(races["race_id"].to_numpy(), n)
     out = []
     for i, ids in enumerate(chunks):
         m = d["race_id"].isin(set(ids)).to_numpy()
-        tag = "ABCDEFG"[i]
+        tag = "助走" if i == 0 else "ABCDEFG"[i - 1]
         sub = d.loc[m, "date"]
         out.append((f"{tag}({sub.min().date()}〜{sub.max().date()})", m))
     return out
@@ -77,7 +82,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--panel", default="data/past_features/corpus_panel.csv")
     ap.add_argument("--out", default="data/quality_backtest/feature_stability.json")
-    ap.add_argument("--periods", type=int, default=3)
+    ap.add_argument("--periods", type=int, default=4)
     args = ap.parse_args()
 
     d = load_panel(args.panel)
@@ -97,7 +102,7 @@ def main() -> int:
     evals: list[tuple[str, np.ndarray, np.ndarray]] = []
     for i, (tag, m) in enumerate(periods):
         if i == 0:
-            print(f"  期間{tag} は学習データが前に無いので係数推定の対象のみ")
+            print(f"  {tag} は学習データが前に無いので係数推定の材料にだけ使う")
             continue
         prior = np.zeros(len(d), dtype=bool)
         for _, pm in periods[:i]:
