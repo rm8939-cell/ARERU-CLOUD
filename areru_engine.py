@@ -828,6 +828,32 @@ def _past_feature_term(g):
     return np.asarray(term, dtype=float)
 
 
+def _attach_race_grade(g, win):
+    """レースの読みやすさから 買うべき / 少額なら買える / 見送る を付ける。
+
+    ARERU_BUY_V2 が立っていないときは何もしない。期待値は見ない判定なので、
+    ここで付けた区分が買い判定の主根拠になる（ev_analysis 側で参照）。
+    """
+    try:
+        import race_grade as rgd
+    except Exception:
+        return
+    if not rgd.enabled():
+        return
+    odds=pd.to_numeric(g["単勝オッズ"], errors="coerce").to_numpy(dtype=float) \
+        if "単勝オッズ" in g.columns else None
+    rid=str(g["race_id"].iloc[0]) if "race_id" in g.columns and len(g) else ""
+    try:
+        res=rgd.grade(win, odds, seed=abs(hash(rid)) % (2**32))
+    except Exception:
+        return
+    if not res:
+        return
+    g["レース区分"]=res["レース区分"]
+    g["予想しやすさ"]=res["予想しやすさ"]
+    g["荒れやすさ"]=res["荒れやすさ"]
+
+
 def _place_probs_from_win(win_pct):
     """勝率から 2着内率・3着内率を Plackett-Luce で導く。
 
@@ -950,6 +976,7 @@ def simulate_race(g, runs=None, profiles=None, pace=None):
     g["SIM勝率"]=win
     g["SIM2着内率"]=place2
     g["SIM3着内率"]=place3
+    _attach_race_grade(g, win)
     safe_win=np.maximum(win, 0.01)
     fair=np.where(win>0,100.0/safe_win,999.0)
     g["AI適正オッズ"]=np.maximum(fair, AI_FAIR_ODDS_MIN)

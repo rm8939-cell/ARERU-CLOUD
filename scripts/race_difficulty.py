@@ -144,8 +144,16 @@ def logistic_predict(X: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def zfit(tr: pd.DataFrame, cols: list[str]):
+    """レース特徴量の標準化。
+
+    ばらつきが実質ゼロの列は、割ると浮動小数の誤差が増幅されて
+    ただのノイズ特徴量になる。市場確率だけのモデルでは勝率がオッズの
+    単調変換なので人気乖離が常に0になり、これに当たる。
+    そういう列は定数とみなして0のまま渡す。
+    """
     mu = tr[cols].mean()
-    sd = tr[cols].std().replace(0, 1.0)
+    sd = tr[cols].std()
+    sd = sd.where(sd > 1e-9, 1.0)
     return lambda df: ((df[cols] - mu) / sd).to_numpy(dtype=float)
 
 

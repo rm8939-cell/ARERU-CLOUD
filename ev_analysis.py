@@ -862,11 +862,29 @@ def calc_confidence_adjusted_ev(record: dict) -> dict:
     return scored
 
 
+_RACE_CLASSES = ('買うべき', '少額なら買える', '見送る')
+
+
+def _race_class_of(record) -> str | None:
+    """エンジンが付けたレース区分。ARERU_BUY_V2 のときだけ入っている。"""
+    try:
+        import race_grade as rgd
+        if not rgd.enabled():
+            return None
+    except Exception:
+        return None
+    v = str((record or {}).get('レース区分') or '').strip()
+    return v if v in _RACE_CLASSES else None
+
+
 def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds: bool,
-                    race_conf: float | None = None) -> dict:
+                    race_conf: float | None = None,
+                    race_class: str | None = None) -> dict:
     """買い／見送りの暫定判定（最終は tighten_buy_selection で厳選）。
 
-    期待回収率・信頼度が揃った候補のみ「買い」。足りなければ見送り。
+    race_class（買うべき / 少額なら買える / 見送る）が渡されたときは、
+    期待回収率ではなくそれを主根拠にする。ARERU_BUY_V2 のときだけ渡る。
+    それ以外は従来どおり、期待回収率・信頼度が揃った候補のみ「買い」。
     """
     if not has_odds or ev is None:
         return {
@@ -877,6 +895,28 @@ def decide_buy_skip(ev: float | None, confidence: float, repro: float, has_odds:
     e = float(ev)
     conf = float(confidence or 0)
     rc = float(race_conf if race_conf is not None else conf)
+    if race_class:
+        # 期待値ではなくレースの読みやすさで決める。12,468レースの検証で、
+        # 期待値上位で買う方針は的中率10.2%・最大35連敗だったのに対し、
+        # 読みやすいレースに絞ると本命勝率が 42.3%→60.6%、
+        # 最大ドローダウンが600単位→145単位まで下がった。
+        if race_class == '買うべき':
+            return {
+                '一覧判定': '買い', '一覧判定トーン': 'buy',
+                '投資判定': '買い', '投資判定アイコン': '🔵', '投資判定トーン': 'buy',
+                '投資判定表示': '買い',
+            }
+        if race_class == '少額なら買える':
+            return {
+                '一覧判定': '少額', '一覧判定トーン': 'small',
+                '投資判定': '少額', '投資判定アイコン': '🟡', '投資判定トーン': 'small',
+                '投資判定表示': '少額なら',
+            }
+        return {
+            '一覧判定': '見送り', '一覧判定トーン': 'skip',
+            '投資判定': '見送り', '投資判定アイコン': '⚪', '投資判定トーン': 'skip',
+            '投資判定表示': '見送り',
+        }
     if prob_v2_enabled():
         # 控除率を抜いた期待値は、単勝では構造的に 100% を超えない。
         # 「期待値が高いレース」で選ぶと乖離の大きい＝外れやすい馬だけが残るため
@@ -975,11 +1015,14 @@ def apply_ev_rank_and_labels(record: dict) -> dict:
     has_odds = bool(record.get('オッズ取得済'))
     ai_conf = safe_float(record.get('AI信頼度スコア'), 50.0) or 50.0
     repro = safe_float(record.get('シミュレーション再現率'), 50.0) or 50.0
+    rcls = _race_class_of(record)
     if ev is not None:
         record['期待値あり'] = True
-        decision = decide_buy_skip(float(ev), ai_conf, repro, True, race_conf=rc)
+        decision = decide_buy_skip(float(ev), ai_conf, repro, True, race_conf=rc,
+                                   race_class=rcls)
     else:
-        decision = decide_buy_skip(None, ai_conf, repro, has_odds, race_conf=rc)
+        decision = decide_buy_skip(None, ai_conf, repro, has_odds, race_conf=rc,
+                                   race_class=rcls)
     record.update(decision)
 
     if ev is not None:
@@ -1175,6 +1218,7 @@ _FINALIZE_PERSIST_COLS = (
     '期待値', '期待値表示', '期待値トーン', '期待値あり', 'レース期待回収率',
     '期待値生', '補正勝率', '市場暗示勝率', 'AI勝率採用', '期待値検算',
     'AI信頼度スコア', 'シミュレーション再現率', 'データ件数',
+    'レース区分', '予想しやすさ', '荒れやすさ',
     'レース信頼度スコア', '能力差スコア', '展開読みやすさ',
     'データ件数スコア', 'シミュレーション一致率', '競馬場バイアス一致率',
     'S降格', 'S降格理由',
@@ -1684,6 +1728,7 @@ def apply_expected_value(record: dict) -> dict:
         conf,
         repro,
         bool(record.get('オッズ取得済')),
+        race_class=_race_class_of(record),
     )
     # CSVの旧投資判定は上書き（一覧と詳細の矛盾をなくす）
     record.update(decision)
