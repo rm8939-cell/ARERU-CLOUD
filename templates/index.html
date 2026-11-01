@@ -1085,6 +1085,86 @@ body.app-race .ra-hcard .hd .ai{margin-left:auto;flex:0 0 auto;font-size:11px;fo
 body.app-race .ra-hcard .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 body.app-race .ra-hcard .kv span{display:flex;flex-direction:column;gap:2px;padding:7px 8px;background:#F7F9F8;border:1px solid #DDE5E2;border-radius:10px;font-size:11px;font-weight:700;color:#5E6B7A;min-width:0}
 body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overflow-wrap:anywhere}
+/* ===== v29: レース分析ボード（診断・展開ゾーン・本命適性・注目・一覧） ===== */
+body.app-race .ra-board[data-ra-ui="v29"]{display:flex;flex-direction:column;gap:8px}
+body.app-race .ra-board[data-ra-ui="v29"]>.ra-card{margin:0}
+body.app-race .ra-muted,body.app-race .ra-miss{color:#5E6B7A !important;font-weight:700}
+body.app-race .ra-diag-grid{grid-template-columns:1fr 1fr}
+body.app-race .ra-m.tone-green{background:#EAF6F0}
+body.app-race .ra-m.tone-blue{background:#EEF5FF}
+body.app-race .ra-m.tone-orange{background:#FFF4E8}
+body.app-race .ra-m.tone-purple{background:#F3EEF8}
+body.app-race .ra-m.tone-gray{background:#F0F3F5}
+body.app-race .ra-m.tone-green .v{color:#087443}
+body.app-race .ra-m.tone-blue .v{color:#1B4F9C}
+body.app-race .ra-m.tone-orange .v{color:#C45C12}
+body.app-race .ra-m.tone-purple .v{color:#6B3FA0}
+body.app-race .ra-diag-note{margin:10px 0 0;padding:8px 10px;border-radius:12px;background:#F7F9F8;border:1px solid #DDE5E2;font-size:12px;font-weight:700;color:#5E6B7A;line-height:1.45}
+body.app-race .ra-picks .ra-pick-block{margin:0 0 8px}
+body.app-race .ra-picks .ra-pick-block:last-child{margin:0}
+body.app-race .ra-picks .ra-pick-label{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12px;font-weight:900;color:#5E6B7A}
+body.app-race .ra-picks .ra-pick-label em{font-style:normal;color:#087443}
+body.app-race .ra-picks .rb-card{margin:0 0 6px;border:1px solid #DDE5E2;border-radius:14px;background:#FFFFFF;box-shadow:none}
+body.app-race .ra-zone-count{margin:0 0 8px;font-size:11px;font-weight:800;color:#5E6B7A}
+body.app-race .ra-zone-grid{display:grid;grid-template-columns:1fr;gap:8px}
+body.app-race .ra-zone{border:1px solid #DDE5E2;border-radius:14px;padding:8px;background:#F7F9F8;min-width:0}
+body.app-race .ra-zone.tone-green{background:#EAF6F0;border-color:#C7E5D4}
+body.app-race .ra-zone.tone-blue{background:#EEF5FF;border-color:#CBD8E3}
+body.app-race .ra-zone.tone-purple{background:#F3EEF8;border-color:#DED0EA}
+body.app-race .ra-zone.tone-gray{background:#F0F3F5;border-color:#DDE5E2}
+body.app-race .ra-zone-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px;font-size:13px;font-weight:900;color:#10233F}
+body.app-race .ra-zone-h small{font-size:11px;font-weight:800;color:#5E6B7A;background:rgba(255,255,255,.7);border-radius:999px;padding:1px 8px}
+body.app-race .ra-zone-horses{display:flex;flex-wrap:wrap;gap:6px}
+body.app-race .ra-chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 8px 3px 3px;border-radius:999px;background:#FFFFFF;border:1px solid #DDE5E2;min-width:0}
+body.app-race .ra-chip .ra-dot{position:static;margin:0;flex:0 0 auto;width:22px;height:22px}
+body.app-race .ra-chip b{font-size:12px;font-weight:800;color:#10233F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:9.5em}
+body.app-race .ra-hon-hd{display:flex;align-items:center;gap:10px;margin:0 0 10px;min-width:0}
+body.app-race .ra-hon-hd .ra-dot{position:static;margin:0;flex:0 0 auto;width:28px;height:28px;font-size:13px}
+body.app-race .ra-hon-hd b{display:block;font-size:16px;font-weight:900;color:#10233F;line-height:1.25;overflow-wrap:anywhere}
+body.app-race .ra-hon-hd small{display:block;margin-top:2px;font-size:11px;font-weight:800;color:#087443}
+body.app-race .ra-hon-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 0 12px}
+body.app-race .ra-hon-metrics>div{display:flex;flex-direction:column;gap:2px;padding:7px 8px;background:#F7F9F8;border:1px solid #DDE5E2;border-radius:10px;min-width:0}
+body.app-race .ra-hon-metrics span{font-size:10px;font-weight:800;color:#5E6B7A}
+body.app-race .ra-hon-metrics b{font-size:13px;font-weight:900;color:#10233F;overflow-wrap:anywhere}
+body.app-race .ra-apt{display:grid;gap:8px}
+body.app-race .ra-apt-row{display:grid;gap:4px;padding:8px 0;border-bottom:1px solid #DDE5E2}
+body.app-race .ra-apt-row:last-child{border-bottom:0;padding-bottom:0}
+body.app-race .ra-apt-l{display:flex;align-items:center;justify-content:space-between;gap:8px}
+body.app-race .ra-apt-l>span{font-size:12px;font-weight:900;color:#10233F}
+body.app-race .ra-apt-l em{font-style:normal;font-size:10px;font-weight:800;border-radius:999px;padding:2px 7px}
+body.app-race .ra-apt-l em.used{background:#EAF6F0;color:#087443}
+body.app-race .ra-apt-l em.ref{background:#F0F3F5;color:#5E6B7A}
+body.app-race .ra-apt-r{display:flex;align-items:center;gap:8px;min-width:0}
+body.app-race .ra-apt-r b{flex:0 1 auto;font-size:12px;font-weight:800;color:#5E6B7A;overflow-wrap:anywhere}
+body.app-race .ra-apt-r .ra-bar{flex:1 1 auto;min-width:48px}
+body.app-race .ra-focus-list{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+body.app-race .ra-focus-list li{padding:8px 10px;border-radius:12px;background:#EEF5FF;border:1px solid #DDE5E2;font-size:12px;font-weight:750;color:#10233F;line-height:1.45}
+body.app-race .ra-focus-note{margin:10px 0 0;font-size:11px;font-weight:700;color:#5E6B7A;line-height:1.4}
+body.app-race .ra-list-rows{display:grid;gap:0}
+body.app-race .ra-list-row{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid #DDE5E2;min-width:0}
+body.app-race .ra-list-row:last-child{border-bottom:0}
+body.app-race .ra-list-row>.ra-dot{position:static;margin:1px 0 0;flex:0 0 auto}
+body.app-race .ra-list-main{flex:1 1 auto;min-width:0}
+body.app-race .ra-list-main .nm{font-size:13px;font-weight:900;color:#10233F;line-height:1.3;overflow-wrap:anywhere}
+body.app-race .ra-list-main .nm em{font-style:normal;margin-left:4px;color:#087443;font-weight:900}
+body.app-race .ra-list-main .meta{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:3px;font-size:11px;font-weight:750;color:#5E6B7A}
+body.app-race .ra-list-main .meta .tags{color:#C45C12}
+body.app-race .ra-list-row .ai{flex:0 0 auto;font-size:11px;font-weight:900;color:#087443;background:#EAF6F0;border-radius:999px;padding:2px 8px;margin-top:1px}
+body.app-race .ra-fold{padding:0}
+body.app-race .ra-fold>summary{list-style:none;cursor:pointer;padding:12px;font-size:13px;font-weight:900;color:#087443}
+body.app-race .ra-fold>summary::-webkit-details-marker{display:none}
+body.app-race .ra-fold[open]>summary{border-bottom:1px solid #DDE5E2;margin-bottom:8px}
+body.app-race .ra-fold .ra-scatter,body.app-race .ra-fold .ra-rk{padding:0 12px 12px}
+@media (max-width:899px){
+  body.app-race .ra-zone-grid{grid-template-columns:1fr}
+  body.app-race .ra-hon-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.app-race .ra-chip b{max-width:7.5em}
+}
+@media (min-width:900px){
+  body.app-race .ra-zone-grid{grid-template-columns:1fr 1fr}
+  body.app-race .ra-diag-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body.app-race .ra-hon-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 .ub-0{background:#6b7280;color:#fff}
 .ub-1{background:#fff;color:#111;border-color:#111}
 .ub-2{background:#111;color:#fff}
@@ -1136,7 +1216,7 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
   body.app-race .ra-rk{max-height:380px;overflow:auto}
 }
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v28"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v29"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1759,7 +1839,7 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v28">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v29">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -1914,124 +1994,267 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 {% for p in _rows_all %}
   {% if p.get('BUY表示') %}{% set _ = _nsb.buys.append(p) %}{% endif %}
 {% endfor %}
-<header class="rb-head">
-<h2>{{r.get('開催地') or '—'}} {% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}</h2>
-<span class="rb-n">{% if r.get('表示頭数') not in _blank %}{{r.get('表示頭数')|int}}頭{% elif r.get('データ頭数') not in _blank %}{{r.get('データ頭数')|int}}頭{% endif %}</span>
-</header>
-{% if _nsb.buys %}
-<section class="rb-sec">
-{{ rb_card(_nsb.buys[0], r, 'hon') }}
-</section>
-{% endif %}
+{% set _anal = r.get('レース分析') if r.get('レース分析') is mapping else {} %}
+{% set _diag = r.get('AIレース診断') if r.get('AIレース診断') is mapping else {} %}
+{% set _zones = r.get('展開ゾーン') if r.get('展開ゾーン') is mapping else {} %}
+{% set _lapmap = r.get('ラップマップ') if r.get('ラップマップ') is sequence else [] %}
+{% set _laprk = r.get('ラップ適合ランキング') if r.get('ラップ適合ランキング') is sequence else [] %}
+{% set _det = _rows_all %}
+{% set _hon = r.get('本命評価') if r.get('本命評価') is mapping else none %}
+{% set _going = r.get('馬場状態') or r.get('馬場') or r.get('馬場表示') %}
+<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v29">
+
+{# ① レースヘッダー #}
+<article class="ra-card ra-id">
+<div class="ra-id-ttl">{{r.get('開催地') or '—'}} {% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}{% if r.get('重賞グレード') %}<span class="ra-grade">{{r.get('重賞グレード')}}</span>{% endif %}</div>
+{% if r.get('レース名') not in _blank %}<p class="ra-id-name">{{r.get('レース名')}}</p>{% else %}<p class="ra-id-name ra-muted">レース名データ不足</p>{% endif %}
+<ul class="ra-id-meta">
+{% if _surface not in _blank or _dist not in _blank %}<li>{{_surface or ''}}{{_dist or ''}}</li>{% else %}<li class="ra-miss">芝ダ/距離 データ不足</li>{% endif %}
+{% if r.get('表示頭数') not in _blank %}<li>{{r.get('表示頭数')|int}}頭</li>{% elif r.get('データ頭数') not in _blank %}<li>{{r.get('データ頭数')|int}}頭</li>{% endif %}
+{% if _going not in _blank %}<li>{{_going}}</li>{% else %}<li class="ra-miss">馬場状態 データ不足</li>{% endif %}
+{% if _start not in _blank %}<li>{{_start}}発走</li>{% endif %}
+</ul>
+</article>
+
+{# ② AIレース診断 #}
+<article class="ra-card ra-diag">
+<h3>AIレース診断</h3>
+<div class="ra-metrics ra-diag-grid">
+<div class="ra-m tone-green"><span class="k">信頼度</span><b class="v">{% if _diag.get('信頼度') not in _blank %}{{_diag.get('信頼度')}}%{% else %}データ不足{% endif %}</b></div>
+<div class="ra-m tone-orange"><span class="k">波乱度</span><b class="v">{% if _diag.get('波乱度') not in _blank %}{{_diag.get('波乱度')}}{% else %}データ不足{% endif %}</b></div>
+<div class="ra-m tone-blue"><span class="k">想定ペース</span><b class="v">{% if _diag.get('想定ペース') not in _blank %}{{_diag.get('想定ペース')}}{% else %}データ不足{% endif %}</b></div>
+<div class="ra-m tone-purple"><span class="k">レースタイプ</span><b class="v">{% if _diag.get('レースタイプ') not in _blank %}{{_diag.get('レースタイプ')}}{% else %}データ不足{% endif %}</b></div>
+</div>
+{% if _anal.get('総評') not in _blank %}<p class="ra-diag-note">{{_anal.get('総評')}}</p>{% endif %}
+</article>
+
+{# ③ AI予想（◎○▲△）— 表示グループ。BUYは印と別 #}
+<article class="ra-card ra-picks">
+<h3>AI予想（◎○▲△）</h3>
 {% if _g.get('本命') %}
-<section class="rb-sec">
+<div class="ra-pick-block">
+<div class="ra-pick-label"><em>◎</em> 本命</div>
 {% for p in _g.get('本命') %}
-{% if not p.get('BUY表示') %}{{ rb_card(p, r, 'row') }}{% endif %}
+{% if p.get('BUY表示') %}{{ rb_card(p, r, 'hon') }}{% else %}{{ rb_card(p, r, 'row') }}{% endif %}
 {% endfor %}
-</section>
+</div>
+{% elif _nsb.buys %}
+<div class="ra-pick-block">
+<div class="ra-pick-label"><em>BUY</em></div>
+{{ rb_card(_nsb.buys[0], r, 'hon') }}
+</div>
 {% endif %}
 {% if _g.get('対抗') %}
-<section class="rb-sec">
-<h3>対抗</h3>
-{% for p in _g.get('対抗') %}
-{% if not p.get('BUY表示') %}{{ rb_card(p, r, 'row') }}{% endif %}
-{% endfor %}
-</section>
+<div class="ra-pick-block">
+<div class="ra-pick-label"><em>○</em> 対抗</div>
+{% for p in _g.get('対抗') %}{{ rb_card(p, r, 'row') }}{% endfor %}
+</div>
 {% endif %}
 {% if _g.get('単穴') %}
-<section class="rb-sec">
-<h3>単穴</h3>
-{% for p in _g.get('単穴') %}
-{% if not p.get('BUY表示') %}{{ rb_card(p, r, 'row') }}{% endif %}
-{% endfor %}
-</section>
+<div class="ra-pick-block">
+<div class="ra-pick-label"><em>▲</em> 単穴</div>
+{% for p in _g.get('単穴') %}{{ rb_card(p, r, 'row') }}{% endfor %}
+</div>
 {% endif %}
 {% if _g.get('連下') %}
-<section class="rb-sec">
+<div class="ra-pick-block">
+<div class="ra-pick-label"><em>△</em> 連下</div>
 <article class="rb-card mk-連下 is-pack">
-<div class="rb-pack-h">連下</div>
 {% for p in _g.get('連下') %}
-{% if not p.get('BUY表示') %}
   {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
   {% set _od = p.get('単勝オッズ表示') if p.get('単勝オッズ表示') not in _blank else _card.get('単勝オッズ') %}
-  {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
   {% set _ban = p.get('馬番表示') or p.get('馬番') %}
   {% set _cf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
   {% set _rank = p.get('AI順位') %}
+  {% set _grade = p.get('予想スコア') or _card.get('AI評価') %}
 <div class="rb-pack-row">
+<span class="rb-mark">△</span>
 {% if _ban %}<span class="rb-ban">{{_ban}}</span>{% endif %}
 <span class="rb-name">{{p.get('馬名') or '—'}}</span>
 <span class="rb-nums">
+{% if _grade not in _blank %}<b>{{_grade}}</b>{% endif %}
 {% if _od not in _blank %}<b>{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}</b>{% endif %}
 {% if _cf not in _blank %}<b>{{'%g'|format(_cf|float)}}%</b>{% endif %}
 {% if _rank not in _blank %}<b class="rb-ai">AI{{_rank}}</b>{% endif %}
 </span>
 </div>
-{% endif %}
 {% endfor %}
 </article>
-</section>
+</div>
 {% endif %}
-{% if _g.get('見送り') %}
-<section class="rb-sec">
-<h3 class="skip">見送り一覧</h3>
-<table class="rb-tbl">
-<thead><tr><th>AI</th><th>馬番</th><th>馬名</th><th>期待値</th><th>オッズ</th><th>信頼度</th></tr></thead>
+{% if not (_g.get('本命') or _g.get('対抗') or _g.get('単穴') or _g.get('連下') or _nsb.buys) %}
+<p class="ra-empty">予想データ不足</p>
+{% endif %}
+<p class="rb-note" style="margin-top:8px">印はAI順位に基づきます。BUY判定とは別です。表示期待値は圧縮値です。</p>
+</article>
+
+{# ④ 全馬の展開予想 #}
+<article class="ra-card ra-zones">
+<h3>展開予想（全馬ポジション）</h3>
+{% set _zone_total = namespace(n=0) %}
+{% for z in ['逃げ','先行','中団','後方','不明'] %}
+  {% set _zs = _zones.get(z) if _zones.get(z) is sequence else [] %}
+  {% set _zone_total.n = _zone_total.n + (_zs|length) %}
+{% endfor %}
+<p class="ra-zone-count">出走 {{_det|length}}頭 / 配置 {{_zone_total.n}}頭</p>
+<div class="ra-zone-grid">
+{% for z, tone in [('逃げ','tone-green'),('先行','tone-blue'),('中団','tone-purple'),('後方','tone-gray'),('不明','tone-gray')] %}
+  {% set _zs = _zones.get(z) if _zones.get(z) is sequence else [] %}
+<div class="ra-zone {{tone}}">
+<div class="ra-zone-h">{{z}} <small>{{_zs|length}}</small></div>
+{% if _zs %}
+<div class="ra-zone-horses">
+{% for h in _zs %}
+  {% set _bn = (h.get('馬番数字') or h.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
+  {% set _ub = _bn if _bn.isdigit() else '0' %}
+  {% set _wk = (h.get('枠番') or '')|string|replace('.0','')|trim %}
+<span class="ra-chip" title="{{h.get('馬名')}} / {{h.get('展開適性') or '展開適性データ不足'}}">
+<i class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{h.get('馬番') or _bn or '—'}}</i>
+<b>{{h.get('馬名') or '—'}}</b>
+</span>
+{% endfor %}
+</div>
+{% else %}
+<p class="ra-empty">該当馬なし</p>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+</article>
+
+{# ⑤ 本命馬の評価詳細 #}
+<article class="ra-card ra-honmei">
+<h3>本命馬の評価詳細</h3>
+{% if _hon %}
+  {% set _hc = _hon.get('カード') if _hon.get('カード') is mapping else {} %}
+  {% set _bn = (_hon.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
+  {% set _ub = _bn if _bn.isdigit() else '0' %}
+<div class="ra-hon-hd">
+<span class="ra-dot ub-{{_ub}}">{{_hon.get('馬番表示') or _hon.get('馬番') or '—'}}</span>
+<div>
+<b>{{_hon.get('馬名') or '—'}}</b>
+<small>AI{% if _hon.get('AI順位') not in _blank %}{{_hon.get('AI順位')}}{% else %}—{% endif %} · {{_hon.get('表示印') or '◎'}}本命</small>
+</div>
+</div>
+<div class="ra-hon-metrics">
+<div><span>AI評価</span><b>{% if _hon.get('予想スコア') not in _blank %}{{_hon.get('予想スコア')}}{% elif _hc.get('AI評価') not in _blank %}{{_hc.get('AI評価')}}{% else %}データ不足{% endif %}</b></div>
+<div><span>勝率</span><b>{% if _hon.get('勝率') not in _blank %}{{_hon.get('勝率')}}%{% elif _hc.get('勝率') not in _blank %}{{_hc.get('勝率')}}%{% else %}データ不足{% endif %}</b></div>
+<div><span>複勝率</span><b>{% if _hon.get('複勝率') not in _blank %}{{_hon.get('複勝率')}}%{% elif _hc.get('複勝率') not in _blank %}{{_hc.get('複勝率')}}%{% else %}データ不足{% endif %}</b></div>
+<div><span>オッズ</span><b>{% if _hon.get('単勝オッズ表示') not in _blank %}{{_hon.get('単勝オッズ表示')}}{% elif _hc.get('単勝オッズ') not in _blank %}{{_hc.get('単勝オッズ')}}{% else %}データ不足{% endif %}</b></div>
+<div><span>期待値</span><b>{% if _hon.get('カード期待値') not in _blank %}{{_hon.get('カード期待値')}}{% elif _hc.get('期待値') not in _blank %}{{_hc.get('期待値')}}{% else %}データ不足{% endif %}</b></div>
+<div><span>信頼度</span><b>{% if _hon.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_hon.get('AI信頼度スコア')|float)}}%{% elif _hc.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_hc.get('AI信頼度スコア')|float)}}%{% else %}データ不足{% endif %}</b></div>
+</div>
+<div class="ra-apt">
+{% for row in (_hon.get('適性詳細') if _hon.get('適性詳細') is sequence else []) %}
+<div class="ra-apt-row">
+<div class="ra-apt-l">
+<span>{{row.get('項目')}}</span>
+{% if row.get('AI評価に使用') %}<em class="used">AI評価に使用</em>{% else %}<em class="ref">参考表示</em>{% endif %}
+</div>
+<div class="ra-apt-r">
+<b>{% if row.get('表示') not in _blank %}{{row.get('表示')}}{% else %}データ不足{% endif %}</b>
+{% if row.get('バー') not in _blank %}<span class="ra-bar"><i style="width:{{[100, row.get('バー')]|min}}%"></i></span>{% endif %}
+</div>
+</div>
+{% else %}
+<p class="ra-empty">適性データ不足</p>
+{% endfor %}
+</div>
+{% else %}
+<p class="ra-empty">本命データ不足</p>
+{% endif %}
+</article>
+
+{# ⑥ 今回の注目ポイント #}
+<article class="ra-card ra-focus">
+<h3>今回の注目ポイント</h3>
+{% if _anal.get('注目ポイント') %}
+<ul class="ra-focus-list">
+{% for x in _anal.get('注目ポイント') %}<li>{{x}}</li>{% endfor %}
+</ul>
+{% else %}
+<p class="ra-empty">検出できた注目ポイントはありません</p>
+{% endif %}
+<p class="ra-focus-note">条件変更の「効果：データ不足」は、検出できても評価への加点・減点をしていないことを示します。</p>
+</article>
+
+{# ⑦ 全馬の展開予測・適性一覧 #}
+<article class="ra-card ra-list">
+<h3>全馬の展開予測・適性一覧</h3>
+<div class="ra-list-rows">
+{% for p in _det %}
+  {% set _bn = (p.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
+  {% set _ub = _bn if _bn.isdigit() else '0' %}
+  {% set _ch = (p.get('条件変更') if p.get('条件変更') is sequence else []) %}
+<div class="ra-list-row">
+<span class="ra-dot ub-{{_ub}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
+<div class="ra-list-main">
+<div class="nm">{{p.get('馬名') or '—'}} {% if p.get('表示印') %}<em>{{p.get('表示印')}}</em>{% endif %}</div>
+<div class="meta">
+<span>想定 {{p.get('想定ポジション') or p.get('展開ゾーン') or 'データ不足'}}</span>
+<span>展開 {% if p.get('展開適性') not in _blank %}{{p.get('展開適性')}}{% else %}データ不足{% endif %}</span>
+{% set _ns_tag = namespace(n=0) %}
+<span class="tags">{% for c in _ch %}{% if c.get('検出')=='YES' and _ns_tag.n < 3 %}{% if _ns_tag.n > 0 %} · {% endif %}{{c.get('ラベル')}}{% set _ns_tag.n = _ns_tag.n + 1 %}{% endif %}{% endfor %}</span>
+</div>
+</div>
+<span class="ai">AI{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</span>
+</div>
+{% endfor %}
+</div>
+</article>
+
+{# ⑧ 全頭AI評価 #}
+<article class="ra-card ra-detail">
+<h3>全頭AI評価</h3>
+<div class="ra-tbl-wrap">
+<table class="ra-tbl">
+<thead><tr><th>AI</th><th>印</th><th>馬番</th><th class="nm">馬名</th><th>AI評価</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>信頼度</th><th>想定位置</th><th>展開適性</th><th>ラップ</th></tr></thead>
 <tbody>
-{% for p in _g.get('見送り') %}
+{% for p in _det %}
   {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
-  {% set _od = p.get('単勝オッズ表示') if p.get('単勝オッズ表示') not in _blank else _card.get('単勝オッズ') %}
-  {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
-  {% set _ban = p.get('馬番表示') or p.get('馬番') %}
-  {% set _cf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
 <tr>
-<td>{% if p.get('AI順位') not in _blank %}AI{{p.get('AI順位')}}{% else %}—{% endif %}</td>
-<td>{% if _ban %}<span class="rb-ban mini">{{_ban}}</span>{% else %}—{% endif %}</td>
-<td>{{p.get('馬名') or '—'}}</td>
-<td>{% if _ev not in _blank %}{{_ev}}{% if '%' not in (_ev ~ '') %}%{% endif %}{% else %}—{% endif %}</td>
-<td>{% if _od not in _blank %}{{_od}}{% if '倍' not in (_od ~ '') %}倍{% endif %}{% else %}—{% endif %}</td>
-<td>{% if _cf not in _blank %}{{'%g'|format(_cf|float)}}%{% else %}—{% endif %}</td>
+<td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
+<td>{{p.get('表示印') or '—'}}</td>
+<td>{{p.get('馬番表示') or p.get('馬番') or '—'}}</td>
+<td class="nm">{{p.get('馬名') or '—'}}</td>
+<td>{% if p.get('予想スコア') not in _blank %}{{p.get('予想スコア')}}{% elif _card.get('AI評価') not in _blank %}{{_card.get('AI評価')}}{% else %}データ不足{% endif %}</td>
+<td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% else %}データ不足{% endif %}</td>
+<td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}データ不足{% endif %}</td>
+<td class="ev">{% if p.get('カード期待値') not in _blank %}{{p.get('カード期待値')}}{% else %}データ不足{% endif %}</td>
+<td>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% else %}データ不足{% endif %}</td>
+<td>{% if p.get('想定ポジション') not in _blank %}{{p.get('想定ポジション')}}{% else %}データ不足{% endif %}</td>
+<td>{% if p.get('展開適性') not in _blank %}{{p.get('展開適性')}}{% else %}データ不足{% endif %}</td>
+<td>{% if p.get('ラップ適合度') not in _blank %}{{p.get('ラップ適合度')|int}}{% else %}データ不足{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
-</section>
-{% endif %}
-<p class="rb-note">表示期待値は圧縮値です。的中・勝ちを保証するものではありません。</p>
+</div>
+<div class="ra-hcards">
+{% for p in _det %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _bn = (p.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
+  {% set _ub = _bn if _bn.isdigit() else '0' %}
+<div class="ra-hcard">
+<div class="hd"><span class="ra-dot ub-{{_ub}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span> <b>{{p.get('馬名') or '—'}}</b><span class="ai">{{p.get('表示印') or ''}} AI{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</span></div>
+<div class="kv">
+<span>AI評価 <b>{% if p.get('予想スコア') not in _blank %}{{p.get('予想スコア')}}{% else %}データ不足{% endif %}</b></span>
+<span>勝率 <b>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% else %}データ不足{% endif %}</b></span>
+<span>複勝率 <b>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}データ不足{% endif %}</b></span>
+<span>期待値 <b>{% if p.get('カード期待値') not in _blank %}{{p.get('カード期待値')}}{% else %}データ不足{% endif %}</b></span>
+<span>信頼度 <b>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% else %}データ不足{% endif %}</b></span>
+<span>想定位置 <b>{% if p.get('想定ポジション') not in _blank %}{{p.get('想定ポジション')}}{% else %}データ不足{% endif %}</b></span>
+<span>展開適性 <b>{% if p.get('展開適性') not in _blank %}{{p.get('展開適性')}}{% else %}データ不足{% endif %}</b></span>
+<span>ラップ <b>{% if p.get('ラップ適合度') not in _blank %}{{p.get('ラップ適合度')|int}}{% else %}データ不足{% endif %}</b></span>
+</div>
+</div>
+{% endfor %}
+</div>
+</article>
 
-{% set _anal = r.get('レース分析') if r.get('レース分析') is mapping else {} %}
-{% set _lapmap = r.get('ラップマップ') if r.get('ラップマップ') is sequence else [] %}
-{% set _laprk = r.get('ラップ適合ランキング') if r.get('ラップ適合ランキング') is sequence else [] %}
-{% set _det = _rows_all %}
-<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v28">
-<div class="ra-cols">
-<div class="ra-col ra-left">
-<article class="ra-card ra-id">
-<div class="ra-id-ttl">{{r.get('開催地') or '—'}} {% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}{% if r.get('重賞グレード') %}<span class="ra-grade">{{r.get('重賞グレード')}}</span>{% endif %}</div>
-{% if r.get('レース名') not in _blank %}<p class="ra-id-name">{{r.get('レース名')}}</p>{% endif %}
-<ul class="ra-id-meta">
-{% if _surface not in _blank or _dist not in _blank %}<li>{{_surface}}{{_dist}}</li>{% endif %}
-{% if r.get('表示頭数') not in _blank %}<li>{{r.get('表示頭数')|int}}頭立て</li>{% elif r.get('データ頭数') not in _blank %}<li>{{r.get('データ頭数')|int}}頭立て</li>{% endif %}
-{% if _start not in _blank %}<li>{{_start}}発走</li>{% endif %}
-</ul>
-</article>
-<article class="ra-card">
-<h3>レース分析</h3>
-<div class="ra-metrics">
-<div class="ra-m"><span class="k">想定ペース</span><b class="v">{% if _anal.get('想定ペース表示') not in _blank %}{{_anal.get('想定ペース表示')}}{% else %}データなし{% endif %}</b></div>
-<div class="ra-m"><span class="k">展開傾向</span><b class="v">{% if _anal.get('展開傾向') not in _blank %}{{_anal.get('展開傾向')}}{% else %}データなし{% endif %}</b></div>
-<div class="ra-m"><span class="k">前有利度</span><b class="v">{% if _anal.get('前有利表示') not in _blank %}{{_anal.get('前有利表示')}}{% else %}データなし{% endif %}</b></div>
-<div class="ra-m"><span class="k">差し有利度</span><b class="v">{% if _anal.get('差し有利表示') not in _blank %}{{_anal.get('差し有利表示')}}{% else %}データなし{% endif %}</b></div>
-<div class="ra-m"><span class="k">追込有利度</span><b class="v">{% if _anal.get('追込適性表示') not in _blank %}{{_anal.get('追込適性表示')}}{% else %}データなし{% endif %}</b></div>
-<div class="ra-m"><span class="k">馬場傾向</span><b class="v">{% if _anal.get('馬場傾向') not in _blank %}{{_anal.get('馬場傾向')}}{% else %}データなし{% endif %}</b></div>
-<div class="ra-m"><span class="k">ラップ傾向</span><b class="v">{% if _anal.get('ラップ傾向')=='前傾' %}前半厳しい→後半消耗{% elif _anal.get('ラップ傾向')=='後傾' %}前半緩み→後半加速{% elif _anal.get('ラップ傾向')=='平均' %}平均的な流れ{% else %}データなし{% endif %}</b></div>
-<div class="ra-m"><span class="k">勝ち時計予想</span><b class="v">{% if _anal.get('勝ち時計予想') not in _blank %}{{_anal.get('勝ち時計予想')}}{% else %}データなし{% endif %}</b></div>
-</div>
-</article>
-</div>
-<div class="ra-col ra-mid">
-<article class="ra-card">
-<h3>ラップ適合度 × 展開ポジション</h3>
+{# 既存の散布図は折りたたみ（テスト・詳細確認用）。独立した想定ラップカードは置かない #}
+<details class="ra-card ra-fold">
+<summary>ラップ適合度 × 展開ポジション（参考）</summary>
 {% if _lapmap %}
 <div class="ra-scatter">
 <div class="ra-axis-y"><b>高</b><span>ラップ適合度</span><small>低</small></div>
@@ -2051,14 +2274,9 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 {% else %}
 <p class="ra-empty">既存の展開・ラップ適合データがある馬だけをプロットします</p>
 {% endif %}
-</article>
-</div>
-<div class="ra-col ra-right">
-<article class="ra-card">
-<h3>ラップ適合度ランキング</h3>
 {% if _laprk %}
-<div class="ra-rk">
-{% for p in _laprk %}
+<div class="ra-rk" style="margin-top:10px">
+{% for p in _laprk[:8] %}
   {% set _bn = (p.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
   {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
@@ -2075,61 +2293,8 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 </div>
 {% endfor %}
 </div>
-{% else %}
-<p class="ra-empty">データなし</p>
 {% endif %}
-</article>
-</div>
-</div>
-<article class="ra-card ra-detail">
-<h3>全馬 詳細データ</h3>
-<div class="ra-tbl-wrap">
-<table class="ra-tbl">
-<thead><tr><th>AI順位</th><th>馬番</th><th class="nm">馬名</th><th>AIスコア</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>オッズ</th><th>人気</th><th>信頼度</th><th>ラップ適合度</th><th>展開適性</th><th>評価</th></tr></thead>
-<tbody>
-{% for p in _det %}
-  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
-<tr>
-<td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
-<td>{{p.get('馬番表示') or p.get('馬番') or '—'}}</td>
-<td class="nm">{{p.get('馬名') or '—'}}</td>
-<td>{% if p.get('予想スコア') not in _blank %}{{p.get('予想スコア')}}{% elif _card.get('AI評価') not in _blank %}{{_card.get('AI評価')}}{% else %}データなし{% endif %}</td>
-<td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% else %}データなし{% endif %}</td>
-<td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}データなし{% endif %}</td>
-<td class="ev">{% if p.get('カード期待値') not in _blank %}{{p.get('カード期待値')}}{% else %}データなし{% endif %}</td>
-<td>{% if p.get('単勝オッズ表示') not in _blank %}{{p.get('単勝オッズ表示')}}{% else %}データなし{% endif %}</td>
-<td>{% if p.get('人気') not in _blank %}{{p.get('人気')}}{% else %}データなし{% endif %}</td>
-<td>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% else %}データなし{% endif %}</td>
-<td>{% if p.get('ラップ適合度') not in _blank %}{{p.get('ラップ適合度')|int}}{% else %}データなし{% endif %}</td>
-<td>{% if p.get('展開適性') not in _blank %}{{p.get('展開適性')}}{% else %}データなし{% endif %}</td>
-<td>{% if p.get('AI評価') not in _blank %}{{p.get('AI評価')}}{% else %}データなし{% endif %}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-<div class="ra-hcards">
-{% for p in _det %}
-  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
-  {% set _bn = (p.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
-  {% set _ub = _bn if _bn.isdigit() else '0' %}
-<div class="ra-hcard">
-<div class="hd"><span class="ra-dot ub-{{_ub}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span> <b>{{p.get('馬名') or '—'}}</b><span class="ai">AI{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</span></div>
-<div class="kv">
-<span>AIスコア <b>{% if p.get('予想スコア') not in _blank %}{{p.get('予想スコア')}}{% else %}データなし{% endif %}</b></span>
-<span>勝率 <b>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% else %}データなし{% endif %}</b></span>
-<span>複勝率 <b>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}データなし{% endif %}</b></span>
-<span>期待値 <b>{% if p.get('カード期待値') not in _blank %}{{p.get('カード期待値')}}{% else %}データなし{% endif %}</b></span>
-<span>オッズ <b>{% if p.get('単勝オッズ表示') not in _blank %}{{p.get('単勝オッズ表示')}}{% else %}データなし{% endif %}</b></span>
-<span>信頼度 <b>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% else %}データなし{% endif %}</b></span>
-<span>ラップ適合度 <b>{% if p.get('ラップ適合度') not in _blank %}{{p.get('ラップ適合度')|int}}{% else %}データなし{% endif %}</b></span>
-<span>展開適性 <b>{% if p.get('展開適性') not in _blank %}{{p.get('展開適性')}}{% else %}データなし{% endif %}</b></span>
-<span>評価 <b>{% if p.get('AI評価') not in _blank %}{{p.get('AI評価')}}{% else %}データなし{% endif %}</b></span>
-</div>
-</div>
-{% endfor %}
-</div>
-</article>
+</details>
 </section>
 
 <details class="rb-more fx-rank-fold">
@@ -2266,79 +2431,22 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
 {% endfor %}
 {% endif %}
 
-<button type="button" class="fx-anal" data-fx-anal>📄 レース分析を見る <span>＞</span></button>
+<button type="button" class="fx-anal" data-fx-anal>📄 要因サマリーを見る <span>＞</span></button>
 <div class="fx-analysis">
 {% set pace = r.get('展開予想データ') if r.get('展開予想データ') is mapping else {} %}
 {% if pace %}
 <div class="section" style="padding:0 0 12px;border:0">
 <div class="ai-card">
-<h3>展開予想</h3>
+<h3>展開の要点</h3>
 <div class="kv">
-<div>想定ペース <b>{{pace.get('想定ペース','—')}}</b></div>
-<div>荒れ指数 <b>{{pace.get('荒れ指数','—')}}</b></div>
+<div>想定ペース <b>{% if pace.get('想定ペース') %}{{pace.get('想定ペース')}}{% else %}データ不足{% endif %}</b></div>
+<div>荒れ指数 <b>{% if pace.get('荒れ指数') not in _blank %}{{pace.get('荒れ指数')}}{% else %}データ不足{% endif %}</b></div>
 </div>
-<div class="reason" style="margin-top:8px">{{pace.get('AI総評','')}}</div>
-</div>
-</div>
-{% endif %}
-<div class="section" style="padding:0;border:0">
-<div class="section-title gold">推奨馬券</div>
-<div class="strategy"><div class="label">主戦</div><strong>{{r.get('推奨券種') or '単勝'}}</strong><p>{{r.get('馬券戦略理由') or '地方は単勝・馬連・ワイドのシンプル買いを優先'}}</p></div>
-{% set tickets = r.get('推奨馬券一覧') or [] %}
-{% if source=='nar' %}
-<div class="nar-tickets">
-{% set ns = namespace(n=0) %}
-{% for t in tickets %}
-{% if t is mapping and t.get('券種') in ('単勝','馬連','ワイド') %}
-{% set ns.n = ns.n + 1 %}
-<div class="nar-ticket">
-<div class="nt-head"><span class="nt-kind">{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
-<div class="nt-ban">{{t.get('馬番表示') or '—'}}</div>
-{% if t.get('説明') %}<div class="nt-desc">{{t.get('説明')}}</div>{% endif %}
-</div>
-{% endif %}
-{% endfor %}
-{% if ns.n == 0 %}
-<div class="reason">推奨馬券を準備中です</div>
-{% endif %}
-</div>
-{% else %}
-<div class="fund-box" data-fund-box>
-<label class="label">軍資金（円）</label>
-<input type="number" min="100" step="100" value="10000" data-fund-input inputmode="numeric">
-<div data-fund-alloc></div>
-</div>
-{% if tickets %}
-<div class="betplan" data-fund-tickets>
-{% for t in tickets[:8] %}
-{% if t is mapping %}
-{% set form = t.get('フォーメーション') if t.get('フォーメーション') is mapping else none %}
-<div class="ticket ai-card" style="margin:0" data-fund-item data-kind="{{t.get('券種','')}}" data-ban="{{t.get('馬番表示','')}}" data-ev="{{t.get('期待値') or t.get('推定回収率') or 100}}" data-hit="{{t.get('的中率') or 1}}">
-<div class="ticket-head"><span>{{t.get('券種')}}</span><span class="stars">{{t.get('推奨度','★★★☆☆')}}</span></div>
-<div class="ticket-ban">{{t.get('馬番表示') or '—'}}</div>
-{% if form %}
-<div class="form-box">
-<div class="slot"><b>1頭目</b>{{ (form.get('1頭目') or [])|join(' ') }}</div>
-<div class="slot"><b>2頭目</b>{{ (form.get('2頭目') or [])|join(' ') }}</div>
-{% if form.get('3頭目') %}<div class="slot"><b>3頭目</b>{{ (form.get('3頭目') or [])|join(' ') }}</div>{% endif %}
-<div class="slot"><b>点数</b>{{ form.get('点数','—') }}点</div>
-</div>
-{% endif %}
-<div class="kv">
-<div>期待値 <b>{% if t.get('期待値') %}{{t.get('期待値')}}%{% else %}—{% endif %}</b></div>
-<div>的中率 <b>{% if t.get('的中率') %}{{t.get('的中率')}}%{% else %}—{% endif %}</b></div>
-<div>推定回収率 <b>{% if t.get('推定回収率') %}{{t.get('推定回収率')}}%{% else %}—{% endif %}</b></div>
+{% if pace.get('AI総評') %}<div class="reason" style="margin-top:8px">{{pace.get('AI総評')}}</div>{% endif %}
 </div>
 </div>
 {% endif %}
-{% endfor %}
-</div>
-{% else %}
-<div class="betplan">{% for kind in ['ワイド','馬連','三連複'] %}<div class="ticket"><div class="ticket-head"><span>{{kind}}｜{{r.get(kind+'判定','—')}}</span><span class="ticket-score">適性 {{r.get(kind+'評価','—')}}</span></div><ul>{% for x in r.get(kind+'買い目一覧', []) %}<li>{{x}}</li>{% endfor %}</ul></div>{% endfor %}</div>
-{% endif %}
-{% endif %}
-</div>
-<div class="beta">期待値が最重要です · AI順位だけではBUYにしません · BUY 0件も正常</div>
+<div class="beta">買い方提案・資金配分は表示しません · 評価の根拠を優先します · BUY 0件も正常</div>
 </div>
 </details>
 </article>
@@ -2529,43 +2637,6 @@ body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overf
     showRace(start, false);
   }
 
-  function yen(n){ return (Math.round(n/100)*100).toLocaleString('ja-JP')+'円'; }
-  function renderFund(box){
-    var input=box.querySelector('[data-fund-input]');
-    var out=box.querySelector('[data-fund-alloc]');
-    var section=box.closest('.fx-analysis') || box.closest('.section') || box.parentElement;
-    var items=section ? [].slice.call(section.querySelectorAll('[data-fund-item]')) : [];
-    var tickets=items.map(function(el){
-      return {
-        kind: el.getAttribute('data-kind')||'',
-        ban: el.getAttribute('data-ban')||'',
-        ev: parseFloat(el.getAttribute('data-ev')||'100')||100,
-        hit: parseFloat(el.getAttribute('data-hit')||'1')||1
-      };
-    });
-    var fund=parseInt(input && input.value,10)||0;
-    if(!out) return;
-    if(!tickets.length || fund<100){ out.innerHTML='<div class="reason">配分対象の推奨馬券がありません</div>'; return; }
-    var weights=tickets.map(function(t){
-      return Math.max(Math.min(t.ev,200)-95, 1) * (0.5 + Math.min(t.hit,20)/20);
-    });
-    var sum=weights.reduce(function(a,b){return a+b;},0)||1;
-    var html='';
-    tickets.forEach(function(t,i){
-      var amt=Math.floor(fund*weights[i]/sum/100)*100;
-      if(amt<100 && fund>=100) amt=100;
-      html+='<div class="fund-row"><span>'+ t.kind +' '+ t.ban +'</span><span class="amt">'+yen(amt)+'</span></div>';
-    });
-    out.innerHTML=html;
-  }
-  [].forEach.call(document.querySelectorAll('[data-fund-box]'), function(box){
-    var input=box.querySelector('[data-fund-input]');
-    if(input){
-      input.addEventListener('input', function(){ renderFund(box); });
-      input.addEventListener('change', function(){ renderFund(box); });
-    }
-    renderFund(box);
-  });
   }catch(err){ try{ console.error('predict-acc', err); }catch(e){} }
 })();
 </script>

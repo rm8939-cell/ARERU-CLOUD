@@ -2872,9 +2872,25 @@ def _later_race_name_map() -> dict:
     return out
 
 
-def _focus_points(anal: dict, pace: dict) -> list:
-    """既存の展開予想だけから注目ポイントを作る。無い項目は作らない。"""
+def _focus_points(anal: dict, pace: dict, condition_pts: list | None = None) -> list:
+    """既存の展開予想と条件変更検出から注目ポイントを作る。無い項目は作らない。"""
     pts = []
+    # 条件変更（検出YESのみ）。効果は別表示するのでここではラベルと詳細。
+    for ch in condition_pts or []:
+        label = ch.get('ラベル')
+        if _disp_blank(label):
+            continue
+        ban = ch.get('馬番')
+        name = ch.get('馬名')
+        who = f"{ban} {name}".strip() if ban or name else ''
+        detail = ch.get('詳細') or ''
+        effect = ch.get('効果') or 'データ不足'
+        icon = ch.get('icon') or '•'
+        text = f"{icon} {who + ' / ' if who else ''}{label}"
+        if detail:
+            text += f"：{detail}"
+        text += f"（効果：{effect}）"
+        pts.append(text)
     pace_label = anal.get('想定ペース')
     if not _disp_blank(pace_label):
         pts.append(f'想定ペースは{pace_label}')
@@ -2895,9 +2911,9 @@ def _focus_points(anal: dict, pace: dict) -> list:
     summary = anal.get('総評')
     if not _disp_blank(summary) and '脚質の偏りは小さい' in str(summary):
         pts.append('位置による負荷の差は小さい')
-    elif not _disp_blank(summary) and len(pts) < 5:
+    elif not _disp_blank(summary) and len(pts) < 8:
         pts.append(str(summary).strip())
-    return pts[:5]
+    return pts[:10]
 
 
 def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> None:
@@ -2961,8 +2977,6 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
         '差し馬数': pace.get('差し馬数'),
         '追込馬数': pace.get('追込馬数'),
     }
-    anal['注目ポイント'] = _focus_points(anal, pace)
-    race['レース分析'] = anal
     rid = _norm_race_id(race.get('race_id', ''))
     horse_meta = horse_meta or {}
     pts = []
@@ -2972,6 +2986,14 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
             continue
         meta = horse_meta.get((rid, clean_horse(p.get('馬名') or ''))) or {}
         _stamp_horse_analysis_fields(p, str(pace_label or ''), meta)
+        # 条件変更は表示専用。スコアには足さない。
+        try:
+            from race_display import detect_condition_changes, aptitude_rows
+            p['条件変更'] = detect_condition_changes(p, race, meta)
+            p['適性詳細'] = aptitude_rows(p)
+        except Exception:
+            p['条件変更'] = []
+            p['適性詳細'] = []
         fit = p.get('ラップ適合度')
         pos = p.get('想定ポジション番号')
         if fit is not None and pos:
@@ -2987,6 +3009,34 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
                 'y': float(fit),
             })
         rank_src.append(p)
+    try:
+        from race_display import (
+            assign_zones, build_diagnosis, focus_condition_points,
+        )
+        race['展開ゾーン'] = assign_zones(race.get('AI一覧') or [])
+        cond_pts = focus_condition_points(race.get('AI一覧') or [])
+        race['AIレース診断'] = build_diagnosis(race, anal)
+    except Exception:
+        race['展開ゾーン'] = {'逃げ': [], '先行': [], '中団': [], '後方': [], '不明': []}
+        cond_pts = []
+        race['AIレース診断'] = {
+            '信頼度': None, '波乱度': None, '想定ペース': anal.get('想定ペース表示'),
+            'レースタイプ': None, '展開傾向': anal.get('展開傾向'), '有利枠': anal.get('有利枠'),
+        }
+    anal['注目ポイント'] = _focus_points(anal, pace, cond_pts)
+    anal['条件変更ポイント'] = cond_pts
+    race['レース分析'] = anal
+    # 本命の評価詳細（表示グループの本命、無ければ AI1位）
+    hon = None
+    groups = race.get('表示グループ') if isinstance(race.get('表示グループ'), dict) else {}
+    if groups.get('本命'):
+        hon = groups['本命'][0]
+    if hon is None:
+        for p in race.get('AI一覧') or []:
+            if isinstance(p, dict) and p.get('AI順位') == 1:
+                hon = p
+                break
+    race['本命評価'] = hon
     from collections import defaultdict
     buckets = defaultdict(list)
     for pt in pts:

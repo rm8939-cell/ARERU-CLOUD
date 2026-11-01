@@ -1,7 +1,6 @@
 """レース分析UI: 既存データ転記のみ。予想・BUY・AI順位は変えない。"""
 from __future__ import annotations
 
-import copy
 import os
 import unittest
 
@@ -163,14 +162,22 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v28_is_responsive_and_valid(self):
+    def test_template_v29_is_responsive_and_valid(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v28"', html)
-        self.assertIn('data-ra-ui="v28"', html)
+        self.assertIn('data-ui="areu-app-v29"', html)
+        self.assertIn('data-ra-ui="v29"', html)
         self.assertIn('ra-metrics', html)
-        self.assertIn('全馬 詳細データ', html)
+        self.assertIn('全頭AI評価', html)
+        self.assertIn('AIレース診断', html)
+        self.assertIn('AI予想（◎○▲△）', html)
+        self.assertIn('展開予想（全馬ポジション）', html)
+        self.assertIn('本命馬の評価詳細', html)
+        self.assertIn('今回の注目ポイント', html)
+        self.assertIn('全馬の展開予測・適性一覧', html)
         self.assertIn('ラップ適合度 × 展開ポジション', html)
+        self.assertNotIn('section-title gold">推奨馬券', html)
+        self.assertNotIn('label">軍資金', html)
         self.assertNotIn('var(--i', html)
         self.assertNotIn('% 3', html)
         self.assertIn('@media (max-width:899px)', html)
@@ -192,7 +199,8 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
             ('.wk-5', '#f4c20d'), ('.wk-6', '#2e7d32'), ('.wk-7', '#ef6c00'), ('.wk-8', '#ec407a'),
         ):
             self.assertIn(f'{cls}{{background:{color}', html)
-        self.assertEqual(html.count("wk-{{_wk|int}}"), 2)
+        # 展開ゾーン・散布図・適合ランキングなど複数箇所で枠色を使う
+        self.assertGreaterEqual(html.count("wk-{{_wk|int}}"), 2)
 
     def test_lap_map_carries_waku_for_badge_color(self):
         race = _race('中山8R', pace='ハイ', horses=[
@@ -207,9 +215,65 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         ranked = {p['馬名']: p.get('枠番') for p in race['ラップ適合ランキング']}
         self.assertEqual(ranked['差し馬'], '6')
 
+    def test_zones_cover_all_runners(self):
+        race = _race('新潟1R', horses=[
+            _horse('A', 1, '本命', '逃げ残り', AREru指数=90),
+            _horse('B', 2, '対抗', '先行向き', AREru指数=80),
+            _horse('C', 3, '穴馬', '差し向き', AREru指数=70),
+            _horse('D', 4, '', '追込向き', AREru指数=60),
+            _horse('E', 5, '', '', AREru指数=50),
+        ])
+        _stamp_ai_field_ranks(race)
+        _stamp_race_analysis_display(race, {})
+        zones = race['展開ゾーン']
+        total = sum(len(zones[z]) for z in ('逃げ', '先行', '中団', '後方', '不明'))
+        self.assertEqual(total, 5)
+        self.assertEqual(len(zones['逃げ']), 1)
+        self.assertEqual(len(zones['先行']), 1)
+        self.assertEqual(len(zones['中団']), 1)
+        self.assertEqual(len(zones['後方']), 1)
+        self.assertEqual(len(zones['不明']), 1)
+        self.assertIsNotNone(race.get('AIレース診断'))
+        self.assertIsNotNone(race.get('本命評価'))
+        for p in race['AI一覧']:
+            self.assertIn('条件変更', p)
+            self.assertIn('適性詳細', p)
+            # ブリンカーはデータ列が無いので必ずデータ不足
+            labels = {c.get('ラベル') for c in p['条件変更']}
+            self.assertTrue(any('ブリンカー' in str(x) or '馬具' in str(x) for x in labels))
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_condition_change_does_not_auto_boost(self):
+        from race_display import detect_condition_changes
+        horse = _horse('検査馬', 7, style_txt='先行向き')
+        race = {
+            '日付': '2026-09-27',
+            '開催地': '中山',
+            '距離': '芝1600',
+            '芝ダ': '芝',
+        }
+        changes = detect_condition_changes(horse, race, {})
+        for ch in changes:
+            # 効果はスコアを勝手にいじらない（単純プラス禁止）
+            effect = str(ch.get('効果') or '')
+            self.assertNotRegex(effect, r'\+\d+')
+            self.assertNotIn('自動加点', effect)
+
+
+class TestRaceDisplayHelpers(unittest.TestCase):
+    def test_parse_surface_dist(self):
+        from race_display import parse_surface_dist
+        self.assertEqual(parse_surface_dist('ダ1400'), ('ダート', 1400))
+        self.assertEqual(parse_surface_dist('芝 2000m'), ('芝', 2000))
+        self.assertEqual(parse_surface_dist(''), (None, None))
+
+    def test_aptitude_marks_ai_usage(self):
+        from race_display import aptitude_rows
+        p = _horse('適性馬', 1, style_txt='先行向き', ラップ適合度=72, 展開適性='先行向き', コース適性='○')
+        rows = {r['項目']: r for r in aptitude_rows(p)}
+        self.assertTrue(rows['ラップ適性']['AI評価に使用'])
+        self.assertTrue(rows['展開適性']['AI評価に使用'])
+        self.assertFalse(rows['前走内容']['AI評価に使用'])
+        self.assertEqual(rows['前走内容']['表示'], 'データ不足')
 
 
 if __name__ == '__main__':
