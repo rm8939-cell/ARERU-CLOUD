@@ -35,6 +35,24 @@ GEAR_UNAVAILABLE = {
 }
 
 
+_CIRCLED_BAN = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
+
+
+def ban_digits(v) -> str | None:
+    """馬番をアラビア数字文字列へ。丸数字・欠損も吸収。捏造はしない。"""
+    if v is None:
+        return None
+    s = str(v).strip().replace("番", "")
+    if not s or s.lower() in ("nan", "none", "なし", "—", "-", "－"):
+        return None
+    if s in _CIRCLED_BAN:
+        return str(_CIRCLED_BAN.index(s) + 1)
+    try:
+        return str(int(float(s)))
+    except (TypeError, ValueError):
+        return None
+
+
 def _blank(v) -> bool:
     if v is None:
         return True
@@ -265,7 +283,7 @@ def assign_zones(horses: list[dict]) -> dict:
                 pos = label
         entry = {
             "馬番": p.get("馬番表示") or p.get("馬番"),
-            "馬番数字": p.get("馬番"),
+            "馬番数字": ban_digits(p.get("馬番")) or ban_digits(p.get("馬番表示")),
             "枠番": p.get("枠番"),
             "馬名": p.get("馬名"),
             "想定位置": str(pos) if not _blank(pos) else (None if zone == "不明" else zone),

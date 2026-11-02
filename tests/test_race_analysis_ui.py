@@ -162,12 +162,15 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v32_is_dashboard_hierarchy(self):
+    def test_template_v33_is_dashboard_hierarchy(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v32"', html)
-        self.assertIn('data-ra-ui="v32"', html)
-        self.assertIn('ra-metrics', html)
+        self.assertIn('data-ui="areu-app-v33"', html)
+        self.assertIn('data-ra-ui="v33"', html)
+        self.assertIn('ra-diag-badge', html)
+        self.assertIn('ra-pill', html)
+        self.assertIn('ra-hon-top', html)
+        self.assertIn('is-plain', html)
         self.assertIn('全頭AI評価', html)
         self.assertIn('AIレース診断', html)
         self.assertIn('AI予想（本命〜連下）', html)
@@ -186,15 +189,15 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertIn('@media (max-width:899px)', html)
         self.assertIn('@media (min-width:900px)', html)
         self.assertIn('grid-template-columns:1fr 1fr', html)
-        self.assertIn('color:#087443', html)
-        self.assertIn('background:#159447', html)
+        self.assertIn('color:#0B7A45', html)
+        self.assertIn('background:linear-gradient(90deg,#0A5C38,#0B7A45)', html)
         self.assertIn('background:#E8EEF0', html)
         self.assertIn('background:#CBD8E3', html)
         self.assertIn('color:#526174', html)
         self.assertIn('border:1px solid #DDE5E2', html)
         self.assertIn('border-radius:18px', html)
         # 詰め込み禁止の指標: 極端な 9px 本文をメインボードに使わない
-        self.assertNotIn('body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:9px', html)
+        self.assertNotIn('body.app-race .ra-board[data-ra-ui="v33"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:9px', html)
 
     def test_badges_use_jra_frame_colors_from_waku(self):
         from pathlib import Path

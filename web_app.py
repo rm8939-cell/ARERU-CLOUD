@@ -29,6 +29,18 @@ app=Flask(__name__)
 _TEMPLATE_RELOAD = str(os.environ.get('FLASK_DEBUG') or '').strip().lower() in ('1', 'true', 'yes')
 app.config['TEMPLATES_AUTO_RELOAD'] = _TEMPLATE_RELOAD
 app.jinja_env.auto_reload = _TEMPLATE_RELOAD
+
+
+@app.template_filter('ban_digits')
+def _jinja_ban_digits(v):
+    """馬番を ub-* 用の数字へ。丸数字も吸収。"""
+    try:
+        from race_display import ban_digits
+        return ban_digits(v) or '0'
+    except Exception:
+        return '0'
+
+
 @app.after_request
 def _html_no_store(resp):
     if 'text/html' in (resp.content_type or ''):
