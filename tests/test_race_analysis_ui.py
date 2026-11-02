@@ -162,11 +162,11 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v35_is_dashboard_hierarchy(self):
+    def test_template_v36_is_dashboard_hierarchy(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v35"', html)
-        self.assertIn('data-ra-ui="v35"', html)
+        self.assertIn('data-ui="areu-app-v36"', html)
+        self.assertIn('data-ra-ui="v36"', html)
         self.assertIn('ra-diag-badge', html)
         self.assertIn('ra-pill', html)
         self.assertIn('ra-hon-top', html)
@@ -197,7 +197,10 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertIn('border:1px solid #DDE5E2', html)
         self.assertIn('border-radius:18px', html)
         # 詰め込み禁止の指標: 極端な 9px 本文をメインボードに使わない
-        self.assertNotIn('body.app-race .ra-board[data-ra-ui="v35"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:9px', html)
+        self.assertNotIn('body.app-race .ra-board[data-ra-ui="v36"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:9px', html)
+        self.assertIn('fx-navicons', html)
+        self.assertIn('ra-id-horse', html)
+        self.assertIn('jp_short_date', html)
 
     def test_badges_use_jra_frame_colors_from_waku(self):
         from pathlib import Path

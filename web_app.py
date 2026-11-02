@@ -41,6 +41,22 @@ def _jinja_ban_digits(v):
         return '0'
 
 
+@app.template_filter('jp_short_date')
+def _jinja_jp_short_date(v):
+    """YYYY-MM-DD → M/D (曜)。パース不能なら元値。"""
+    s = str(v or '').strip()
+    if not s:
+        return ''
+    try:
+        from datetime import datetime
+        raw = s[:10]
+        dt = datetime.strptime(raw, '%Y-%m-%d')
+        w = '月火水木金土日'[dt.weekday()]
+        return f'{dt.month}/{dt.day} ({w})'
+    except Exception:
+        return s
+
+
 @app.after_request
 def _html_no_store(resp):
     if 'text/html' in (resp.content_type or ''):
