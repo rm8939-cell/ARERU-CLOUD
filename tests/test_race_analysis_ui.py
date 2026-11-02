@@ -162,23 +162,23 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v31_is_dashboard_hierarchy(self):
+    def test_template_v32_is_dashboard_hierarchy(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v31"', html)
-        self.assertIn('data-ra-ui="v31"', html)
+        self.assertIn('data-ui="areu-app-v32"', html)
+        self.assertIn('data-ra-ui="v32"', html)
         self.assertIn('ra-metrics', html)
-        self.assertIn('全馬AI評価', html)
+        self.assertIn('全頭AI評価', html)
         self.assertIn('AIレース診断', html)
-        self.assertIn('AI予想', html)
+        self.assertIn('AI予想（本命〜連下）', html)
         self.assertIn('展開予想（全馬ポジション）', html)
-        self.assertIn('◎本命 評価詳細', html)
+        self.assertIn('の評価詳細', html)
         self.assertIn('AIの見解', html)
         self.assertIn('今回の注目ポイント', html)
         self.assertIn('ra-full', html)
-        self.assertIn('全馬AI評価', html)
+        self.assertIn('全頭AI評価', html)
         self.assertIn('ラップ適合', html)
-        self.assertNotIn('全馬の展開予測・適性一覧', html)
+        self.assertIn('全馬の展開予測・適性一覧', html)
         self.assertNotIn('section-title gold">推奨馬券', html)
         self.assertNotIn('label">軍資金', html)
         self.assertNotIn('var(--i', html)
@@ -194,7 +194,7 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertIn('border:1px solid #DDE5E2', html)
         self.assertIn('border-radius:18px', html)
         # 詰め込み禁止の指標: 極端な 9px 本文をメインボードに使わない
-        self.assertNotIn('body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:9px', html)
+        self.assertNotIn('body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:9px', html)
 
     def test_badges_use_jra_frame_colors_from_waku(self):
         from pathlib import Path

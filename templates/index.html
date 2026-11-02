@@ -1085,123 +1085,127 @@ body.app-race .ra-hcard .hd .ai{margin-left:auto;flex:0 0 auto;font-size:11px;fo
 body.app-race .ra-hcard .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 body.app-race .ra-hcard .kv span{display:flex;flex-direction:column;gap:2px;padding:7px 8px;background:#F7F9F8;border:1px solid #DDE5E2;border-radius:10px;font-size:11px;font-weight:700;color:#5E6B7A;min-width:0}
 body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overflow-wrap:anywhere}
-/* ===== v31: 競馬新聞 × AIダッシュボード（見やすさ優先・詰め込み禁止） ===== */
-body.app-race{background:#F4F7F5}
-body.app-race .ra-board[data-ra-ui="v31"]{display:flex;flex-direction:column;gap:12px;margin:6px 0 12px;color:#10233F;max-width:100%;overflow-x:hidden}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-sec{background:#FFFFFF;border:1px solid #DDE5E2;border-radius:16px;padding:14px;min-width:0;overflow:hidden;box-shadow:0 2px 12px rgba(16,35,63,.05)}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-sec>h3{margin:0 0 12px;padding:0 0 0 10px;border:0;border-left:4px solid #159447;font-size:15px;font-weight:900;color:#087443;letter-spacing:.02em;line-height:1.2}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-empty{margin:0;font-size:13px;font-weight:700;color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-muted,body.app-race .ra-board[data-ra-ui="v31"] .ra-miss{color:#5E6B7A !important;font-weight:700}
-/* ① header — readable */
-body.app-race .ra-board[data-ra-ui="v31"] .ra-id{padding:16px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-id-ttl{margin:0;font-size:24px;font-weight:900;line-height:1.15;color:#10233F}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-grade{display:inline-block;margin-left:6px;padding:3px 10px;border-radius:999px;background:#087443;color:#fff;font-size:12px;font-weight:900;vertical-align:middle}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-id-name{margin:8px 0 0;font-size:16px;font-weight:850;color:#087443;line-height:1.3}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-id-meta{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0;list-style:none}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-id-meta li{padding:6px 12px;border-radius:999px;background:#EAF6F0;border:1px solid #C7E5D4;font-size:13px;font-weight:800;color:#10233F}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-id-meta li.ra-miss{background:#F0F3F5;border-color:#DDE5E2;color:#5E6B7A}
-/* ② diagnosis — 2x2 large cards */
-body.app-race .ra-board[data-ra-ui="v31"] .ra-diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-diag-grid .ra-m{display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:76px;padding:12px;border-radius:14px;border:1px solid transparent}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-diag-grid .ra-m .k{font-size:12px;font-weight:800;color:#5E6B7A;line-height:1.1}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-diag-grid .ra-m .v{margin:0;font-size:22px;font-weight:900;line-height:1.15;overflow-wrap:anywhere}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-green{background:#EAF6F0;border-color:#C7E5D4}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-blue{background:#EEF5FF;border-color:#C5D8F0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-orange{background:#FFF4E8;border-color:#F0D2B0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-purple{background:#F3EEF8;border-color:#DCCEEC}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-green .v{color:#087443}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-blue .v{color:#1B4F9C}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-orange .v{color:#C45C12}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-m.tone-purple .v{color:#6B3FA0;font-size:15px}
-/* ③ picks — prominent */
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick-rows{display:grid;gap:7px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick{display:flex;align-items:center;gap:8px;min-width:0;padding:11px 10px;border-radius:12px;background:#F7F9F8;border:1px solid #E8EEF0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick.is-hon{background:#EAF6F0;border-color:#159447;border-width:2px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick.is-tai{background:#EEF5FF;border-color:#93c5fd;border-width:1.5px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick.is-ana{background:#FFF4E8;border-color:#fdba74;border-width:1.5px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .mk{flex:0 0 1.5em;font-size:20px;font-weight:900;color:#087443;text-align:center}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick.is-tai .mk{color:#1B4F9C}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick.is-ana .mk{color:#C45C12}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick.is-ren .mk{color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .ra-dot{position:static;margin:0;flex:0 0 auto;width:30px;height:30px;font-size:13px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:16px;font-weight:900;color:#10233F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .sc{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:0;line-height:1.05;font-variant-numeric:tabular-nums}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .sc small{font-size:10px;font-weight:800;color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .sc b{font-size:18px;font-weight:900;color:#087443}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .buy{flex:0 0 auto;font-size:11px;font-weight:900;color:#fff;background:#087443;border-radius:999px;padding:3px 8px}
-/* ④ zones — vertical ladder 逃げ→後方 */
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone-count{margin:0 0 8px;font-size:12px;font-weight:800;color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone-grid{display:grid;grid-template-columns:1fr;gap:0;position:relative;padding-left:0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone{border-radius:0;padding:12px 12px 12px 14px;min-width:0;border:1px solid #DDE5E2;border-bottom-width:0;position:relative}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone:first-child{border-radius:12px 12px 0 0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone:last-child{border-radius:0 0 12px 12px;border-bottom-width:1px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone.tone-green{background:#EAF6F0;border-color:#C7E5D4;border-left:5px solid #159447}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone.tone-blue{background:#EEF5FF;border-color:#C5D8F0;border-left:5px solid #1B4F9C}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone.tone-purple{background:#F3EEF8;border-color:#DCCEEC;border-left:5px solid #6B3FA0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone.tone-orange{background:#FFF4E8;border-color:#F0D2B0;border-left:5px solid #C45C12}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone.tone-gray{background:#F0F3F5;border-color:#DDE5E2;border-left:5px solid #5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px;font-size:14px;font-weight:900;color:#10233F}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone-h small{font-size:11px;font-weight:800;color:#5E6B7A;background:rgba(255,255,255,.85);border-radius:999px;padding:2px 8px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-zone-horses{display:flex;flex-wrap:wrap;gap:6px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px 4px 4px;border-radius:999px;background:#fff;border:1px solid #DDE5E2;min-width:0;max-width:100%;box-shadow:0 1px 2px rgba(16,35,63,.04)}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-chip .ra-dot{position:static;margin:0;flex:0 0 auto;width:24px;height:24px;font-size:11px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-chip b{font-size:13px;font-weight:800;color:#10233F;max-width:7em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* ⑤ honmei — hero card */
-body.app-race .ra-board[data-ra-ui="v31"] .ra-honmei{border-color:#159447;border-width:2px;box-shadow:0 4px 16px rgba(8,116,67,.1)}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-hd{display:flex;align-items:center;gap:10px;margin:0 0 12px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-hd .ra-dot{position:static;margin:0;width:36px;height:36px;font-size:16px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-hd b{display:block;font-size:20px;font-weight:900;color:#10233F;line-height:1.2}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-hd small{display:block;margin-top:2px;font-size:12px;font-weight:800;color:#087443}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-score{display:flex;align-items:baseline;gap:8px;margin:0 0 12px;padding:14px;border-radius:14px;background:#EAF6F0;border:1px solid #C7E5D4}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-score span{font-size:13px;font-weight:800;color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-score b{font-size:32px;font-weight:900;color:#087443;font-variant-numeric:tabular-nums;line-height:1}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 16px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-metrics>div{display:flex;flex-direction:column;gap:3px;padding:11px;background:#F7F9F8;border:1px solid #E8EEF0;border-radius:12px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-metrics span{font-size:11px;font-weight:800;color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-metrics b{font-size:17px;font-weight:900;color:#10233F}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt{display:grid;gap:12px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-row{display:grid;gap:5px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-l{display:flex;align-items:center;justify-content:space-between;gap:8px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-l>span{font-size:14px;font-weight:900;color:#10233F}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-l em{display:none}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-r{display:grid;grid-template-columns:minmax(0,1fr) 2.6em;gap:10px;align-items:center}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-r .ra-bar{height:12px;background:#E8EEF0;border-radius:99px;overflow:hidden;min-width:0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-r .ra-bar i{display:block;height:100%;background:linear-gradient(90deg,#159447,#087443);border-radius:99px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-row.is-lap .ra-bar i{background:linear-gradient(90deg,#8B5CF6,#6B3FA0)}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-row.is-tenkai .ra-bar i{background:linear-gradient(90deg,#3B82F6,#1B4F9C)}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-r b{font-size:15px;font-weight:900;color:#10233F;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-apt-r b.miss{font-size:11px;font-weight:800;color:#5E6B7A;max-width:9em}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-view{margin:14px 0 0;padding:14px;border-radius:12px;background:#F3EEF8;border:1px solid #DCCEEC;font-size:14px;font-weight:750;color:#10233F;line-height:1.6}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-view strong{display:block;margin:0 0 6px;font-size:13px;font-weight:900;color:#6B3FA0}
-/* ⑥ focus — icon cards */
-body.app-race .ra-board[data-ra-ui="v31"] .ra-focus-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;list-style:none}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-focus-grid li{padding:11px;border-radius:12px;background:#FFF4E8;border:1px solid #F0D2B0;font-size:12px;font-weight:800;color:#C45C12;line-height:1.35}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-focus-grid li.is-plus{background:#EAF6F0;border-color:#C7E5D4;color:#087443}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-focus-grid li.is-minus{background:#FDECEC;border-color:#F5C2C0;color:#C62828}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-focus-grid li .lab{display:block;font-size:13px;font-weight:900;color:#10233F;margin-bottom:2px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-focus-grid li .fx{display:block;font-size:11px;font-weight:750;color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-focus-note{margin:8px 0 0;font-size:11px;font-weight:700;color:#5E6B7A}
-/* ⑧ full AI table — secondary, compact */
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full{width:100%;min-width:520px;border-collapse:collapse;font-size:12px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full th,body.app-race .ra-board[data-ra-ui="v31"] .ra-full td{padding:8px 5px;border-bottom:1px solid #EEF2F0;text-align:center;font-weight:800;white-space:nowrap;vertical-align:middle}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full th{color:#5E6B7A;font-size:11px;background:#F7F9F8;position:sticky;top:0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full td.nm,body.app-race .ra-board[data-ra-ui="v31"] .ra-full th.nm{text-align:left}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full .ra-dot{position:static;margin:0 auto;width:22px;height:22px;font-size:11px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full .sc{color:#087443;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-full .mk{color:#087443;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-mini{display:none}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-fold{padding:0}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-fold>summary{list-style:none;cursor:pointer;padding:12px;font-size:12px;font-weight:800;color:#5E6B7A}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-fold>summary::-webkit-details-marker{display:none}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-fold[open]>summary{border-bottom:1px solid #DDE5E2;color:#087443}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-fold .ra-scatter,body.app-race .ra-board[data-ra-ui="v31"] .ra-fold .ra-rk,body.app-race .ra-board[data-ra-ui="v31"] .ra-fold .ra-tbl-wrap{padding:0 12px 12px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-tbl-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-tbl{width:100%;border-collapse:collapse;font-size:12px}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-tbl th,body.app-race .ra-board[data-ra-ui="v31"] .ra-tbl td{padding:6px 4px;border-bottom:1px solid #DDE5E2;text-align:center;font-weight:800;white-space:nowrap}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-tbl th{color:#5E6B7A;font-size:11px;background:#F7F9F8}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-tbl td.nm,body.app-race .ra-board[data-ra-ui="v31"] .ra-tbl th.nm{text-align:left;white-space:normal}
-body.app-race .ra-board[data-ra-ui="v31"] .ra-hcards{display:none}
+/* ===== v32: 参考画像どおりの競馬新聞×AIダッシュボード ===== */
+body.app-race{background:#EEF2F0}
+body.app-race .ra-board[data-ra-ui="v32"]{display:flex;flex-direction:column;gap:12px;margin:6px 0 14px;color:#10233F;max-width:100%;overflow-x:hidden}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-sec{background:#FFFFFF;border:1px solid #D5E0DA;border-radius:16px;padding:0;min-width:0;overflow:hidden;box-shadow:0 3px 14px rgba(16,35,63,.06)}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hd{display:flex;align-items:center;gap:8px;margin:0;padding:11px 14px;background:linear-gradient(90deg,#0B6B3A,#087443);color:#fff;font-size:14px;font-weight:900;letter-spacing:.02em;line-height:1.2}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hd .ic{flex:0 0 auto;width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-bd{padding:12px 14px 14px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-empty{margin:0;font-size:13px;font-weight:700;color:#5E6B7A}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-muted,body.app-race .ra-board[data-ra-ui="v32"] .ra-miss{color:#5E6B7A !important;font-weight:700}
+/* ① race header */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-id{padding:14px 16px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-id-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-id-ttl{margin:0;font-size:22px;font-weight:900;line-height:1.15;color:#10233F}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-grade{display:inline-block;margin-left:8px;padding:3px 10px;border-radius:999px;background:#E91E8C;color:#fff;font-size:12px;font-weight:900;vertical-align:middle}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-id-name{margin:6px 0 0;font-size:18px;font-weight:900;color:#10233F;line-height:1.25}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-id-date{flex:0 0 auto;font-size:12px;font-weight:800;color:#5E6B7A;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-id-meta{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0;list-style:none}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-id-meta li{padding:5px 11px;border-radius:999px;background:#F3F6F4;border:1px solid #DDE5E2;font-size:13px;font-weight:800;color:#10233F}
+/* ② diagnosis */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m{display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:70px;padding:12px;border-radius:12px;border:1px solid transparent}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m .k{font-size:12px;font-weight:800;color:#5E6B7A}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m .v{margin:0;font-size:22px;font-weight:900;line-height:1.15;overflow-wrap:anywhere}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-green{background:#EAF6F0;border-color:#C7E5D4}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-blue{background:#EEF5FF;border-color:#C5D8F0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-orange{background:#FFF4E8;border-color:#F0D2B0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-purple{background:#F3EEF8;border-color:#DCCEEC}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-green .v{color:#087443}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-blue .v{color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-orange .v{color:#C45C12}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-m.tone-purple .v{color:#6B3FA0;font-size:15px}
+/* ③ picks */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick-rows{display:grid;gap:6px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick{display:flex;align-items:center;gap:8px;min-width:0;padding:10px 10px;border-radius:12px;border:1px solid transparent}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-hon{background:#EAF6F0;border-color:#B7E0C8}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-tai{background:#EEF5FF;border-color:#C5D8F0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-ana{background:#FFF4E8;border-color:#F0D2B0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-ren{background:#F5F7F8;border-color:#E2E8EC}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .mk{flex:0 0 1.4em;font-size:18px;font-weight:900;text-align:center}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-hon .mk{color:#C62828}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-tai .mk{color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-ana .mk{color:#C45C12}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick.is-ren .mk{color:#5E6B7A}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .ra-dot{position:static;margin:0;flex:0 0 auto;width:28px;height:28px;font-size:12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:15px;font-weight:900;color:#10233F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .sc{flex:0 0 auto;font-size:15px;font-weight:900;color:#087443;font-variant-numeric:tabular-nums;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .buy{display:none}
+/* ④ zones — 4 columns like reference */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone{border-radius:12px;padding:8px 6px 10px;min-width:0;min-height:88px;border:1px solid transparent}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-nige{background:#FDE8EC;border-color:#F5C2CC}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-sen{background:#FFF1E6;border-color:#F0D2B0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-chu{background:#EAF2FF;border-color:#C5D8F0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-kou{background:#F3EEF8;border-color:#DCCEEC}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-unk{background:#F0F3F5;border-color:#DDE5E2;grid-column:1/-1}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone-h{margin:0 0 8px;text-align:center;font-size:12px;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-nige .ra-zone-h{color:#C62828}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-sen .ra-zone-h{color:#C45C12}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-chu .ra-zone-h{color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone.z-kou .ra-zone-h{color:#6B3FA0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone-horses{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone .ra-dot{position:static;margin:0;width:26px;height:26px;font-size:11px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-zone-foot{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#EAF6F0;border:1px solid #C7E5D4;font-size:12px;font-weight:800;color:#087443;line-height:1.4}
+/* ⑤ honmei */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics>div{display:flex;flex-direction:column;gap:2px;padding:10px;background:#F7F9F8;border:1px solid #E8EEF0;border-radius:12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics span{font-size:11px;font-weight:800;color:#5E6B7A}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics b{font-size:16px;font-weight:900;color:#10233F}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics .is-ai{background:#EAF6F0;border-color:#C7E5D4}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics .is-ai b{color:#087443;font-size:22px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics .is-ev{background:#FFF4E8;border-color:#F0D2B0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics .is-ev b{color:#C45C12}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-apt{display:grid;gap:10px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-apt-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) auto;gap:8px;align-items:center}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-apt-l{font-size:13px;font-weight:900;color:#10233F}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-apt-r .ra-bar{display:block;height:10px;background:#E8EEF0;border-radius:99px;overflow:hidden}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-apt-r .ra-bar i{display:block;height:100%;background:linear-gradient(90deg,#22A35A,#087443);border-radius:99px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-apt-score{font-size:14px;font-weight:900;color:#10233F;font-variant-numeric:tabular-nums;min-width:1.8em;text-align:right}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-apt-score.miss{font-size:11px;color:#5E6B7A;font-weight:800}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-view{margin:12px 0 0;padding:12px;border-radius:12px;background:#FFF8E6;border:1px solid #F0E0A8;font-size:13px;font-weight:750;color:#10233F;line-height:1.55}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-view strong{display:block;margin:0 0 4px;font-size:12px;font-weight:900;color:#9A6B00}
+/* ⑥ style list */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-style{width:100%;border-collapse:collapse;font-size:12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-style th,body.app-race .ra-board[data-ra-ui="v32"] .ra-style td{padding:8px 4px;border-bottom:1px solid #EEF2F0;text-align:left;font-weight:800;vertical-align:middle}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-style th{color:#5E6B7A;font-size:11px;background:#F7F9F8}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pos{display:inline-flex;align-items:center;justify-content:center;min-width:2.8em;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pos.p-nige{background:#FDE8EC;color:#C62828}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pos.p-sen{background:#FFF1E6;color:#C45C12}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pos.p-chu{background:#EAF2FF;color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pos.p-kou{background:#F3EEF8;color:#6B3FA0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-pos.p-unk{background:#F0F3F5;color:#5E6B7A}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-morebtn{display:block;width:100%;margin-top:10px;padding:10px;border:1px solid #DDE5E2;border-radius:12px;background:#F7F9F8;font-size:12px;font-weight:800;color:#087443;text-align:center;cursor:pointer}
+/* ⑦ focus */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-focus-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;list-style:none}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-focus-grid li{padding:10px;border-radius:12px;background:#FFF4E8;border:1px solid #F0D2B0;font-size:12px;font-weight:800;color:#C45C12;line-height:1.35}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-focus-grid li.is-plus{background:#EAF6F0;border-color:#C7E5D4;color:#087443}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-focus-grid li.is-minus{background:#FDECEC;border-color:#F5C2C0;color:#C62828}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-focus-grid li .lab{display:block;font-size:13px;font-weight:900;color:#10233F;margin-bottom:2px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-focus-grid li .fx{display:block;font-size:11px;font-weight:750;color:#5E6B7A}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-focus-note{margin:8px 0 0;font-size:11px;font-weight:700;color:#5E6B7A}
+/* ⑧ full table */
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full{width:100%;min-width:560px;border-collapse:collapse;font-size:12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full th,body.app-race .ra-board[data-ra-ui="v32"] .ra-full td{padding:8px 5px;border-bottom:1px solid #EEF2F0;text-align:center;font-weight:800;white-space:nowrap;vertical-align:middle}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full th{color:#5E6B7A;font-size:11px;background:#F7F9F8}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full td.nm,body.app-race .ra-board[data-ra-ui="v32"] .ra-full th.nm{text-align:left}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full .ra-dot{position:static;margin:0 auto;width:22px;height:22px;font-size:11px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full .sc{display:inline-block;padding:3px 8px;border-radius:999px;background:#EAF6F0;color:#087443;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full .ev{display:inline-block;padding:3px 8px;border-radius:999px;background:#FFF4E8;color:#C45C12;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-full .mk{font-weight:900}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-fold{padding:0}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-fold>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:12px;font-weight:800;color:#5E6B7A}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-fold>summary::-webkit-details-marker{display:none}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-fold[open]>summary{border-bottom:1px solid #DDE5E2;color:#087443}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-fold .ra-scatter,body.app-race .ra-board[data-ra-ui="v32"] .ra-fold .ra-tbl-wrap{padding:0 12px 12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-tbl-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-tbl{width:100%;border-collapse:collapse;font-size:12px}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-tbl th,body.app-race .ra-board[data-ra-ui="v32"] .ra-tbl td{padding:6px 4px;border-bottom:1px solid #DDE5E2;text-align:center;font-weight:800;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-tbl th{color:#5E6B7A;font-size:11px;background:#F7F9F8}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-tbl td.nm,body.app-race .ra-board[data-ra-ui="v32"] .ra-tbl th.nm{text-align:left;white-space:normal}
+body.app-race .ra-board[data-ra-ui="v32"] .ra-hcards{display:none}
 body.app-race .ra-bar{flex:1 1 auto;height:8px;background:#E8EEF0;border-radius:99px;overflow:hidden;min-width:0}
 body.app-race .ra-bar i{display:block;height:100%;background:#159447;border-radius:99px}
 body.app-race .ra-dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;line-height:1;border:1px solid rgba(16,35,63,.34);z-index:2;box-sizing:border-box}
@@ -1227,17 +1231,30 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
   body.app-race:not(.picker) .fx-stick{padding:0 0 2px}
   body.app-race:not(.picker) .fx-vchip{min-height:26px;padding:2px 10px;font-size:12px}
   body.app-race:not(.picker) .fx-rnose button{min-height:26px;font-size:11px}
-  body.app-race .ra-board[data-ra-ui="v31"] .ra-diag-grid .ra-m{min-height:68px}
-  body.app-race .ra-board[data-ra-ui="v31"] .ra-diag-grid .ra-m .v{font-size:18px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m{min-height:66px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m .v{font-size:18px}
   body.app-race .ra-metrics{grid-template-columns:1fr 1fr}
+  body.app-race .ra-board:not([data-ra-ui="v32"]) .ra-m .v{font-size:14px;color:#087443}
+  body.app-race .ra-scatter{padding:2px 0 0}
+  body.app-race .ra-axis-y{display:none}
+  body.app-race .ra-plot{height:250px}
+  body.app-race .ra-plot .ra-dot{width:28px;height:28px;margin:-14px 0 0 -14px;font-size:13px}
+  body.app-race .ra-q{font-size:11px}
+  body.app-race .ra-rk-row .nm{font-size:14px}
+  body.app-race .ra-card{padding:12px 10px 10px;border-radius:18px}
 }
 @media (min-width:900px){
-  body.app-race .ra-board[data-ra-ui="v31"] .ra-diag-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
-  body.app-race .ra-board[data-ra-ui="v31"] .ra-zone-grid{grid-template-columns:1fr 1fr}
-  body.app-race .ra-board[data-ra-ui="v31"] .ra-hon-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
-  body.app-race .ra-board[data-ra-ui="v31"] .ra-mid{display:grid;grid-template-columns:1.25fr .75fr;gap:10px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
   body.app-race .ra-axis-y{display:flex}
   body.app-race .ra-plot{height:260px}
+  body.app-race .ra-cols{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.2fr) minmax(0,1fr);align-items:stretch;gap:10px}
+  body.app-race .ra-axis-y span{display:block;writing-mode:vertical-rl}
+  body.app-race .ra-scatter{padding:6px 4px 0 22px}
+  body.app-race .ra-tbl-wrap{display:block}
+  body.app-race .ra-hcards{display:none}
+  body.app-race .ra-rk{max-height:380px;overflow:auto}
 }
 .ub-0{background:#6b7280;color:#fff}
 .ub-1{background:#fff;color:#111;border-color:#111}
@@ -1267,31 +1284,8 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 .wk-6{background:#2e7d32;color:#fff;box-shadow:none}
 .wk-7{background:#ef6c00;color:#fff;box-shadow:none}
 .wk-8{background:#ec407a;color:#fff;box-shadow:none}
-@media (max-width:899px){
-  body.app-race .ra-metrics{grid-template-columns:1fr 1fr}
-  body.app-race .ra-m{grid-template-columns:minmax(0,1fr);min-height:62px;align-content:center}
-  /* v31 board keeps large diagnosis values; do not shrink .ra-m .v globally */
-  body.app-race .ra-board:not([data-ra-ui="v31"]) .ra-m .v{font-size:14px;color:#087443}
-  body.app-race .ra-scatter{padding:2px 0 0}
-  body.app-race .ra-axis-y{display:none}
-  body.app-race .ra-plot{height:250px}
-  body.app-race .ra-plot .ra-dot{width:28px;height:28px;margin:-14px 0 0 -14px;font-size:13px}
-  body.app-race .ra-q{font-size:11px}
-  body.app-race .ra-rk-row .nm{font-size:14px}
-  body.app-race .ra-card{padding:12px 10px 10px;border-radius:18px}
-}
-@media (min-width:900px){
-  body.app-race .ra-cols{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.2fr) minmax(0,1fr);align-items:stretch;gap:10px}
-  body.app-race .ra-plot{height:280px}
-  body.app-race .ra-axis-y{display:flex}
-  body.app-race .ra-axis-y span{display:block;writing-mode:vertical-rl}
-  body.app-race .ra-scatter{padding:6px 4px 0 22px}
-  body.app-race .ra-tbl-wrap{display:block}
-  body.app-race .ra-hcards{display:none}
-  body.app-race .ra-rk{max-height:380px;overflow:auto}
-}
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v31"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v32"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
 <b>AREる予想</b>
@@ -1914,7 +1908,7 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v31">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v32">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -2078,12 +2072,17 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 {% set _hon = r.get('本命評価') if r.get('本命評価') is mapping else none %}
 {% set _going = r.get('馬場状態') or r.get('馬場') or r.get('馬場表示') %}
 {% set _view = r.get('本命AI見解') %}
-<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v31">
+<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v32">
 
 {# ① レースヘッダー #}
 <article class="ra-sec ra-id">
+<div class="ra-id-top">
+<div>
 <div class="ra-id-ttl">{{r.get('開催地') or '—'}} {% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}{% if r.get('重賞グレード') %}<span class="ra-grade">{{r.get('重賞グレード')}}</span>{% endif %}</div>
 {% if r.get('レース名') not in _blank %}<p class="ra-id-name">{{r.get('レース名')}}</p>{% else %}<p class="ra-id-name ra-muted">レース名データ不足</p>{% endif %}
+</div>
+{% if r.get('開催日') or selected_date %}<div class="ra-id-date">{{r.get('開催日') or selected_date}}</div>{% endif %}
+</div>
 <ul class="ra-id-meta">
 {% if _surface not in _blank or _dist not in _blank %}<li>{{_surface or ''}}{% if _surface and _dist %} {% endif %}{% if _dist %}{% if 'm' in (_dist|string|lower) or '芝' in (_dist|string) or 'ダ' in (_dist|string) %}{{_dist}}{% else %}{{_dist}}m{% endif %}{% endif %}</li>{% endif %}
 {% if r.get('表示頭数') not in _blank %}<li>{{r.get('表示頭数')|int}}頭</li>{% elif r.get('データ頭数') not in _blank %}<li>{{r.get('データ頭数')|int}}頭</li>{% endif %}
@@ -2094,18 +2093,22 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 
 {# ② AIレース診断 #}
 <article class="ra-sec ra-diag">
-<h3>AIレース診断</h3>
+<div class="ra-hd"><span class="ic">AI</span>AIレース診断</div>
+<div class="ra-bd">
 <div class="ra-metrics ra-diag-grid">
 <div class="ra-m tone-green"><span class="k">信頼度</span><b class="v">{% if _diag.get('信頼度') not in _blank %}{{_diag.get('信頼度')}}%{% else %}データ不足{% endif %}</b></div>
 <div class="ra-m tone-orange"><span class="k">波乱度</span><b class="v">{% if _diag.get('波乱度') not in _blank %}{{_diag.get('波乱度')}}{% else %}データ不足{% endif %}</b></div>
 <div class="ra-m tone-blue"><span class="k">想定ペース</span><b class="v">{% if _diag.get('想定ペース') not in _blank %}{{_diag.get('想定ペース')}}{% else %}データ不足{% endif %}</b></div>
 <div class="ra-m tone-purple"><span class="k">レースタイプ</span><b class="v">{% if _diag.get('レースタイプ') not in _blank %}{{_diag.get('レースタイプ')}}{% else %}データ不足{% endif %}</b></div>
 </div>
+</div>
 </article>
 
-{# ③ AI予想 #}
+{# ③④ AI予想 + 展開予想 #}
+<div class="ra-duo">
 <article class="ra-sec ra-picks">
-<h3>AI予想</h3>
+<div class="ra-hd"><span class="ic">◎</span>AI予想（本命〜連下）</div>
+<div class="ra-bd">
 <div class="ra-pick-rows">
 {% set _pick_n = namespace(n=0) %}
 {% for label, mk, cls, key in [('本命','◎','is-hon','本命'),('対抗','○','is-tai','対抗'),('単穴','▲','is-ana','単穴'),('連下','△','is-ren','連下')] %}
@@ -2120,8 +2123,7 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 <span class="mk">{{mk}}</span>
 <span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
 <span class="nm">{{p.get('馬名') or '—'}}</span>
-{% if p.get('BUY表示') %}<span class="buy">BUY</span>{% endif %}
-<span class="sc"><small>AI</small><b>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</b></span>
+<span class="sc">AI {% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</span>
 </div>
       {% set _pick_n.n = _pick_n.n + 1 %}
     {% endif %}
@@ -2129,23 +2131,23 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 {% endfor %}
 {% if _pick_n.n == 0 %}<p class="ra-empty">予想データ不足</p>{% endif %}
 </div>
+</div>
 </article>
 
-{# ④ 展開予想 #}
 <article class="ra-sec ra-zones">
-<h3>展開予想（全馬ポジション）</h3>
+<div class="ra-hd"><span class="ic">展</span>展開予想（全馬ポジション）</div>
+<div class="ra-bd">
 {% set _zone_total = namespace(n=0) %}
 {% for z in ['逃げ','先行','中団','後方','不明'] %}
   {% set _zs = _zones.get(z) if _zones.get(z) is sequence else [] %}
   {% set _zone_total.n = _zone_total.n + (_zs|length) %}
 {% endfor %}
 {% set _unk_n = (_zones.get('不明')|length) if _zones.get('不明') is sequence else 0 %}
-<p class="ra-zone-count">出走 {{_det|length}}頭 / 配置 {{_zone_total.n}}頭{% if _unk_n %} · 不明 {{_unk_n}}頭{% endif %}</p>
 <div class="ra-zone-grid">
-{% for z, tone in [('逃げ','tone-green'),('先行','tone-blue'),('中団','tone-purple'),('後方','tone-orange')] %}
+{% for z, zcls in [('逃げ','z-nige'),('先行','z-sen'),('中団','z-chu'),('後方','z-kou')] %}
   {% set _zs = _zones.get(z) if _zones.get(z) is sequence else [] %}
-<div class="ra-zone {{tone}}">
-<div class="ra-zone-h">{{z}} <small>{{_zs|length}}頭</small></div>
+<div class="ra-zone {{zcls}}">
+<div class="ra-zone-h">{{z}}</div>
 <div class="ra-zone-horses">
 {% if _zs %}
 {% for h in _zs %}
@@ -2153,10 +2155,7 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
   {% set _wk = (h.get('枠番') or '')|string|replace('.0','')|trim %}
   {% set _nm = (h.get('馬名') or '—')|string %}
-<span class="ra-chip" title="{{_nm}}">
-<i class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{h.get('馬番') or _bn or '—'}}</i>
-<b>{{_nm}}</b>
-</span>
+<span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}" title="{{_nm}}">{{h.get('馬番') or _bn or '—'}}</span>
 {% endfor %}
 {% else %}
 <span class="ra-empty">—</span>
@@ -2166,78 +2165,133 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 {% endfor %}
 {% set _unk = _zones.get('不明') if _zones.get('不明') is sequence else [] %}
 {% if _unk %}
-<div class="ra-zone tone-gray">
-<div class="ra-zone-h">不明 <small>{{_unk|length}}頭</small></div>
+<div class="ra-zone z-unk">
+<div class="ra-zone-h">不明</div>
 <div class="ra-zone-horses">
 {% for h in _unk %}
   {% set _bn = (h.get('馬番数字') or h.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
   {% set _wk = (h.get('枠番') or '')|string|replace('.0','')|trim %}
   {% set _nm = (h.get('馬名') or '—')|string %}
-<span class="ra-chip" title="{{_nm}} / 想定ポジションデータ不足">
-<i class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{h.get('馬番') or _bn or '—'}}</i>
-<b>{{_nm}}</b>
-</span>
+<span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}" title="{{_nm}} / 想定ポジションデータ不足">{{h.get('馬番') or _bn or '—'}}</span>
 {% endfor %}
 </div>
 </div>
 {% endif %}
 </div>
+{% if _diag.get('想定ペース') not in _blank or _diag.get('レースタイプ') not in _blank %}
+<div class="ra-zone-foot">想定ペース {% if _diag.get('想定ペース') not in _blank %}{{_diag.get('想定ペース')}}{% else %}データ不足{% endif %}{% if _diag.get('レースタイプ') not in _blank %} → {{_diag.get('レースタイプ')}}{% endif %}</div>
+{% endif %}
+</div>
 </article>
+</div>
 
-{# ⑤ 本命評価 + ⑥注目 #}
-<div class="ra-mid">
+{# ⑤ 本命評価 + ⑥ 展開適性一覧 #}
+<div class="ra-duo">
 <article class="ra-sec ra-honmei">
-<h3>◎本命 評価詳細</h3>
 {% if _hon %}
   {% set _hc = _hon.get('カード') if _hon.get('カード') is mapping else {} %}
   {% set _bn = (_hon.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
   {% set _sc = _hon.get('予想スコア') if _hon.get('予想スコア') not in _blank else _hc.get('AI評価') %}
-<div class="ra-hon-hd">
-<span class="ra-dot ub-{{_ub}}">{{_hon.get('馬番表示') or _hon.get('馬番') or '—'}}</span>
-<div>
-<b>{{_hon.get('馬名') or '—'}}</b>
-<small>{{_hon.get('表示印') or '◎'}}本命 · AI{% if _hon.get('AI順位') not in _blank %}{{_hon.get('AI順位')}}{% else %}—{% endif %}</small>
-</div>
-</div>
-<div class="ra-hon-score"><span>AI評価</span><b>{% if _sc not in _blank %}{{_sc}}{% else %}データ不足{% endif %}</b></div>
+  {% set _ev = _hon.get('カード期待値') if _hon.get('カード期待値') not in _blank else _hc.get('期待値') %}
+<div class="ra-hd"><span class="ic">{{_hon.get('表示印') or '◎'}}</span>{{_hon.get('表示印') or '◎'}}{{_hon.get('馬番表示') or _hon.get('馬番') or ''}} {{_hon.get('馬名') or '—'}}の評価詳細</div>
+<div class="ra-bd">
 <div class="ra-hon-metrics">
-<div><span>勝率</span><b>{% if _hon.get('勝率') not in _blank %}{{_hon.get('勝率')}}%{% elif _hc.get('勝率') not in _blank %}{{_hc.get('勝率')}}%{% else %}データ不足{% endif %}</b></div>
-<div><span>複勝率</span><b>{% if _hon.get('複勝率') not in _blank %}{{_hon.get('複勝率')}}%{% elif _hc.get('複勝率') not in _blank %}{{_hc.get('複勝率')}}%{% else %}データ不足{% endif %}</b></div>
-<div><span>オッズ</span><b>{% if _hon.get('単勝オッズ表示') not in _blank %}{{_hon.get('単勝オッズ表示')}}{% elif _hc.get('単勝オッズ') not in _blank %}{{_hc.get('単勝オッズ')}}{% else %}データ不足{% endif %}</b></div>
-<div><span>期待値</span><b>{% if _hon.get('カード期待値') not in _blank %}{{_hon.get('カード期待値')}}{% elif _hc.get('期待値') not in _blank %}{{_hc.get('期待値')}}{% else %}データ不足{% endif %}</b></div>
-<div><span>信頼度</span><b>{% if _hon.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_hon.get('AI信頼度スコア')|float)}}%{% elif _hc.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_hc.get('AI信頼度スコア')|float)}}%{% else %}データ不足{% endif %}</b></div>
+<div class="is-ai"><span>AI評価</span><b>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</b></div>
+<div><span>勝率</span><b>{% if _hon.get('勝率') not in _blank %}{{_hon.get('勝率')}}%{% elif _hc.get('勝率') not in _blank %}{{_hc.get('勝率')}}%{% else %}—{% endif %}</b></div>
+<div><span>複勝率</span><b>{% if _hon.get('複勝率') not in _blank %}{{_hon.get('複勝率')}}%{% elif _hc.get('複勝率') not in _blank %}{{_hc.get('複勝率')}}%{% else %}—{% endif %}</b></div>
+<div><span>オッズ</span><b>{% if _hon.get('単勝オッズ表示') not in _blank %}{{_hon.get('単勝オッズ表示')}}{% elif _hc.get('単勝オッズ') not in _blank %}{{_hc.get('単勝オッズ')}}{% else %}—{% endif %}</b></div>
+<div class="is-ev"><span>期待値</span><b>{% if _ev not in _blank %}{{_ev}}{% else %}—{% endif %}</b></div>
 </div>
 <div class="ra-apt">
 {% for row in (_hon.get('適性詳細') if _hon.get('適性詳細') is sequence else []) %}
-  {% set _item = row.get('項目') or '' %}
-  {% set _apt_cls = 'is-lap' if _item == 'ラップ適性' else ('is-tenkai' if _item == '展開適性' else '') %}
-<div class="ra-apt-row {{_apt_cls}}">
-<div class="ra-apt-l">
-<span>{{_item}}</span>
-{% if row.get('AI評価に使用') %}<em class="used">使用</em>{% endif %}
-</div>
-<div class="ra-apt-r">
-{% if row.get('バー') not in _blank %}<span class="ra-bar"><i style="width:{{[100, row.get('バー')]|min}}%"></i></span>{% else %}<span class="ra-bar"></span>{% endif %}
 {% set _adisp = row.get('表示') if row.get('表示') not in _blank else 'データ不足' %}
-{% if row.get('バー') not in _blank %}<b title="{{_adisp}}">{{row.get('バー')|int}}</b>{% else %}<b class="miss" title="{{_adisp}}">{{_adisp}}</b>{% endif %}
-</div>
+<div class="ra-apt-row">
+<div class="ra-apt-l">{{row.get('項目')}}</div>
+<div class="ra-apt-r">{% if row.get('バー') not in _blank %}<span class="ra-bar"><i style="width:{{[100, row.get('バー')]|min}}%"></i></span>{% else %}<span class="ra-bar"></span>{% endif %}</div>
+{% if row.get('バー') not in _blank %}<b class="ra-apt-score" title="{{_adisp}}">{{row.get('バー')|int}}</b>{% else %}<b class="ra-apt-score miss" title="{{_adisp}}">{{_adisp}}</b>{% endif %}
 </div>
 {% else %}
 <p class="ra-empty">適性データ不足</p>
 {% endfor %}
 </div>
 {% if _view not in _blank %}
-<div class="ra-view"><strong>AIの見解</strong>{{_view}}</div>
+<div class="ra-view"><strong>💡 AIの見解</strong>{{_view}}</div>
 {% endif %}
+</div>
 {% else %}
-<p class="ra-empty">本命データ不足</p>
+<div class="ra-hd"><span class="ic">◎</span>本命の評価詳細</div>
+<div class="ra-bd"><p class="ra-empty">本命データ不足</p></div>
 {% endif %}
 </article>
 
+<article class="ra-sec ra-stylelist">
+<div class="ra-hd"><span class="ic">適</span>全馬の展開予測・適性一覧</div>
+<div class="ra-bd">
+<div class="ra-full-wrap">
+<table class="ra-style">
+<thead><tr><th>番</th><th>馬名</th><th>想定位置</th><th>適性</th><th>コメント</th></tr></thead>
+<tbody>
+{% for p in _det[:8] %}
+  {% set _bn = (p.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
+  {% set _ub = _bn if _bn.isdigit() else '0' %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '不明' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '—' %}
+  {% set _cm = namespace(t='') %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+  {% if p.get('距離適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ '距離' ~ p.get('距離適性')) %}{% endif %}
+  {% if p.get('ラップ適性表示') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性表示')) %}{% elif p.get('ラップ適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性')) %}{% endif %}
+<tr>
+<td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
+<td>{{p.get('馬名') or '—'}}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
+<td>{% if _apt not in _blank %}{{_apt}}{% else %}—{% endif %}</td>
+<td>{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% if _det|length > 8 %}
+<details>
+<summary class="ra-morebtn">全{{_det|length}}頭の展開予測を見る</summary>
+<div class="ra-full-wrap" style="margin-top:8px">
+<table class="ra-style">
+<tbody>
+{% for p in _det[8:] %}
+  {% set _bn = (p.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
+  {% set _ub = _bn if _bn.isdigit() else '0' %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '不明' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '—' %}
+  {% set _cm = namespace(t='') %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+  {% if p.get('距離適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ '距離' ~ p.get('距離適性')) %}{% endif %}
+<tr>
+<td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
+<td>{{p.get('馬名') or '—'}}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
+<td>{% if _apt not in _blank %}{{_apt}}{% else %}—{% endif %}</td>
+<td>{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</details>
+{% endif %}
+</div>
+</article>
+</div>
+
+{# 注目ポイント #}
 <article class="ra-sec ra-focus">
-<h3>今回の注目ポイント</h3>
+<div class="ra-hd"><span class="ic">注</span>今回の注目ポイント</div>
+<div class="ra-bd">
 {% set _cpts = _anal.get('条件変更ポイント') if _anal.get('条件変更ポイント') is sequence else [] %}
 {% if _cpts %}
 <ul class="ra-focus-grid">
@@ -2253,18 +2307,19 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 {% else %}
 <p class="ra-empty">検出できた条件変更はありません</p>
 {% endif %}
-<p class="ra-focus-note">検出できたことと評価への加点は別です。効果データが無い場合は加点しません。</p>
-</article>
+<p class="ra-focus-note">検出とAI加点は別です。効果データが無い項目は加点しません。</p>
 </div>
+</article>
 
-{# ⑧ 全馬AI評価 #}
+{# ⑧ 全頭AI評価 #}
 <article class="ra-sec ra-detail">
-<h3>全馬AI評価</h3>
+<div class="ra-hd"><span class="ic">全</span>全頭AI評価</div>
+<div class="ra-bd">
 <div class="ra-full-wrap">
 <table class="ra-full">
 <thead>
 <tr>
-<th>AI</th><th>印</th><th>番</th><th class="nm">馬名</th><th>評価</th><th>勝率</th><th>複勝</th><th>期待値</th><th>信頼</th>
+<th>AI</th><th>印</th><th>番</th><th class="nm">馬名</th><th>評価</th><th>勝率</th><th>複勝</th><th>期待値</th><th>信頼</th><th>位置</th>
 </tr>
 </thead>
 <tbody>
@@ -2274,25 +2329,30 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
   {% set _ub = _bn if _bn.isdigit() else '0' %}
   {% set _sc = p.get('予想スコア') if p.get('予想スコア') not in _blank else _card.get('AI評価') %}
   {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '—' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
 <tr>
 <td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
 <td class="mk">{{p.get('表示印') or ''}}</td>
 <td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
 <td class="nm">{{p.get('馬名') or '—'}}</td>
-<td class="sc">{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</td>
+<td>{% if _sc not in _blank %}<span class="sc">{{_sc}}</span>{% else %}—{% endif %}</td>
 <td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}{% elif _card.get('勝率') not in _blank %}{{_card.get('勝率')}}{% else %}—{% endif %}</td>
 <td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}{% else %}—{% endif %}</td>
-<td>{% if p.get('カード期待値') not in _blank %}{{p.get('カード期待値')}}{% elif _card.get('期待値') not in _blank %}{{_card.get('期待値')}}{% else %}—{% endif %}</td>
+<td>{% if _ev not in _blank %}<span class="ev">{{_ev}}</span>{% else %}—{% endif %}</td>
 <td>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}{% elif _card.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_card.get('AI信頼度スコア')|float)}}{% else %}—{% endif %}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
 </div>
+</div>
 </article>
 
 <details class="ra-sec ra-fold">
-<summary>参考：ラップ適合 × 展開 / 詳細表</summary>
+<summary>参考：ラップ適合 × 展開</summary>
 {% if _lapmap %}
 <div class="ra-scatter">
 <div class="ra-axis-y"><b>高</b><span>ラップ適合度</span><small>低</small></div>
@@ -2310,31 +2370,11 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 <div class="ra-axis-x">後方 ← 想定ポジション → 前方</div>
 </div>
 {% else %}
-<p class="ra-empty">既存の展開・ラップ適合データがある馬だけをプロットします</p>
+<p class="ra-empty" style="padding:12px">既存の展開・ラップ適合データがある馬だけをプロットします</p>
 {% endif %}
-<div class="ra-tbl-wrap" style="margin-top:8px">
-<table class="ra-tbl">
-<thead><tr><th>AI</th><th>印</th><th>馬番</th><th class="nm">馬名</th><th>AI評価</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>信頼度</th></tr></thead>
-<tbody>
-{% for p in _det %}
-  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
-<tr>
-<td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
-<td>{{p.get('表示印') or '—'}}</td>
-<td>{{p.get('馬番表示') or p.get('馬番') or '—'}}</td>
-<td class="nm">{{p.get('馬名') or '—'}}</td>
-<td>{% if p.get('予想スコア') not in _blank %}{{p.get('予想スコア')}}{% elif _card.get('AI評価') not in _blank %}{{_card.get('AI評価')}}{% else %}データ不足{% endif %}</td>
-<td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% else %}データ不足{% endif %}</td>
-<td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}データ不足{% endif %}</td>
-<td>{% if p.get('カード期待値') not in _blank %}{{p.get('カード期待値')}}{% else %}データ不足{% endif %}</td>
-<td>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% else %}データ不足{% endif %}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
 </details>
 </section>
+
 
 <details class="rb-more fx-rank-fold">
 <summary>予想サマリー・要因</summary>
