@@ -105,7 +105,7 @@ def run(url: str, label: str, stats) -> dict:
     buy = html.count('🔥 BUY') + html.count('class="fx-buy"') + html.count('data-race-judge="buy"')
     marks = {
         'honmei': html.count('◎本命') + html.count('本命'),
-        'ui': 'areu-app-v29' in html or 'areu-app-v28' in html or 'data-ui="areu-app-v29"' in html or 'data-ui="areu-app-v28"' in html,
+        'ui': any(x in html for x in ('areu-app-v30', 'areu-app-v29', 'areu-app-v28', 'data-ui="areu-app-v30"', 'data-ui="areu-app-v29"', 'data-ui="areu-app-v28"')),
         'bytes': len(resp.data),
         'status': resp.status_code,
     }

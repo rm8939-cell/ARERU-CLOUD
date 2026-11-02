@@ -162,20 +162,22 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v29_is_responsive_and_valid(self):
+    def test_template_v30_is_compact_dashboard(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v29"', html)
-        self.assertIn('data-ra-ui="v29"', html)
+        self.assertIn('data-ui="areu-app-v30"', html)
+        self.assertIn('data-ra-ui="v30"', html)
         self.assertIn('ra-metrics', html)
-        self.assertIn('全頭AI評価', html)
+        self.assertIn('全馬AI評価', html)
         self.assertIn('AIレース診断', html)
         self.assertIn('AI予想（◎○▲△）', html)
         self.assertIn('展開予想（全馬ポジション）', html)
-        self.assertIn('本命馬の評価詳細', html)
+        self.assertIn('◎本命 評価詳細', html)
         self.assertIn('今回の注目ポイント', html)
-        self.assertIn('全馬の展開予測・適性一覧', html)
-        self.assertIn('ラップ適合度 × 展開ポジション', html)
+        self.assertIn('ra-mini', html)
+        self.assertIn('ラップ適合', html)
+        # 縦長巨大カード前提の重複一覧は置かない
+        self.assertNotIn('全馬の展開予測・適性一覧', html)
         self.assertNotIn('section-title gold">推奨馬券', html)
         self.assertNotIn('label">軍資金', html)
         self.assertNotIn('var(--i', html)
