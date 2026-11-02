@@ -2744,6 +2744,29 @@ def _stamp_horse_analysis_fields(p: dict, pace_label: str, past: dict | None = N
     style_f, pos_label, pos_n = _style_from_text(style_txt)
     if not pos_label:
         style_f, pos_label, pos_n = _style_from_text(card.get('展開相性') or '')
+    # 展開相性が無いときは過去着順・人気から既存 infer_style で脚質を復元（新規ロジックではない）
+    if not pos_label:
+        try:
+            import numpy as np
+            from race_sim import infer_style
+            from race_display import style_float_to_pos
+            finishes = []
+            pops = []
+            for i in range(1, 6):
+                try:
+                    finishes.append(float(past.get(f'着順{i}')))
+                except (TypeError, ValueError):
+                    finishes.append(float('nan'))
+                try:
+                    pops.append(float(past.get(f'人気{i}')))
+                except (TypeError, ValueError):
+                    pops.append(float('nan'))
+            if any(x == x for x in finishes):  # nan != nan
+                style_f = float(infer_style(np.array(finishes, dtype=float), np.array(pops, dtype=float)))
+                pos_label, pos_n = style_float_to_pos(style_f)
+                p['脚質推定'] = '過去着順・人気'
+        except Exception:
+            pass
     lap_label = p.get('ラップ適性') or card.get('ラップ適性') or ''
     lap_fit = None
     if style_f is not None and pace_label:
@@ -2759,12 +2782,13 @@ def _stamp_horse_analysis_fields(p: dict, pace_label: str, past: dict | None = N
     p['想定ポジション'] = pos_label or None
     p['想定ポジション番号'] = pos_n
     p['脚質'] = pos_label or None
+    p['脚質スコア'] = round(float(style_f), 3) if style_f is not None else None
     p['展開適性'] = None
     compat = p.get('展開相性') or card.get('展開相性')
     if not _disp_blank(compat):
         p['展開適性'] = compat
     elif pos_label:
-        p['展開適性'] = pos_label
+        p['展開適性'] = pos_label + ('（過去走推定）' if p.get('脚質推定') else '')
 
     last_name = str(past.get('レース名1') or '').strip()
     last_fin = str(past.get('着順1') or '').strip()
@@ -3011,12 +3035,13 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
         rank_src.append(p)
     try:
         from race_display import (
-            assign_zones, build_diagnosis, focus_condition_points,
+            assign_zones, build_diagnosis, focus_condition_points, build_honmei_view,
         )
         race['展開ゾーン'] = assign_zones(race.get('AI一覧') or [])
         cond_pts = focus_condition_points(race.get('AI一覧') or [])
         race['AIレース診断'] = build_diagnosis(race, anal)
     except Exception:
+        build_honmei_view = None  # type: ignore
         race['展開ゾーン'] = {'逃げ': [], '先行': [], '中団': [], '後方': [], '不明': []}
         cond_pts = []
         race['AIレース診断'] = {
@@ -3037,6 +3062,12 @@ def _stamp_race_analysis_display(race: dict, horse_meta: dict | None = None) -> 
                 hon = p
                 break
     race['本命評価'] = hon
+    try:
+        if build_honmei_view is None:
+            from race_display import build_honmei_view as build_honmei_view
+        race['本命AI見解'] = build_honmei_view(hon, race, anal)
+    except Exception:
+        race['本命AI見解'] = None
     from collections import defaultdict
     buckets = defaultdict(list)
     for pt in pts:

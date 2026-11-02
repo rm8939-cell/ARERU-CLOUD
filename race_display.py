@@ -225,8 +225,26 @@ def build_diagnosis(race: dict, anal: dict) -> dict:
     }
 
 
+def style_float_to_pos(style_f) -> tuple[str | None, int | None]:
+    """race_sim の脚質スコア(0逃げ〜1追込)を表示用ポジションへ。"""
+    try:
+        v = float(style_f)
+    except (TypeError, ValueError):
+        return None, None
+    if v <= 0.28:
+        return "逃げ", 1
+    if v <= 0.45:
+        return "先行", 2
+    if v <= 0.65:
+        return "差し", 3
+    return "追込", 4
+
+
 def assign_zones(horses: list[dict]) -> dict:
-    """出走全馬を逃げ/先行/中団/後方へ振り分ける。1頭も落とさない。"""
+    """出走全馬を逃げ/先行/中団/後方へ振り分ける。1頭も落とさない。
+
+    不明は本当に判断できない馬だけ。差し→中団、追込→後方。
+    """
     zones = {z: [] for z in ZONE_ORDER}
     for p in horses or []:
         if not isinstance(p, dict):
@@ -234,18 +252,23 @@ def assign_zones(horses: list[dict]) -> dict:
         pos = p.get("想定ポジション") or p.get("脚質") or ""
         zone = POS_TO_ZONE.get(str(pos), "不明")
         if zone == "不明":
-            # 展開適性文字列からも拾う
             txt = str(p.get("展開適性") or p.get("展開相性") or "")
             for k, z in POS_TO_ZONE.items():
                 if k in txt:
                     zone = z
+                    pos = k
                     break
+        if zone == "不明" and p.get("脚質スコア") is not None:
+            label, _n = style_float_to_pos(p.get("脚質スコア"))
+            if label:
+                zone = POS_TO_ZONE.get(label, "不明")
+                pos = label
         entry = {
             "馬番": p.get("馬番表示") or p.get("馬番"),
             "馬番数字": p.get("馬番"),
             "枠番": p.get("枠番"),
             "馬名": p.get("馬名"),
-            "想定位置": POS_TO_ZONE.get(str(pos), None) and str(pos) or (None if zone == "不明" else str(pos) or zone),
+            "想定位置": str(pos) if not _blank(pos) else (None if zone == "不明" else zone),
             "展開適性": p.get("展開適性") or p.get("展開相性"),
             "AI順位": p.get("AI順位"),
             "表示印": p.get("表示印"),
@@ -256,6 +279,64 @@ def assign_zones(horses: list[dict]) -> dict:
         zones[zone].append(entry)
         p["展開ゾーン"] = zone
     return zones
+
+
+def build_honmei_view(horse: dict | None, race: dict | None, anal: dict | None) -> str | None:
+    """本命のAI見解。実データがある文だけつなぐ。捏造しない。"""
+    if not isinstance(horse, dict):
+        return None
+    race = race or {}
+    anal = anal or {}
+    card = horse.get("カード") if isinstance(horse.get("カード"), dict) else {}
+    bits: list[str] = []
+
+    venue = str(race.get("開催地") or race.get("競馬場") or "").strip()
+    dist = str(race.get("距離") or race.get("距離表示") or "").strip()
+    course = horse.get("コース適性") or card.get("コース適性")
+    distance = horse.get("距離適性") or card.get("距離適性")
+    if not _blank(course) and course in ("○", "◎", "好転") and venue:
+        bits.append(f"{venue}コース適性を評価")
+    elif not _blank(course) and course not in ("－", "-", "×"):
+        bits.append(f"コース適性は{course}")
+    if not _blank(distance) and distance in ("○", "◎", "好転") and dist:
+        bits.append(f"{dist}の距離適性も裏付け")
+    elif not _blank(distance) and distance not in ("－", "-", "×"):
+        bits.append(f"距離適性は{distance}")
+
+    lap = horse.get("ラップ適性表示") or horse.get("ラップ適性") or card.get("ラップ適性")
+    diag = race.get("AIレース診断") if isinstance(race.get("AIレース診断"), dict) else {}
+    race_type = anal.get("レースタイプ") or diag.get("レースタイプ")
+    pace = anal.get("想定ペース表示") or anal.get("想定ペース") or diag.get("想定ペース")
+    if not _blank(lap):
+        if not _blank(race_type):
+            bits.append(f"想定「{race_type}」に対しラップ適性は{lap}")
+        elif not _blank(pace):
+            bits.append(f"想定ペース{pace}に対しラップ適性は{lap}")
+        else:
+            bits.append(f"ラップ適性は{lap}")
+
+    tenkai = horse.get("展開適性") or horse.get("展開相性") or card.get("展開相性")
+    if not _blank(tenkai):
+        bits.append(f"展開面は{tenkai}")
+
+    prev = horse.get("前走内容")
+    if not _blank(prev):
+        bits.append(f"前走は{prev}")
+
+    # 重複除去しつつ最大3文
+    out = []
+    seen = set()
+    for b in bits:
+        b = str(b).strip().rstrip("。")
+        if not b or b in seen:
+            continue
+        seen.add(b)
+        out.append(b)
+        if len(out) >= 3:
+            break
+    if not out:
+        return None
+    return "。".join(out) + "。"
 
 
 def detect_condition_changes(

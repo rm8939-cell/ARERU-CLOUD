@@ -162,21 +162,22 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v30_is_compact_dashboard(self):
+    def test_template_v31_is_dashboard_hierarchy(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v30"', html)
-        self.assertIn('data-ra-ui="v30"', html)
+        self.assertIn('data-ui="areu-app-v31"', html)
+        self.assertIn('data-ra-ui="v31"', html)
         self.assertIn('ra-metrics', html)
         self.assertIn('全馬AI評価', html)
         self.assertIn('AIレース診断', html)
-        self.assertIn('AI予想（◎○▲△）', html)
+        self.assertIn('AI予想', html)
         self.assertIn('展開予想（全馬ポジション）', html)
         self.assertIn('◎本命 評価詳細', html)
+        self.assertIn('AIの見解', html)
         self.assertIn('今回の注目ポイント', html)
-        self.assertIn('ra-mini', html)
+        self.assertIn('ra-full', html)
+        self.assertIn('全馬AI評価', html)
         self.assertIn('ラップ適合', html)
-        # 縦長巨大カード前提の重複一覧は置かない
         self.assertNotIn('全馬の展開予測・適性一覧', html)
         self.assertNotIn('section-title gold">推奨馬券', html)
         self.assertNotIn('label">軍資金', html)
@@ -192,6 +193,8 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertIn('color:#526174', html)
         self.assertIn('border:1px solid #DDE5E2', html)
         self.assertIn('border-radius:18px', html)
+        # 詰め込み禁止の指標: 極端な 9px 本文をメインボードに使わない
+        self.assertNotIn('body.app-race .ra-board[data-ra-ui="v31"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:9px', html)
 
     def test_badges_use_jra_frame_colors_from_waku(self):
         from pathlib import Path
@@ -234,15 +237,36 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(len(zones['先行']), 1)
         self.assertEqual(len(zones['中団']), 1)
         self.assertEqual(len(zones['後方']), 1)
-        self.assertEqual(len(zones['不明']), 1)
+        # 展開相性が空でも「不明を大量生産」しない設計。過去走が無ければ不明1頭は許容。
+        self.assertLessEqual(len(zones['不明']), 1)
         self.assertIsNotNone(race.get('AIレース診断'))
         self.assertIsNotNone(race.get('本命評価'))
         for p in race['AI一覧']:
             self.assertIn('条件変更', p)
             self.assertIn('適性詳細', p)
-            # ブリンカーはデータ列が無いので必ずデータ不足
             labels = {c.get('ラベル') for c in p['条件変更']}
             self.assertTrue(any('ブリンカー' in str(x) or '馬具' in str(x) for x in labels))
+
+    def test_past_finish_infers_zone_when_style_blank(self):
+        race = _race('中山3R', horses=[
+            _horse('推定馬', 8, '', '', AREru指数=77),
+        ])
+        meta = {
+            ( '202609040911', '推定馬'): {
+                '着順1': 2, '人気1': 2,
+                '着順2': 1, '人気2': 3,
+                '着順3': 3, '人気3': 2,
+            }
+        }
+        # race_id used in _race helper
+        race['race_id'] = '202609040911'
+        from web_app import clean_horse
+        meta = {(race['race_id'], clean_horse('推定馬')): meta[('202609040911', '推定馬')]}
+        _stamp_ai_field_ranks(race)
+        _stamp_race_analysis_display(race, meta)
+        p = race['AI一覧'][0]
+        self.assertIsNotNone(p.get('想定ポジション'))
+        self.assertNotEqual(p.get('展開ゾーン'), '不明')
 
     def test_condition_change_does_not_auto_boost(self):
         from race_display import detect_condition_changes
