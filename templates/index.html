@@ -7,7 +7,7 @@
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
 <meta http-equiv="Cache-Control" content="no-store, max-age=0">
-<meta name="areu-ui" content="app-v33">
+<meta name="areu-ui" content="app-v34">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
@@ -647,15 +647,19 @@ body.app-race .fx-venue-form select[name="date"]{display:none}
   .fx-facs{grid-template-columns:1fr 1fr}
 }
 /* ===== AREU APP V8: 予想画面を旧Webレイアウトから切り離す ===== */
-body.app-race{background:#F7F9F8 !important;color:#10233F}
-body.app-race .header{background:#F7F9F8 !important;color:#10233F !important;border-bottom:1px solid #DDE5E2 !important;box-shadow:none !important}
-body.app-race .fx-top-inner{grid-template-columns:minmax(0,1fr) auto;min-height:0;padding:2px 0;gap:6px;align-items:center}
-body.app-race .fx-logo{display:none !important}
-body.app-race .fx-venue-slot{justify-content:flex-start;flex:1;min-width:0}
-body.app-race .fx-venue-form select{background:#fff;color:#10233F;border:1px solid #DDE5E2;box-shadow:none;font-size:12px;padding:3px 22px 3px 8px}
+body.app-race{background:#E8EEF2 !important;color:#1A2332}
+body.app-race .header{background:linear-gradient(90deg,#0A5C38,#0B7A45) !important;color:#fff !important;border-bottom:0 !important;box-shadow:0 2px 10px rgba(10,92,56,.18) !important}
+body.app-race .fx-top-inner{grid-template-columns:auto minmax(0,1fr) auto;min-height:52px;padding:calc(6px + env(safe-area-inset-top,0)) 0 8px;gap:8px;align-items:center}
+body.app-race .fx-logo{display:flex !important;color:#fff}
+body.app-race .fx-logo .mark{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);width:30px;height:30px;border-radius:999px;font-size:12px}
+body.app-race .fx-logo b{font-size:18px;letter-spacing:.06em}
+body.app-race .fx-logo b:after{content:" 競馬AI予想";font-size:10px;font-weight:700;opacity:.85;letter-spacing:0;margin-left:2px}
+body.app-race .fx-venue-slot{justify-content:flex-end;flex:1;min-width:0}
+body.app-race .fx-venue-form select{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:none;font-size:12px;padding:4px 22px 4px 8px}
+body.app-race .fx-venue-form select option{color:#1A2332}
 body.app-race .fx-venue-form select[name="date"]{display:block;width:auto;flex:0 0 auto}
 body.app-race:not(.picker) .fx-venue-form select[name="date"]{display:none}
-body.app-race .fx-icon{background:#fff;border:1px solid #DDE5E2;color:#087443;width:24px;height:24px;border-radius:7px;font-size:11px}
+body.app-race .fx-icon{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff;width:28px;height:28px;border-radius:8px;font-size:11px}
 body.app-race .fx-icons{flex-shrink:0}
 body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !important}
 body.app-race .fx-top-inner .fx-icons .fx-icon:last-child{display:none}
@@ -775,7 +779,8 @@ body.app-race .fx-vchips::-webkit-scrollbar{display:none}
 body.app-race .fx-vchip{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:3px 10px;border-radius:999px;background:#fff;border:1px solid #DDE5E2;color:#087443;font-size:12px;font-weight:900;text-decoration:none;white-space:nowrap}
 body.app-race .fx-vchip.is-on{background:#087443;color:#fff;border-color:#087443}
 body.app-race .fx-here{display:flex;align-items:baseline;gap:6px;min-width:0;padding:0 0 2px}
-body.app-race .fx-stick{padding:0 0 2px}
+body.app-race .fx-stick{padding:8px 0 6px;background:#E8EEF2}
+body.app-race .wrap.fx-stick{background:#E8EEF2}
 body.app-race .fx-here b,body.app-race .fx-here .now{font-size:15px;font-weight:900;color:#10233F;line-height:1.1}
 body.app-race .fx-here .now{color:#087443}
 body.app-race .fx-here small{min-width:0;font-size:12px;font-weight:800;color:#5E6B7A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -790,7 +795,7 @@ body.app-race .fx-nav{display:none !important}
 body.app-race .fx-race{scroll-margin-top:148px;padding-bottom:6px}
 body.app-race .buy-board,body.app-race .buy-empty-card,body.app-race .watch-grid,body.app-race .skip-fold{display:none !important}
 body.app-race .fx-icons .fx-icon[aria-label="今日の買い"]{display:none !important}
-body.app-race:not(.picker) .fx-top-inner{display:none}
+body.app-race:not(.picker) .fx-top-inner{display:grid}
 body.app-race .header .wrap.fx-stick{padding-top:5px;padding-bottom:5px}
 body.app-race .fx-id{display:flex;align-items:center;justify-content:space-between;gap:6px;background:transparent;color:#fff;border-radius:0;padding:0 0 4px;margin:0}
 body.app-race .fx-id-1{font-size:15px;font-weight:900;line-height:1.2}
@@ -1090,128 +1095,130 @@ body.app-race .ra-hcard .kv span{display:flex;flex-direction:column;gap:2px;padd
 body.app-race .ra-hcard .kv b{color:#10233F;font-size:13px;font-weight:900;overflow-wrap:anywhere}
 /* ===== v33: 参考画像と同一構成のARERU AIダッシュボード ===== */
 body.app-race{background:#E8EEF2}
-body.app-race .ra-board[data-ra-ui="v33"]{display:flex;flex-direction:column;gap:12px;margin:6px 0 16px;color:#1A2332;max-width:100%;overflow-x:hidden}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-sec{background:#fff;border:0;border-radius:14px;padding:0;min-width:0;overflow:hidden;box-shadow:0 2px 10px rgba(16,35,63,.08)}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hd{display:flex;align-items:center;gap:8px;margin:0;padding:10px 14px;background:linear-gradient(90deg,#0A5C38,#0B7A45);color:#fff;font-size:13px;font-weight:900;letter-spacing:.02em}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hd .ic{flex:0 0 auto;width:20px;height:20px;border-radius:6px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-bd{padding:12px 12px 14px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-empty{margin:0;font-size:12px;font-weight:700;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-muted{color:#6B7785 !important}
+body.app-race .ra-board[data-ra-ui="v34"]{display:flex;flex-direction:column;gap:12px;margin:6px 0 16px;color:#1A2332;max-width:100%;overflow-x:hidden}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-sec{background:#fff;border:0;border-radius:14px;padding:0;min-width:0;overflow:hidden;box-shadow:0 2px 10px rgba(16,35,63,.08)}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hd{display:flex;align-items:center;gap:8px;margin:0;padding:10px 14px;background:linear-gradient(90deg,#0A5C38,#0B7A45);color:#fff;font-size:13px;font-weight:900;letter-spacing:.02em}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hd .ic{flex:0 0 auto;width:20px;height:20px;border-radius:6px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-bd{padding:12px 12px 14px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-empty{margin:0;font-size:12px;font-weight:700;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-muted{color:#6B7785 !important}
 /* ① race header — photo+title style */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id{padding:12px 14px;display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:start}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-thumb{width:56px;height:42px;border-radius:8px;background:linear-gradient(135deg,#0B7A45,#1B4F9C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-ttl{margin:0;font-size:20px;font-weight:900;line-height:1.15;color:#1A2332;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-grade{display:inline-block;padding:2px 8px;border-radius:999px;background:#E91E8C;color:#fff;font-size:11px;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-name{margin:4px 0 0;font-size:16px;font-weight:900;color:#1A2332;line-height:1.25}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-date{font-size:12px;font-weight:800;color:#6B7785;white-space:nowrap}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-meta{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0;padding:0;list-style:none;grid-column:1/-1}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-meta li{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:transparent;font-size:13px;font-weight:800;color:#1A2332}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-meta .dot{width:18px;height:18px;border-radius:999px;background:#0B7A45;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-id-meta .go{color:#C45C12}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id{padding:12px 14px;display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;align-items:start;background:linear-gradient(90deg,#D9EEF5 0%,#F7FBFC 42%,#fff 100%)}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-thumb{width:72px;height:54px;border-radius:10px 0 0 10px;margin:-12px 0 -12px -14px;background:linear-gradient(135deg,#0B7A45 0%,#1B4F9C 55%,rgba(27,79,156,.15) 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:900;position:relative;overflow:hidden}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-thumb:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 55%,rgba(255,255,255,.92) 100%)}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-ttl{margin:0;font-size:20px;font-weight:900;line-height:1.15;color:#1A2332;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-grade{display:inline-block;padding:2px 8px;border-radius:999px;background:#E91E8C;color:#fff;font-size:11px;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-name{margin:4px 0 0;font-size:16px;font-weight:900;color:#1A2332;line-height:1.25}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-date{font-size:12px;font-weight:800;color:#6B7785;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-meta{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0;padding:0;list-style:none;grid-column:1/-1}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-meta li{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:transparent;font-size:13px;font-weight:800;color:#1A2332}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-meta .dot{width:18px;height:18px;border-radius:999px;background:#0B7A45;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-id-meta .go{color:#C45C12}
 /* ② diagnosis — horizontal strip like reference */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag{padding:12px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,#0A5C38,#0B7A45);color:#fff;font-size:13px;font-weight:900;white-space:nowrap}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-badge .ic{width:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.22);display:inline-flex;align-items:center;justify-content:center;font-size:10px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:76px;padding:8px 12px;border-radius:10px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill .k{font-size:11px;font-weight:800;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill.tone-green .k{color:#0B7A45}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill.tone-orange .k{color:#D35400}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill .v{font-size:22px;font-weight:900;line-height:1.1}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill.tone-green{background:#E7F6EE}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill.tone-green .v{color:#0B7A45}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill.tone-orange{background:#FFF1E4}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pill.tone-orange .v{color:#D35400}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-side{flex:1 1 160px;min-width:0;padding-left:10px;border-left:1px solid #E2E8EC;display:grid;gap:6px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-side .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-side .lab{display:inline-block;padding:3px 8px;border-radius:999px;background:#F0F3F5;font-size:11px;font-weight:800;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-side .val{font-size:13px;font-weight:900;color:#1A2332}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag{padding:12px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,#0A5C38,#0B7A45);color:#fff;font-size:13px;font-weight:900;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-badge .ic{width:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.22);display:inline-flex;align-items:center;justify-content:center;font-size:10px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:76px;padding:8px 12px;border-radius:10px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill .k{font-size:11px;font-weight:800;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill.tone-green .k{color:#0B7A45}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill.tone-orange .k{color:#D35400}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill .v{font-size:22px;font-weight:900;line-height:1.1}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill.tone-green{background:#E7F6EE}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill.tone-green .v{color:#0B7A45}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill.tone-orange{background:#FFF1E4}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pill.tone-orange .v{color:#D35400}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-side{flex:1 1 160px;min-width:0;padding-left:10px;border-left:1px solid #E2E8EC;display:grid;gap:6px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-side .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-side .lab{display:inline-block;padding:3px 8px;border-radius:999px;background:#F0F3F5;font-size:11px;font-weight:800;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-side .val{font-size:13px;font-weight:900;color:#1A2332}
 /* ③ picks */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick-rows{display:grid;gap:6px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick{display:flex;align-items:center;gap:8px;min-width:0;padding:9px 10px;border-radius:10px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-hon{background:#EAF7F0}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-tai{background:#EEF5FF}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-ana{background:#FFF4E8}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-ren{background:#F5F7F8}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick .mk{flex:0 0 1.3em;font-size:17px;font-weight:900;text-align:center}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-hon .mk{color:#E53935}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-tai .mk{color:#1B4F9C}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-ana .mk{color:#D35400}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick.is-ren .mk{color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick .ra-dot{position:static;margin:0;flex:0 0 auto;width:26px;height:26px;font-size:12px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pick .sc{flex:0 0 auto;font-size:14px;font-weight:900;color:#0B7A45;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick-rows{display:grid;gap:6px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick{display:flex;align-items:center;gap:8px;min-width:0;padding:9px 10px;border-radius:10px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-hon{background:#EAF7F0}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-tai{background:#EEF5FF}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-ana{background:#FFF4E8}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-ren{background:#F5F7F8}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .mk{flex:0 0 1.3em;font-size:17px;font-weight:900;text-align:center}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-hon .mk{color:#E53935}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-tai .mk{color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-ana .mk{color:#D35400}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick.is-ren .mk{color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .ra-dot{position:static;margin:0;flex:0 0 auto;width:26px;height:26px;font-size:12px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .nm{flex:1 1 auto;min-width:0;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .sc{flex:0 0 auto;font-size:14px;font-weight:900;color:#0B7A45;white-space:nowrap}
 /* ④ zones — 4 columns, white circles + colored picks */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone{border-radius:10px;padding:8px 4px 10px;min-width:0;min-height:92px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-nige{background:#FDE8EC}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-sen{background:#FFF1E6}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-chu{background:#EAF2FF}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-kou{background:#F3EEF8}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-unk{background:#F0F3F5;grid-column:1/-1}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone-h{margin:0 0 8px;text-align:center;font-size:12px;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-nige .ra-zone-h{color:#C62828}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-sen .ra-zone-h{color:#D35400}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-chu .ra-zone-h{color:#1B4F9C}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone.z-kou .ra-zone-h{color:#6B3FA0}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone-horses{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone .ra-dot{position:static;margin:0;width:24px;height:24px;font-size:11px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone .ra-dot.is-plain{background:#fff !important;color:#1A2332 !important;border-color:#9AA5B1 !important;box-shadow:none !important}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone-foot{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#EAF6F0;color:#0B7A45;font-size:12px;font-weight:800;line-height:1.4;position:relative}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-zone-foot:after{content:"";display:block;margin-top:8px;height:8px;border-radius:99px;background:linear-gradient(90deg,#0B7A45,#7BC99A);clip-path:polygon(0 0,92% 0,100% 50%,92% 100%,0 100%)}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone{border-radius:10px;padding:8px 4px 10px;min-width:0;min-height:92px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-nige{background:#FDE8EC}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-sen{background:#FFF1E6}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-chu{background:#EAF2FF}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-kou{background:#F3EEF8}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-unk{background:#F0F3F5;grid-column:1/-1}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-h{margin:0 0 8px;text-align:center;font-size:12px;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-nige .ra-zone-h{color:#C62828}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-sen .ra-zone-h{color:#D35400}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-chu .ra-zone-h{color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone.z-kou .ra-zone-h{color:#6B3FA0}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-horses{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone .ra-dot{position:static;margin:0;width:24px;height:24px;font-size:11px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone .ra-dot.is-plain{background:#fff !important;color:#1A2332 !important;border-color:#9AA5B1 !important;box-shadow:none !important}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-foot{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#EAF6F0;color:#0B7A45;font-size:12px;font-weight:800;line-height:1.4;position:relative}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-foot:before{content:"";display:block;height:14px;margin:0 0 8px;border-radius:8px;background:linear-gradient(90deg,#0B7A45,#A8E0BF);clip-path:polygon(0 0,92% 0,100% 50%,92% 100%,0 100%)}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-foot:after{display:none}
 /* ⑤ honmei — reference metrics row + bars */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-top{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:0 0 12px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-ai{display:flex;flex-direction:column;justify-content:center;padding:10px 14px;border-radius:10px;background:#E7F6EE;min-width:96px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-ai span{font-size:11px;font-weight:800;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-ai b{font-size:24px;font-weight:900;color:#0B7A45;line-height:1.1}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;flex:1 1 200px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics>div{display:flex;flex-direction:column;gap:2px;padding:8px 6px;background:#F7F9F8;border-radius:10px;text-align:center}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics span{font-size:10px;font-weight:800;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics b{font-size:14px;font-weight:900;color:#1A2332}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics .is-ev{background:#FFF1E4}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics .is-ev b{color:#D35400}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-apt{display:grid;gap:9px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-apt-row{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.5fr) 2.2em;gap:8px;align-items:center}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-apt-l{font-size:12px;font-weight:900;color:#1A2332;display:flex;align-items:center;gap:4px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-apt-l .ico{opacity:.7}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-bar{display:block;height:10px;background:#E8EEF0;border-radius:99px;overflow:hidden}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-bar i{display:block;height:100%;background:linear-gradient(90deg,#22A35A,#0B7A45);border-radius:99px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-apt-score{font-size:13px;font-weight:900;text-align:right;font-variant-numeric:tabular-nums}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-apt-score.miss{font-size:10px;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-view{margin:12px 0 0;padding:12px;border-radius:10px;background:#FFF8E1;border:1px solid #F0E0A8;font-size:13px;font-weight:750;line-height:1.55;color:#1A2332}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-view strong{display:block;margin:0 0 4px;font-size:12px;font-weight:900;color:#B8860B}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-top{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:0 0 12px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-ai{display:flex;flex-direction:column;justify-content:center;padding:10px 14px;border-radius:10px;background:#E7F6EE;min-width:96px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-ai span{font-size:11px;font-weight:800;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-ai b{font-size:24px;font-weight:900;color:#0B7A45;line-height:1.1}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;flex:1 1 200px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics>div{display:flex;flex-direction:column;gap:2px;padding:8px 6px;background:#F7F9F8;border-radius:10px;text-align:center}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics span{font-size:10px;font-weight:800;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics b{font-size:14px;font-weight:900;color:#1A2332}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics .is-ev{background:#FFF1E4}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics .is-ev b{color:#D35400}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt{display:grid;gap:9px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-row{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.5fr) 2.2em;gap:8px;align-items:center}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-l{font-size:12px;font-weight:900;color:#1A2332;display:flex;align-items:center;gap:4px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-l .ico{opacity:.7}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-bar{display:block;height:10px;background:#E8EEF0;border-radius:99px;overflow:hidden}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-bar i{display:block;height:100%;background:linear-gradient(90deg,#22A35A,#0B7A45);border-radius:99px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-score{font-size:13px;font-weight:900;text-align:right;font-variant-numeric:tabular-nums}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-score.miss{font-size:10px;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-view{margin:12px 0 0;padding:12px;border-radius:10px;background:#FFF8E1;border:1px solid #F0E0A8;font-size:13px;font-weight:750;line-height:1.55;color:#1A2332}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-view strong{display:block;margin:0 0 4px;font-size:12px;font-weight:900;color:#B8860B}
 /* ⑥ style list */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-style{width:100%;border-collapse:collapse;font-size:12px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-style th,body.app-race .ra-board[data-ra-ui="v33"] .ra-style td{padding:8px 4px;border-bottom:1px solid #EEF2F0;text-align:left;font-weight:800;vertical-align:middle}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-style th{color:#6B7785;font-size:11px;background:#F7F9F8}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pos{display:inline-flex;align-items:center;justify-content:center;min-width:2.6em;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pos.p-nige{background:#FDE8EC;color:#C62828}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pos.p-sen{background:#FFF1E6;color:#D35400}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pos.p-chu{background:#EAF2FF;color:#1B4F9C}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pos.p-kou{background:#F3EEF8;color:#6B3FA0}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-pos.p-unk{background:#F0F3F5;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-morebtn{display:flex;align-items:center;justify-content:center;width:100%;margin-top:10px;min-height:40px;padding:8px;border:1px solid #DDE5E2;border-radius:10px;background:#F7F9F8;font-size:12px;font-weight:800;color:#0B7A45;cursor:pointer}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-style{width:100%;border-collapse:collapse;font-size:12px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-style th,body.app-race .ra-board[data-ra-ui="v34"] .ra-style td{padding:8px 4px;border-bottom:1px solid #EEF2F0;text-align:left;font-weight:800;vertical-align:middle}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-style th{color:#6B7785;font-size:11px;background:#F7F9F8}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pos{display:inline-flex;align-items:center;justify-content:center;min-width:2.6em;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pos.p-nige{background:#FDE8EC;color:#C62828}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pos.p-sen{background:#FFF1E6;color:#D35400}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pos.p-chu{background:#EAF2FF;color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pos.p-kou{background:#F3EEF8;color:#6B3FA0}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-pos.p-unk{background:#F0F3F5;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-morebtn{display:flex;align-items:center;justify-content:center;width:100%;margin-top:10px;min-height:40px;padding:8px;border:1px solid #DDE5E2;border-radius:10px;background:#F7F9F8;font-size:12px;font-weight:800;color:#0B7A45;cursor:pointer}
 /* focus */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-focus-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;list-style:none}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-focus-grid li{padding:10px;border-radius:10px;background:#FFF4E8;border:1px solid #F0D2B0;font-size:12px;font-weight:800;color:#C45C12;line-height:1.35}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-focus-grid li.is-plus{background:#EAF6F0;border-color:#C7E5D4;color:#0B7A45}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-focus-grid li.is-minus{background:#FDECEC;border-color:#F5C2C0;color:#C62828}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-focus-grid li .lab{display:block;font-size:13px;font-weight:900;color:#1A2332;margin-bottom:2px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-focus-grid li .fx{display:block;font-size:11px;font-weight:750;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-focus-note{margin:8px 0 0;font-size:11px;font-weight:700;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-focus-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;list-style:none}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-focus-grid li{padding:10px;border-radius:10px;background:#FFF4E8;border:1px solid #F0D2B0;font-size:12px;font-weight:800;color:#C45C12;line-height:1.35}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-focus-grid li.is-plus{background:#EAF6F0;border-color:#C7E5D4;color:#0B7A45}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-focus-grid li.is-minus{background:#FDECEC;border-color:#F5C2C0;color:#C62828}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-focus-grid li .lab{display:block;font-size:13px;font-weight:900;color:#1A2332;margin-bottom:2px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-focus-grid li .fx{display:block;font-size:11px;font-weight:750;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-focus-note{margin:8px 0 0;font-size:11px;font-weight:700;color:#6B7785}
 /* full table */
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full{width:100%;min-width:640px;border-collapse:collapse;font-size:11px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full th,body.app-race .ra-board[data-ra-ui="v33"] .ra-full td{padding:7px 4px;border-bottom:1px solid #EEF2F0;text-align:center;font-weight:800;white-space:nowrap;vertical-align:middle}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full th{color:#6B7785;font-size:10px;background:#F7F9F8}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full td.nm,body.app-race .ra-board[data-ra-ui="v33"] .ra-full th.nm{text-align:left}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full .ra-dot{position:static;margin:0 auto;width:22px;height:22px;font-size:11px}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full .sc{display:inline-block;padding:2px 7px;border-radius:999px;background:#E7F6EE;color:#0B7A45;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-full .ev{display:inline-block;padding:2px 7px;border-radius:999px;background:#FFF1E4;color:#D35400;font-weight:900}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-fold>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:12px;font-weight:800;color:#6B7785}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-fold>summary::-webkit-details-marker{display:none}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-fold[open]>summary{border-bottom:1px solid #DDE5E2;color:#0B7A45}
-body.app-race .ra-board[data-ra-ui="v33"] .ra-fold .ra-scatter{padding:0 12px 12px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full-wrap{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full{width:100%;min-width:640px;border-collapse:collapse;font-size:11px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full th,body.app-race .ra-board[data-ra-ui="v34"] .ra-full td{padding:7px 4px;border-bottom:1px solid #EEF2F0;text-align:center;font-weight:800;white-space:nowrap;vertical-align:middle}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full th{color:#6B7785;font-size:10px;background:#F7F9F8}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full td.nm,body.app-race .ra-board[data-ra-ui="v34"] .ra-full th.nm{text-align:left}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full .ra-dot{position:static;margin:0 auto;width:22px;height:22px;font-size:11px}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full .sc{display:inline-block;padding:2px 7px;border-radius:999px;background:#E7F6EE;color:#0B7A45;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full .ev{display:inline-block;padding:2px 7px;border-radius:999px;background:#FFF1E4;color:#D35400;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-fold>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:12px;font-weight:800;color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-fold>summary::-webkit-details-marker{display:none}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-fold[open]>summary{border-bottom:1px solid #DDE5E2;color:#0B7A45}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-fold .ra-scatter{padding:0 12px 12px}
 body.app-race .ra-dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;line-height:1;border:1px solid rgba(16,35,63,.34);z-index:2;box-sizing:border-box}
 body.app-race .ra-scatter{position:relative;width:100%;padding:4px 0 0 20px;box-sizing:border-box}
 body.app-race .ra-plot{position:relative;height:200px;width:100%;border:1px solid #CBD8E3;border-radius:12px;background:#E4EBF1;overflow:hidden}
@@ -1231,24 +1238,37 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
   body.app-race:not(.picker) .fx-stick{padding:0 0 2px}
   body.app-race:not(.picker) .fx-vchip{min-height:32px;padding:4px 12px;font-size:13px}
   body.app-race:not(.picker) .fx-rnose button{min-height:32px;min-width:32px;font-size:12px}
-  body.app-race .ra-board[data-ra-ui="v33"]{gap:10px;padding-bottom:env(safe-area-inset-bottom,0)}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-row{gap:8px}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-pill .v{font-size:20px}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-diag-side{border-left:0;padding-left:0;border-top:1px solid #E2E8EC;padding-top:8px;flex:1 1 100%}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-id{grid-template-columns:48px minmax(0,1fr) auto}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-id-thumb{width:48px;height:38px;font-size:16px}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-pick{min-height:44px}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-morebtn{min-height:44px}
+  body.app-race .ra-board[data-ra-ui="v34"]{gap:10px;padding-bottom:env(safe-area-inset-bottom,0)}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-row{gap:8px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pill .v{font-size:20px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-side{border-left:0;padding-left:0;border-top:1px solid #E2E8EC;padding-top:8px;flex:1 1 100%}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-duo{display:flex;flex-direction:column}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-id{grid-template-columns:48px minmax(0,1fr) auto}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-id-thumb{width:48px;height:38px;font-size:16px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pick{min-height:44px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-morebtn{min-height:44px}
 }
 @media (max-width:389px){
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-zone-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-pill{min-width:68px}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-pill .v{font-size:18px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pill{min-width:68px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pill .v{font-size:18px}
+}
+@media (min-width:390px){
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .nm{font-size:12px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .sc{font-size:12px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-zone-h{font-size:11px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-hd{font-size:12px;padding:9px 10px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-bd{padding:10px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-diag-side{border-left:1px solid #E2E8EC;padding-left:8px;border-top:0;padding-top:0;flex:1 1 140px}
 }
 @media (min-width:700px){
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
-  body.app-race .ra-board[data-ra-ui="v33"] .ra-hon-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-duo{gap:12px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-hon-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .nm{font-size:14px}
+  body.app-race .ra-board[data-ra-ui="v34"] .ra-pick .sc{font-size:14px}
 }
 @media (min-width:900px){
   body.app-race .ra-axis-y{display:flex}
@@ -1282,11 +1302,41 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
 .wk-6{background:#2e7d32;color:#fff;box-shadow:none}
 .wk-7{background:#ef6c00;color:#fff;box-shadow:none}
 .wk-8{background:#ec407a;color:#fff;box-shadow:none}
+
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hd.is-split{justify-content:space-between}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-hd .ra-hd-act{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.92);color:#0B7A45;font-size:11px;font-weight:900;text-decoration:none;white-space:nowrap}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-mk{font-size:15px;font-weight:900}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-mk.is-hon{color:#E53935}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-mk.is-tai{color:#1B4F9C}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-mk.is-ana{color:#D35400}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-apt-mk.is-ren{color:#6B7785}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full .cm{text-align:left;font-size:10px;font-weight:750;color:#526174;max-width:12em;overflow:hidden;text-overflow:ellipsis}
+body.app-race .ra-board[data-ra-ui="v34"] .ra-full .conf{color:#0B7A45;font-weight:900}
+
+
+/* ===== v34 final chrome: reference ARERU green nav ===== */
+body.app-race{background:#E8EEF2 !important;color:#1A2332}
+body.app-race .header{background:linear-gradient(90deg,#0A5C38,#0B7A45) !important;color:#fff !important;border-bottom:0 !important;box-shadow:0 2px 10px rgba(10,92,56,.18) !important}
+body.app-race:not(.picker) .fx-top-inner{display:grid !important;grid-template-columns:auto minmax(0,1fr) auto;min-height:52px;padding:calc(8px + env(safe-area-inset-top,0)) 0 8px;gap:8px;align-items:center}
+body.app-race .fx-logo{display:flex !important;color:#fff !important}
+body.app-race .fx-logo .mark{background:rgba(255,255,255,.2)!important;border:1px solid rgba(255,255,255,.35)!important;width:30px;height:30px;border-radius:999px;font-size:12px}
+body.app-race .fx-logo b{color:#fff !important;font-size:18px;letter-spacing:.06em}
+body.app-race .fx-venue-slot{display:none !important}
+body.app-race .fx-icon{background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.28)!important;color:#fff !important}
+body.app-race .wrap.fx-stick,body.app-race .fx-stick{background:#E8EEF2 !important}
+body.app-race .fx-vchip{background:#fff !important;border:1px solid #DDE5E2 !important;color:#1A2332 !important}
+body.app-race .fx-vchip.is-on{background:#0B7A45 !important;border-color:#0B7A45 !important;color:#fff !important}
+body.app-race .fx-chiprow .fx-icon{background:#fff !important;border:1px solid #DDE5E2 !important;color:#0B7A45 !important}
+body.app-race .fx-id{color:#1A2332 !important}
+body.app-race .fx-id-1{color:#1A2332 !important}
+body.app-race .fx-id-1 .now{color:#0B7A45 !important}
+body.app-race .fx-rnose button.is-on{background:#0B7A45 !important;border-color:#0B7A45 !important;color:#fff !important}
+
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v33"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v34"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark">A</span>
-<b>AREる予想</b>
+<b>ARERU</b>
 </a>
 <div class="fx-venue-slot">
 <form method="get" action="/" class="fx-venue-form">
@@ -1906,7 +1956,7 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v33">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v34">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -2070,7 +2120,7 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
 {% set _hon = r.get('本命評価') if r.get('本命評価') is mapping else none %}
 {% set _going = r.get('馬場状態') or r.get('馬場') or r.get('馬場表示') %}
 {% set _view = r.get('本命AI見解') %}
-<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v33">
+<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v34">
 {% set _pick_bans = namespace(s='', names='') %}
 {% for key in ['本命','対抗','単穴','連下'] %}
   {% for p in (_g.get(key) if _g.get(key) is sequence else []) %}
@@ -2241,16 +2291,19 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
   {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
   {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '不明' %}
   {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
-  {% set _apt = p.get('展開適性') or p.get('展開相性') or '—' %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
   {% set _cm = namespace(t='') %}
-  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
-  {% if p.get('距離適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ '距離' ~ p.get('距離適性')) %}{% endif %}
+  {% if _pos not in _blank and _pos != '不明' %}{% set _cm.t = _pos ~ 'から' %}{% endif %}
   {% if p.get('ラップ適性表示') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性表示')) %}{% elif p.get('ラップ適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性')) %}{% endif %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
 <tr>
 <td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
 <td>{{p.get('馬名') or '—'}}</td>
 <td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
-<td>{% if _apt not in _blank %}{{_apt}}{% else %}—{% endif %}</td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
 <td>{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
 </tr>
 {% endfor %}
@@ -2259,7 +2312,7 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
 </div>
 {% if _det|length > 8 %}
 <details>
-<summary class="ra-morebtn">全{{_det|length}}頭の展開予測を見る</summary>
+<summary class="ra-morebtn">∨ 全{{_det|length}}頭の展開予測を見る</summary>
 <div class="ra-full-wrap" style="margin-top:8px">
 <table class="ra-style">
 <tbody>
@@ -2269,15 +2322,18 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
   {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
   {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '不明' %}
   {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
-  {% set _apt = p.get('展開適性') or p.get('展開相性') or '—' %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
   {% set _cm = namespace(t='') %}
+  {% if _pos not in _blank and _pos != '不明' %}{% set _cm.t = _pos ~ 'から' %}{% endif %}
   {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
-  {% if p.get('距離適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ '距離' ~ p.get('距離適性')) %}{% endif %}
 <tr>
 <td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
 <td>{{p.get('馬名') or '—'}}</td>
 <td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
-<td>{% if _apt not in _blank %}{{_apt}}{% else %}—{% endif %}</td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
 <td>{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
 </tr>
 {% endfor %}
@@ -2290,8 +2346,8 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
 </article>
 </div>
 
-<article class="ra-sec ra-focus">
-<div class="ra-hd"><span class="ic">注</span>今回の注目ポイント</div>
+<details class="ra-sec ra-fold ra-focus">
+<summary><span class="ic" style="display:inline-flex;width:18px;height:18px;border-radius:5px;background:rgba(11,122,69,.12);align-items:center;justify-content:center;margin-right:6px;font-size:10px;color:#0B7A45">注</span>今回の注目ポイント</summary>
 <div class="ra-bd">
 {% set _cpts = _anal.get('条件変更ポイント') if _anal.get('条件変更ポイント') is sequence else [] %}
 {% if _cpts %}
@@ -2310,20 +2366,20 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
 {% endif %}
 <p class="ra-focus-note">検出とAI加点は別です。効果データが無い項目は加点しません。</p>
 </div>
-</article>
+</details>
 
-<article class="ra-sec ra-detail">
-<div class="ra-hd"><span class="ic">全</span>全頭AI評価（抜粋）</div>
+<article class="ra-sec ra-detail" id="ra-full-{{r.get('race_id','')}}">
+<div class="ra-hd is-split"><span style="display:inline-flex;align-items:center;gap:8px"><span class="ic">全</span>全頭AI評価（抜粋）</span><a class="ra-hd-act" href="#ra-full-all-{{r.get('race_id','')}}">全{{_det|length}}頭を見る ›</a></div>
 <div class="ra-bd">
 <div class="ra-full-wrap">
 <table class="ra-full">
 <thead>
 <tr>
-<th>AI順</th><th>印</th><th>馬番</th><th class="nm">馬名</th><th>AI評価</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>信頼度</th><th>想定位置</th><th>展開適性</th>
+<th>AI順</th><th>印</th><th>馬番</th><th class="nm">馬名</th><th>AI評価</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>信頼度</th><th>想定位置</th><th>展開適性</th><th>総合コメント</th>
 </tr>
 </thead>
 <tbody>
-{% for p in _det %}
+{% for p in _det[:5] %}
   {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
   {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
   {% set _ub = _bn if _bn and _bn != '0' else '0' %}
@@ -2332,7 +2388,13 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
   {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
   {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '—' %}
   {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
-  {% set _apt = p.get('展開適性') or p.get('展開相性') or '—' %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
+  {% set _cm = namespace(t='') %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+  {% if p.get('ラップ適性表示') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性表示')) %}{% elif p.get('ラップ適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性')) %}{% endif %}
 <tr>
 <td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
 <td class="mk">{{p.get('表示印') or ''}}</td>
@@ -2342,14 +2404,59 @@ body.app-race .ra-duo{display:flex;flex-direction:column;gap:12px}
 <td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% elif _card.get('勝率') not in _blank %}{{_card.get('勝率')}}%{% else %}—{% endif %}</td>
 <td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}—{% endif %}</td>
 <td>{% if _ev not in _blank %}<span class="ev">{{_ev}}</span>{% else %}—{% endif %}</td>
-<td>{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% elif _card.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_card.get('AI信頼度スコア')|float)}}%{% else %}—{% endif %}</td>
+<td class="conf">{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% elif _card.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_card.get('AI信頼度スコア')|float)}}%{% else %}—{% endif %}</td>
 <td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
-<td>{% if _apt not in _blank %}{{_apt}}{% else %}—{% endif %}</td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
+<td class="cm">{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+{% if _det|length > 5 %}
+<tr><td colspan="12" style="text-align:center;color:#6B7785;font-weight:800">…</td></tr>
+{% endif %}
+</tbody>
+</table>
+</div>
+{% if _det|length > 5 %}
+<details class="ra-fold" id="ra-full-all-{{r.get('race_id','')}}" style="margin-top:8px;border-top:1px solid #EEF2F0">
+<summary>残り{{_det|length - 5}}頭を表示</summary>
+<div class="ra-full-wrap" style="padding:8px 0 0">
+<table class="ra-full">
+<tbody>
+{% for p in _det[5:] %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
+  {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+  {% set _sc = p.get('予想スコア') if p.get('予想スコア') not in _blank else _card.get('AI評価') %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '—' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
+  {% set _cm = namespace(t='') %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+<tr>
+<td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
+<td class="mk">{{p.get('表示印') or ''}}</td>
+<td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
+<td class="nm">{{p.get('馬名') or '—'}}</td>
+<td>{% if _sc not in _blank %}<span class="sc">{{_sc}}</span>{% else %}—{% endif %}</td>
+<td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% elif _card.get('勝率') not in _blank %}{{_card.get('勝率')}}%{% else %}—{% endif %}</td>
+<td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}—{% endif %}</td>
+<td>{% if _ev not in _blank %}<span class="ev">{{_ev}}</span>{% else %}—{% endif %}</td>
+<td class="conf">{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% elif _card.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_card.get('AI信頼度スコア')|float)}}%{% else %}—{% endif %}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
+<td class="cm">{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
 </div>
+</details>
+{% endif %}
 </div>
 </article>
 
