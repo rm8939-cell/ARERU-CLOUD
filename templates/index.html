@@ -1,15 +1,18 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 {# 中身が無い初回取得中のみフルリロード。表示維持中(updating)は JS で静かに監視する #}
 {% if (data_status|default('ready')) == 'generating' %}<meta http-equiv="refresh" content="12{% if status_refresh_url|default('') %};url={{ status_refresh_url }}{% endif %}">{% endif %}
 <title>AREる予想</title>
 <meta http-equiv="Cache-Control" content="no-store, max-age=0">
-<meta name="areu-ui" content="app-v28">
+<meta name="areu-ui" content="app-v32">
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--line:#e4e9f0;--text:#121820;--muted:#6a7682;--red:#e53935;--gold:#9a6b00;--green:#1a7f4b;--yellow:#d4a017;--orange:#ef8b25;--brand:#1a3a6b;--soft:#eef3fb;--purple:#6b4eff;--blue:#2f6fed;--navy:#0a1a3a;--navy2:#122a52;--radius:16px}
 body.nar{--brand:#122a52;--green:#176db0;--soft:#e8f3fb}
 body.all{--brand:#0a1a3a;--green:#2f4858;--soft:#eef2f5}
-*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;color-scheme:only light}body{margin:0;background:var(--bg);color:var(--text);font-family:"Avenir Next","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow-x:hidden;min-height:100vh}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html{scroll-behavior:smooth;overflow-x:hidden;color-scheme:only light;-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;background:var(--bg);color:var(--text);font-family:"Avenir Next","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue","Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;overflow-x:hidden;min-height:100vh;min-height:100dvh}
 .wrap{max-width:860px;width:100%;margin:auto;padding:0 16px}.header{padding:0;border-bottom:0;background:#161c18;color:#fff;position:sticky;top:0;z-index:30}
 .header .eyebrow,.header .sub{color:rgba(255,255,255,.78)}.header .logo{color:#fff}.header .logo b{color:#c8e6d0}
 .eyebrow,.label,.section-title,.metric small,.heat small,.target-score small,.venue small{letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-size:10px}.logo{font-size:28px;font-weight:800;letter-spacing:.05em}.logo b{color:var(--red)}.sub{color:var(--muted);margin-top:4px;font-size:12px}
@@ -1229,10 +1232,30 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
 @media (max-width:899px){
   body.app-race:not(.picker) .fx-here,body.app-race:not(.picker) .fx-id,body.app-race:not(.picker) .fx-morebtn{display:none !important}
   body.app-race:not(.picker) .fx-stick{padding:0 0 2px}
-  body.app-race:not(.picker) .fx-vchip{min-height:26px;padding:2px 10px;font-size:12px}
-  body.app-race:not(.picker) .fx-rnose button{min-height:26px;font-size:11px}
-  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m{min-height:66px}
-  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m .v{font-size:18px}
+  body.app-race:not(.picker) .fx-vchip{min-height:32px;padding:4px 12px;font-size:13px}
+  body.app-race:not(.picker) .fx-rnose button{min-height:32px;min-width:32px;font-size:12px}
+  /* iPhone: 2カラムは縦積み。横スクロールは表だけ */
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-duo{display:flex;flex-direction:column;gap:12px}
+  body.app-race .ra-board[data-ra-ui="v32"]{gap:10px;margin:4px 0 18px;padding-bottom:env(safe-area-inset-bottom,0)}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-bd{padding:12px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-hd{padding:12px;font-size:13px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-id{padding:14px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-id-ttl{font-size:20px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-id-name{font-size:16px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m{min-height:72px;padding:12px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m .v{font-size:20px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-pick{min-height:48px;padding:12px 10px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .nm{font-size:15px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .sc{font-size:14px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-zone-grid{gap:5px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-zone{min-height:96px;padding:8px 4px 10px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-zone-h{font-size:11px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-zone .ra-dot{width:28px;height:28px;font-size:12px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-hon-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-apt-row{grid-template-columns:minmax(5.5em,auto) minmax(0,1fr) 2.4em;gap:6px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-full-wrap,body.app-race .ra-board[data-ra-ui="v32"] .ra-style{touch-action:pan-x pan-y}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-full{min-width:520px;font-size:11px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-morebtn{min-height:44px;display:flex;align-items:center;justify-content:center}
   body.app-race .ra-metrics{grid-template-columns:1fr 1fr}
   body.app-race .ra-board:not([data-ra-ui="v32"]) .ra-m .v{font-size:14px;color:#087443}
   body.app-race .ra-scatter{padding:2px 0 0}
@@ -1242,6 +1265,11 @@ body.app-race .fx-races.is-open .fx-race.rb:not(.is-on){display:none}
   body.app-race .ra-q{font-size:11px}
   body.app-race .ra-rk-row .nm{font-size:14px}
   body.app-race .ra-card{padding:12px 10px 10px;border-radius:18px}
+}
+@media (max-width:389px){
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-zone-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid .ra-m .v{font-size:17px}
+  body.app-race .ra-board[data-ra-ui="v32"] .ra-pick .nm{font-size:14px}
 }
 @media (min-width:900px){
   body.app-race .ra-board[data-ra-ui="v32"] .ra-diag-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
