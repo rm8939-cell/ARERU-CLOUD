@@ -2433,7 +2433,7 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin.is-out{color:#6B7785}
       {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
       {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
       {% set _ub = _bn if _bn and _bn != '0' else '0' %}
-      {% set _sc = p.get('予想スコア') if p.get('予想スコア') not in _blank else _card.get('AI評価') %}
+      {% set _sc = p.get('指数ラップ') if p.get('指数ラップ') not in _blank else (p.get('予想スコア') if p.get('予想スコア') not in _blank else _card.get('AI評価')) %}
       {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
 {% set _finmap = r.get('印着順') if r.get('印着順') is mapping else {} %}
 {% set _fin = _finmap.get(mk) if _finmap else none %}
@@ -2441,7 +2441,7 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin.is-out{color:#6B7785}
 <span class="mk">{{mk}}</span>
 <span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
 <span class="nm">{{p.get('馬名') or '—'}}</span>
-<span class="sc"><em>AI</em>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</span>
+<span class="sc"><em>{% if p.get('指数ラップ') not in _blank %}指ラ{% else %}AI{% endif %}</em>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</span>
 {% if _fin %}<span class="fin{% if _fin in ['取消','除外','結果待ち'] %} is-out{% endif %}">{{_fin}}</span>{% endif %}
 </div>
       {% set _pick_n.n = _pick_n.n + 1 %}
@@ -2504,12 +2504,12 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin.is-out{color:#6B7785}
 {% if _hon %}
   {% set _hc = _hon.get('カード') if _hon.get('カード') is mapping else {} %}
   {% set _bn = (_hon.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
-  {% set _sc = _hon.get('予想スコア') if _hon.get('予想スコア') not in _blank else _hc.get('AI評価') %}
+  {% set _sc = _hon.get('指数ラップ') if _hon.get('指数ラップ') not in _blank else (_hon.get('予想スコア') if _hon.get('予想スコア') not in _blank else _hc.get('AI評価')) %}
   {% set _ev = _hon.get('カード期待値') if _hon.get('カード期待値') not in _blank else _hc.get('期待値') %}
 <div class="ra-hd"><span class="ic">{{_hon.get('表示印') or '◎'}}</span>{{_hon.get('表示印') or '◎'}}{{_hon.get('馬番表示') or _hon.get('馬番') or ''}} {{_hon.get('馬名') or '—'}}の評価詳細</div>
 <div class="ra-bd">
 <div class="ra-hon-top">
-<div class="ra-hon-ai"><span>AI評価</span><b>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</b></div>
+<div class="ra-hon-ai"><span>{% if _hon.get('指数ラップ') not in _blank %}指数ラップ{% else %}AI評価{% endif %}</span><b>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</b></div>
 <div class="ra-hon-metrics">
 <div><span>勝率</span><b>{% if _hon.get('勝率') not in _blank %}{{_hon.get('勝率')}}%{% elif _hc.get('勝率') not in _blank %}{{_hc.get('勝率')}}%{% else %}—{% endif %}</b></div>
 <div><span>複勝率</span><b>{% if _hon.get('複勝率') not in _blank %}{{_hon.get('複勝率')}}%{% elif _hc.get('複勝率') not in _blank %}{{_hc.get('複勝率')}}%{% else %}—{% endif %}</b></div>
@@ -2521,7 +2521,7 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin.is-out{color:#6B7785}
 {% for row in (_hon.get('適性詳細') if _hon.get('適性詳細') is sequence else []) %}
 {% set _adisp = row.get('表示') if row.get('表示') not in _blank else 'データ不足' %}
 {% set _item = row.get('項目') or '' %}
-{% set _ico = 'ラ' if 'ラップ' in _item else ('展' if '展開' in _item else ('前' if '前走' in _item else ('コ' if 'コース' in _item else ('距' if '距離' in _item else ('場' if '馬場' in _item else '・'))))) %}
+{% set _ico = '指' if '指数ラップ' in _item else ('ラ' if 'ラップ' in _item else ('展' if '展開' in _item else ('前' if '前走' in _item else ('コ' if 'コース' in _item else ('距' if '距離' in _item else ('場' if '馬場' in _item else '・')))))) %}
 <div class="ra-apt-row">
 <div class="ra-apt-l"><span class="ico">{{_ico}}</span>{{_item}}</div>
 {% if row.get('バー') not in _blank %}<span class="ra-bar"><i style="width:{{[100, row.get('バー')]|min}}%"></i></span>{% else %}<span class="ra-bar"></span>{% endif %}

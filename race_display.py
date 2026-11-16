@@ -166,6 +166,24 @@ def aptitude_rows(horse: dict) -> list[dict]:
     else:
         rows.append({"項目": "ラップ適性", **_mark_to_bar(lap_label), "AI評価に使用": not _blank(lap_label)})
 
+    # 指数×ラップ合成ファクター
+    mix = horse.get("指数ラップ")
+    if _blank(mix):
+        mix = card.get("指数ラップ")
+    mix_label = horse.get("指数ラップラベル") or card.get("指数ラップラベル")
+    if mix is not None and str(mix).strip() not in ("", "nan"):
+        try:
+            mv = float(mix)
+            rows.insert(0, {
+                "項目": "指数ラップ",
+                "表示": mix_label if not _blank(mix_label) else f"{mv:.1f}",
+                "バー": max(0, min(100, mv)),
+                "状態": "available",
+                "AI評価に使用": True,
+            })
+        except (TypeError, ValueError):
+            pass
+
     for key, used in (
         ("展開適性", True),
         ("前走内容", False),  # 表示用転写。スコア加点そのものではない
