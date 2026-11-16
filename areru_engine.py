@@ -1142,7 +1142,8 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         history=expand_scoring_history(history)
     from race_sim import (
         SIM_RUNS, build_profiles, predict_pace, lap_aptitude, style_label,
-        circle_ban, stars_from_ev,
+        circle_ban, stars_from_ev, index_lap_score, index_lap_enabled,
+        index_lap_label,
     )
     use_new = not legacy_score_enabled()
     scored=[]
@@ -1161,16 +1162,29 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         race_dist=_infer_race_distance(g_base, history, target)
         profiles=build_profiles(g_base, history, target, venue, race_dist=race_dist, field_kg_mean=field_kg)
         pace=predict_pace(profiles)
-        # ラップ適性を個別に付与
+        # ラップ適性を個別に付与 → 指数×ラップ合成スコア
+        use_index_lap=index_lap_enabled()
         for i,p in enumerate(profiles):
             fit, lab=lap_aptitude(p['style'], pace['想定ペース'])
             p['lap_fit']=fit; p['lap_label']=lab
+            idx_v=float(g_base.iloc[i].get('AREru指数') or 0)
+            mix=index_lap_score(idx_v, fit)
+            p['index_lap']=mix
+            p['index_lap_label']=index_lap_label(mix, idx_v, fit)
             if fit>=60: p['plus'].append(lab)
             elif fit<=40: p['minus'].append(lab)
 
         g, orders=simulate_race(g_base, runs=SIM_RUNS, profiles=profiles, pace=pace); n=len(g)
         # プロファイルを馬名で引けるように
         prof_by_name={str(g_base.iloc[i]['馬名']):profiles[i] for i in range(len(profiles))}
+        # 指数ラップを馬行へ（印選定・表示用）
+        g=g.copy()
+        g['ラップ適合度']=[float(prof_by_name.get(str(nm),{}).get('lap_fit') or 50) for nm in g['馬名']]
+        g['指数ラップ']=[
+            index_lap_score(float(idx) if pd.notna(idx) else None, fit)
+            for idx, fit in zip(g['AREru指数'], g['ラップ適合度'])
+        ]
+        g['指数ラップ'] = pd.to_numeric(g['指数ラップ'], errors='coerce').fillna(g['AREru指数'])
 
         top=g['AREru指数'].iloc[0]; spread=top-g['AREru指数'].iloc[min(4,n-1)]; upset_share=(g['因子_upset']>=65).mean()
         chaos=clamp(0.55*float(pace.get('荒れ指数',50))+0.45*(35+(75-top)*.8+(18-spread)*1.3+upset_share*28))
@@ -1180,7 +1194,11 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
         def _n_valid_row(rr):
             return int(sum(pd.notna(num(rr.get(f'着順{i}'))) for i in range(1,6)))
 
-        main_order=g.sort_values(['SIM3着内率','AREru指数'],ascending=False)
+        # 本命選定: 指数ラップON時は SIM×指数ラップ、OFF時は従来どおり
+        if use_index_lap:
+            main_order=g.sort_values(['SIM3着内率','指数ラップ','AREru指数'],ascending=False)
+        else:
+            main_order=g.sort_values(['SIM3着内率','AREru指数'],ascending=False)
         main=main_order.iloc[0]
         for _,cand in main_order.iterrows():
             nv=_n_valid_row(cand)
@@ -1189,9 +1207,10 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 main=cand
                 break
 
-        # 対抗=勝率2位、穴=期待値/穴スコア上位
+        # 対抗=勝率2位、穴=期待値/穴スコア上位（穴スコアにも指数ラップを反映）
+        ability_col = g['指数ラップ'] if use_index_lap else g['AREru指数']
         hole_score=(
-            g['AREru指数']*.30+g['因子_upset']*.20+g['因子_value']*.20+g['SIM3着内率']*.20
+            ability_col*.30+g['因子_upset']*.20+g['因子_value']*.20+g['SIM3着内率']*.20
             +np.where(market_pop>=6,10,0)+np.where(num(g.get('単勝期待値')).fillna(0)>=120,8,0)
         )
         rest=g[g['馬名']!=main['馬名']].copy().assign(_hole=hole_score.loc[g['馬名']!=main['馬名']])
@@ -1255,12 +1274,23 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 pace_fit=float(pace_fit),
                 style=style,
             )
+            mix_sc=index_lap_score(
+                float(row['AREru指数']) if pd.notna(row.get('AREru指数')) else None,
+                float(pr.get('lap_fit')) if pr.get('lap_fit') is not None else None,
+            )
             detail={
                 '役割':role,
                 '馬名':name,
                 '馬番':_ban_str(row),
                 '馬番表示':circle_ban(_ban_str(row)),
                 'AI評価':round(float(row['AREru指数']),1),
+                '指数ラップ':mix_sc,
+                '指数ラップラベル':index_lap_label(
+                    mix_sc,
+                    float(row['AREru指数']) if pd.notna(row.get('AREru指数')) else None,
+                    float(pr.get('lap_fit')) if pr.get('lap_fit') is not None else None,
+                ),
+                'ラップ適合度':round(float(pr.get('lap_fit')),1) if pr.get('lap_fit') is not None else None,
                 '近走指数順位':idx_rank,
                 '勝率':round(float(row['SIM勝率']),1),
                 '連対率':round(float(row['SIM2着内率']),1),
@@ -1271,6 +1301,9 @@ def build_predictions(target_str, runners, history=None, weights=None, fetch_tic
                 '期待値':win_ev,
                 **pack,
             }
+            # 表示用の予想スコアは指数ラップを優先（ファクターON時）
+            if use_index_lap and mix_sc is not None:
+                detail['予想スコア']=round(float(mix_sc),1)
             if role=='穴馬' or role=='注目馬':
                 detail['期待値が高い理由']=f"単勝期待値{win_ev}%" if win_ev else '仮想複勝率に対し人気が薄い'
                 detail['人気以上に評価した理由']=str(row.get('理由') or '人気薄の上昇余地')

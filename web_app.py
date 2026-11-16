@@ -2808,6 +2808,29 @@ def _stamp_horse_analysis_fields(p: dict, pace_label: str, past: dict | None = N
             lap_fit = None
     p['ラップ適合度'] = round(float(lap_fit), 1) if lap_fit is not None else None
     p['ラップ適性表示'] = lap_label if not _disp_blank(lap_label) else None
+    # 指数×ラップ合成（既存CSVでも表示層で復元）
+    try:
+        from race_sim import index_lap_score, index_lap_label, index_lap_enabled
+        from ev_analysis import safe_float as _sf
+        idx_v = _sf(p.get('AREru指数'), None)
+        if idx_v is None:
+            idx_v = _sf(card.get('AI評価'), None)
+        if idx_v is None:
+            idx_v = _sf(p.get('予想スコア'), None)
+        mix = None
+        if not _disp_blank(p.get('指数ラップ')):
+            mix = _sf(p.get('指数ラップ'), None)
+        if mix is None and not _disp_blank(card.get('指数ラップ')):
+            mix = _sf(card.get('指数ラップ'), None)
+        if mix is None:
+            mix = index_lap_score(idx_v, lap_fit)
+        p['指数ラップ'] = round(float(mix), 1) if mix is not None else None
+        p['指数ラップラベル'] = index_lap_label(mix, idx_v, lap_fit) if mix is not None else None
+        if index_lap_enabled() and mix is not None:
+            # 予想スコアを合成値で上書き（印そのものはCSVのまま）
+            p['予想スコア'] = round(float(mix), 1)
+    except Exception:
+        pass
     p['想定ポジション'] = pos_label or None
     p['想定ポジション番号'] = pos_n
     p['脚質'] = pos_label or None

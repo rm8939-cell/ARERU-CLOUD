@@ -249,6 +249,69 @@ def lap_aptitude(style: float, pace_label: str) -> tuple[float, str]:
     return clamp(fit), label
 
 
+# 指数ラップ合成: 指数を主軸、ラップ適合は ±25% までの倍率補正。
+INDEX_LAP_WEIGHT = 0.25
+
+
+def index_lap_enabled() -> bool:
+    """指数×ラップ合成ファクター。未設定時はON（明示的に0でOFF）。"""
+    raw = str(os.environ.get("ARERU_INDEX_LAP") or "1").strip().lower()
+    return raw not in ("0", "false", "no", "off")
+
+
+def index_lap_score(
+    index: float | None,
+    lap_fit: float | None,
+    *,
+    weight: float = INDEX_LAP_WEIGHT,
+) -> float | None:
+    """AREru指数とラップ適合度をミックスした予想スコア。
+
+    - 指数が主軸（能力）
+    - ラップ適合 50=中立、高いほど押し上げ・低いほど押し下げ
+    - 例: 指数80 × 適合70 → 80 * (1 + 0.25*0.4) = 88.0
+    """
+    if index is None:
+        return None
+    try:
+        idx = float(index)
+    except (TypeError, ValueError):
+        return None
+    if idx != idx:  # NaN
+        return None
+    fit = None
+    if lap_fit is not None:
+        try:
+            fit = float(lap_fit)
+        except (TypeError, ValueError):
+            fit = None
+        if fit is not None and fit != fit:
+            fit = None
+    if fit is None:
+        return round(idx, 2)
+    edge = (fit - 50.0) / 50.0
+    return round(idx * (1.0 + float(weight) * edge), 2)
+
+
+def index_lap_label(score: float | None, index: float | None, lap_fit: float | None) -> str:
+    """UI用の短いラベル。"""
+    if score is None:
+        return "—"
+    try:
+        idx = float(index) if index is not None else None
+        fit = float(lap_fit) if lap_fit is not None else None
+    except (TypeError, ValueError):
+        idx, fit = None, None
+    if fit is None or idx is None:
+        return f"{score:.1f}"
+    if fit >= 60:
+        tone = "ラップ押し上げ"
+    elif fit <= 40:
+        tone = "ラップ押し下げ"
+    else:
+        tone = "ラップ中立"
+    return f"{score:.1f}（指数{idx:.0f}×{tone}）"
+
 
 def track_condition_bonus(history: pd.DataFrame | None, horse: str, target) -> tuple[float, list[str]]:
     """直近走の馬場状態適性（重・稍重での好走など）。"""
