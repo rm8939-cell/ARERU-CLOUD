@@ -10,6 +10,7 @@ from ev_analysis import (
     apply_expected_value,
     build_ai_self_eval,
     day_performance,
+    finish_num,
     load_score_odds,
 )
 from pipeline_stages import log_orchestrator, log_pipeline_stage, predictions_label
@@ -4514,7 +4515,7 @@ def index():
                                     pass
                             else:
                                 races=_prep_rank_cached(venue_rows, selected, source, by_venue=True)
-                                if mode=='result':
+                                if mode in ('predict', 'result'):
                                     races,has_results=attach_results(races, selected_date=selected)
                                     ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
                                     tickets_by_race={}
@@ -4568,7 +4569,7 @@ def index():
                                 df.to_dict('records') if df is not None and not df.empty else [],
                                 selected, source, by_venue=(source == 'nar'),
                             )
-                            if mode == 'result':
+                            if mode in ('predict', 'result'):
                                 races, has_results = attach_results(races, selected_date=selected)
                                 ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
                                 tickets_by_race = {}
@@ -4785,9 +4786,10 @@ def index():
             data_status='generating'
             message='データ取得中'
     day_stats=None
-    if mode=='result' and races and not show_venue_picker:
+    if mode in ('predict', 'result') and races and not show_venue_picker:
         day_stats=day_performance(races, verification, safe_pct=_safe_pct)
-        today_ai_board=build_today_ai_board(races, verification)
+        if mode == 'result':
+            today_ai_board=build_today_ai_board(races, verification)
     ledger=ledger_data(source=source, verification=verification) if mode in ('analysis','ledger') else {
         'has_data':False,'investment':0,'payout':0,'recovery':0.0,'profit':0,
         'by_type':[],'monthly':[],'tone':'roi-bad',
@@ -5087,6 +5089,13 @@ def attach_results(records, selected_date=''):
         r['結果一覧']=review
         r['印着順要約']=' '.join(f"{x['印']}{x['着順丸']}" for x in review) if review else ''
         r['結果確定']=bool(race_has_result)
+        hon_row=next((x for x in review if x.get('印')=='◎'), None)
+        hon_n=finish_num(hon_row.get('着順')) if hon_row else None
+        r['本命着順']=(hon_row.get('着順丸') or hon_row.get('着順')) if hon_row else None
+        r['本命的中']=(hon_n==1) if hon_n is not None else None
+        r['本命複的中']=(hon_n is not None and hon_n<=3) if hon_n is not None else None
+        # 印→着順マップ（予想ボードの印行に載せる）
+        r['印着順']= {str(x.get('印') or ''): (x.get('着順丸') or x.get('着順') or '') for x in review if x.get('印')}
 
         # 的中 / 不的中（analysis_result 優先）
         hits=analysis_by_race.get(rid,[]) if rid else []
