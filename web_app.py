@@ -821,181 +821,165 @@ def _read_predictions_for_venue_detail(pred_path, source: str, venue: str) -> li
         return []
 
 
-def _simple_nar_tickets(race: dict) -> list:
-    """地方向けのシンプル推奨馬券（本命必須の単勝・馬連・ワイド）。"""
+def _axis_pick_roles(race: dict) -> tuple:
+    """本命・対抗・相手候補を印/ピックから取る。"""
     picks=[p for p in (race.get('予想馬') or []) if isinstance(p, dict)]
-    if not picks:
-        # ピックカードから本命だけでも組む
-        cards=[c for c in (race.get('ピックカード一覧') or []) if isinstance(c, dict)]
-        main_c=next((c for c in cards if c.get('役割')=='本命'), None)
-        if main_c:
-            picks=[{
-                '役割': '本命',
-                '馬番表示': main_c.get('馬番表示') or main_c.get('馬番'),
-                '馬番': main_c.get('馬番'),
-            }]
-            rival=next((c for c in cards if c.get('役割')=='対抗'), None)
-            dark=next((c for c in cards if c.get('役割') in ('注目馬','穴馬')), None)
-            if rival:
-                picks.append({'役割':'対抗','馬番表示':rival.get('馬番表示') or rival.get('馬番')})
-            if dark:
-                picks.append({'役割':'注目馬','馬番表示':dark.get('馬番表示') or dark.get('馬番')})
-    if not picks:
-        return []
+    cards=[c for c in (race.get('ピックカード一覧') or []) if isinstance(c, dict)]
 
-    def _ban(p):
-        b=str(p.get('馬番表示') or p.get('馬番') or '').strip()
-        return b or '—'
+    def _from(role_set):
+        for p in picks:
+            if p.get('役割') in role_set:
+                return p
+        for c in cards:
+            if c.get('役割') in role_set:
+                return {
+                    '役割': c.get('役割'),
+                    '馬番表示': c.get('馬番表示') or c.get('馬番'),
+                    '馬番': c.get('馬番'),
+                    '馬名': c.get('馬名'),
+                }
+        return None
 
-    main=picks[0]
-    rival=picks[1] if len(picks) > 1 else None
-    dark=picks[2] if len(picks) > 2 else None
-    mb=_ban(main)
-    if mb == '—':
+    main=_from({'本命'}) or (picks[0] if picks else None)
+    rival=_from({'対抗'})
+    partners=[]
+    for role in ('注目馬', '穴馬'):
+        p=_from({role})
+        if p:
+            partners.append(p)
+    # 予想馬の残りからも相手を補完
+    if main:
+        main_ban=str(main.get('馬番表示') or main.get('馬番') or '').strip()
+        for p in picks[1:4]:
+            ban=str(p.get('馬番表示') or p.get('馬番') or '').strip()
+            if not ban or ban == main_ban:
+                continue
+            if rival is None and p.get('役割') in (None, '', '対抗'):
+                rival=p
+                continue
+            if all(str(x.get('馬番表示') or x.get('馬番') or '').strip() != ban for x in partners):
+                partners.append(p)
+    return main, rival, partners[:2]
+
+
+def _axis_ban(p) -> str:
+    return str((p or {}).get('馬番表示') or (p or {}).get('馬番') or '').strip()
+
+
+def _axis_umaren_wide_tickets(race: dict) -> list:
+    """本命軸の馬連・ワイドを主戦にする買い目（単勝は出さない）。"""
+    main, rival, partners = _axis_pick_roles(race)
+    mb=_axis_ban(main)
+    if not mb or mb == '—':
         return []
-    tickets=[]
 
     try:
         ev=float(race.get('期待値') or race.get('レース期待回収率') or 100)
     except (TypeError, ValueError):
         ev=100.0
     is_buy=str(race.get('投資判定') or '').startswith('買い')
-    star_main='★★★★★' if is_buy else '★★★☆☆'
+    star='★★★★★' if is_buy else '★★★★☆'
     star_sub='★★★★☆' if is_buy else '★★★☆☆'
 
-    # 単勝: 本命1点（必須）
+    rb=_axis_ban(rival)
+    partner_bans=[]
+    for p in ([rival] if rival else []) + list(partners):
+        b=_axis_ban(p)
+        if b and b not in (mb, '—') and b not in partner_bans:
+            partner_bans.append(b)
+    if rb and rb not in partner_bans and rb != mb:
+        partner_bans.insert(0, rb)
+    partner_bans=list(dict.fromkeys(partner_bans))
+    if not partner_bans:
+        return []
+
+    tickets=[]
+    # 1) ワイド: ◎軸 × 相手（最大2点）
+    wide_parts=[f'{mb}-{b}' for b in partner_bans[:2]]
     tickets.append({
-        '券種': '単勝',
-        '馬番表示': mb,
-        '馬番': [mb],
+        '券種': 'ワイド',
+        '馬番表示': ' / '.join(wide_parts),
+        '馬番': wide_parts,
         '的中率': None,
-        '期待値': round(ev, 0) if ev else None,
-        '推定回収率': round(ev, 0) if ev else None,
-        '推奨度': star_main,
-        'フォーメーション': None,
-        '説明': f'◎本命 {mb} を単勝で素直に買う',
+        '期待値': round(max(ev * 0.95, 90), 0),
+        '推定回収率': round(max(ev * 0.95, 90), 0),
+        '推奨度': star,
+        'フォーメーション': {'軸': [mb], '相手': partner_bans[:2], '点数': len(wide_parts)},
+        '説明': '◎本命軸のワイド（○・相手で複勝圏を拾う）',
+        '軸印': '◎',
     })
-
-    # 馬連: 本命－対抗（本命必須）
-    if rival:
-        rb=_ban(rival)
-        if rb != '—':
-            tickets.append({
-                '券種': '馬連',
-                '馬番表示': f'{mb}-{rb}',
-                '馬番': [mb, rb],
-                '的中率': None,
-                '期待値': round(max(ev * 0.95, 90), 0),
-                '推定回収率': round(max(ev * 0.95, 90), 0),
-                '推奨度': star_sub,
-                'フォーメーション': None,
-                '説明': '◎－○ の軸で馬連1点',
-            })
-
-    # ワイド: 本命軸（対抗/注目）
-    wide_parts=[]
-    if rival and _ban(rival) != '—':
-        wide_parts.append(f'{mb}-{_ban(rival)}')
-    if dark and _ban(dark) != '—':
-        wide_parts.append(f'{mb}-{_ban(dark)}')
-    if wide_parts:
+    # 2) 馬連: 相手2頭以上ならフォーメ、1頭なら1点
+    if len(partner_bans) >= 2:
         tickets.append({
-            '券種': 'ワイド',
-            '馬番表示': ' / '.join(wide_parts[:2]),
-            '馬番': wide_parts[:2],
+            '券種': '馬連',
+            '馬番表示': f'{mb}－{"・".join(partner_bans[:2])}',
+            '馬番': [mb] + partner_bans[:2],
             '的中率': None,
-            '期待値': round(max(ev * 0.9, 85), 0),
-            '推定回収率': round(max(ev * 0.9, 85), 0),
+            '期待値': round(max(ev * 0.92, 88), 0),
+            '推定回収率': round(max(ev * 0.92, 88), 0),
+            '推奨度': star_sub,
+            'フォーメーション': {'軸': [mb], '相手': partner_bans[:2], '点数': len(partner_bans[:2])},
+            '説明': '◎軸の馬連フォーメーション（相手2頭）',
+            '軸印': '◎',
+        })
+    else:
+        tickets.append({
+            '券種': '馬連',
+            '馬番表示': f'{mb}-{partner_bans[0]}',
+            '馬番': [mb, partner_bans[0]],
+            '的中率': None,
+            '期待値': round(max(ev * 0.92, 88), 0),
+            '推定回収率': round(max(ev * 0.92, 88), 0),
             '推奨度': star_sub,
             'フォーメーション': None,
-            '説明': '本命軸のワイドで堅く拾う',
+            '説明': '◎－○ 馬連1点',
+            '軸印': '◎',
         })
-    return tickets[:3]
+
+    # エンジンSIM候補があれば参考行として後ろへ（印軸と違うとき）
+    for kind, key in (('ワイド', 'ワイド買い目'), ('馬連', '馬連買い目')):
+        raw=str(race.get(key) or '').strip()
+        if not raw or raw in ('見送り', '—', '-', 'nan', 'None'):
+            continue
+        shown={str(t.get('馬番表示') or '') for t in tickets}
+        if raw in shown or any(raw in str(t.get('馬番表示') or '') for t in tickets):
+            continue
+        tickets.append({
+            '券種': kind,
+            '馬番表示': raw.replace('｜', ' / '),
+            '馬番': [x for x in raw.replace('｜', '/').split('/') if x.strip()],
+            '的中率': None,
+            '期待値': None,
+            '推定回収率': None,
+            '推奨度': '★★★☆☆',
+            'フォーメーション': None,
+            '説明': f'SIM候補の{kind}（参考）',
+            '軸印': 'SIM',
+            '参考': True,
+        })
+    return tickets[:4]
+
+
+def _prefer_umaren_wide_kind(race: dict, tickets: list) -> str:
+    """推奨券種を馬連/ワイドに寄せる。"""
+    cur=str(race.get('推奨券種') or '').strip()
+    if cur in ('ワイド', '馬連'):
+        return cur
+    for t in tickets:
+        k=str(t.get('券種') or '')
+        if k in ('ワイド', '馬連') and not t.get('参考'):
+            return k
+    return cur if cur else 'ワイド'
+
+
+def _simple_nar_tickets(race: dict) -> list:
+    """地方: 本命軸の馬連・ワイド。"""
+    return _axis_umaren_wide_tickets(race)
 
 
 def _jra_main_tickets(race: dict) -> list:
-    """JRA向け: 本命を必ず含む単勝・馬連・ワイド（既存フォーメーションは維持しつつ先頭に追加）。"""
-    picks=[p for p in (race.get('予想馬') or []) if isinstance(p, dict)]
-    cards=[c for c in (race.get('ピックカード一覧') or []) if isinstance(c, dict)]
-    main = next((p for p in picks if p.get('役割')=='本命'), picks[0] if picks else None)
-    if not main:
-        main_c=next((c for c in cards if c.get('役割')=='本命'), None)
-        if main_c:
-            main={'馬番表示': main_c.get('馬番表示') or main_c.get('馬番'), '馬番': main_c.get('馬番')}
-    if not main:
-        return []
-    mb=str(main.get('馬番表示') or main.get('馬番') or '').strip()
-    if not mb:
-        return []
-    rival=next((p for p in picks if p.get('役割')=='対抗'), None)
-    dark=next((p for p in picks if p.get('役割') in ('注目馬','穴馬')), None)
-    if not rival:
-        rival_c=next((c for c in cards if c.get('役割')=='対抗'), None)
-        if rival_c:
-            rival={'馬番表示': rival_c.get('馬番表示') or rival_c.get('馬番')}
-    if not dark:
-        dark_c=next((c for c in cards if c.get('役割') in ('注目馬','穴馬')), None)
-        if dark_c:
-            dark={'馬番表示': dark_c.get('馬番表示') or dark_c.get('馬番')}
-
-    def _b(p):
-        return str((p or {}).get('馬番表示') or (p or {}).get('馬番') or '').strip()
-
-    try:
-        ev=float(race.get('期待値') or race.get('レース期待回収率') or 100)
-    except (TypeError, ValueError):
-        ev=100.0
-    is_buy=str(race.get('投資判定') or '').startswith('買い')
-    out=[]
-    out.append({
-        '券種': '単勝', '馬番表示': mb, '馬番': [mb],
-        '的中率': None, '期待値': round(ev, 0), '推定回収率': round(ev, 0),
-        '推奨度': '★★★★★' if is_buy else '★★★☆☆',
-        'フォーメーション': None,
-        '説明': f'◎本命 {mb} 単勝',
-    })
-    rb=_b(rival)
-    if rb:
-        # 馬連フォーメーション可: 本命軸で対抗＋注目
-        partners=[x for x in [rb, _b(dark)] if x and x != mb]
-        partners=list(dict.fromkeys(partners))
-        if len(partners) >= 2:
-            out.append({
-                '券種': '馬連',
-                '馬番表示': f'{mb}－{"・".join(partners)}',
-                '馬番': [mb] + partners,
-                '的中率': None,
-                '期待値': round(max(ev * 0.95, 90), 0),
-                '推定回収率': round(max(ev * 0.95, 90), 0),
-                '推奨度': '★★★★☆' if is_buy else '★★★☆☆',
-                'フォーメーション': {'軸': [mb], '相手': partners, '点数': len(partners)},
-                '説明': '本命軸の馬連フォーメーション',
-            })
-        else:
-            out.append({
-                '券種': '馬連', '馬番表示': f'{mb}-{rb}', '馬番': [mb, rb],
-                '的中率': None, '期待値': round(max(ev * 0.95, 90), 0),
-                '推定回収率': round(max(ev * 0.95, 90), 0),
-                '推奨度': '★★★★☆' if is_buy else '★★★☆☆',
-                'フォーメーション': None,
-                '説明': '◎－○ 馬連',
-            })
-        wide_parts=[f'{mb}-{rb}']
-        db=_b(dark)
-        if db and db != rb:
-            wide_parts.append(f'{mb}-{db}')
-        out.append({
-            '券種': 'ワイド',
-            '馬番表示': ' / '.join(wide_parts[:2]),
-            '馬番': wide_parts[:2],
-            '的中率': None,
-            '期待値': round(max(ev * 0.9, 85), 0),
-            '推定回収率': round(max(ev * 0.9, 85), 0),
-            '推奨度': '★★★★☆' if is_buy else '★★★☆☆',
-            'フォーメーション': {'軸': [mb], '相手': [x for x in [rb, db] if x], '点数': len(wide_parts)},
-            '説明': '本命軸ワイド',
-        })
-    return out[:3]
+    """中央: 本命軸の馬連・ワイド。"""
+    return _axis_umaren_wide_tickets(race)
 
 
 def _clear_runtime_caches():
@@ -2565,7 +2549,7 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
     except Exception as e:
         print(f'[rank] tighten fail: {e}', flush=True)
         out = cleaned
-    # 厳選後の投資判定に合わせて本命軸馬券を再生成
+    # 厳選後の投資判定に合わせて馬連・ワイド軸を再生成
     for r in out:
         try:
             src = str(r.get('source') or '').lower()
@@ -2575,18 +2559,16 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
                     src = source_from_race_id(r.get('race_id', ''))
                 except Exception:
                     src = ''
-            if src == 'nar':
-                simple = _simple_nar_tickets(r)
-                if simple:
-                    r['推奨馬券一覧'] = simple
-            elif src == 'jra':
-                main_tix = _jra_main_tickets(r)
-                if main_tix:
+            if src in ('nar', 'jra'):
+                axis_tix = _axis_umaren_wide_tickets(r)
+                if axis_tix:
                     rest = [
                         t for t in (r.get('推奨馬券一覧') or [])
                         if isinstance(t, dict) and str(t.get('券種')) not in ('単勝', '馬連', 'ワイド')
                     ]
-                    r['推奨馬券一覧'] = (main_tix + rest)[:8]
+                    r['推奨馬券一覧'] = (axis_tix + rest)[:8]
+                    r['推奨券種'] = _prefer_umaren_wide_kind(r, axis_tix)
+                    r['買い方軸'] = '馬連・ワイド'
             if not r.get('AI買い理由'):
                 r['AI買い理由'] = build_ai_buy_reasons(r, limit=4)
             if not r.get('BUY根拠'):
@@ -3402,8 +3384,7 @@ def prep(records, ban_map=None, selected_date=''):
         _stamp_race_analysis_display(r, horse_meta)
         if race_date and not r.get('開催日'):
             r['開催日']=race_date
-        # 地方: 単勝・馬連・ワイドのシンプル買い目を優先表示
-        # 中央: 本命軸の単勝・馬連・ワイドを先頭に保証（既存フォーメーションは後ろに残す）
+        # 中央・地方とも本命軸の馬連・ワイドを主戦にする
         src=str(r.get('source') or '').lower()
         if not src:
             try:
@@ -3411,25 +3392,15 @@ def prep(records, ban_map=None, selected_date=''):
                 src=source_from_race_id(r.get('race_id',''))
             except Exception:
                 src=''
-        if src == 'nar':
-            simple=_simple_nar_tickets(r)
-            if simple:
-                r['推奨馬券一覧']=simple
-                if not r.get('推奨券種') or str(r.get('推奨券種')) in ('三連単','三連複','馬単'):
-                    r['推奨券種']='単勝'
-                if not r.get('馬券戦略理由'):
-                    r['馬券戦略理由']='地方は本命軸の単勝・馬連・ワイドを優先'
-        elif src == 'jra':
-            main_tix=_jra_main_tickets(r)
-            if main_tix:
+        if src in ('nar', 'jra'):
+            axis_tix=_axis_umaren_wide_tickets(r)
+            if axis_tix:
                 existing=[t for t in (r.get('推奨馬券一覧') or []) if isinstance(t, dict)]
-                # 既存から単勝/馬連/ワイドを外し、本命軸を先頭へ
                 rest=[t for t in existing if str(t.get('券種')) not in ('単勝','馬連','ワイド')]
-                r['推奨馬券一覧']=(main_tix + rest)[:8]
-                if not r.get('推奨券種') or str(r.get('推奨券種')) in ('三連単','三連複'):
-                    r['推奨券種']='単勝'
-                if not r.get('馬券戦略理由'):
-                    r['馬券戦略理由']='本命を軸にした単勝・馬連・ワイドを優先'
+                r['推奨馬券一覧']=(axis_tix + rest)[:8]
+                r['推奨券種']=_prefer_umaren_wide_kind(r, axis_tix)
+                r['馬券戦略理由']='本命◎軸の馬連・ワイドを主戦（単勝は出さない）'
+                r['買い方軸']='馬連・ワイド'
         if not r.get('本命短表示'):
             r['本命短表示']=(r.get('予想馬') or [{}])[0].get('表示行') or r.get('本命表示') or '—'
     return records

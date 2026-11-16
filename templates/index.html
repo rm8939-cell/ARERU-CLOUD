@@ -1523,9 +1523,19 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-result .ra-result-row b{color:#0B7
 body.app-race .ra-board[data-ra-ui="v39"] .ra-result .ra-result-row strong{font-size:16px;font-weight:900}
 body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin{flex:0 0 auto;min-width:2.2em;text-align:right;font-size:13px;font-weight:900;color:#0B7A45}
 body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin.is-out{color:#6B7785}
+/* v40: 馬連・ワイド軸 */
+body.app-race .ra-tickets .ra-ticket-list{display:grid;gap:8px}
+body.app-race .ra-tickets .nt{background:#F7F9F8;border:1px solid #DDE5E2;border-radius:12px;padding:12px 14px}
+body.app-race .ra-tickets .nt.is-ref{opacity:.72;border-style:dashed}
+body.app-race .ra-tickets .nt-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+body.app-race .ra-tickets .nt-kind{font-size:13px;font-weight:900;letter-spacing:.04em;color:#0B7A45}
+body.app-race .ra-tickets .nt-star{font-size:12px;font-weight:800;color:#C4A035}
+body.app-race .ra-tickets .nt-ban{font-size:20px;font-weight:900;line-height:1.25;margin:0 0 4px;color:#1A2332;letter-spacing:.02em}
+body.app-race .ra-tickets .nt-desc{font-size:12px;font-weight:700;color:#526174;line-height:1.5}
+body.app-race .ra-tickets .nt-axis{display:inline-block;margin:0 0 8px;padding:4px 10px;border-radius:999px;background:#EAF6F0;color:#0B7A45;font-size:11px;font-weight:900}
 
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v39"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v40"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="16" cy="16" r="14"/><path d="M8 19c2-6 6-9 11-8 2 0 4 1 5 3-3 0-5 1-6 3 3 0 5 2 5 4-4 2-9 2-12-1-1 2-2 3-3 3z"/></svg></span>
 <span class="fx-brand"><b>ARERU</b><small>競馬AI予想</small></span>
@@ -2140,7 +2150,7 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin.is-out{color:#6B7785}
 </section>
 {% endif %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v39">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v40">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>
@@ -2497,6 +2507,31 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-pick .fin.is-out{color:#6B7785}
 </div>
 </article>
 </div></div>
+
+{# ④b 馬連・ワイド軸 #}
+{% set _tix = [] %}
+{% for t in (r.get('推奨馬券一覧') if r.get('推奨馬券一覧') is sequence else []) %}
+  {% if t is mapping and t.get('券種') in ['ワイド','馬連'] %}
+    {% if _tix.append(t) %}{% endif %}
+  {% endif %}
+{% endfor %}
+{% if _tix %}
+<article class="ra-sec ra-tickets">
+<div class="ra-hd"><span class="ic">券</span>馬連・ワイド軸{% if r.get('推奨券種') in ['ワイド','馬連'] %} · 推奨 {{r.get('推奨券種')}}{% endif %}</div>
+<div class="ra-bd">
+<span class="nt-axis">◎本命軸 · 単勝は出さない</span>
+<div class="ra-ticket-list">
+{% for t in _tix[:4] %}
+<div class="nt{% if t.get('参考') %} is-ref{% endif %}">
+<div class="nt-head"><span class="nt-kind">{{t.get('券種')}}</span><span class="nt-star">{{t.get('推奨度') or ''}}</span></div>
+<div class="nt-ban">{{t.get('馬番表示') or '—'}}</div>
+<div class="nt-desc">{{t.get('説明') or ''}}</div>
+</div>
+{% endfor %}
+</div>
+</div>
+</article>
+{% endif %}
 
 {# ⑤ 本命 + ⑥ 適性一覧 #}
 <div class="ra-turf"><div class="ra-duo">
