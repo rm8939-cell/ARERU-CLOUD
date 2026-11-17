@@ -1,0 +1,46 @@
+{# single race board fragment for lazy load #}
+{% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
+{% set _is_prod_buy = ('' ~ (r.get('投資判定') or '')).startswith('買い') %}
+{% set _ev_n = namespace(v=none) %}
+{% if r.get('期待値') is not none and ('' ~ r.get('期待値'))|trim not in ('', '—', '-', 'None', 'nan') %}
+  {% set _ev_n.v = ('' ~ r.get('期待値'))|replace('%','')|float %}
+{% endif %}
+{% set _conf = r.get('レース信頼度スコア') or r.get('AI信頼度スコア') %}
+{% set _picks = r.get('予想馬') or [] %}
+{% set _roles = namespace(hon=none, tai=none, tan=none, watch=none) %}
+{% for p in _picks %}
+  {% if (p.get('役割') or '') == '本命' and _roles.hon is none %}{% set _roles.hon = p %}
+  {% elif (p.get('役割') or '') == '対抗' and _roles.tai is none %}{% set _roles.tai = p %}
+  {% elif (p.get('役割') or '') == '穴馬' and _roles.tan is none %}{% set _roles.tan = p %}
+  {% elif (p.get('役割') or '') == '注目馬' and _roles.watch is none %}{% set _roles.watch = p %}
+  {% endif %}
+{% endfor %}
+{% if _roles.tan is none %}{% set _roles.tan = _roles.watch %}{% endif %}
+{% set _surface = r.get('芝ダ') or r.get('馬場種別') %}
+{% set _dist = r.get('距離') or r.get('距離表示') %}
+{% set _track = r.get('馬場状態') or r.get('馬場') %}
+{% set _start = r.get('発走時刻') or r.get('発走') or r.get('発走時間') %}
+{% set _ev_disp = r.get('期待回収率短') or r.get('期待値表示') or r.get('期待値') or '—' %}
+{% set _rows = r.get('AI一覧') or _picks %}
+{% set _buy_n = namespace(v=0) %}
+{% for _bp in _rows %}
+  {% if _bp.get('BUY表示') %}{% set _buy_n.v = _buy_n.v + 1 %}{% endif %}
+{% endfor %}
+{% set _buy_pack = r.get('BUY根拠') if r.get('BUY根拠') is mapping else {} %}
+{% set _buy_reasons = r.get('AI買い理由') if r.get('AI買い理由') is sequence else [] %}
+{% set _g = r.get('表示グループ') if r.get('表示グループ') is mapping else {} %}
+{% set _rows_all = r.get('AI一覧') or _rows %}
+{% set _nsb = namespace(buys=[]) %}
+{% for p in _rows_all %}
+  {% if p.get('BUY表示') %}{% set _ = _nsb.buys.append(p) %}{% endif %}
+{% endfor %}
+{% set _anal = r.get('レース分析') if r.get('レース分析') is mapping else {} %}
+{% set _diag = r.get('AIレース診断') if r.get('AIレース診断') is mapping else {} %}
+{% set _zones = r.get('展開ゾーン') if r.get('展開ゾーン') is mapping else {} %}
+{% set _lapmap = r.get('ラップマップ') if r.get('ラップマップ') is sequence else [] %}
+{% set _laprk = r.get('ラップ適合ランキング') if r.get('ラップ適合ランキング') is sequence else [] %}
+{% set _det = _rows_all %}
+{% set _hon = r.get('本命評価') if r.get('本命評価') is mapping else none %}
+{% set _going = r.get('馬場状態') or r.get('馬場') or r.get('馬場表示') %}
+{% set _view = r.get('本命AI見解') %}
+{% include 'partials/race_article_body.html' %}

@@ -311,6 +311,7 @@ def _url_html_cache_key():
         today,
         job_state,
         _file_sig(BASE/'templates'/'index.html'),
+        _file_sig(BASE/'templates'/'partials'/'race_article_body.html'),
         tuple(_file_sig(ARCH/f'predictions_{d}.csv') for d in ordered),
         tuple(_file_sig(ARCH/f'scores_{d}.csv') for d in ordered),
     )
@@ -398,6 +399,7 @@ def _page_html_cache_key(
     pred=ARCH/f'predictions_{selected}.csv' if selected else None
     scores=ARCH/f'scores_{selected}.csv' if selected else None
     tpl=BASE/'templates'/'index.html'
+    board=BASE/'templates'/'partials'/'race_article_body.html'
     return (
         source,
         mode,
@@ -407,6 +409,7 @@ def _page_html_cache_key(
         today,
         str(job_state or ''),
         _file_sig(tpl) if tpl.exists() else '0',
+        _file_sig(board) if board.exists() else '0',
         _file_sig(pred) if pred else '0',
         _file_sig(scores) if scores else '0',
     )
@@ -3143,6 +3146,64 @@ def build_buy_candidates(races: list, limit: int = 12) -> list:
     return [r for _, r in scored[:limit]]
 
 
+def _pick_focus_race_id(races: list, want: str = '') -> str:
+    """初回描画するレース。BUY優先。race_id または R番号指定可。
+
+    戻り値はテンプレートの r.race_id と一致する生文字列。
+    """
+    rows = list(races or [])
+    if not rows:
+        return ''
+
+    def _rid(r) -> str:
+        return str(r.get('race_id') or '')
+
+    want = str(want or '').strip()
+    if want:
+        want_n = _norm_race_id(want)
+        for r in rows:
+            if _norm_race_id(r.get('race_id', '')) == want_n or _rid(r) == want:
+                return _rid(r)
+        # 5 / 5R 形式
+        m = re.fullmatch(r'(\d{1,2})R?', want, flags=re.I)
+        if m:
+            n = int(m.group(1))
+            for r in rows:
+                try:
+                    if int(float(r.get('レース') or 0)) == n:
+                        return _rid(r)
+                except Exception:
+                    continue
+    for r in rows:
+        if str(r.get('投資判定') or '').startswith('買い'):
+            return _rid(r)
+    return _rid(rows[0])
+
+
+def _predict_races_for_venue(selected: str, source: str, venue: str = '') -> list:
+    """予想画面/遅延API用: 指定日の prep 済みレース（会場で絞り込み可）。"""
+    pred_path = ARCH / f'predictions_{selected}.csv' if selected else None
+    if not pred_path or not pred_path.exists():
+        return []
+    df = _load_pred_detail_df(pred_path)
+    if df is None or getattr(df, 'empty', True):
+        return []
+    if source in ('jra', 'nar') and 'source' in df.columns:
+        df = df[df['source'].astype(str).str.lower() == source]
+    races = _prep_rank_cached(
+        df.to_dict('records'),
+        selected, source, by_venue=(source == 'nar'),
+    )
+    if venue:
+        from netkeiba_client import normalize_venue_name as _nv
+        want = _nv(str(venue).strip())
+        races = [
+            r for r in races
+            if _nv(str(r.get('開催地') or '').strip()) == want
+        ]
+    return races
+
+
 def build_today_ai_board(races: list, verification: dict | None = None) -> dict:
     """ヘッダー直下の本日AI成績カード。"""
     races = races or []
@@ -4509,7 +4570,7 @@ def index():
                                     pass
                             else:
                                 races=_prep_rank_cached(venue_rows, selected, source, by_venue=True)
-                                if mode in ('predict', 'result'):
+                                if mode == 'result':
                                     races,has_results=attach_results(races, selected_date=selected)
                                     ranks_map=(verification or {}).get('purchase_ranks_by_race') or {}
                                     tickets_by_race={}
@@ -4521,6 +4582,8 @@ def index():
                                         rid=_norm_race_id(row.get('race_id',''))
                                         row['purchase_ranks']=list(ranks_map.get(rid, []))
                                         row['購入馬券一覧']=list(tickets_by_race.get(rid, []))
+                                elif mode == 'predict':
+                                    has_results=False
                                 venues=_day_venues_for_nav(pred_path, source, fallback=[{
                                     'name': selected_venue,
                                     'count': len(races),
@@ -4563,7 +4626,7 @@ def index():
                                 df.to_dict('records') if df is not None and not df.empty else [],
                                 selected, source, by_venue=(source == 'nar'),
                             )
-                            if mode in ('predict', 'result'):
+                            if mode == 'result':
                                 races, has_results = attach_results(races, selected_date=selected)
                                 ranks_map = (verification or {}).get('purchase_ranks_by_race') or {}
                                 tickets_by_race = {}
@@ -4575,6 +4638,8 @@ def index():
                                     rid = _norm_race_id(row.get('race_id', ''))
                                     row['purchase_ranks'] = list(ranks_map.get(rid, []))
                                     row['購入馬券一覧'] = list(tickets_by_race.get(rid, []))
+                            elif mode == 'predict':
+                                has_results = False
                             venues = _venue_meetings(races)
                             venue_names = {v['name'] for v in venues}
                             races_for_board = list(races)
@@ -4780,10 +4845,10 @@ def index():
             data_status='generating'
             message='データ取得中'
     day_stats=None
-    if mode in ('predict', 'result') and races and not show_venue_picker:
+    # 予想タブは結果UIを出さないので day_stats / attach_results をスキップ
+    if mode == 'result' and races and not show_venue_picker:
         day_stats=day_performance(races, verification, safe_pct=_safe_pct)
-        if mode == 'result':
-            today_ai_board=build_today_ai_board(races, verification)
+        today_ai_board=build_today_ai_board(races, verification)
     ledger=ledger_data(source=source, verification=verification) if mode in ('analysis','ledger') else {
         'has_data':False,'investment':0,'payout':0,'recovery':0.0,'profit':0,
         'by_type':[],'monthly':[],'tone':'roi-bad',
@@ -4941,6 +5006,9 @@ def index():
         if mode == 'predict'
         else build_areru_pipeline_board(selected, source)
     )
+    focus_race_id = ''
+    if mode == 'predict' and races and not show_venue_picker:
+        focus_race_id = _pick_focus_race_id(races, request.args.get('race_id') or request.args.get('race') or '')
     html = render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
@@ -4950,7 +5018,7 @@ def index():
         day_stats=day_stats,data_status=data_status,
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
         status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime,
-        areru_pipeline=pipeline)
+        areru_pipeline=pipeline,focus_race_id=focus_race_id)
     _perf_mark('html')
     if mode == 'predict' and not force_refresh and selected and data_status in ('ready', 'updating', 'success'):
         try:
@@ -5753,6 +5821,74 @@ def api_refresh_status():
         'error': str(st.get('error') or ''),
         'stage': str(st.get('stage') or ''),
     }
+
+
+@app.route('/api/race-board', methods=['GET'])
+def api_race_board():
+    """予想ボードの1レース断片。初回HTMLを軽くするための遅延読込。"""
+    _perf_start()
+    source = request.args.get('source', 'jra')
+    if source not in ('jra', 'nar', 'all'):
+        source = 'jra'
+    selected = str(request.args.get('date') or '').strip()
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', selected or ''):
+        selected = _today_jst()
+    venue = str(request.args.get('venue') or '').strip()
+    race_id = str(request.args.get('race_id') or request.args.get('race') or '').strip()
+    try:
+        from urllib.parse import unquote
+        venue = unquote(unquote(venue))
+    except Exception:
+        pass
+    if venue:
+        try:
+            from netkeiba_client import normalize_venue_name
+            venue = normalize_venue_name(venue)
+        except Exception:
+            pass
+    cache_key = (
+        'race-board', source, selected, venue or '', _norm_race_id(race_id) or race_id,
+        _file_sig(BASE / 'templates' / 'partials' / 'race_article_body.html'),
+        _file_sig(ARCH / f'predictions_{selected}.csv') if selected else '0',
+    )
+    hit = _cache_get(_PAGE_HTML_CACHE, cache_key)
+    if hit is not None:
+        _perf_mark('data')
+        _perf_finish(cache='hit', extra='race-board')
+        return hit, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    races = _predict_races_for_venue(selected, source, venue)
+    if not races:
+        _perf_finish(cache='miss', extra='race-board-empty')
+        return '<p class="ra-empty">レースがありません</p>', 404, {'Content-Type': 'text/html; charset=utf-8'}
+    want = _norm_race_id(race_id) or race_id
+    race = None
+    for r in races:
+        if (_norm_race_id(r.get('race_id', '')) or str(r.get('race_id') or '')) == want:
+            race = r
+            break
+    if race is None and race_id:
+        # R番号フォールバック
+        race_id2 = _pick_focus_race_id(races, race_id)
+        for r in races:
+            if (_norm_race_id(r.get('race_id', '')) or str(r.get('race_id') or '')) == race_id2:
+                race = r
+                break
+    if race is None:
+        race = races[0]
+    _perf_mark('data')
+    html = render_template(
+        'partials/race_board_fragment.html',
+        r=race,
+        selected_date=selected,
+        today=_today_jst(),
+        source=source,
+        mode='predict',
+        selected_venue=venue or str(race.get('開催地') or ''),
+    )
+    _perf_mark('html')
+    _cache_put(_PAGE_HTML_CACHE, cache_key, html, _HTML_CACHE_MAX)
+    _perf_finish(cache='miss', extra=f'race-board rid={_norm_race_id(race.get("race_id"))}')
+    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 
 @app.route('/healthz', methods=['GET'])

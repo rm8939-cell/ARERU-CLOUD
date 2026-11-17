@@ -1,0 +1,615 @@
+{% set _g = r.get('表示グループ') if r.get('表示グループ') is mapping else {} %}
+{% set _rows_all = r.get('AI一覧') or _rows %}
+{% set _buy_horses = [] %}
+{% set _nsb = namespace(buys=[]) %}
+{% for p in _rows_all %}
+  {% if p.get('BUY表示') %}{% set _ = _nsb.buys.append(p) %}{% endif %}
+{% endfor %}
+{% set _anal = r.get('レース分析') if r.get('レース分析') is mapping else {} %}
+{% set _diag = r.get('AIレース診断') if r.get('AIレース診断') is mapping else {} %}
+{% set _zones = r.get('展開ゾーン') if r.get('展開ゾーン') is mapping else {} %}
+{% set _lapmap = r.get('ラップマップ') if r.get('ラップマップ') is sequence else [] %}
+{% set _laprk = r.get('ラップ適合ランキング') if r.get('ラップ適合ランキング') is sequence else [] %}
+{% set _det = _rows_all %}
+{% set _hon = r.get('本命評価') if r.get('本命評価') is mapping else none %}
+{% set _going = r.get('馬場状態') or r.get('馬場') or r.get('馬場表示') %}
+{% set _view = r.get('本命AI見解') %}
+<section class="ra-board" aria-label="レース分析ボード" data-ra-ui="v39">
+{% set _pick_bans = namespace(s='', names='') %}
+{% for key in ['本命','対抗','単穴','連下'] %}
+  {% for p in (_g.get(key) if _g.get(key) is sequence else []) %}
+    {% set _bb = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
+    {% if _bb and _bb != '0' %}{% set _pick_bans.s = _pick_bans.s ~ ',' ~ _bb %}{% endif %}
+    {% set _pn = (p.get('馬名') or '')|string %}
+    {% if _pn %}{% set _pick_bans.names = _pick_bans.names ~ '||' ~ _pn %}{% endif %}
+  {% endfor %}
+{% endfor %}
+
+{# ① レースヘッダー（参照画像どおり） #}
+<article class="ra-sec ra-id">
+<div class="ra-id-thumb" aria-hidden="true">
+<svg class="ra-id-horse" viewBox="0 0 140 100" width="140" height="100" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="rhg{{r.get('race_id')}}" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#0e2f24"/><stop offset="42%" stop-color="#0B7A45"/><stop offset="100%" stop-color="#1a5f8a"/>
+</linearGradient>
+<linearGradient id="rhfade{{r.get('race_id')}}" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0%" stop-color="#fff" stop-opacity="0"/><stop offset="70%" stop-color="#fff" stop-opacity=".72"/><stop offset="100%" stop-color="#fff" stop-opacity="1"/>
+</linearGradient>
+<linearGradient id="rhfur{{r.get('race_id')}}" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#5a3a24"/><stop offset="100%" stop-color="#2a170e"/>
+</linearGradient>
+</defs>
+<rect width="140" height="100" fill="url(#rhg{{r.get('race_id')}})"/>
+<ellipse cx="72" cy="90" rx="46" ry="8" fill="rgba(0,0,0,.22)"/>
+<!-- galloping horse silhouette -->
+<path fill="url(#rhfur{{r.get('race_id')}})" d="M8 70c10-18 28-28 46-27 7 .3 13 2.5 18 6.2 3.2-7.2 10.5-12 19-11.2 4.2.4 7.8 2.4 10.2 5.4-3.5 2.8-4.2 6.5-1.2 10.2 6.2.6 11.2 4.2 13 9.2-4.5 4.8-11.5 7.2-19.5 7-10-.3-18.8-4-24.8-9.5-3.2 5.2-8.5 9-14.5 10.5-5.5-2.2-11-7.5-16.5-15.5-5.5 6.5-12.5 10.5-19.2 11.8-4.5-2.2-8.8-6.2-11.5-11.1z"/>
+<path fill="#3d2616" d="M68 42c4.5-7.5 13-11.5 21-9.5 3.5.9 6.5 3.2 8.2 6.2-4.2 2.8-7.5 6.5-8.2 10.5-5.5.2-11-.8-15.5-3.5-2.2-1.3-4-2.8-5.5-3.7z"/>
+<!-- jockey silks -->
+<path fill="#f2f7f3" d="M82 33c2.8-4.2 8-5.8 12.2-3.8 2.5 1.2 4 3.5 3.8 6-1.2 2.5-3.8 4-6.8 4.2-4.2.2-8.2-2-9.2-6.4z"/>
+<path fill="#0B7A45" d="M85 40c3.2 1.5 7 1.8 10.2.2 3.2 4 3.8 8.5 1.8 12.8-4.2 1.5-8.8 1.2-12.5-1.2-.5-4 .2-8 1.5-11.8z"/>
+<path fill="#fff" opacity=".9" d="M88 44h8v10h-8z"/>
+<path fill="#0B7A45" d="M88 44h8v2h-8zm0 4h8v2h-8z"/>
+<circle cx="93" cy="36" r="2.6" fill="#1a1a1a"/>
+<!-- cloth -->
+<rect x="72" y="52" width="18" height="13" rx="2" fill="#6B3FA0"/>
+<text x="81" y="61.5" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="system-ui,sans-serif">10</text>
+<rect x="78" width="62" height="100" fill="url(#rhfade{{r.get('race_id')}})"/>
+</svg>
+</div>
+<div class="ra-id-body">
+<form method="get" action="/" class="ra-switch-form" id="ra-sw-{{r.get('race_id')}}">
+<input type="hidden" name="source" value="{{source}}">
+<input type="hidden" name="mode" value="{{mode}}">
+{% if selected_date and today and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}
+<div class="ra-id-ttl">
+<span class="ra-id-vr">
+{% if venues %}
+<select class="ra-inline-sel ra-venue-sel" name="venue" aria-label="開催場" onchange="this.form.submit()">
+{% for v in venues %}<option value="{{v.name}}" {% if v.name==selected_venue %}selected{% endif %}>{{v.name}}</option>{% endfor %}
+</select>
+{% else %}{{r.get('開催地') or '—'}}{% endif %}
+{% if r.get('レース') is not none %}{{r['レース']|int}}R{% endif %}
+</span>
+{% if r.get('重賞グレード') %}<span class="ra-grade">{{r.get('重賞グレード')}}</span>{% endif %}
+{% if r.get('レース名') not in _blank %}<span class="ra-id-name">{{r.get('レース名')}}</span>{% endif %}
+</div>
+<ul class="ra-id-meta">
+{% if _surface not in _blank or _dist not in _blank %}<li><span class="dot">{% if 'ダ' in (_surface|string) %}ダ{% elif '障' in (_surface|string) %}障{% else %}芝{% endif %}</span>{% if _dist %}{% if 'm' in (_dist|string|lower) or '芝' in (_dist|string) or 'ダ' in (_dist|string) %}{{_dist}}{% else %}{{_dist}}m{% endif %}{% elif _surface %}{{_surface}}{% endif %}</li>{% endif %}
+{% if r.get('表示頭数') not in _blank %}<li>{{r.get('表示頭数')|int}}頭</li>{% elif r.get('データ頭数') not in _blank %}<li>{{r.get('データ頭数')|int}}頭</li>{% endif %}
+{% if _going not in _blank %}<li class="go">{{_going}}<span class="wx" aria-hidden="true"></span></li>{% endif %}
+{% if _start not in _blank %}<li>{{_start}}発走</li>{% endif %}
+</ul>
+</form>
+</div>
+{% if r.get('開催日') or selected_date %}
+<label class="ra-id-date">
+<select class="ra-inline-sel ra-date-sel" name="date" form="ra-sw-{{r.get('race_id')}}" aria-label="開催日" onchange="document.getElementById('ra-sw-{{r.get('race_id')}}').submit()">
+{% for d in available_dates %}<option value="{{d}}" {% if d==(r.get('開催日') or selected_date) %}selected{% endif %}>{{d|jp_short_date}}</option>{% endfor %}
+</select>
+</label>
+{% endif %}
+</article>
+
+{# ② AIレース診断（横並び） #}
+{% set _conf_raw = _diag.get('信頼度') %}
+{% set _conf_n = namespace(v=0) %}
+{% if _conf_raw not in _blank %}
+{% set _conf_n.v = ((_conf_raw|string)|replace('%','')|float) %}
+{% endif %}
+<article class="ra-sec ra-diag">
+<div class="ra-diag-row">
+<div class="ra-diag-badge"><span class="ic" aria-hidden="true"></span>AIレース診断</div>
+{% if _conf_raw not in _blank %}
+<div class="ra-gauge" style="--p:{{[_conf_n.v, 100]|min}}" aria-label="信頼度 {{_conf_raw}}%"><b>{% if '%' in (_conf_raw|string) %}{{_conf_raw}}{% else %}{{_conf_raw}}%{% endif %}</b><small>信頼度</small></div>
+{% else %}
+<div class="ra-pill tone-green"><span class="k">信頼度</span><b class="v">—</b></div>
+{% endif %}
+<div class="ra-pill tone-orange"><span class="k">波乱度</span><b class="v">{% if _diag.get('波乱度') not in _blank %}{% if '%' in (_diag.get('波乱度')|string) %}{{_diag.get('波乱度')}}{% else %}{{_diag.get('波乱度')}}%{% endif %}{% else %}—{% endif %}</b></div>
+<div class="ra-diag-side">
+<div class="row"><span class="lab">想定ペース</span><span class="val">{% if _diag.get('想定ペース') not in _blank %}{{_diag.get('想定ペース')}}{% else %}データ不足{% endif %}</span></div>
+<div class="row"><span class="lab">レースタイプ</span><span class="val">{% if _diag.get('レースタイプ') not in _blank %}{{_diag.get('レースタイプ')}}{% else %}データ不足{% endif %}</span></div>
+</div>
+</div>
+</article>
+
+{# ③④ AI予想 + 展開予想 #}
+<div class="ra-turf"><div class="ra-duo">
+<article class="ra-sec ra-picks">
+<div class="ra-hd"><span class="ic">◎</span>AI予想（本命〜連下）</div>
+<div class="ra-bd">
+<div class="ra-pick-rows">
+{% set _pick_n = namespace(n=0) %}
+{% for label, mk, cls, key in [('本命','◎','is-hon','本命'),('対抗','○','is-tai','対抗'),('単穴','▲','is-ana','単穴'),('連下','△','is-ren','連下')] %}
+  {% for p in (_g.get(key) if _g.get(key) is sequence else []) %}
+    {% if _pick_n.n < 5 %}
+      {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+      {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
+      {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+      {% set _sc = p.get('指数ラップ') if p.get('指数ラップ') not in _blank else (p.get('予想スコア') if p.get('予想スコア') not in _blank else _card.get('AI評価')) %}
+      {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+<div class="ra-pick {{cls}}">
+<span class="mk">{{mk}}</span>
+<span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
+<span class="nm">{{p.get('馬名') or '—'}}</span>
+<span class="sc"><em>{% if p.get('指数ラップ') not in _blank %}指ラ{% else %}AI{% endif %}</em>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</span>
+</div>
+      {% set _pick_n.n = _pick_n.n + 1 %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+{% if _pick_n.n == 0 %}<p class="ra-empty">予想データ不足</p>{% endif %}
+</div>
+</div>
+</article>
+
+<article class="ra-sec ra-zones">
+<div class="ra-hd"><span class="ic">展</span>展開予想（全馬ポジション）</div>
+<div class="ra-bd">
+<div class="ra-zone-grid">
+{% for z, zcls in [('逃げ','z-nige'),('先行','z-sen'),('中団','z-chu'),('後方','z-kou')] %}
+  {% set _zs = _zones.get(z) if _zones.get(z) is sequence else [] %}
+<div class="ra-zone {{zcls}}">
+<div class="ra-zone-h">{{z}}</div>
+<div class="ra-zone-horses">
+{% if _zs %}
+{% for h in _zs %}
+  {% set _bn = (h.get('馬番数字') or h.get('馬番') or '')|ban_digits %}
+  {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+  {% set _wk = (h.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _nm = (h.get('馬名') or '—')|string %}
+  {% set _is_pick = (_bn and (',' ~ _bn ~ ',') in (',' ~ _pick_bans.s ~ ',')) or (_nm and (('||' ~ _nm ~ '||') in (_pick_bans.names ~ '||'))) %}
+<span class="ra-dot {% if _is_pick %}ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}{% else %}is-plain{% endif %}" title="{{_nm}}">{{h.get('馬番') or _bn or '—'}}</span>
+{% endfor %}
+{% else %}
+<span class="ra-empty">—</span>
+{% endif %}
+</div>
+</div>
+{% endfor %}
+{% set _unk = _zones.get('不明') if _zones.get('不明') is sequence else [] %}
+{% if _unk %}
+<div class="ra-zone z-unk">
+<div class="ra-zone-h">不明</div>
+<div class="ra-zone-horses">
+{% for h in _unk %}
+  {% set _bn = (h.get('馬番数字') or h.get('馬番') or '')|ban_digits %}
+  {% set _nm = (h.get('馬名') or '—')|string %}
+<span class="ra-dot is-plain" title="{{_nm}} / 想定ポジションデータ不足">{{h.get('馬番') or _bn or '—'}}</span>
+{% endfor %}
+</div>
+</div>
+{% endif %}
+</div>
+{% if _diag.get('想定ペース') not in _blank or _diag.get('レースタイプ') not in _blank %}
+<div class="ra-zone-foot">想定ペース：{% if _diag.get('想定ペース') not in _blank %}{{_diag.get('想定ペース')}}{% else %}データ不足{% endif %}{% if _diag.get('レースタイプ') not in _blank %} → {{_diag.get('レースタイプ')}}{% endif %}</div>
+{% endif %}
+</div>
+</article>
+</div></div>
+
+{# ④b 馬連・ワイド軸 #}
+{% set _tix = [] %}
+{% for t in (r.get('推奨馬券一覧') if r.get('推奨馬券一覧') is sequence else []) %}
+  {% if t is mapping and t.get('券種') in ['ワイド','馬連'] %}
+    {% if _tix.append(t) %}{% endif %}
+  {% endif %}
+{% endfor %}
+{% if _tix %}
+<article class="ra-sec ra-tickets">
+<div class="ra-hd"><span class="ic">券</span>馬連・ワイド軸{% if r.get('推奨券種') in ['ワイド','馬連'] %} · 推奨 {{r.get('推奨券種')}}{% endif %}</div>
+<div class="ra-bd">
+<span class="nt-axis">◎本命軸 · 単勝は出さない</span>
+<div class="ra-ticket-list">
+{% for t in _tix[:4] %}
+<div class="nt{% if t.get('参考') %} is-ref{% endif %}">
+<div class="nt-head"><span class="nt-kind">{{t.get('券種')}}</span><span class="nt-star">{{t.get('推奨度') or ''}}</span></div>
+<div class="nt-ban">{{t.get('馬番表示') or '—'}}</div>
+<div class="nt-desc">{{t.get('説明') or ''}}</div>
+</div>
+{% endfor %}
+</div>
+</div>
+</article>
+{% endif %}
+
+{# ⑤ 本命 + ⑥ 適性一覧 #}
+<div class="ra-turf"><div class="ra-duo">
+<article class="ra-sec ra-honmei">
+{% if _hon %}
+  {% set _hc = _hon.get('カード') if _hon.get('カード') is mapping else {} %}
+  {% set _bn = (_hon.get('馬番') or '')|string|replace('.0','')|replace('番','') %}
+  {% set _sc = _hon.get('指数ラップ') if _hon.get('指数ラップ') not in _blank else (_hon.get('予想スコア') if _hon.get('予想スコア') not in _blank else _hc.get('AI評価')) %}
+  {% set _ev = _hon.get('カード期待値') if _hon.get('カード期待値') not in _blank else _hc.get('期待値') %}
+<div class="ra-hd"><span class="ic">{{_hon.get('表示印') or '◎'}}</span>{{_hon.get('表示印') or '◎'}}{{_hon.get('馬番表示') or _hon.get('馬番') or ''}} {{_hon.get('馬名') or '—'}}の評価詳細</div>
+<div class="ra-bd">
+<div class="ra-hon-top">
+<div class="ra-hon-ai"><span>{% if _hon.get('指数ラップ') not in _blank %}指数ラップ{% else %}AI評価{% endif %}</span><b>{% if _sc not in _blank %}{{_sc}}{% else %}—{% endif %}</b></div>
+<div class="ra-hon-metrics">
+<div><span>勝率</span><b>{% if _hon.get('勝率') not in _blank %}{{_hon.get('勝率')}}%{% elif _hc.get('勝率') not in _blank %}{{_hc.get('勝率')}}%{% else %}—{% endif %}</b></div>
+<div><span>複勝率</span><b>{% if _hon.get('複勝率') not in _blank %}{{_hon.get('複勝率')}}%{% elif _hc.get('複勝率') not in _blank %}{{_hc.get('複勝率')}}%{% else %}—{% endif %}</b></div>
+<div><span>オッズ</span><b>{% if _hon.get('単勝オッズ表示') not in _blank %}{{_hon.get('単勝オッズ表示')}}{% elif _hc.get('単勝オッズ') not in _blank %}{{_hc.get('単勝オッズ')}}{% else %}—{% endif %}</b></div>
+<div class="is-ev"><span>期待値</span><b>{% if _ev not in _blank %}{{_ev}}{% else %}—{% endif %}</b></div>
+</div>
+</div>
+<div class="ra-apt">
+{% for row in (_hon.get('適性詳細') if _hon.get('適性詳細') is sequence else []) %}
+{% set _adisp = row.get('表示') if row.get('表示') not in _blank else 'データ不足' %}
+{% set _item = row.get('項目') or '' %}
+{% set _ico = '指' if '指数ラップ' in _item else ('ラ' if 'ラップ' in _item else ('展' if '展開' in _item else ('前' if '前走' in _item else ('コ' if 'コース' in _item else ('距' if '距離' in _item else ('場' if '馬場' in _item else '・')))))) %}
+<div class="ra-apt-row">
+<div class="ra-apt-l"><span class="ico">{{_ico}}</span>{{_item}}</div>
+{% if row.get('バー') not in _blank %}<span class="ra-bar"><i style="width:{{[100, row.get('バー')]|min}}%"></i></span>{% else %}<span class="ra-bar"></span>{% endif %}
+{% if row.get('バー') not in _blank %}<b class="ra-apt-score" title="{{_adisp}}">{{row.get('バー')|int}}</b>{% else %}<b class="ra-apt-score miss" title="{{_adisp}}">{{_adisp}}</b>{% endif %}
+</div>
+{% else %}
+<p class="ra-empty">適性データ不足</p>
+{% endfor %}
+</div>
+{% if _view not in _blank %}
+<div class="ra-view"><strong>AIの見解</strong>{{_view}}</div>
+{% endif %}
+</div>
+{% else %}
+<div class="ra-hd"><span class="ic">◎</span>本命の評価詳細</div>
+<div class="ra-bd"><p class="ra-empty">本命データ不足</p></div>
+{% endif %}
+</article>
+
+<article class="ra-sec ra-stylelist">
+<div class="ra-hd"><span class="ic">適</span>全馬の展開予測・適性一覧</div>
+<div class="ra-bd">
+<div class="ra-full-wrap">
+<table class="ra-style">
+<thead><tr><th>馬番</th><th>馬名</th><th>想定位置</th><th>展開適性</th><th>コメント</th></tr></thead>
+<tbody>
+{% for p in _det[:8] %}
+  {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
+  {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '不明' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
+  {% set _cm = namespace(t='') %}
+  {% if _pos not in _blank and _pos != '不明' %}{% set _cm.t = _pos ~ 'から' %}{% endif %}
+  {% if p.get('ラップ適性表示') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性表示')) %}{% elif p.get('ラップ適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性')) %}{% endif %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+<tr>
+<td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
+<td>{{p.get('馬名') or '—'}}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
+<td>{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% if _det|length > 8 %}
+<details>
+<summary class="ra-morebtn">∨ 全{{_det|length}}頭の展開予測を見る</summary>
+<div class="ra-full-wrap" style="margin-top:8px">
+<table class="ra-style">
+<tbody>
+{% for p in _det[8:] %}
+  {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
+  {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '不明' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
+  {% set _cm = namespace(t='') %}
+  {% if _pos not in _blank and _pos != '不明' %}{% set _cm.t = _pos ~ 'から' %}{% endif %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+<tr>
+<td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
+<td>{{p.get('馬名') or '—'}}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
+<td>{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</details>
+{% endif %}
+</div>
+</article>
+</div></div>
+
+<details class="ra-sec ra-fold ra-focus">
+<summary><span class="ic" style="display:inline-flex;width:18px;height:18px;border-radius:5px;background:rgba(11,122,69,.12);align-items:center;justify-content:center;margin-right:6px;font-size:10px;color:#0B7A45">注</span>今回の注目ポイント</summary>
+<div class="ra-bd">
+{% set _cpts = _anal.get('条件変更ポイント') if _anal.get('条件変更ポイント') is sequence else [] %}
+{% if _cpts %}
+<ul class="ra-focus-grid">
+{% for ch in _cpts[:6] %}
+  {% set _fx = (ch.get('効果') or 'データ不足')|string %}
+  {% set _fx_cls = 'is-plus' if ('加点' in _fx or 'プラス' in _fx or '好転' in _fx) else ('is-minus' if ('減点' in _fx or 'マイナス' in _fx or '不利' in _fx) else '') %}
+<li class="{{_fx_cls}}">
+<span class="lab">{{ch.get('icon') or '•'}} {% if ch.get('馬番') %}{{ch.get('馬番')}} {% endif %}{{ch.get('ラベル')}}</span>
+<span class="fx">{% if 'データ不足' in _fx %}検出のみ · 効果データ不足{% else %}{{_fx}}{% endif %}</span>
+</li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="ra-empty">検出できた条件変更はありません</p>
+{% endif %}
+<p class="ra-focus-note">検出とAI加点は別です。効果データが無い項目は加点しません。</p>
+</div>
+</details>
+
+<article class="ra-sec ra-detail" id="ra-full-{{r.get('race_id','')}}">
+<div class="ra-hd is-split"><span style="display:inline-flex;align-items:center;gap:8px"><span class="ic">全</span>全頭AI評価（抜粋）</span><a class="ra-hd-act" href="#ra-full-all-{{r.get('race_id','')}}">全{{_det|length}}頭を見る ›</a></div>
+<div class="ra-bd">
+<div class="ra-full-wrap">
+<table class="ra-full">
+<thead>
+<tr>
+<th>AI順</th><th>印</th><th>馬番</th><th class="nm">馬名</th><th>AI評価</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>信頼度</th><th>想定位置</th><th>展開適性</th><th>総合コメント</th>
+</tr>
+</thead>
+<tbody>
+{% for p in _det[:5] %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
+  {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+  {% set _sc = p.get('予想スコア') if p.get('予想スコア') not in _blank else _card.get('AI評価') %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '—' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
+  {% set _cm = namespace(t='') %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+  {% if p.get('ラップ適性表示') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性表示')) %}{% elif p.get('ラップ適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ p.get('ラップ適性')) %}{% endif %}
+<tr>
+<td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
+<td class="mk">{{p.get('表示印') or ''}}</td>
+<td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
+<td class="nm">{{p.get('馬名') or '—'}}</td>
+<td>{% if _sc not in _blank %}<span class="sc">{{_sc}}</span>{% else %}—{% endif %}</td>
+<td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% elif _card.get('勝率') not in _blank %}{{_card.get('勝率')}}%{% else %}—{% endif %}</td>
+<td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}—{% endif %}</td>
+<td>{% if _ev not in _blank %}<span class="ev">{{_ev}}</span>{% else %}—{% endif %}</td>
+<td class="conf">{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% elif _card.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_card.get('AI信頼度スコア')|float)}}%{% else %}—{% endif %}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
+<td class="cm">{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+{% if _det|length > 5 %}
+<tr><td colspan="12" style="text-align:center;color:#6B7785;font-weight:800">…</td></tr>
+{% endif %}
+</tbody>
+</table>
+</div>
+{% if _det|length > 5 %}
+<details class="ra-fold" id="ra-full-all-{{r.get('race_id','')}}" style="margin-top:8px;border-top:1px solid #EEF2F0">
+<summary>残り{{_det|length - 5}}頭を表示</summary>
+<div class="ra-full-wrap" style="padding:8px 0 0">
+<table class="ra-full">
+<tbody>
+{% for p in _det[5:] %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _bn = (p.get('馬番') or p.get('馬番表示') or '')|ban_digits %}
+  {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+  {% set _sc = p.get('予想スコア') if p.get('予想スコア') not in _blank else _card.get('AI評価') %}
+  {% set _wk = (p.get('枠番') or '')|string|replace('.0','')|trim %}
+  {% set _ev = p.get('カード期待値') if p.get('カード期待値') not in _blank else _card.get('期待値') %}
+  {% set _pos = p.get('展開ゾーン') or p.get('想定ポジション') or '—' %}
+  {% set _pcls = 'p-nige' if _pos=='逃げ' else ('p-sen' if _pos=='先行' else ('p-chu' if _pos in ['中団','差し'] else ('p-kou' if _pos in ['後方','追込'] else 'p-unk'))) %}
+  {% set _apt = p.get('展開適性') or p.get('展開相性') or '' %}
+  {% set _apt_s = (_apt ~ '')|string %}
+  {% set _apt_mk = '◎' if '◎' in _apt_s else ('○' if '○' in _apt_s else ('▲' if '▲' in _apt_s else ('△' if '△' in _apt_s else ''))) %}
+  {% set _apt_cls = 'is-hon' if _apt_mk=='◎' else ('is-tai' if _apt_mk=='○' else ('is-ana' if _apt_mk=='▲' else ('is-ren' if _apt_mk=='△' else ''))) %}
+  {% set _cm = namespace(t='') %}
+  {% if p.get('コース適性') not in _blank %}{% set _cm.t = _cm.t ~ ((' · ' if _cm.t else '') ~ 'コース' ~ p.get('コース適性')) %}{% endif %}
+<tr>
+<td>{% if p.get('AI順位') not in _blank %}{{p.get('AI順位')}}{% else %}—{% endif %}</td>
+<td class="mk">{{p.get('表示印') or ''}}</td>
+<td><span class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span></td>
+<td class="nm">{{p.get('馬名') or '—'}}</td>
+<td>{% if _sc not in _blank %}<span class="sc">{{_sc}}</span>{% else %}—{% endif %}</td>
+<td>{% if p.get('勝率') not in _blank %}{{p.get('勝率')}}%{% elif _card.get('勝率') not in _blank %}{{_card.get('勝率')}}%{% else %}—{% endif %}</td>
+<td>{% if p.get('複勝率') not in _blank %}{{p.get('複勝率')}}%{% elif _card.get('複勝率') not in _blank %}{{_card.get('複勝率')}}%{% else %}—{% endif %}</td>
+<td>{% if _ev not in _blank %}<span class="ev">{{_ev}}</span>{% else %}—{% endif %}</td>
+<td class="conf">{% if p.get('AI信頼度スコア') not in _blank %}{{'%g'|format(p.get('AI信頼度スコア')|float)}}%{% elif _card.get('AI信頼度スコア') not in _blank %}{{'%g'|format(_card.get('AI信頼度スコア')|float)}}%{% else %}—{% endif %}</td>
+<td><span class="ra-pos {{_pcls}}">{{_pos}}</span></td>
+<td>{% if _apt_mk %}<span class="ra-apt-mk {{_apt_cls}}">{{_apt_mk}}</span>{% elif _apt %}{{_apt}}{% else %}—{% endif %}</td>
+<td class="cm">{% if _cm.t %}{{_cm.t}}{% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</details>
+{% endif %}
+</div>
+</article>
+
+<details class="ra-sec ra-fold">
+<summary>参考：ラップ適合 × 展開</summary>
+{% if _lapmap %}
+<div class="ra-scatter">
+<div class="ra-plot">
+<span class="ra-q nw">差し向き</span>
+<span class="ra-q ne">逃げ・先行向き</span>
+<span class="ra-q sw">追込向き</span>
+{% for pt in _lapmap %}
+  {% set _bn = (pt.get('馬番数字') or pt.get('馬番') or '')|ban_digits %}
+  {% set _ub = _bn if _bn and _bn != '0' else '0' %}
+  {% set _wk = (pt.get('枠番') or '')|string|replace('.0','')|trim %}
+<i class="ra-dot ub-{{_ub}}{% if _wk.isdigit() and 1 <= _wk|int <= 8 %} wk-{{_wk|int}}{% endif %}" style="left:{{pt.get('x')}}%;bottom:{{pt.get('y')}}%" title="{{pt.get('馬番')}} {{pt.get('馬名')}}">{{pt.get('馬番') or _bn}}</i>
+{% endfor %}
+</div>
+<div class="ra-axis-x">後方 ← 想定ポジション → 前方</div>
+</div>
+{% else %}
+<p class="ra-empty" style="padding:12px">既存の展開・ラップ適合データがある馬だけをプロットします</p>
+{% endif %}
+</details>
+</section>
+
+<details class="rb-more fx-rank-fold">
+<summary>予想サマリー・要因</summary>
+
+<section class="fx-hero">
+<div class="fx-hero-kicker">
+<span>{% if r.get('開催日') %}{{r.get('開催日')}}{% else %}{{selected_date}}{% endif %}{% if r.get('開催地') %} · {{r.get('開催地')}}{% endif %}</span>
+</div>
+<h2>{% if r.get('レース') is not none %}{{'%02d'|format(r['レース']|int)}}R{% endif %}{% if r.get('レース名') %}<small>{{r.get('レース名')}}</small>{% endif %}</h2>
+<div class="fx-hero-meta">
+{% if _start not in _blank %}<div class="fx-chip"><b>{{_start}}</b><small>発走</small></div>{% endif %}
+{% if _surface not in _blank %}<div class="fx-chip"><b>{{_surface}}</b><small>芝/ダート</small></div>{% endif %}
+{% if _dist not in _blank %}<div class="fx-chip"><b>{{_dist}}</b><small>距離</small></div>{% endif %}
+{% if r.get('データ頭数') not in _blank %}<div class="fx-chip"><b>{{r.get('データ頭数')|int}}頭</b><small>頭数</small></div>
+{% elif r.get('表示頭数') not in _blank %}<div class="fx-chip"><b>{{r.get('表示頭数')|int}}頭</b><small>頭数</small></div>{% endif %}
+</div>
+<div class="fx-hero-hl">
+<div><small>本命</small><b>{% if _roles.hon %}{% if _roles.hon.get('馬番表示') or _roles.hon.get('馬番') %}{{_roles.hon.get('馬番表示') or _roles.hon.get('馬番')}} {% endif %}{{_roles.hon.get('馬名') or '—'}}{% else %}{{r.get('本命表示') or r.get('本命') or '—'}}{% endif %}</b></div>
+<div><small>対抗</small><b>{% if _roles.tai %}{% if _roles.tai.get('馬番表示') or _roles.tai.get('馬番') %}{{_roles.tai.get('馬番表示') or _roles.tai.get('馬番')}} {% endif %}{{_roles.tai.get('馬名') or '—'}}{% else %}—{% endif %}</b></div>
+</div>
+<div class="fx-hero-foot">
+<div><b class="{% if _buy_n.v %}buy{% endif %}">{{_buy_n.v}}件</b><small>BUY</small></div>
+<div><b class="{% if _ev_n.v is not none and _ev_n.v >= 100 %}hot{% endif %}">{{_ev_disp}}</b><small>最大期待値</small></div>
+</div>
+</section>
+
+<section class="race-sum fx-sum">
+<h3>予想サマリー</h3>
+<div class="race-sum-grid">
+<div><b>{% if _roles.hon %}{% if _roles.hon.get('馬番表示') or _roles.hon.get('馬番') %}{{_roles.hon.get('馬番表示') or _roles.hon.get('馬番')}} {% endif %}{{_roles.hon.get('馬名') or '—'}}{% else %}{{r.get('本命表示') or r.get('本命') or '—'}}{% endif %}</b><small>本命</small></div>
+<div><b>{% if _roles.tai %}{% if _roles.tai.get('馬番表示') or _roles.tai.get('馬番') %}{{_roles.tai.get('馬番表示') or _roles.tai.get('馬番')}} {% endif %}{{_roles.tai.get('馬名') or '—'}}{% else %}—{% endif %}</b><small>対抗</small></div>
+<div class="{% if _is_prod_buy %}is-buy{% endif %}"><b>{% if _is_prod_buy %}🔥 BUY{% else %}見送り{% endif %}</b><small>BUY</small></div>
+<div><b>{{_ev_disp}}</b><small>期待値</small></div>
+<div><b>{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+</div>
+</section>
+
+<section class="fx-ai-wrap">
+<h3>全馬ランキング</h3>
+{% if _rows %}
+{% for p in _rows %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = namespace(v=p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ')) %}
+  {% if _od.v in _blank and (p.get('役割') or '') == '本命' %}{% set _od.v = r.get('本命オッズ') %}{% endif %}
+  {% set _odds_disp = (('' ~ _od.v)|replace('倍','') ~ '倍') if _od.v not in _blank else '—' %}
+  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
+  {% set _pe = namespace(v=none) %}
+  {% if p.get('BUY表示') %}{% set _pe.v = _ev_disp %}
+  {% elif _ev_raw not in _blank %}{% set _pe.v = (_ev_raw ~ '') %}
+  {% endif %}
+  {% set _row_n = namespace(v=none) %}
+  {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _row_n.v = (_pe.v ~ '')|replace('%','')|float %}
+  {% endif %}
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+  {% set _rank = p.get('AI順位') %}
+  {% set _grade = p.get('AI評価') or p.get('予想スコア') %}
+  {% set _gkey = (_grade ~ '')|trim|upper %}
+  {% set _sc = _conf if p.get('BUY表示') else (_pconf if _pconf not in _blank else _conf) %}
+<button type="button" class="fx-hrow{% if p.get('BUY表示') %} buy{% endif %}" data-horse-i="{{loop.index0}}">
+<div class="fx-hrow-top">
+<span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>
+<div class="nm">{{p.get('馬名') or '—'}}{% if _sc not in _blank %}<small>信頼度 {{'%g'|format(_sc|float)}}%</small>{% endif %}</div>
+{% if p.get('BUY表示') %}<span class="mini buy">🔥 BUY</span>{% else %}<span class="mini skip">見送り</span>{% endif %}
+</div>
+<div class="fx-hrow-metrics">
+<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
+<div><b>{% if _grade not in _blank %}<span class="gpill{% if _gkey[:1] in ['S','A','B','C','D'] %} g-{{_gkey[:1]|lower}}{% endif %}">{{_grade}}</span>{% else %}—{% endif %}</b><small>AI評価</small></div>
+<div><b class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}">{% if _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b><small>期待値</small></div>
+<div><b>{% if _rank not in _blank %}AI{{_rank}}{% else %}—{% endif %}</b><small>AI順位</small></div>
+</div>
+</button>
+{% if p.get('BUY表示') and _is_prod_buy %}
+<details class="fx-why">
+<summary>BUY理由を見る</summary>
+<div class="fx-why-body">
+{% if r.get('勝負ランク') not in _blank %}<div><small>勝負ランク</small><b>{{r.get('勝負ランク')}}</b></div>{% endif %}
+{% set _edge = _buy_pack.get('実エッジpp') if _buy_pack.get('実エッジpp') not in _blank else r.get('実エッジpp') %}
+{% if _edge not in _blank %}<div><small>実エッジ</small><b>{{'%+.1f'|format(_edge|float)}}pp</b></div>{% endif %}
+{% set _q = _buy_pack.get('BUY品質スコア') if _buy_pack.get('BUY品質スコア') not in _blank else r.get('BUY品質スコア') %}
+{% if _q not in _blank %}<div><small>品質スコア</small><b>{{_q}}</b></div>{% endif %}
+{% if _ev_disp not in _blank %}<div><small>表示期待値</small><b>{{_ev_disp}}</b></div>{% endif %}
+{% for x in _buy_reasons %}
+<div class="fx-why-note">{{x}}</div>
+{% endfor %}
+</div>
+</details>
+{% endif %}
+{% endfor %}
+{% else %}
+<div class="reason">予想馬データがありません</div>
+{% endif %}
+</section>
+
+{% if _rows %}
+{% for p in _rows %}
+  {% set _card = p.get('カード') if p.get('カード') is mapping else {} %}
+  {% set _od = namespace(v=p.get('単勝オッズ表示') if p.get('単勝オッズ表示') is not none else _card.get('単勝オッズ')) %}
+  {% if _od.v in _blank and (p.get('役割') or '') == '本命' %}{% set _od.v = r.get('本命オッズ') %}{% endif %}
+  {% set _odds_disp = (('' ~ _od.v)|replace('倍','') ~ '倍') if _od.v not in _blank else '—' %}
+  {% set _ev_raw = p.get('カード期待値') if p.get('カード期待値') is not none else (_card.get('期待値') if _card.get('期待値') is not none else r.get('期待値') if p.get('BUY表示') else none) %}
+  {% set _pe = namespace(v=none) %}
+  {% if p.get('BUY表示') %}{% set _pe.v = _ev_disp %}
+  {% elif _ev_raw not in _blank %}{% set _pe.v = (_ev_raw ~ '') %}
+  {% endif %}
+  {% set _row_n = namespace(v=none) %}
+  {% if _pe.v and (_pe.v ~ '')|replace('%','')|trim not in ('', '—', '-', 'None', 'nan') %}
+    {% set _row_n.v = (_pe.v ~ '')|replace('%','')|float %}
+  {% endif %}
+  {% set _pconf = p.get('AI信頼度スコア') or _card.get('AI信頼度スコア') %}
+<section class="fx-detail" data-horse-detail="{{loop.index0}}">
+<div class="fx-dtop">
+<div>
+<div class="fx-dname"><span class="ban-circle waku-{{(p.get('枠番') or '0')|string|replace('.0','')}}">{{p.get('馬番表示') or p.get('馬番') or '—'}}</span>{{p.get('馬名') or '—'}}<small>{% if p.get('騎手') %}{{p.get('騎手')}}{% endif %}{% if p.get('斤量') %} · {{p.get('斤量')}}{% endif %}{% if p.get('役割') %} · {{p.get('役割')}}{% endif %}</small></div>
+</div>
+{% if p.get('BUY表示') %}<span class="fx-buy-btn buy">🔥 BUY</span>{% else %}<span class="judge-pill skip">見送り</span>{% endif %}
+</div>
+<div class="fx-dmetrics">
+<div><b>{{_odds_disp}}</b><small>オッズ</small></div>
+<div><b class="{% if _row_n.v is not none and _row_n.v >= 100 %}hot{% endif %}">{% if p.get('BUY表示') %}{{_ev_disp}}{% elif _pe.v %}{{_pe.v}}{% if '%' not in (_pe.v ~ '') %}%{% endif %}{% else %}—{% endif %}</b><small>{% if p.get('BUY表示') %}表示期待値{% else %}期待値{% endif %}</small></div>
+<div><b>{{p.get('AI評価') or p.get('予想スコア') or '—'}}</b><small>AI評価</small></div>
+<div><b>{% if p.get('BUY表示') %}{% if _conf is not none %}{{'%g'|format(_conf|float)}}%{% else %}—{% endif %}{% elif _pconf is not none %}{{'%g'|format(_pconf|float)}}%{% else %}—{% endif %}</b><small>信頼度</small></div>
+</div>
+<div class="fx-facs">
+<div class="fx-fac plus"><h4>プラス要因</h4>
+{% if p.get('プラス要因') %}<ul>{% for x in p.get('プラス要因') %}<li>{{x}}</li>{% endfor %}</ul>{% else %}<div class="fx-empty">表示できる要因はありません</div>{% endif %}
+</div>
+<div class="fx-fac minus"><h4>マイナス要因</h4>
+{% if p.get('マイナス要因') %}<ul>{% for x in p.get('マイナス要因') %}<li>{{x}}</li>{% endfor %}</ul>{% else %}<div class="fx-empty">表示できる要因はありません</div>{% endif %}
+</div>
+</div>
+</section>
+{% endfor %}
+{% endif %}
+
+<button type="button" class="fx-anal" data-fx-anal>📄 要因サマリーを見る <span>＞</span></button>
+<div class="fx-analysis">
+{% set pace = r.get('展開予想データ') if r.get('展開予想データ') is mapping else {} %}
+{% if pace %}
+<div class="section" style="padding:0 0 12px;border:0">
+<div class="ai-card">
+<h3>展開の要点</h3>
+<div class="kv">
+<div>想定ペース <b>{% if pace.get('想定ペース') %}{{pace.get('想定ペース')}}{% else %}データ不足{% endif %}</b></div>
+<div>荒れ指数 <b>{% if pace.get('荒れ指数') not in _blank %}{{pace.get('荒れ指数')}}{% else %}データ不足{% endif %}</b></div>
+</div>
+{% if pace.get('AI総評') %}<div class="reason" style="margin-top:8px">{{pace.get('AI総評')}}</div>{% endif %}
+</div>
+</div>
+{% endif %}
+<div class="beta">買い方提案・資金配分は表示しません · 評価の根拠を優先します · BUY 0件も正常</div>
+</div>
+</details>
