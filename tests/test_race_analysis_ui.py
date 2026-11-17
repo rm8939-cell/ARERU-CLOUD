@@ -162,14 +162,14 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v41_is_dashboard_hierarchy(self):
+    def test_template_v42_is_dashboard_hierarchy(self):
         from pathlib import Path
         html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('data-ui="areu-app-v41"', html)
+        self.assertIn('data-ui="areu-app-v42"', html)
         self.assertIn('data-ra-ui="v39"', html)
-        self.assertIn('ra-dayhit', html)
-        self.assertIn('ra-result', html)
-        self.assertIn('本命的中率', html)
+        # 予想画面の結果カードは非表示（結果検証モード側に残す）
+        self.assertNotIn('ra-dayhit', html)
+        self.assertNotIn('class="ra-sec ra-result"', html)
         self.assertIn('馬連・ワイド軸', html)
         self.assertIn('ra-tickets', html)
         self.assertIn('>地方</span>', html)
