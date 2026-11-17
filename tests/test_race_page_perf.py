@@ -29,7 +29,9 @@ def _fingerprint(html: str) -> dict:
     ai = re.findall(r'>AI(\d+)<', html)
     honmei = re.findall(r'◎本命', html)
     return {
-        'ui': any(f'data-ui="areu-app-v{v}"' in html for v in ('38', '37', '36', '35', '34', '33', '32', '31', '30', '29', '28')),
+        'ui': any(f'data-ui="areu-app-v{v}"' in html for v in (
+            '43', '42', '41', '40', '39', '38', '37', '36', '35', '34', '33', '32', '31', '30', '29', '28',
+        )),
         'judges': judges,
         'buy_count': len(buys),
         'ai_ranks': ai[:40],
@@ -53,6 +55,9 @@ class TestRacePageCache(unittest.TestCase):
         self.assertTrue(fp1['ui'])
         self.assertGreater(fp1['buy_count'], 0)
         self.assertTrue(fp1['judges'])
+        # 初回は1レース本描画 + 他は lazy（HTMLを大幅に軽量化）
+        self.assertGreaterEqual(html1.count('data-lazy="1"'), 5)
+        self.assertLess(fp1['bytes'], 450_000)
         header1 = first.headers.get('X-ARERU-Perf', '')
         self.assertIn('cache=miss', header1)
 
@@ -127,6 +132,23 @@ class TestRacePageCache(unittest.TestCase):
         second_h = self.client.get(url + '&venue=' + quote('阪神'))
         self.assertIn('cache=hit', second_h.headers.get('X-ARERU-Perf', ''))
         self.assertEqual(fp2, _fingerprint(second_h.get_data(as_text=True)))
+
+    def test_race_board_api_returns_fragment(self):
+        import re
+        _clear_runtime_caches()
+        page = self.client.get(URL)
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        m = re.search(r'data-lazy-url="([^"]+)"', html)
+        self.assertIsNotNone(m)
+        url = m.group(1).replace('&amp;', '&')
+        frag = self.client.get(url)
+        self.assertEqual(frag.status_code, 200)
+        body = frag.get_data(as_text=True)
+        self.assertIn('ra-board', body)
+        self.assertIn('AI予想（本命〜連下）', body)
+        again = self.client.get(url)
+        self.assertIn('cache=hit', again.headers.get('X-ARERU-Perf', ''))
 
 
 if __name__ == '__main__':
