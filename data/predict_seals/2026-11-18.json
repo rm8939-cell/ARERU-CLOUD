@@ -1,10 +1,11 @@
 {
   "date": "2026-11-18",
-  "sealed_at": "2026-11-18T01:53:10+09:00",
+  "sealed_at": "2026-11-18T07:50:03+09:00",
   "deadline_hour": 8,
   "sources": [
+    "jra",
     "nar"
   ],
-  "mode": "morning",
-  "note": "gha_morning"
+  "mode": "odds",
+  "note": "gha_odds"
 }
