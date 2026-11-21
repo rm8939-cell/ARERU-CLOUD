@@ -199,7 +199,7 @@
 <article class="ra-sec ra-tickets">
 <div class="ra-hd"><span class="ic">券</span>馬連・ワイド軸{% if r.get('推奨券種') in ['ワイド','馬連'] %} · 推奨 {{r.get('推奨券種')}}{% endif %}</div>
 <div class="ra-bd">
-<span class="nt-axis">◎本命軸 · 単勝は出さない</span>
+<span class="nt-axis">◎本命軸 · 印付き相手のみ · 単勝なし</span>
 <div class="ra-ticket-list">
 {% for t in _tix[:4] %}
 <div class="nt{% if t.get('参考') %} is-ref{% endif %}">
