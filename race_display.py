@@ -38,6 +38,33 @@ GEAR_UNAVAILABLE = {
 _CIRCLED_BAN = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
 
 
+def is_mojibake(text) -> bool:
+    """置換文字や壊れた日本語っぽい文字列を検出。"""
+    if text is None:
+        return False
+    s = str(text)
+    if not s or s.lower() in ("nan", "none"):
+        return False
+    if "\ufffd" in s or "�" in s:
+        return True
+    # 制御文字混入
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", s):
+        return True
+    return False
+
+
+def clean_text(text, *, fallback: str | None = None) -> str | None:
+    """表示用に文字化け文字列を落とす。壊れていれば fallback（既定は None）。"""
+    if text is None:
+        return fallback
+    s = str(text).strip()
+    if not s or s.lower() in ("nan", "none", "なし"):
+        return fallback
+    if is_mojibake(s):
+        return fallback
+    return s
+
+
 def ban_digits(v) -> str | None:
     """馬番をアラビア数字文字列へ。丸数字・欠損も吸収。捏造はしない。"""
     if v is None:
@@ -355,7 +382,7 @@ def build_honmei_view(horse: dict | None, race: dict | None, anal: dict | None) 
     if not _blank(tenkai):
         bits.append(f"展開面は{tenkai}")
 
-    prev = horse.get("前走内容")
+    prev = clean_text(horse.get("前走内容"))
     if not _blank(prev):
         bits.append(f"前走は{prev}")
 
@@ -539,13 +566,22 @@ def detect_condition_changes(
             "詳細": "前走騎手が取れない", "種別": "JockeyChange", "icon": "🧍",
         })
 
-    # ブリンカー / 馬具 — データ列が無いので検出不能を明示
-    out.append(dict(GEAR_UNAVAILABLE))
-    out.append({
-        "検出": "データ不足", "効果": "データ不足", "ラベル": "初ブリンカー",
-        "詳細": "ブリンカー情報がデータに無い", "種別": "FirstBlinker", "icon": "🔥",
-    })
-    return out
+    # ブリンカーはデータ無しのため出さない（ユーザー方針）
+    # 文字化けした検出行は落とす
+    cleaned = []
+    for row in out:
+        if not isinstance(row, dict):
+            continue
+        label = clean_text(row.get("ラベル"))
+        detail = clean_text(row.get("詳細"), fallback="")
+        if label is None:
+            continue
+        row = dict(row)
+        row["ラベル"] = label
+        if detail is not None:
+            row["詳細"] = detail
+        cleaned.append(row)
+    return cleaned
 
 
 def focus_condition_points(horses: list[dict], limit: int = 8) -> list[dict]:

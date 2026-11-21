@@ -227,14 +227,17 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
 
     def test_badges_use_jra_frame_colors_from_waku(self):
         from pathlib import Path
-        html = (Path(__file__).resolve().parents[1] / 'templates' / 'index.html').read_text(encoding='utf-8')
+        root = Path(__file__).resolve().parents[1]
+        html = (root / 'templates' / 'index.html').read_text(encoding='utf-8')
+        board = (root / 'templates' / 'partials' / 'race_article_body.html').read_text(encoding='utf-8')
+        all_html = html + '\n' + board
         for cls, color in (
             ('.wk-1', '#fff'), ('.wk-2', '#111'), ('.wk-3', '#e53935'), ('.wk-4', '#1565c0'),
             ('.wk-5', '#f4c20d'), ('.wk-6', '#2e7d32'), ('.wk-7', '#ef6c00'), ('.wk-8', '#ec407a'),
         ):
             self.assertIn(f'{cls}{{background:{color}', html)
         # 展開ゾーン・散布図・適合ランキングなど複数箇所で枠色を使う
-        self.assertGreaterEqual(html.count("wk-{{_wk|int}}"), 2)
+        self.assertGreaterEqual(all_html.count("wk-{{_wk|int}}"), 2)
 
     def test_lap_map_carries_waku_for_badge_color(self):
         race = _race('中山8R', pace='ハイ', horses=[
@@ -274,7 +277,9 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
             self.assertIn('条件変更', p)
             self.assertIn('適性詳細', p)
             labels = {c.get('ラベル') for c in p['条件変更']}
-            self.assertTrue(any('ブリンカー' in str(x) or '馬具' in str(x) for x in labels))
+            # ブリンカーはデータ無しのため出さない。文字化けラベルも出さない。
+            self.assertFalse(any('ブリンカー' in str(x) or '馬具' in str(x) for x in labels))
+            self.assertFalse(any(('�' in str(x)) for x in labels))
 
     def test_past_finish_infers_zone_when_style_blank(self):
         race = _race('中山3R', horses=[

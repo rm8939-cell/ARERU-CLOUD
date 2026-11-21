@@ -187,9 +187,14 @@ class NetkeibaClient:
         if encoding:
             r.encoding = encoding
         else:
-            # db.netkeiba は euc-jp、race.netkeiba は utf-8 が多い
-            if "db.netkeiba.com" in url:
-                r.encoding = r.apparent_encoding or "euc-jp"
+            # db.netkeiba / race.netkeiba とも現状は UTF-8。
+            # 旧 euc-jp 強制はレース名・開催場の文字化け原因になる。
+            ctype = str(r.headers.get("Content-Type") or "").lower()
+            head = (r.content or b"")[:2048].decode("ascii", errors="ignore").lower()
+            if "charset=utf-8" in ctype or "charset=utf-8" in head:
+                r.encoding = "utf-8"
+            elif "charset=euc-jp" in ctype or "charset=euc-jp" in head:
+                r.encoding = "euc-jp"
             else:
                 r.encoding = r.apparent_encoding or "utf-8"
         # HTML変更っぽい応答を検知
@@ -758,7 +763,8 @@ class NetkeibaClient:
             # Render Free 等: ネット履歴取得を省略（空履歴でスコア継続）
             return []
         url = f"{DB}/horse/result/{horse_id}/"
-        soup = self._get(url, encoding="euc-jp")
+        # UTF-8（meta charset）。euc-jp 強制は文字化けする
+        soup = self._get(url)
         table = soup.select_one("table.db_h_race_results") or soup.select_one("table")
         hist = []
         if table:
@@ -812,11 +818,17 @@ class NetkeibaClient:
                 row = past[i - 1]
                 out[f"着順{i}"] = _num_or_blank(row.get("着順"))
                 out[f"人気{i}"] = _num_or_blank(row.get("人気"))
-                out[f"場{i}"] = str(row.get("場") or "").strip()
-                out[f"レース名{i}"] = str(row.get("レース名") or "").strip()
-                out[f"タイム{i}"] = str(row.get("タイム") or "").strip()
-                out[f"着差{i}"] = str(row.get("着差") or "").strip()
-                out[f"馬場{i}"] = str(row.get("馬場") or "").strip()
+                # 文字化けした場・レース名は空にする（旧 euc-jp 強制の残骸対策）
+                def _safe(v: object) -> str:
+                    s = str(v or "").strip()
+                    if not s or "\ufffd" in s or "�" in s:
+                        return ""
+                    return s
+                out[f"場{i}"] = _safe(row.get("場"))
+                out[f"レース名{i}"] = _safe(row.get("レース名"))
+                out[f"タイム{i}"] = _safe(row.get("タイム"))
+                out[f"着差{i}"] = _safe(row.get("着差"))
+                out[f"馬場{i}"] = _safe(row.get("馬場"))
             else:
                 out[f"着順{i}"] = ""
                 out[f"人気{i}"] = ""

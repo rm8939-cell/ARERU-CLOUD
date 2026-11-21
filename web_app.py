@@ -279,6 +279,17 @@ def _load_scores_display_df(path):
     except Exception as e:
         print(f'[scores-df] read fail {p}: {e}', flush=True)
         return None
+    # 過去走の文字化け（旧 euc-jp 強制由来）を表示前に落とす
+    try:
+        from race_display import clean_text as _clean_txt
+        for col in (
+            'レース名1', 'レース名2', 'レース名3', 'レース名4', 'レース名5',
+            '場1', '馬場1', 'タイム1', '騎手',
+        ):
+            if col in df.columns:
+                df[col] = df[col].map(lambda v: _clean_txt(v) or '')
+    except Exception as e:
+        print(f'[scores-df] sanitize skip: {e}', flush=True)
     _cache_put(_SCORES_DF_CACHE, key, df, _DF_CACHE_MAX)
     return df
 
@@ -2844,11 +2855,12 @@ def _stamp_horse_analysis_fields(p: dict, pace_label: str, past: dict | None = N
     elif pos_label:
         p['展開適性'] = pos_label + ('（過去走推定）' if p.get('脚質推定') else '')
 
-    last_name = str(past.get('レース名1') or '').strip()
+    from race_display import clean_text as _clean_txt
+    last_name = _clean_txt(past.get('レース名1')) or ''
     last_fin = str(past.get('着順1') or '').strip()
-    last_time = str(past.get('タイム1') or '').strip()
-    last_track = str(past.get('馬場1') or '').strip()
-    last_venue = str(past.get('場1') or '').strip()
+    last_time = _clean_txt(past.get('タイム1')) or ''
+    last_track = _clean_txt(past.get('馬場1')) or ''
+    last_venue = _clean_txt(past.get('場1')) or ''
     if last_fin:
         try:
             last_fin = f'{int(float(last_fin))}着'
@@ -2862,10 +2874,12 @@ def _stamp_horse_analysis_fields(p: dict, pace_label: str, past: dict | None = N
     p['前走タイム'] = last_time if last_time and last_time.lower() not in ('nan', 'none') else None
     p['前走馬場'] = last_track if last_track and last_track.lower() not in ('nan', 'none') else None
 
-    names = [past.get(f'レース名{i}') for i in range(1, 6)]
+    names = [_clean_txt(past.get(f'レース名{i}')) for i in range(1, 6)]
     finishes = [past.get(f'着順{i}') for i in range(1, 6)]
     graded = []
     for nm, fin in zip(names, finishes):
+        if not nm:
+            continue
         g = _grade_from_race_name(nm)
         if g:
             fin_s = str(fin or '').strip()
