@@ -824,44 +824,81 @@ def _read_predictions_for_venue_detail(pred_path, source: str, venue: str) -> li
         return []
 
 
+_AXIS_MARK_ROLES = {'本命', '対抗', '単穴', '連下', '注目馬', '穴馬'}
+_AXIS_MARK_CHARS = {'◎', '○', '▲', '△'}
+
+
+def _axis_has_mark(p: dict) -> bool:
+    """買い目相手は印（役割/表示印）がある馬だけ。"""
+    if not isinstance(p, dict):
+        return False
+    role = str(p.get('役割') or p.get('表示印名') or '').strip()
+    mark = str(p.get('表示印') or p.get('印') or '').strip()
+    if role in _AXIS_MARK_ROLES:
+        return True
+    if mark in _AXIS_MARK_CHARS:
+        return True
+    return False
+
+
 def _axis_pick_roles(race: dict) -> tuple:
-    """本命・対抗・相手候補を印/ピックから取る。"""
-    picks=[p for p in (race.get('予想馬') or []) if isinstance(p, dict)]
-    cards=[c for c in (race.get('ピックカード一覧') or []) if isinstance(c, dict)]
+    """本命・対抗・相手候補を印付き馬だけから取る（期待値SIMの印なし馬は使わない）。"""
+    groups = race.get('表示グループ') if isinstance(race.get('表示グループ'), dict) else {}
+    picks = [p for p in (race.get('予想馬') or []) if isinstance(p, dict) and _axis_has_mark(p)]
+    cards = [c for c in (race.get('ピックカード一覧') or []) if isinstance(c, dict) and _axis_has_mark(c)]
+    ai_rows = [p for p in (race.get('AI一覧') or []) if isinstance(p, dict) and _axis_has_mark(p)]
+
+    def _first_in(seq, role_set):
+        for p in seq or []:
+            role = str(p.get('役割') or p.get('表示印名') or '').strip()
+            mark = str(p.get('表示印') or p.get('印') or '').strip()
+            if role in role_set:
+                return p
+            if '本命' in role_set and mark == '◎':
+                return p
+            if '対抗' in role_set and mark == '○':
+                return p
+            if role_set & {'単穴', '穴馬', '注目馬'} and mark == '▲':
+                return p
+            if role_set & {'連下'} and mark == '△':
+                return p
+        return None
 
     def _from(role_set):
-        for p in picks:
-            if p.get('役割') in role_set:
-                return p
-        for c in cards:
-            if c.get('役割') in role_set:
+        for seq in (
+            groups.get('本命') if '本命' in role_set else None,
+            groups.get('対抗') if '対抗' in role_set else None,
+            groups.get('単穴') if role_set & {'単穴', '穴馬', '注目馬'} else None,
+            groups.get('連下') if '連下' in role_set else None,
+            picks,
+            cards,
+            ai_rows,
+        ):
+            hit = _first_in(seq, role_set)
+            if hit:
                 return {
-                    '役割': c.get('役割'),
-                    '馬番表示': c.get('馬番表示') or c.get('馬番'),
-                    '馬番': c.get('馬番'),
-                    '馬名': c.get('馬名'),
+                    '役割': hit.get('役割') or hit.get('表示印名'),
+                    '表示印': hit.get('表示印') or hit.get('印'),
+                    '馬番表示': hit.get('馬番表示') or hit.get('馬番'),
+                    '馬番': hit.get('馬番'),
+                    '馬名': hit.get('馬名'),
                 }
         return None
 
-    main=_from({'本命'}) or (picks[0] if picks else None)
-    rival=_from({'対抗'})
-    partners=[]
-    for role in ('注目馬', '穴馬'):
-        p=_from({role})
-        if p:
+    main = _from({'本命'})
+    rival = _from({'対抗'})
+    partners = []
+    for role_set in ({'単穴', '穴馬', '注目馬'}, {'連下'}):
+        p = _from(role_set)
+        if not p:
+            continue
+        ban = str(p.get('馬番表示') or p.get('馬番') or '').strip()
+        main_ban = str((main or {}).get('馬番表示') or (main or {}).get('馬番') or '').strip()
+        rival_ban = str((rival or {}).get('馬番表示') or (rival or {}).get('馬番') or '').strip()
+        if not ban or ban in (main_ban, rival_ban, '—'):
+            continue
+        if all(str(x.get('馬番表示') or x.get('馬番') or '').strip() != ban for x in partners):
             partners.append(p)
-    # 予想馬の残りからも相手を補完
-    if main:
-        main_ban=str(main.get('馬番表示') or main.get('馬番') or '').strip()
-        for p in picks[1:4]:
-            ban=str(p.get('馬番表示') or p.get('馬番') or '').strip()
-            if not ban or ban == main_ban:
-                continue
-            if rival is None and p.get('役割') in (None, '', '対抗'):
-                rival=p
-                continue
-            if all(str(x.get('馬番表示') or x.get('馬番') or '').strip() != ban for x in partners):
-                partners.append(p)
     return main, rival, partners[:2]
 
 
@@ -870,7 +907,7 @@ def _axis_ban(p) -> str:
 
 
 def _axis_umaren_wide_tickets(race: dict) -> list:
-    """本命軸の馬連・ワイドを主戦にする買い目（単勝は出さない）。"""
+    """本命軸の馬連・ワイドを主戦にする買い目（単勝は出さない・印付き馬のみ）。"""
     main, rival, partners = _axis_pick_roles(race)
     mb=_axis_ban(main)
     if not mb or mb == '—':
@@ -897,7 +934,7 @@ def _axis_umaren_wide_tickets(race: dict) -> list:
         return []
 
     tickets=[]
-    # 1) ワイド: ◎軸 × 相手（最大2点）
+    # 1) ワイド: ◎軸 × 印付き相手（最大2点）
     wide_parts=[f'{mb}-{b}' for b in partner_bans[:2]]
     tickets.append({
         '券種': 'ワイド',
@@ -908,7 +945,7 @@ def _axis_umaren_wide_tickets(race: dict) -> list:
         '推定回収率': round(max(ev * 0.95, 90), 0),
         '推奨度': star,
         'フォーメーション': {'軸': [mb], '相手': partner_bans[:2], '点数': len(wide_parts)},
-        '説明': '◎本命軸のワイド（○・相手で複勝圏を拾う）',
+        '説明': '◎本命軸のワイド（印付き相手のみ）',
         '軸印': '◎',
     })
     # 2) 馬連: 相手2頭以上ならフォーメ、1頭なら1点
@@ -922,7 +959,7 @@ def _axis_umaren_wide_tickets(race: dict) -> list:
             '推定回収率': round(max(ev * 0.92, 88), 0),
             '推奨度': star_sub,
             'フォーメーション': {'軸': [mb], '相手': partner_bans[:2], '点数': len(partner_bans[:2])},
-            '説明': '◎軸の馬連フォーメーション（相手2頭）',
+            '説明': '◎軸の馬連（印付き相手のみ）',
             '軸印': '◎',
         })
     else:
@@ -939,28 +976,8 @@ def _axis_umaren_wide_tickets(race: dict) -> list:
             '軸印': '◎',
         })
 
-    # エンジンSIM候補があれば参考行として後ろへ（印軸と違うとき）
-    for kind, key in (('ワイド', 'ワイド買い目'), ('馬連', '馬連買い目')):
-        raw=str(race.get(key) or '').strip()
-        if not raw or raw in ('見送り', '—', '-', 'nan', 'None'):
-            continue
-        shown={str(t.get('馬番表示') or '') for t in tickets}
-        if raw in shown or any(raw in str(t.get('馬番表示') or '') for t in tickets):
-            continue
-        tickets.append({
-            '券種': kind,
-            '馬番表示': raw.replace('｜', ' / '),
-            '馬番': [x for x in raw.replace('｜', '/').split('/') if x.strip()],
-            '的中率': None,
-            '期待値': None,
-            '推定回収率': None,
-            '推奨度': '★★★☆☆',
-            'フォーメーション': None,
-            '説明': f'SIM候補の{kind}（参考）',
-            '軸印': 'SIM',
-            '参考': True,
-        })
-    return tickets[:4]
+    # 印非依存の期待値SIM参考行は出さない（印なし馬が混ざるため）
+    return tickets[:2]
 
 
 def _prefer_umaren_wide_kind(race: dict, tickets: list) -> str:
