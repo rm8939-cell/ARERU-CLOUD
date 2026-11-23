@@ -1505,16 +1505,26 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-apt-mk{font-size:17px !important}
 }
 
 
-/* v40: 馬連・ワイド軸 */
+/* v40/v44: 購入シミュレーション */
 body.app-race .ra-tickets .ra-ticket-list{display:grid;gap:8px}
-body.app-race .ra-tickets .nt{background:#F7F9F8;border:1px solid #DDE5E2;border-radius:12px;padding:12px 14px}
-body.app-race .ra-tickets .nt.is-ref{opacity:.72;border-style:dashed}
-body.app-race .ra-tickets .nt-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
-body.app-race .ra-tickets .nt-kind{font-size:13px;font-weight:900;letter-spacing:.04em;color:#0B7A45}
-body.app-race .ra-tickets .nt-star{font-size:12px;font-weight:800;color:#C4A035}
-body.app-race .ra-tickets .nt-ban{font-size:20px;font-weight:900;line-height:1.25;margin:0 0 4px;color:#1A2332;letter-spacing:.02em}
-body.app-race .ra-tickets .nt-desc{font-size:12px;font-weight:700;color:#526174;line-height:1.5}
-body.app-race .ra-tickets .nt-axis{display:inline-block;margin:0 0 8px;padding:4px 10px;border-radius:999px;background:#EAF6F0;color:#0B7A45;font-size:11px;font-weight:900}
+body.app-race .ra-tickets .sim-note{margin:0 0 12px;font-size:12px;font-weight:700;line-height:1.55;color:#526174}
+body.app-race .ra-tickets .sim-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#F3F6F4;border:1px solid #E1E8E4;border-radius:14px;padding:12px 14px}
+body.app-race .ra-tickets .sim-row.is-star{background:#F7F9F8;box-shadow:0 1px 0 rgba(255,255,255,.8) inset}
+body.app-race .ra-tickets .sim-left{display:flex;align-items:center;gap:8px;min-width:0}
+body.app-race .ra-tickets .sim-star{flex:0 0 auto;width:1.1em;color:#E67E22;font-size:16px;font-weight:900;line-height:1}
+body.app-race .ra-tickets .sim-star.is-empty{visibility:hidden}
+body.app-race .ra-tickets .sim-kind{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-width:3.2em;padding:4px 8px;border-radius:8px;background:#3D4A5C;color:#fff;font-size:12px;font-weight:900;letter-spacing:.04em}
+body.app-race .ra-tickets .sim-ban{font-size:20px;font-weight:900;color:#1A2332;letter-spacing:.02em;line-height:1.1}
+body.app-race .ra-tickets .sim-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}
+body.app-race .ra-tickets .sim-meta{font-size:12px;font-weight:700;color:#6B7785;white-space:nowrap}
+body.app-race .ra-tickets .sim-ev{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;line-height:1}
+body.app-race .ra-tickets .sim-ev.is-hot{background:#F6E7C8;color:#9A6B12}
+body.app-race .ra-tickets .sim-ev.is-ok{background:#E4F0E8;color:#2F6B4A}
+body.app-race .ra-tickets .sim-ev.is-low,.ra-tickets .sim-ev.is-wait{background:#EEF1F3;color:#6B7785}
+@media (max-width:420px){
+  body.app-race .ra-tickets .sim-ban{font-size:18px}
+  body.app-race .ra-tickets .sim-meta{font-size:11px}
+}
 
 /* v41: cooler board polish + circular confidence */
 body.app-race{background:
@@ -1545,7 +1555,7 @@ body.app-race .ra-board[data-ra-ui="v39"] .ra-pick.is-tai{background:linear-grad
 body.app-race .ra-board[data-ra-ui="v39"] .ra-view{background:linear-gradient(180deg,#FFFBEA,#FFF3C4);border-color:#F0E0A8;box-shadow:0 4px 14px rgba(184,134,11,.08)}
 body.app-race .ra-lazy-ph{display:flex;align-items:center;justify-content:center;min-height:42vh;margin:12px 0;border-radius:16px;background:#fff;color:#6B7785;font-weight:800;box-shadow:0 2px 10px rgba(16,35,63,.06)}
 </style></head>
-<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v43"><header class="header"><div class="wrap fx-top-inner">
+<body class="{{source if source in ['jra','nar','all'] else 'jra'}} mode-{{mode}}{% if mode=='predict' %} app-race{% endif %}{% if show_venue_picker %} picker{% endif %}" id="top" data-ui="areu-app-v44"><header class="header"><div class="wrap fx-top-inner">
 <a class="fx-logo" href="/?source={{source}}&mode={{mode}}&date={{selected_date}}">
 <span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="16" cy="16" r="14"/><path d="M8 19c2-6 6-9 11-8 2 0 4 1 5 3-3 0-5 1-6 3 3 0 5 2 5 4-4 2-9 2-12-1-1 2-2 3-3 3z"/></svg></span>
 <span class="fx-brand"><b>ARERU</b><small>競馬AI予想</small></span>
@@ -2152,7 +2162,7 @@ body.app-race .ra-lazy-ph{display:flex;align-items:center;justify-content:center
 {% set _blank = [None, '', '—', '-', 'None', 'nan'] %}
 {% set _hist = '&history=1' if selected_date and today and selected_date < today else '' %}
 
-<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v43">
+<section class="fx-sr" id="predict-targets" aria-label="BUYカード" data-ui="areu-app-v44">
 <p>表示期待値は圧縮値です。生の期待値＝推定勝率×オッズ。勝負ランクは信頼度枠であり、的中を保証しません。勝ちを保証するものではありません。プラス要因 マイナス要因 近走指数順位</p>
 <div><small>勝負ランク</small></div>
 </section>

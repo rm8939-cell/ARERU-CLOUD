@@ -1003,6 +1003,233 @@ def _prefer_umaren_wide_kind(race: dict, tickets: list) -> str:
     return cur if cur else 'ワイド'
 
 
+def _ticket_ban_nums(ticket: dict) -> list[int]:
+    """馬番表示 / 馬番 から数字リストを取る。"""
+    bans = ticket.get('馬番')
+    out = []
+    if isinstance(bans, (list, tuple)):
+        for b in bans:
+            s = str(b or '').strip()
+            # '①-⑤' / '5-14' 形式が混ざる場合は分解
+            if re.search(r'[-－−ー・/／]', s) and not re.fullmatch(r'\d+', s):
+                continue
+            try:
+                from race_display import ban_digits
+                d = ban_digits(s) or s
+                out.append(int(float(d)))
+            except Exception:
+                continue
+    if out:
+        return out
+    raw = str(ticket.get('馬番表示') or '')
+    from race_display import ban_digits
+    for part in re.split(r'[-－−ー・/／\s]+', raw):
+        d = ban_digits(part)
+        if not d:
+            continue
+        try:
+            out.append(int(float(d)))
+        except Exception:
+            continue
+    return out
+
+
+def _ticket_odds_key(kind: str, bans: list[int]) -> str | None:
+    if not bans:
+        return None
+    ordered = kind in ('馬単', '三連単')
+    nums = list(bans) if ordered else sorted(bans)
+    return ''.join(f'{b:02d}' for b in nums)
+
+
+def _load_race_ticket_odds(race_id: str) -> dict:
+    rid = _norm_race_id(race_id)
+    if not rid:
+        return {}
+    try:
+        from areru_engine import load_ticket_odds
+        return load_ticket_odds(rid, fetch_if_missing=False) or {}
+    except Exception:
+        return {}
+
+
+def _enrich_sim_ticket(ticket: dict, odds_maps: dict | None = None) -> dict:
+    """オッズを足して期待値=的中率%×オッズ を埋める（参照画像と同じ定義）。"""
+    t = dict(ticket or {})
+    kind = str(t.get('券種') or '').strip()
+    bans = _ticket_ban_nums(t)
+    odds = t.get('実オッズ')
+    if odds in (None, '', '—'):
+        odds = None
+        table = (odds_maps or {}).get(kind) or {}
+        key = _ticket_odds_key(kind, bans)
+        if key and isinstance(table, dict) and key in table:
+            try:
+                odds = float(str(table.get(key)).replace(',', ''))
+            except Exception:
+                odds = None
+    hit = t.get('的中率')
+    try:
+        hit_f = float(hit) if hit not in (None, '', '—') else None
+    except Exception:
+        hit_f = None
+    ev = t.get('期待値')
+    try:
+        ev_f = float(ev) if ev not in (None, '', '—') else None
+    except Exception:
+        ev_f = None
+    if odds is not None and hit_f is not None:
+        ev_f = round(hit_f * float(odds), 1)
+    # 表示用馬番は半角数字ハイフンに寄せる
+    if bans:
+        sep = '-' if kind not in ('馬単', '三連単') else '→'
+        if kind in ('馬単', '三連単'):
+            t['馬番表示'] = sep.join(str(b) for b in bans)
+        else:
+            t['馬番表示'] = '-'.join(str(b) for b in sorted(set(bans)))
+    t['実オッズ'] = round(float(odds), 1) if odds is not None else None
+    t['的中率'] = round(hit_f, 1) if hit_f is not None else None
+    t['期待値'] = round(ev_f, 0) if ev_f is not None else None
+    return t
+
+
+def _expand_ticket_points(ticket: dict) -> list[dict]:
+    """フォーメ複数点を1点ずつの行に分解（参照UIは1行1買い目）。"""
+    kind = str((ticket or {}).get('券種') or '')
+    bans = (ticket or {}).get('馬番')
+    if kind == 'ワイド' and isinstance(bans, (list, tuple)) and bans:
+        rows = []
+        for item in bans:
+            s = str(item or '').strip()
+            if not s:
+                continue
+            if re.search(r'[-－−ー]', s):
+                row = dict(ticket)
+                row['馬番表示'] = s.replace('－', '-').replace('−', '-').replace('ー', '-')
+                # '5-14' -> [5,14]
+                nums = []
+                from race_display import ban_digits
+                for part in re.split(r'[-－−ー]', s):
+                    d = ban_digits(part)
+                    if d:
+                        try:
+                            nums.append(int(float(d)))
+                        except Exception:
+                            pass
+                row['馬番'] = nums if nums else [s]
+                rows.append(row)
+            else:
+                rows.append(ticket)
+        return rows or [ticket]
+    # 馬連フォーメ: 軸＋相手複数 → 軸-相手 の各点
+    form = (ticket or {}).get('フォーメーション') if isinstance((ticket or {}).get('フォーメーション'), dict) else None
+    if kind == '馬連' and form and form.get('軸') and form.get('相手'):
+        axis = form.get('軸') or []
+        partners = form.get('相手') or []
+        a0 = str(axis[0]) if axis else ''
+        from race_display import ban_digits
+        a_n = ban_digits(a0) or a0
+        rows = []
+        for p in partners:
+            pb = ban_digits(p) or str(p)
+            if not a_n or not pb:
+                continue
+            row = dict(ticket)
+            row['フォーメーション'] = None
+            try:
+                nums = [int(float(a_n)), int(float(pb))]
+            except Exception:
+                nums = [a_n, pb]
+            row['馬番'] = nums
+            row['馬番表示'] = f'{nums[0]}-{nums[1]}' if isinstance(nums[0], int) else f'{a_n}-{pb}'
+            rows.append(row)
+        if rows:
+            return rows
+    return [ticket]
+
+
+def _build_purchase_simulation(race: dict, *, limit: int = 10) -> list:
+    """購入シミュレーション行を作る。
+
+    ★=印軸のおすすめ。そこにエンジン推奨（期待値100%以上）を足して最大10点。
+    """
+    odds_maps = _load_race_ticket_odds(race.get('race_id', ''))
+    starred = []
+    for t in _axis_umaren_wide_tickets(race):
+        for piece in _expand_ticket_points(t):
+            row = _enrich_sim_ticket(piece, odds_maps)
+            row['おすすめ'] = True
+            row['説明'] = row.get('説明') or '印軸のおすすめ'
+            starred.append(row)
+
+    engine = []
+    for t in (race.get('推奨馬券一覧') or []):
+        if not isinstance(t, dict):
+            continue
+        kind = str(t.get('券種') or '')
+        if kind not in ('単勝', 'ワイド', '馬連', '馬単', '三連複', '三連単'):
+            continue
+        if t.get('軸印') == '◎' or t.get('おすすめ'):
+            continue
+        row = _enrich_sim_ticket(t, odds_maps)
+        ev = row.get('期待値')
+        if ev is None:
+            continue
+        try:
+            if float(ev) < 100:
+                continue
+        except Exception:
+            continue
+        # 宝くじ帯は除外
+        hit = row.get('的中率') or 0
+        try:
+            if float(ev) > 350 or (float(ev) > 220 and float(hit) < 2):
+                continue
+        except Exception:
+            continue
+        row['おすすめ'] = False
+        engine.append(row)
+
+    def _sig(t: dict) -> str:
+        kind = str(t.get('券種') or '')
+        bans = _ticket_ban_nums(t)
+        key = _ticket_odds_key(kind, bans) or str(t.get('馬番表示') or '')
+        return f'{kind}:{key}'
+
+    seen = {}
+    ordered = []
+    for t in starred + sorted(
+        engine,
+        key=lambda x: (
+            0 if str(x.get('券種')) == 'ワイド' else 1 if str(x.get('券種')) == '馬連' else 2,
+            -float(x.get('期待値') or 0),
+            -float(x.get('的中率') or 0),
+        ),
+    ):
+        sig = _sig(t)
+        if sig in seen:
+            # ★側を残しつつ、エンジン側のオッズ・的中率・期待値で補完
+            base = seen[sig]
+            if base.get('的中率') is None and t.get('的中率') is not None:
+                base['的中率'] = t.get('的中率')
+            if base.get('実オッズ') is None and t.get('実オッズ') is not None:
+                base['実オッズ'] = t.get('実オッズ')
+            if t.get('的中率') is not None and t.get('実オッズ') is not None:
+                try:
+                    base['期待値'] = round(float(t['的中率']) * float(t['実オッズ']), 0)
+                except Exception:
+                    pass
+            elif base.get('期待値') is None and t.get('期待値') is not None:
+                base['期待値'] = t.get('期待値')
+            continue
+        seen[sig] = t
+        ordered.append(t)
+        if len(ordered) >= limit:
+            break
+    race['購入シミュレーション'] = ordered
+    return ordered
+
+
 def _simple_nar_tickets(race: dict) -> list:
     """地方: 本命軸の馬連・ワイド。"""
     return _axis_umaren_wide_tickets(race)
@@ -2591,15 +2818,20 @@ def apply_display_ranks(races: list, by_venue: bool = False) -> list:
                 except Exception:
                     src = ''
             if src in ('nar', 'jra'):
+                engine_tix = list(r.get('エンジン推奨馬券') or r.get('推奨馬券一覧') or [])
                 axis_tix = _axis_umaren_wide_tickets(r)
                 if axis_tix:
                     rest = [
-                        t for t in (r.get('推奨馬券一覧') or [])
+                        t for t in engine_tix
                         if isinstance(t, dict) and str(t.get('券種')) not in ('単勝', '馬連', 'ワイド')
                     ]
                     r['推奨馬券一覧'] = (axis_tix + rest)[:8]
                     r['推奨券種'] = _prefer_umaren_wide_kind(r, axis_tix)
                     r['買い方軸'] = '馬連・ワイド'
+                sim_race = dict(r)
+                sim_race['推奨馬券一覧'] = engine_tix
+                _build_purchase_simulation(sim_race, limit=10)
+                r['購入シミュレーション'] = sim_race.get('購入シミュレーション') or []
             if not r.get('AI買い理由'):
                 r['AI買い理由'] = build_ai_buy_reasons(r, limit=4)
             if not r.get('BUY根拠'):
@@ -3319,7 +3551,9 @@ def prep(records, ban_map=None, selected_date=''):
             if form is not None and not isinstance(form, dict):
                 t=dict(t); t['フォーメーション']=None
             clean_tickets.append(t)
-        r['推奨馬券一覧']=clean_tickets[:8]
+        # 購入シミュレーション用に多めに残す（画面の軸表示は別途絞る）
+        r['推奨馬券一覧']=clean_tickets[:24]
+        r['エンジン推奨馬券']=list(clean_tickets[:24])
         danger=_json_field(r.get('危険人気詳細'), {})
         r['危険人気カード']=danger if isinstance(danger, dict) else {}
         mainc=_json_field(r.get('本命詳細'), {})
@@ -3485,14 +3719,21 @@ def prep(records, ban_map=None, selected_date=''):
             except Exception:
                 src=''
         if src in ('nar', 'jra'):
+            engine_tix=list(r.get('エンジン推奨馬券') or r.get('推奨馬券一覧') or [])
             axis_tix=_axis_umaren_wide_tickets(r)
             if axis_tix:
-                existing=[t for t in (r.get('推奨馬券一覧') or []) if isinstance(t, dict)]
-                rest=[t for t in existing if str(t.get('券種')) not in ('単勝','馬連','ワイド')]
+                rest=[t for t in engine_tix if isinstance(t, dict) and str(t.get('券種')) not in ('単勝','馬連','ワイド')]
                 r['推奨馬券一覧']=(axis_tix + rest)[:8]
                 r['推奨券種']=_prefer_umaren_wide_kind(r, axis_tix)
                 r['馬券戦略理由']='本命◎軸の馬連・ワイドを主戦（単勝は出さない）'
                 r['買い方軸']='馬連・ワイド'
+            # 購入シミュレーション: ★印軸 + 期待値100%以上（最大10点）
+            sim_race=dict(r)
+            sim_race['推奨馬券一覧']=engine_tix
+            _build_purchase_simulation(sim_race, limit=10)
+            r['購入シミュレーション']=sim_race.get('購入シミュレーション') or []
+        else:
+            _build_purchase_simulation(r, limit=10)
         if not r.get('本命短表示'):
             r['本命短表示']=(r.get('予想馬') or [{}])[0].get('表示行') or r.get('本命表示') or '—'
     return records

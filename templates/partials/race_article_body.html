@@ -188,24 +188,45 @@
 </article>
 </div></div>
 
-{# ④b 馬連・ワイド軸 #}
-{% set _tix = [] %}
-{% for t in (r.get('推奨馬券一覧') if r.get('推奨馬券一覧') is sequence else []) %}
-  {% if t is mapping and t.get('券種') in ['ワイド','馬連'] %}
-    {% if _tix.append(t) %}{% endif %}
-  {% endif %}
-{% endfor %}
-{% if _tix %}
-<article class="ra-sec ra-tickets">
-<div class="ra-hd"><span class="ic">券</span>馬連・ワイド軸{% if r.get('推奨券種') in ['ワイド','馬連'] %} · 推奨 {{r.get('推奨券種')}}{% endif %}</div>
+{# ④b 購入シミュレーション #}
+{% set _sim = r.get('購入シミュレーション') if r.get('購入シミュレーション') is sequence else [] %}
+{% if not _sim %}
+  {% set _sim = [] %}
+  {% for t in (r.get('推奨馬券一覧') if r.get('推奨馬券一覧') is sequence else []) %}
+    {% if t is mapping and t.get('券種') in ['ワイド','馬連','馬単','三連複','三連単','単勝'] %}
+      {% if _sim.append(t) %}{% endif %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% if _sim %}
+<article class="ra-sec ra-tickets ra-buy-sim">
+<div class="ra-hd"><span class="ic">★</span>購入シミュレーション</div>
 <div class="ra-bd">
-<span class="nt-axis">◎本命軸 · 印付き相手のみ · 単勝なし</span>
+<p class="sim-note">★はオススメ馬券。そこに、AI上位の単勝・ワイド・馬連・馬単・3連複・3連単から、期待値100%以上で当たる範囲がいちばん広がる買い目を足しています（10点まで）。</p>
 <div class="ra-ticket-list">
-{% for t in _tix[:4] %}
-<div class="nt{% if t.get('参考') %} is-ref{% endif %}">
-<div class="nt-head"><span class="nt-kind">{{t.get('券種')}}</span><span class="nt-star">{{t.get('推奨度') or ''}}</span></div>
-<div class="nt-ban">{{t.get('馬番表示') or '—'}}</div>
-<div class="nt-desc">{{t.get('説明') or ''}}</div>
+{% for t in _sim[:10] %}
+  {% set _ev = t.get('期待値') %}
+  {% set _hit = t.get('的中率') %}
+  {% set _odds = t.get('実オッズ') %}
+  {% set _star = t.get('おすすめ') or t.get('軸印') == '◎' %}
+  {% set _ev_n = namespace(v=none) %}
+  {% if _ev not in _blank %}
+    {% set _ev_n.v = (_ev ~ '')|replace('%','')|float %}
+  {% endif %}
+<div class="nt sim-row{% if _star %} is-star{% endif %}">
+<div class="sim-left">
+{% if _star %}<span class="sim-star" aria-label="おすすめ">★</span>{% else %}<span class="sim-star is-empty" aria-hidden="true"></span>{% endif %}
+<span class="sim-kind">{{t.get('券種') or '—'}}</span>
+<strong class="sim-ban">{{t.get('馬番表示') or '—'}}</strong>
+</div>
+<div class="sim-right">
+<div class="sim-meta">{% if _odds not in _blank %}{{_odds}}倍{% else %}オッズ待ち{% endif %}{% if _hit not in _blank %} / 確率{{_hit}}%{% endif %}</div>
+{% if _ev_n.v is not none %}
+<span class="sim-ev{% if _ev_n.v >= 110 %} is-hot{% elif _ev_n.v >= 100 %} is-ok{% else %} is-low{% endif %}">期待値{{'%g'|format(_ev_n.v)}}%</span>
+{% else %}
+<span class="sim-ev is-wait">期待値 —</span>
+{% endif %}
+</div>
 </div>
 {% endfor %}
 </div>
