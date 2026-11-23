@@ -1809,13 +1809,20 @@ def _ensure_nar_today_seeded() -> None:
 
 
 def _force_calendar_today(explicit_date: str, want_today: bool, mode: str, allow_past: bool) -> bool:
-    """中央・地方とも原則カレンダー当日。履歴閲覧は history=1 のときだけ前日を許可。"""
+    """中央・地方とも原則カレンダー当日。
+
+    - 予想タブ: history=1（allow_past）のときだけ前日を許可
+    - 実績タブ: 明示日があればその日を許可（予想＋結果の振り返り）
+    """
     today = _today_jst()
     if want_today:
         return True
     if allow_past:
         return False
-    if mode not in ('predict', 'result'):
+    if mode == 'result':
+        # 実績は日付未指定のときだけ当日へ寄せる
+        return not bool(explicit_date)
+    if mode != 'predict':
         return False
     if not explicit_date:
         return True
@@ -4453,9 +4460,10 @@ def index():
     want_today=str(request.args.get('today') or '').strip() in ('1','true','yes') or force_refresh
     explicit_date=str(request.args.get('date') or '').strip()
     # history=1 は「前日以前を明示閲覧」のときだけ有効（当日URLに残っていても無視）
+    # 実績（result）タブは過去日の予想＋結果を見るため history なしでも許可
     raw_history=str(request.args.get('history') or '').strip() in ('1','true','yes')
     allow_past=bool(
-        raw_history
+        (raw_history or mode == 'result')
         and explicit_date
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit_date)
         and explicit_date < today
@@ -5273,6 +5281,23 @@ def index():
             )
 
     _perf_mark('data')
+    # 実績タブ: 結果が欠けていればバックグラウンドで取得（表示は結果待ちのまま）
+    if mode == 'result' and selected and source in ('jra', 'nar', 'all'):
+        prefer = [selected]
+        if selected != today:
+            prefer.append(today)
+        src_boot = source if source in ('jra', 'nar') else 'all'
+        if date_needs_result_fetch(selected, src_boot if src_boot != 'all' else 'jra') or (
+            src_boot == 'all' and (
+                date_needs_result_fetch(selected, 'jra') or date_needs_result_fetch(selected, 'nar')
+            )
+        ):
+            def _boot_results(_src=src_boot, _prefer=prefer):
+                try:
+                    bootstrap_missing_results(_src, prefer_dates=_prefer)
+                except Exception as e:
+                    print(f'[bootstrap-results] bg fail: {e}', flush=True)
+            threading.Thread(target=_boot_results, daemon=True).start()
     pipeline = (
         {'あり': False, '行': [], '開催日': '', '更新': '', '件数': 0}
         if mode == 'predict'
