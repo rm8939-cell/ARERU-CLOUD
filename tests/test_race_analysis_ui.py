@@ -162,18 +162,18 @@ class TestRaceAnalysisDisplay(unittest.TestCase):
         self.assertEqual(_grade_from_race_name('しらさぎS(GIII)'), 'GⅢ')
         self.assertEqual(_grade_from_race_name('3歳未勝利'), '')
 
-    def test_template_v43_is_dashboard_hierarchy(self):
+    def test_template_v44_is_dashboard_hierarchy(self):
         from pathlib import Path
         root = Path(__file__).resolve().parents[1]
         html = (root / 'templates' / 'index.html').read_text(encoding='utf-8')
         board = (root / 'templates' / 'partials' / 'race_article_body.html').read_text(encoding='utf-8')
         all_html = html + '\n' + board
-        self.assertIn('data-ui="areu-app-v43"', html)
+        self.assertIn('data-ui="areu-app-v44"', html)
         self.assertIn('data-ra-ui="v39"', all_html)
         # 予想画面の結果カードは非表示（結果検証モード側に残す）
         self.assertNotIn('ra-dayhit', html)
         self.assertNotIn('class="ra-sec ra-result"', html)
-        self.assertIn('馬連・ワイド軸', all_html)
+        self.assertIn('購入シミュレーション', all_html)
         self.assertIn('ra-tickets', all_html)
         self.assertIn('/api/race-board', html)
         self.assertIn('data-lazy', html)
