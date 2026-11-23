@@ -769,6 +769,35 @@ def _latest_ready_pred_date(source: str, *, on_or_before: str = '') -> str:
     return ''
 
 
+def _best_result_view_date(source: str, *, prefer: str = '', today: str = '') -> str:
+    """実績タブで開くべき日。結果がある最新日を優先し、なければ完成予想の最新日。"""
+    today = str(today or _today_jst())
+    prefer = str(prefer or '').strip()
+    src = source if source in ('jra', 'nar', 'all') else 'jra'
+    result_days = dates_with_results(src)
+
+    def _today_is_empty() -> bool:
+        if src not in ('jra', 'nar'):
+            return False
+        return (not _nar_pred_ready(today, src)) and (today not in result_days)
+
+    # 明示日が「当日の空カード」でなければそれを使う
+    if prefer and prefer <= today:
+        if prefer != today or not _today_is_empty():
+            if prefer in result_days or (ARCH / f'predictions_{prefer}.csv').exists():
+                return prefer
+
+    for day in result_days:
+        if day <= today:
+            return day
+
+    for probe in ((src,) if src in ('jra', 'nar') else ('jra', 'nar')):
+        latest = _latest_ready_pred_date(probe, on_or_before=today)
+        if latest and latest <= today:
+            return latest
+    return prefer if prefer and prefer <= today else today
+
+
 def _fillna_pred_df(df: pd.DataFrame) -> pd.DataFrame:
     """予想CSVの欠損埋め。数値列に『なし』を入れない（float変換クラッシュ防止）。"""
     if df is None or df.empty:
@@ -4613,27 +4642,62 @@ def index():
         if today not in av and source=='nar' and selected==today:
             av=sorted(set(av)|{today}, reverse=True)
         pred_exists=(ARCH/f'predictions_{explicit_date}.csv').exists()
-        if explicit_date and (explicit_date in av or pred_exists):
+        today_empty=(
+            explicit_date == today
+            and source in ('jra', 'nar')
+            and not _nar_pred_ready(today, source)
+            and explicit_date not in result_days
+        )
+        if explicit_date and (explicit_date in av or pred_exists) and not today_empty:
             selected=explicit_date
             if explicit_date not in av:
                 av=sorted(set(av)|{explicit_date}, reverse=True)
         else:
-            selected=(result_days[0] if result_days else (av[0] if av else ''))
+            selected=_best_result_view_date(source, prefer=explicit_date, today=today)
+            if selected and selected not in av:
+                av=sorted(set(av)|{selected}, reverse=True)
+            if selected and selected < today:
+                allow_past=True
     elif mode=='result' and force_cal_today:
-        # 当日矯正中は explicit の前日で selected を上書きしない
+        # 当日が空なら最新の結果日へ（実績ボタンが無反応に見えないように）
         av=_result_available_dates(meeting_dates, result_days, today)
         if today not in av:
             av=sorted(set(av)|{today}, reverse=True)
-        selected=today
+        today_ready=(
+            source in ('jra', 'nar') and _nar_pred_ready(today, source)
+        ) or today in result_days
+        if want_today or today_ready:
+            selected=today
+        else:
+            selected=_best_result_view_date(source, prefer='', today=today) or today
+            if selected and selected < today:
+                allow_past=True
+            if selected and selected not in av:
+                av=sorted(set(av)|{selected}, reverse=True)
+            print(
+                f'[{source}-date] result fallback empty-today -> {selected}',
+                flush=True,
+            )
     elif mode=='result' and not want_today and not explicit_date and source!='nar':
         av=_result_available_dates(meeting_dates, result_days, today)
-        selected=(result_days[0] if result_days else (av[0] if av else ''))
+        selected=_best_result_view_date(source, prefer='', today=today) or (
+            result_days[0] if result_days else (av[0] if av else '')
+        )
+        if selected and selected < today:
+            allow_past=True
     elif mode=='result' and source=='nar' and not want_today and not explicit_date:
-        # 地方結果: 当日を優先表示（未完成なら後段で最新キャッシュへ）
+        # 地方結果: 当日完成なら当日、否则は最新結果日
         av=_result_available_dates(meeting_dates, result_days, today)
         if today not in av:
             av=sorted(set(av)|{today}, reverse=True)
-        selected=today
+        if _nar_pred_ready(today, 'nar') or today in result_days:
+            selected=today
+        else:
+            selected=_best_result_view_date('nar', prefer='', today=today) or today
+            if selected and selected < today:
+                allow_past=True
+            if selected and selected not in av:
+                av=sorted(set(av)|{selected}, reverse=True)
     # 結果タブで当日未完成へ戻された場合も、最新キャッシュへ再寄せ（当日ビューは除く）
     if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
         if (
@@ -5306,6 +5370,14 @@ def index():
     focus_race_id = ''
     if mode == 'predict' and races and not show_venue_picker:
         focus_race_id = _pick_focus_race_id(races, request.args.get('race_id') or request.args.get('race') or '')
+    result_jump_date = selected
+    if mode != 'result':
+        try:
+            result_jump_date = _best_result_view_date(
+                source, prefer=selected or '', today=today,
+            ) or selected or today
+        except Exception:
+            result_jump_date = selected or today
     html = render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
@@ -5315,7 +5387,8 @@ def index():
         day_stats=day_stats,data_status=data_status,
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
         status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime,
-        areru_pipeline=pipeline,focus_race_id=focus_race_id)
+        areru_pipeline=pipeline,focus_race_id=focus_race_id,
+        result_jump_date=result_jump_date)
     _perf_mark('html')
     if mode == 'predict' and not force_refresh and selected and data_status in ('ready', 'updating', 'success'):
         try:
