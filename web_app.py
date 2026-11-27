@@ -16,7 +16,11 @@ from ev_analysis import (
 from pipeline_stages import log_orchestrator, log_pipeline_stage, predictions_label
 from daily_ops import (
     PREDICT_READY_HOUR,
+    NEXT_DAY_VIEW_HOUR,
     past_predict_deadline,
+    past_next_day_view_time,
+    can_view_predict_date,
+    next_day_jst,
     is_sealed,
     write_seal,
     auto_seal_if_ready,
@@ -1660,6 +1664,14 @@ def resolve_fetch_status(
         return 'generating', 'データ取得中'
 
     if selected_date and not selected_ready:
+        # 前の日の10時以降の翌日カードは未生成でもエラーにしない（cron 待ち）
+        if (
+            selected_date == next_day_jst(today)
+            and past_next_day_view_time()
+        ):
+            if job_running or force_refresh:
+                return 'generating', (msg or '明日の予想を準備中')
+            return 'generating', '明日の予想を準備中'
         return 'error', '取得失敗'
     return 'ready', ''
 
@@ -1841,6 +1853,7 @@ def _force_calendar_today(explicit_date: str, want_today: bool, mode: str, allow
     """中央・地方とも原則カレンダー当日。
 
     - 予想タブ: history=1（allow_past）のときだけ前日を許可
+    - 予想タブ: 10時以降は翌日カードも許可
     - 実績タブ: 明示日があればその日を許可（予想＋結果の振り返り）
     """
     today = _today_jst()
@@ -1856,6 +1869,11 @@ def _force_calendar_today(explicit_date: str, want_today: bool, mode: str, allow
     if not explicit_date:
         return True
     if explicit_date < today:
+        return True
+    # 翌日（前の日の10時以降のみ）
+    if explicit_date > today and can_view_predict_date(explicit_date):
+        return False
+    if explicit_date > today:
         return True
     return False
 
@@ -4512,11 +4530,26 @@ def index():
             f'(ready cache, today={today})',
             flush=True,
         )
+    # 前の日の10時以降: 翌日カードを閲覧許可（完成予想 or 明示指定）
+    tomorrow = next_day_jst(today)
+    allow_next = bool(
+        mode == 'predict'
+        and explicit_date
+        and explicit_date == tomorrow
+        and can_view_predict_date(explicit_date)
+    )
+    if allow_next:
+        print(
+            f'[{source}-date] allow next-day predict date={explicit_date} '
+            f'(after {NEXT_DAY_VIEW_HOUR}:00, today={today})',
+            flush=True,
+        )
     # 地方・中央: 本日ボタン／日付未指定／URLに前日残存 → カレンダー当日へ
     # ※完成キャッシュ日の閲覧（allow_past）は矯正しない
     force_cal_today=(
         source in ('nar', 'jra')
         and _force_calendar_today(explicit_date, want_today, mode, allow_past)
+        and not allow_next
     )
     # 地方の当日トップは開催場一覧ではなくカードを出す。JRAタブの source は書き換えない。
     today_live_card = bool(
@@ -4567,6 +4600,9 @@ def index():
         _clear_runtime_caches()
     meeting_dates=dates(source)
     av=list(meeting_dates)
+    # 10時以降は翌日を候補に入れる（未生成でもナビで「明日」へ行ける）
+    if mode == 'predict' and past_next_day_view_time() and tomorrow not in av:
+        av=sorted(set(av)|{tomorrow}, reverse=True)
     selected=explicit_date
     if force_cal_today:
         selected=today
@@ -4581,12 +4617,16 @@ def index():
     elif selected not in av:
         if source in ('nar', 'jra') and selected==today:
             av=sorted(set(av)|{today}, reverse=True)
+        elif source in ('nar', 'jra') and allow_next and selected==tomorrow:
+            av=sorted(set(av)|{tomorrow}, reverse=True)
         elif source in ('nar', 'jra') and force_cal_today:
             selected=today
             av=sorted(set(av)|{today}, reverse=True)
         else:
-            # 当日意図のときに av[0]（前日）へ落とさない
-            if source in ('nar', 'jra') and (selected==today or not allow_past):
+            # 当日意図のときに av[0]（前日）へ落とさない。翌日閲覧は維持。
+            if source in ('nar', 'jra') and allow_next and selected == tomorrow:
+                av=sorted(set(av)|{tomorrow}, reverse=True)
+            elif source in ('nar', 'jra') and (selected==today or not allow_past):
                 selected=today
                 av=sorted(set(av)|{today}, reverse=True)
             else:
@@ -4599,7 +4639,8 @@ def index():
                     )
     # キャッシュ優先: 当日未完成なら最新完成予想日を即表示（履歴明示時以外）
     # ただしカレンダー当日は別日へ飛ばさない（JRA非開催日は空状態）
-    if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
+    # 翌日カード閲覧中も当日へ落とさない
+    if source in ('nar', 'jra') and not allow_past and not allow_next and mode in ('predict', 'result', 'analysis'):
         if (
             not _nar_pred_ready(selected or '', source)
             and not _stay_on_selected_calendar_day(selected, source)
@@ -4696,7 +4737,8 @@ def index():
             if selected and selected not in av:
                 av=sorted(set(av)|{selected}, reverse=True)
     # 結果タブで当日未完成へ戻された場合も、最新キャッシュへ再寄せ（当日ビューは除く）
-    if source in ('nar', 'jra') and not allow_past and mode in ('predict', 'result', 'analysis'):
+    # 翌日カード閲覧中は完成キャッシュ日へ落とさない
+    if source in ('nar', 'jra') and not allow_past and not allow_next and mode in ('predict', 'result', 'analysis'):
         if (
             not _nar_pred_ready(selected or '', source)
             and not _stay_on_selected_calendar_day(selected, source)
@@ -4784,9 +4826,13 @@ def index():
             data_status=page_status
             if pred_path is None:
                 # 初回のみ（キャッシュ無し）。ジョブは cron 側。
-                # 当日ビューは別日カードへ飛ばさない（JRA非開催日は空状態）
+                # 当日ビュー／翌日カード閲覧は別日カードへ飛ばさない
                 latest = ''
-                if source in ('nar', 'jra') and not _stay_on_selected_calendar_day(selected, source):
+                if (
+                    source in ('nar', 'jra')
+                    and not allow_next
+                    and not _stay_on_selected_calendar_day(selected, source)
+                ):
                     latest = _latest_ready_pred_date(source, on_or_before=today)
                 if latest and latest != selected:
                     selected = latest
@@ -4800,7 +4846,12 @@ def index():
                         and _stay_on_selected_calendar_day(selected, source)
                         and _today_source_has_no_meeting(source, selected or today)
                     )
-                    if no_meet:
+                    if allow_next and selected == tomorrow:
+                        data_status = 'generating'
+                        message = f'{selected} / {label} / 明日の予想を準備中'
+                        races=[]; venues=[]; show_venue_picker=False
+                        races_for_board=[]; buy_candidates=[]; targets=[]; data_updated_at=''
+                    elif no_meet:
                         data_status = 'ready'
                         message = (
                             '本日はJRAの開催はありません' if source == 'jra'
@@ -5073,7 +5124,10 @@ def index():
                                 else:
                                     message = f'{selected} / {label} / AI期待値分析'
         except FileNotFoundError as e:
-            if (
+            if allow_next and selected == tomorrow:
+                data_status = 'generating'
+                message = f'{selected} / {label} / 明日の予想を準備中'
+            elif (
                 source in ('nar', 'jra')
                 and _stay_on_selected_calendar_day(selected, source)
                 and _today_source_has_no_meeting(source, today)
@@ -5095,7 +5149,10 @@ def index():
         except Exception as e:
             # 安定稼働: 表示クラッシュでもキャッシュを落とさない
             print(f'[index] render fail source={source} selected={selected}: {e}', flush=True)
-            if (
+            if allow_next and selected == tomorrow:
+                data_status = 'generating'
+                message = f'{selected} / {label} / 明日の予想を準備中'
+            elif (
                 source in ('nar', 'jra')
                 and _stay_on_selected_calendar_day(selected, source)
                 and _today_source_has_no_meeting(source, today)
@@ -5137,6 +5194,11 @@ def index():
             if _nar_pred_ready(selected, source):
                 data_status='ready'
                 message=f'{selected} / {label}'
+                if selected not in av:
+                    av=sorted(set(av)|{selected}, reverse=True)
+            elif allow_next and selected == tomorrow:
+                data_status='generating'
+                message=f'{selected} / {label} / 明日の予想を準備中'
                 if selected not in av:
                     av=sorted(set(av)|{selected}, reverse=True)
             elif _stay_on_selected_calendar_day(selected, source) or _today_source_has_no_meeting(source, today):
@@ -5264,6 +5326,10 @@ def index():
         ):
             data_status='ready'
             message=no_meet_label
+        elif allow_next and selected == tomorrow and not selected_ok:
+            # 翌日カード未生成: ジョブerrorで落とさず準備中のまま
+            data_status='generating'
+            message=job_msg or f'{selected} / {label} / 明日の予想を準備中'
         elif job_status=='timeout':
             data_status='timeout'
             message=job_msg or '更新タイムアウト'
@@ -5303,18 +5369,21 @@ def index():
         if allow_past and selected and selected < today:
             q['date']=selected
             q['history']='1'
+        elif allow_next and selected and selected == tomorrow:
+            q['date']=selected
         else:
             q['date']=today
         if selected_venue:
             q['venue']=selected_venue
         status_refresh_url='/' + ('?' + urlencode(q) if q else '')
         _pipeline_log(
-            '表示', '成功' if (selected==today or allow_past) else '失敗',
+            '表示', '成功' if (selected==today or allow_past or allow_next) else '失敗',
             selected,
             source=source,
             today=today,
             force_cal=int(force_cal_today),
             allow_past=int(allow_past),
+            allow_next=int(allow_next),
             explicit=explicit_date or '-',
             status=data_status,
             venues=len(venues),
@@ -5336,8 +5405,9 @@ def index():
                 status=data_status, races=len(races), venues=len(venues),
             )
         elif data_status == 'generating' and not _nar_pred_ready(disp_date, source):
+            # 翌日カードの準備中は失敗扱いしない
             log_pipeline_stage(
-                source, 7, False, disp_date,
+                source, 7, bool(allow_next and disp_date == tomorrow), disp_date,
                 status=data_status, message=(message or '')[:80],
             )
 
@@ -5375,22 +5445,25 @@ def index():
             ) or selected or today
         except Exception:
             result_jump_date = selected or today
-    # 予想タブの日付ナビ（開催日リスト上で前後へ）
+    # 予想タブの日付ナビ（開催日リスト上で前後へ。10時以降は翌日も）
     pred_prev_date = ''
     pred_next_date = ''
     try:
         day_list = [d for d in (av or []) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(d))]
+        view_horizon = next_day_jst(today) if past_next_day_view_time() else today
+        if view_horizon not in day_list and past_next_day_view_time():
+            day_list = list(day_list) + [view_horizon]
         # available_dates は新しい順。古い→新しいに並べて前後を取る
         asc = sorted(set(day_list))
         if selected and selected in asc:
             i = asc.index(selected)
             if i > 0:
                 pred_prev_date = asc[i - 1]
-            if i + 1 < len(asc) and asc[i + 1] <= today:
+            if i + 1 < len(asc) and asc[i + 1] <= view_horizon and can_view_predict_date(asc[i + 1]):
                 pred_next_date = asc[i + 1]
         elif selected and asc:
             older = [d for d in asc if d < selected]
-            newer = [d for d in asc if selected < d <= today]
+            newer = [d for d in asc if selected < d <= view_horizon and can_view_predict_date(d)]
             pred_prev_date = older[-1] if older else ''
             pred_next_date = newer[0] if newer else ''
     except Exception:
