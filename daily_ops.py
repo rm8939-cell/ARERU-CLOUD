@@ -2,17 +2,19 @@
 
 - 08:00 JST まで: 開催取得 → AI予想の本生成
 - 08:00 JST 以降: 基本ロジック固定。取消・除外・オッズのみ更新
+- 10:00 JST 以降: 翌日カードの生成・閲覧を許可（前の日の10時以降に明日を見られる）
 - JRA: 開催日（土日・祝など netkeiba 検出日）のみ本生成
 - 地方: 開催日のみ本生成
 """
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 
 JST = timezone(timedelta(hours=9))
 PREDICT_READY_HOUR = 8
+NEXT_DAY_VIEW_HOUR = 10
 DATA = Path(__file__).resolve().parent / 'data'
 SEAL_DIR = DATA / 'predict_seals'
 SEAL_DIR.mkdir(parents=True, exist_ok=True)
@@ -26,12 +28,50 @@ def today_jst() -> str:
     return now_jst().date().isoformat()
 
 
+def next_day_jst(day: str | date | None = None) -> str:
+    """指定日（省略時は本日）の翌日 YYYY-MM-DD。"""
+    if day is None:
+        base = now_jst().date()
+    elif isinstance(day, date) and not isinstance(day, datetime):
+        base = day
+    else:
+        try:
+            base = datetime.fromisoformat(str(day)[:10]).date()
+        except Exception:
+            base = now_jst().date()
+    return (base + timedelta(days=1)).isoformat()
+
+
 def past_predict_deadline(now: datetime | None = None) -> bool:
     """予想本生成の締切（朝8時）を過ぎているか。"""
     t = now or now_jst()
     if t.tzinfo is None:
         t = t.replace(tzinfo=JST)
     return t.hour >= PREDICT_READY_HOUR
+
+
+def past_next_day_view_time(now: datetime | None = None) -> bool:
+    """前日10時以降なら翌日カードを生成・閲覧してよい。"""
+    t = now or now_jst()
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=JST)
+    return t.hour >= NEXT_DAY_VIEW_HOUR
+
+
+def can_view_predict_date(date_str: str, *, now: datetime | None = None) -> bool:
+    """予想タブでその日を開いてよいか（本日以前、または10時以降の翌日）。"""
+    day = str(date_str or '').strip()
+    if not day:
+        return False
+    t = now or now_jst()
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=JST)
+    today = t.date().isoformat()
+    if day <= today:
+        return True
+    if day == next_day_jst(today) and past_next_day_view_time(t):
+        return True
+    return False
 
 
 def seal_path(date_str: str) -> Path:

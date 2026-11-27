@@ -1625,7 +1625,7 @@ body.app-race .ra-lazy-ph{display:flex;align-items:center;justify-content:center
 {% endif %}
 <span class="fx-datecur">{{selected_date or today}}</span>
 {% if pred_next_date|default('') %}
-<a href="/?source={{source}}&mode=predict&date={{pred_next_date}}{% if pred_next_date < today %}&history=1{% endif %}" aria-label="次の開催日">翌日 ›</a>
+<a href="/?source={{source}}&mode=predict&date={{pred_next_date}}{% if pred_next_date < today %}&history=1{% endif %}" aria-label="{% if pred_next_date > today %}明日の予想{% else %}次の開催日{% endif %}">{% if pred_next_date > today %}明日 ›{% else %}翌日 ›{% endif %}</a>
 {% elif selected_date and today and selected_date < today %}
 <a class="fx-datetoday" href="/?source={{source}}&mode=predict&today=1" aria-label="本日開催">本日</a>
 {% else %}

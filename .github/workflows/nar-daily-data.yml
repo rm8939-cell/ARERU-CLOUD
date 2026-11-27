@@ -64,7 +64,13 @@ jobs:
         run: |
           set -euo pipefail
           TODAY=$(date +%F)
+          TOMORROW=$(python - <<'PY'
+          from daily_ops import next_day_jst, today_jst
+          print(next_day_jst(today_jst()))
+          PY
+          )
           echo "today=${TODAY}" >> "$GITHUB_OUTPUT"
+          echo "tomorrow=${TOMORROW}" >> "$GITHUB_OUTPUT"
           MODE=$(TODAY="${TODAY}" MODE_INPUT="${MODE_INPUT:-auto}" python - <<'PY'
           import os
           from pathlib import Path
@@ -204,6 +210,110 @@ jobs:
           srcs = sorted({str(s).lower() for s in df.get("source", pd.Series(dtype=str)).dropna().unique() if str(s).lower() in ("jra", "nar")}) or ["nar", "jra"]
           write_seal(day, sources=srcs, note="gha_morning", mode="morning")
           print("sealed sources=", srcs)
+          PY
+
+      - name: Prepare next-day card after 10:00 JST
+        env:
+          TZ: Asia/Tokyo
+          ARERU_SKIP_NAR_BOOT: '1'
+          ARERU_SKIP_BOOT: '1'
+          TODAY: ${{ steps.decide.outputs.today }}
+          TOMORROW: ${{ steps.decide.outputs.tomorrow }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from daily_ops import (
+              past_next_day_view_time,
+              next_day_jst,
+              today_jst,
+              jra_is_race_day,
+              nar_is_race_day,
+              write_seal,
+          )
+
+          today = os.environ.get("TODAY") or today_jst()
+          tomorrow = os.environ.get("TOMORROW") or next_day_jst(today)
+          if not past_next_day_view_time():
+              print(f"skip next-day: before 10:00 JST (tomorrow={tomorrow})")
+              raise SystemExit(0)
+
+          arch = Path("data/predictions_by_date") / f"predictions_{tomorrow}.csv"
+          need_jra = jra_is_race_day(tomorrow)
+          need_nar = nar_is_race_day(tomorrow)
+          if not need_jra and not need_nar:
+              print(f"skip next-day: no meeting tomorrow={tomorrow}")
+              raise SystemExit(0)
+
+          ready = False
+          if arch.exists() and arch.stat().st_size >= 64:
+              try:
+                  import pandas as pd
+                  df = pd.read_csv(arch, encoding="utf-8-sig", usecols=lambda c: c in ("source", "race_id"))
+                  srcs = set()
+                  if "source" in df.columns:
+                      srcs = {str(s).lower() for s in df["source"].dropna().unique()}
+                  ready = ("jra" in srcs and need_jra) or ("nar" in srcs and need_nar) or (not need_jra and not need_nar)
+                  if need_jra and "jra" not in srcs:
+                      ready = False
+                  if need_nar and "nar" not in srcs and need_jra is False:
+                      # 地方のみの日
+                      ready = "nar" in srcs
+              except Exception:
+                  ready = False
+          if ready:
+              print(f"next-day already ready tomorrow={tomorrow}")
+              raise SystemExit(0)
+
+          print(f"build next-day card tomorrow={tomorrow} jra={need_jra} nar={need_nar}")
+          Path("/tmp/build_next_day.txt").write_text(tomorrow, encoding="utf-8")
+          PY
+
+          if [ ! -f /tmp/build_next_day.txt ]; then
+            echo "No next-day build requested"
+            exit 0
+          fi
+          BUILD_NEXT_DAY=$(cat /tmp/build_next_day.txt)
+          export BUILD_NEXT_DAY
+          echo "Refreshing next-day=${BUILD_NEXT_DAY}"
+          python refresh_data.py --dates "${BUILD_NEXT_DAY}" --source nar --skip-predict || echo "NAR next-day refresh soft-fail"
+          python refresh_data.py --dates "${BUILD_NEXT_DAY}" --source jra --skip-predict || echo "JRA next-day refresh soft-fail"
+          if ! python - <<'PY'
+          import os
+          import pandas as pd
+          from pathlib import Path
+          from areru_engine import parse_date
+          day = os.environ["BUILD_NEXT_DAY"]
+          p = Path("data/runners.csv")
+          if not p.exists():
+              raise SystemExit(1)
+          days = parse_date(pd.read_csv(p, encoding="utf-8-sig", usecols=["日付"])["日付"]).dt.strftime("%Y-%m-%d")
+          raise SystemExit(0 if days.eq(day).any() else 1)
+          PY
+          then
+            echo "No runners for next-day ${BUILD_NEXT_DAY}; skip predict"
+            exit 0
+          fi
+          python replay_predict.py "${BUILD_NEXT_DAY}"
+          test -s "data/predictions_by_date/predictions_${BUILD_NEXT_DAY}.csv"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import pandas as pd
+          from ev_analysis import assert_predictions_finalized, predictions_are_finalized
+          from daily_ops import write_seal
+          day = os.environ["BUILD_NEXT_DAY"]
+          p = Path(f"data/predictions_by_date/predictions_{day}.csv")
+          df = pd.read_csv(p, encoding="utf-8-sig")
+          assert_predictions_finalized(df, label=p.name)
+          assert "相対ランク" in df.columns
+          pending = df["投資判定"].astype(str).str.contains("判定待", na=False).mean()
+          assert pending < 0.2, f"pending={pending:.2%}"
+          print("next-day rank finalize ok:", predictions_are_finalized(df))
+          srcs = sorted({str(s).lower() for s in df.get("source", pd.Series(dtype=str)).dropna().unique() if str(s).lower() in ("jra", "nar")}) or ["nar", "jra"]
+          write_seal(day, sources=srcs, note="gha_next_day", mode="morning")
+          print("next-day sealed sources=", srcs)
           PY
 
       - name: Commit and push data
