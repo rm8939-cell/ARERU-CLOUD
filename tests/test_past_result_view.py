@@ -73,3 +73,24 @@ def test_result_nav_preserves_history_query():
     html = res.data.decode('utf-8', 'replace')
     # _histq 変数だけ HTML escape されるため &history=1 → &amp;history=1
     assert 'mode=result&date=2026-07-19&amp;history=1' in html
+
+
+def test_predict_past_day_without_history_when_ready():
+    """完成予想がある過去日は history なしでも予想を開ける。"""
+    client = app.test_client()
+    res = client.get('/?source=jra&mode=predict&date=2026-11-23')
+    assert res.status_code == 200
+    html = res.data.decode('utf-8', 'replace')
+    assert 'mode-predict' in html
+    assert re.search(r'<option value="2026-11-23"[^>]*selected', html)
+    assert 'fx-datenav' in html
+    assert '‹ 前日' in html or '前日' in html
+
+
+def test_predict_date_nav_links_include_history():
+    client = app.test_client()
+    res = client.get('/?source=jra&mode=predict&date=2026-11-23&history=1')
+    html = res.data.decode('utf-8', 'replace')
+    assert 'fx-datenav' in html
+    assert 'mode=predict&date=' in html.replace('&amp;', '&')
+    assert 'history=1' in html

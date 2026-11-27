@@ -1573,6 +1573,14 @@ body.app-race .header{background:linear-gradient(90deg,#084C2F 0%,#0B7A45 55%,#0
 body.app-race .fx-navi{min-width:42px;padding:6px 4px;border-radius:10px;transition:background .15s ease,transform .15s ease}
 body.app-race .fx-navi:active{transform:scale(.96)}
 body.app-race .fx-navi.is-on{background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+/* 予想: 開催日ナビ（前日の予想を見る） */
+body.app-race .fx-datenav{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 0 2px;background:#E7EEF2}
+body.app-race .fx-datenav a,body.app-race .fx-datenav .fx-datecur{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:850;text-decoration:none;line-height:1}
+body.app-race .fx-datenav a{background:#fff;border:1px solid #D5E0DA;color:#0B7A45}
+body.app-race .fx-datenav a.is-disabled{opacity:.35;pointer-events:none}
+body.app-race .fx-datenav .fx-datecur{background:#0B7A45;border:1px solid #0B7A45;color:#fff;letter-spacing:.02em;min-width:7.5em}
+body.app-race .fx-datenav .fx-datetoday{background:#10233F;border-color:#10233F;color:#fff}
+body.app-race.picker .fx-datenav{background:#E7EEF2;border-bottom:1px solid #D5E0E6;padding:10px 0}
 body.app-race .ra-board[data-ra-ui="v39"]{gap:14px}
 body.app-race .ra-board[data-ra-ui="v39"] .ra-sec{border-radius:16px;box-shadow:0 6px 20px rgba(16,35,63,.08),0 1px 0 rgba(255,255,255,.7) inset}
 body.app-race .ra-board[data-ra-ui="v39"] .ra-id{background:linear-gradient(105deg,#9FD0E4 0%,#D7EEF6 28%,#F7FBFC 62%,#fff 100%) !important}
@@ -1607,6 +1615,24 @@ body.app-race .ra-lazy-ph{display:flex;align-items:center;justify-content:center
 <a class="fx-navi{% if mode=='ledger' %} is-on{% endif %}" href="/?source={{source}}&mode=ledger&date={{selected_date}}{{_histq}}"><i aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M4.8 6.5l1.6 1.6M17.6 15.9l1.6 1.6M3.5 12h2.2M18.3 12h2.2M4.8 17.5l1.6-1.6M17.6 8.1l1.6-1.6"/></svg></i><span>設定</span></a>
 </nav>
 </div>
+{% if mode=='predict' %}
+{% set _dhist = '&history=1' if selected_date and today and selected_date < today else '' %}
+<nav class="fx-datenav wrap" aria-label="開催日の切替">
+{% if pred_prev_date|default('') %}
+<a href="/?source={{source}}&mode=predict&date={{pred_prev_date}}&history=1" aria-label="前の開催日">‹ 前日</a>
+{% else %}
+<a class="is-disabled" aria-disabled="true">‹ 前日</a>
+{% endif %}
+<span class="fx-datecur">{{selected_date or today}}</span>
+{% if pred_next_date|default('') %}
+<a href="/?source={{source}}&mode=predict&date={{pred_next_date}}{% if pred_next_date < today %}&history=1{% endif %}" aria-label="次の開催日">翌日 ›</a>
+{% elif selected_date and today and selected_date < today %}
+<a class="fx-datetoday" href="/?source={{source}}&mode=predict&today=1" aria-label="本日開催">本日</a>
+{% else %}
+<a class="is-disabled" aria-disabled="true">翌日 ›</a>
+{% endif %}
+</nav>
+{% endif %}
 {% if mode=='predict' and selected_venue and races %}
 {% set _rnav = races|sort(attribute='レース') %}
 {% set _buy0 = namespace(v=none) %}
@@ -1680,7 +1706,7 @@ body.app-race .ra-lazy-ph{display:flex;align-items:center;justify-content:center
 </section>
 {% endif %}
 <div class="toolbar">
-<form class="toolbar-date" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}">{% if source in ['nar','jra'] and selected_date and selected_date < today %}<input type="hidden" name="history" value="1">{% endif %}<select name="date">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
+<form class="toolbar-date" method="get" action="/" id="toolbar-date-form"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="history" id="toolbar-history" value="1"><select name="date" id="toolbar-date-select">{% for d in available_dates %}<option value="{{d}}" {% if d==selected_date %}selected{% endif %}>{{d}}</option>{% endfor %}</select><button type="submit">表示</button></form>
 {% if source in ['nar','jra'] %}<form class="toolbar-today" method="get" action="/"><input type="hidden" name="source" value="{{source}}"><input type="hidden" name="mode" value="{{mode}}"><input type="hidden" name="today" value="1"><button type="submit" class="today-btn">本日開催</button></form>{% endif %}
 </div>
 <div class="message">{{message}}{% if data_updated_at|default('') and (data_status|default('ready')) in ('updating','ready') and source in ['nar','jra'] %} · 最終更新 {{data_updated_at}}{% endif %}</div>

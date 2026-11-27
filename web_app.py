@@ -4488,8 +4488,8 @@ def index():
     force_refresh=str(request.args.get('force_refresh') or '').strip() in ('1','true','yes')
     want_today=str(request.args.get('today') or '').strip() in ('1','true','yes') or force_refresh
     explicit_date=str(request.args.get('date') or '').strip()
-    # history=1 は「前日以前を明示閲覧」のときだけ有効（当日URLに残っていても無視）
-    # 実績（result）タブは過去日の予想＋結果を見るため history なしでも許可
+    # history=1 / 実績タブ / 完成予想のある明示日 → 過去日の閲覧を許可
+    # （日付ナビや URL で前日の予想を開ける。日付未指定のトップは当日のまま）
     raw_history=str(request.args.get('history') or '').strip() in ('1','true','yes')
     allow_past=bool(
         (raw_history or mode == 'result')
@@ -4497,22 +4497,19 @@ def index():
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit_date)
         and explicit_date < today
     )
-    # 地方のみ: 当日未完成で、URL日付に完成予想があるならその日を閲覧許可
-    # （会場リンクからレース一覧へ入れる。force_cal で venue を消さない）
-    # JRAは history=1 以外で前開催へ寄せない（非開催日に日曜カードが出るのを防ぐ）
     if (
-        source == 'nar'
-        and not allow_past
+        not allow_past
+        and mode == 'predict'
+        and source in ('jra', 'nar')
         and explicit_date
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}', explicit_date)
         and explicit_date < today
-        and not _nar_pred_ready(today, source)
         and _nar_pred_ready(explicit_date, source)
     ):
         allow_past = True
         print(
-            f'[{source}-date] allow cache-day view date={explicit_date} '
-            f'(today={today} not ready)',
+            f'[{source}-date] allow past predict date={explicit_date} '
+            f'(ready cache, today={today})',
             flush=True,
         )
     # 地方・中央: 本日ボタン／日付未指定／URLに前日残存 → カレンダー当日へ
@@ -5378,6 +5375,27 @@ def index():
             ) or selected or today
         except Exception:
             result_jump_date = selected or today
+    # 予想タブの日付ナビ（開催日リスト上で前後へ）
+    pred_prev_date = ''
+    pred_next_date = ''
+    try:
+        day_list = [d for d in (av or []) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(d))]
+        # available_dates は新しい順。古い→新しいに並べて前後を取る
+        asc = sorted(set(day_list))
+        if selected and selected in asc:
+            i = asc.index(selected)
+            if i > 0:
+                pred_prev_date = asc[i - 1]
+            if i + 1 < len(asc) and asc[i + 1] <= today:
+                pred_next_date = asc[i + 1]
+        elif selected and asc:
+            older = [d for d in asc if d < selected]
+            newer = [d for d in asc if selected < d <= today]
+            pred_prev_date = older[-1] if older else ''
+            pred_next_date = newer[0] if newer else ''
+    except Exception:
+        pred_prev_date = ''
+        pred_next_date = ''
     html = render_template('index.html',races=races,targets=targets,selected_date=selected,today=today,
         message=message,available_dates=av,source=source,mode=mode,has_results=has_results,
         analysis=analysis_data(races if not show_venue_picker else []),verification=verification,
@@ -5388,7 +5406,8 @@ def index():
         buy_candidates=buy_candidates,today_ai_board=today_ai_board,data_updated_at=data_updated_at,
         status_refresh_url=status_refresh_url,data_file_mtime=data_file_mtime,
         areru_pipeline=pipeline,focus_race_id=focus_race_id,
-        result_jump_date=result_jump_date)
+        result_jump_date=result_jump_date,
+        pred_prev_date=pred_prev_date,pred_next_date=pred_next_date)
     _perf_mark('html')
     if mode == 'predict' and not force_refresh and selected and data_status in ('ready', 'updating', 'success'):
         try:
