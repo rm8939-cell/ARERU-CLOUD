@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-28",
+  "sealed_at": "2026-11-28T00:40:09+09:00",
+  "deadline_hour": 8,
+  "sources": [
+    "jra",
+    "nar"
+  ],
+  "mode": "morning",
+  "note": "manual_morning"
+}
